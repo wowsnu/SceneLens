@@ -1,3 +1,14 @@
+# Frontend (managed in separate repo)
+src/
+public/
+node_modules/
+dist/
+package.json
+package-lock.json
+eslint.config.js
+vite.config.js
+index.html
+
 # Environment
 .env
 .env.*
