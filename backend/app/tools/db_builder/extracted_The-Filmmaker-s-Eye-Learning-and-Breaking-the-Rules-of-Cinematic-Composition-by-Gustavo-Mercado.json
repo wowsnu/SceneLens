@@ -1,0 +1,780 @@
+{
+  "books": [
+    {
+      "id": "b_auto_gen",
+      "title": "The-Filmmaker-s-Eye-Learning-and-Breaking-the-Rules-of-Cinematic-Composition-by-Gustavo-Mercado.pdf"
+    }
+  ],
+  "theory_units": [
+    {
+      "id": "t_pg16_01",
+      "book_id": "b_filmmakers_eye_vol1",
+      "title": "Environmental Object Juxtaposition for Impact",
+      "summary": "Utilize environmental objects in a shot to visually suggest quantities or the abstract impact of an event, particularly when juxtaposed with a character.",
+      "soft_tags": [
+        "environment",
+        "impact",
+        "quantity",
+        "character reaction"
+      ],
+      "level": "shot",
+      "applies_when": "When a character's actions or situation has a broad, abstract impact (e.g., number of people affected) that can be symbolized by surrounding objects.",
+      "expected_effect": "Subtly communicates the scale or consequence of an action to the audience without explicit dialogue, fostering empathy or understanding.",
+      "caution": ""
+    },
+    {
+      "id": "t_pg16_02",
+      "book_id": "b_filmmakers_eye_vol1",
+      "title": "High Angle for Vulnerability",
+      "summary": "A high camera angle can visualize emotions like defeat, vulnerability, and distraughtness in characters by looking down on them.",
+      "soft_tags": [
+        "camera angle",
+        "emotion",
+        "vulnerability",
+        "defeat"
+      ],
+      "level": "shot",
+      "applies_when": "When a character is experiencing emotional distress, weakness, or a sense of being overwhelmed.",
+      "expected_effect": "Makes the character appear smaller, more isolated, and less powerful, eliciting audience empathy for their emotional state.",
+      "caution": "Remember narrative context is key; a high angle can also convey dominance if context supports it (as mentioned on page 56)."
+    },
+    {
+      "id": "t_pg16_03",
+      "book_id": "b_filmmakers_eye_vol1",
+      "title": "Rule of Thirds for Dynamic Composition",
+      "summary": "Placing subjects according to the Rule of Thirds creates dynamic compositions and provides 'looking room' or 'leading room' in the frame.",
+      "soft_tags": [
+        "composition",
+        "rule of thirds",
+        "dynamism",
+        "leading room"
+      ],
+      "level": "shot",
+      "applies_when": "When a director wants to create visual interest and guide the audience's eye, rather than a static, centered image.",
+      "expected_effect": "Produces a more engaging and less static image, subtly directing the audience's attention and implying future movement or thought.",
+      "caution": ""
+    },
+    {
+      "id": "t_pg16_04",
+      "book_id": "b_filmmakers_eye_vol1",
+      "title": "Reduced Headroom for Unusual Drama",
+      "summary": "Departing from standard headroom in a shot can reinforce an unusual or awkward dramatic moment.",
+      "soft_tags": [
+        "composition",
+        "headroom",
+        "dramatic effect",
+        "awkwardness"
+      ],
+      "level": "shot",
+      "applies_when": "When the scene contains an uncomfortable, tense, or dramatically unusual moment that requires visual emphasis.",
+      "expected_effect": "Creates a sense of confinement, unease, or visual tension that mirrors the dramatic situation, making the audience feel the moment's intensity.",
+      "caution": "Use judiciously, as excessive or unintentional deviation from standard headroom can simply look amateurish."
+    },
+    {
+      "id": "t_pg16_05",
+      "book_id": "b_filmmakers_eye_vol1",
+      "title": "Framing for Environmental Pressure",
+      "summary": "Placing a comparatively small subject in a frame with surrounding objects can suggest they are being pressured, cornered, or retaliated against by their environment.",
+      "soft_tags": [
+        "composition",
+        "subject size",
+        "environment",
+        "pressure",
+        "retaliation"
+      ],
+      "level": "shot",
+      "applies_when": "When a character is feeling overwhelmed, cornered, or experiencing the negative consequences (retaliation) of their actions, symbolized by their surroundings.",
+      "expected_effect": "Visually conveys the character's psychological state of being under duress or facing consequences, fostering audience empathy or understanding of their situation.",
+      "caution": "Centering the subject would negate this effect, conveying stability rather than pressure."
+    },
+    {
+      "id": "t_pg16_06",
+      "book_id": "b_filmmakers_eye_vol1",
+      "title": "Haphazard Arrangement for Turmoil",
+      "summary": "The haphazard arrangement of environmental objects can visualize the turmoil or chaos caused by or experienced by a character.",
+      "soft_tags": [
+        "set dressing",
+        "composition",
+        "turmoil",
+        "chaos",
+        "visualization"
+      ],
+      "level": "shot",
+      "applies_when": "When portraying a character's internal emotional state, the impact of their actions, or a chaotic environment reflective of the narrative.",
+      "expected_effect": "Creates a visual metaphor for disorder or distress, communicating psychological turmoil or external disruption to the audience.",
+      "caution": ""
+    },
+    {
+      "id": "t_pg17_01",
+      "book_id": "b_filmmakers_eye_vol1",
+      "title": "Deep Depth of Field for Contextual Focus",
+      "summary": "Using a deep depth of field keeps both the subject and their environment in sharp focus, ensuring the audience considers everything in the frame.",
+      "soft_tags": [
+        "depth of field",
+        "focus",
+        "environment",
+        "context",
+        "attention"
+      ],
+      "level": "shot",
+      "applies_when": "When the environment and its objects are as narratively significant as the subject, and the audience needs to absorb all visual information.",
+      "expected_effect": "Guarantees audience attention is distributed across the entire frame, allowing for complex contextual meaning to be absorbed from the interaction of the subject and their surroundings.",
+      "caution": "Shallow depth of field would blur background/foreground, losing contextual detail."
+    },
+    {
+      "id": "t_pg17_02",
+      "book_id": "b_filmmakers_eye_vol1",
+      "title": "Close-up for Emotion",
+      "summary": "Close-ups are conventionally used to showcase strong emotions in characters.",
+      "soft_tags": [
+        "shot size",
+        "emotion",
+        "close-up",
+        "convention"
+      ],
+      "level": "shot",
+      "applies_when": "When the primary narrative goal is to reveal or emphasize a character's emotional state, thoughts, or reaction.",
+      "expected_effect": "Draws the audience's attention intimately to the character's face or a specific detail, creating a strong emotional connection or understanding.",
+      "caution": ""
+    },
+    {
+      "id": "t_pg17_03",
+      "book_id": "b_filmmakers_eye_vol1",
+      "title": "Extreme Long Shot for Location",
+      "summary": "Extreme long shots are conventionally used to introduce locations and establish setting.",
+      "soft_tags": [
+        "shot size",
+        "location",
+        "setting",
+        "establishment"
+      ],
+      "level": "shot",
+      "applies_when": "At the beginning of a scene or sequence to establish the geographical or environmental context of the upcoming action.",
+      "expected_effect": "Provides a wide overview of the setting, orienting the audience and conveying the scale or atmosphere of the location.",
+      "caution": ""
+    },
+    {
+      "id": "t_pg17_04",
+      "book_id": "b_filmmakers_eye_vol1",
+      "title": "Rule Subversion for Impact",
+      "summary": "Rules of composition can and should be subverted when appropriate to create shots with fresh impact, surprising, or contradictory resonance.",
+      "soft_tags": [
+        "rule breaking",
+        "creativity",
+        "impact",
+        "subversion"
+      ],
+      "level": "shot",
+      "applies_when": "When conventional approaches feel inadequate or when aiming for a unique, memorable, or thematically complex visual statement.",
+      "expected_effect": "Generates a unique and powerful visual impression, challenging audience expectations and creating deeper or unconventional meanings.",
+      "caution": "Requires a deep understanding of the rules first ('learn them so you know how to break them properly') to ensure subversion is intentional and effective, not merely accidental or amateurish."
+    },
+    {
+      "id": "t_pg21_01",
+      "book_id": "b_filmmakers_eye_vol1",
+      "title": "Intentional Framing (Relevance)",
+      "summary": "Identify exactly what each shot is supposed to communicate, ensuring only relevant visual information is included and extraneous details are excluded to avoid audience confusion.",
+      "soft_tags": [
+        "framing",
+        "relevance",
+        "clarity",
+        "audience understanding"
+      ],
+      "level": "shot",
+      "applies_when": "When composing any shot, especially when the narrative depends on subtle details or clear communication of a specific point.",
+      "expected_effect": "Ensures the audience's attention is directed to the most important elements, leading to a clear understanding of the shot's narrative purpose and preventing misinterpretation.",
+      "caution": "Audiences assume everything in a frame is meaningful; including too much unnecessary visual information can distract from the core message and prevent key details from being noticed."
+    },
+    {
+      "id": "t_pg22_01",
+      "book_id": "b_filmmakers_eye_vol1",
+      "title": "Director's Subjective Commentary",
+      "summary": "The framing of every shot should reflect the director's understanding of the story, their perspective, idiosyncrasies, and overall vision, adding a subjective layer of meaning.",
+      "soft_tags": [
+        "director's vision",
+        "subjectivity",
+        "thematic commentary",
+        "authorial voice"
+      ],
+      "level": "shot",
+      "applies_when": "When moving beyond literal depiction to imbue a scene with deeper thematic meaning, personal interpretation, or authorial commentary.",
+      "expected_effect": "Elevates the shot beyond mere action depiction, allowing the director to 'comment' on the story, enriching the narrative with complex layers of meaning for the audience.",
+      "caution": ""
+    },
+    {
+      "id": "t_pg22_02",
+      "book_id": "b_filmmakers_eye_vol1",
+      "title": "Narrative Context Defines Meaning",
+      "summary": "A shot's composition communicates meaning not just through visual arrangement, but fundamentally through the narrative context in which it is presented.",
+      "soft_tags": [
+        "narrative context",
+        "meaning",
+        "composition",
+        "recontextualization"
+      ],
+      "level": "scene",
+      "applies_when": "Always; when selecting any shot composition, it must be considered within the broader story arc, character development, and preceding events.",
+      "expected_effect": "Ensures that compositional choices resonate authentically and profoundly with the audience, avoiding superficiality or misinterpretation.",
+      "caution": "Replicating a visually striking shot from another film without its original narrative context will render it meaningless or confusing for the audience."
+    },
+    {
+      "id": "t_pg23_01",
+      "book_id": "b_filmmakers_eye_vol1",
+      "title": "Thematic Guidance for Visuals",
+      "summary": "Identify the story's core themes and essence to serve as a compass, guiding all visual decisions (composition, lighting, camerawork, etc.) for a unified vision.",
+      "soft_tags": [
+        "theme",
+        "visual strategy",
+        "unified vision",
+        "core idea"
+      ],
+      "level": "scene",
+      "applies_when": "During pre-production and throughout the filmmaking process, as the foundational principle for developing a cohesive visual language.",
+      "expected_effect": "Creates a powerful, emotionally deep, and narratively coherent film where every visual choice reinforces the story's underlying message, achieving a master director's unified vision.",
+      "caution": "Without clear thematic guidance, visual choices can become disjointed and fail to support the story's true meaning."
+    },
+    {
+      "id": "t_pg23_02",
+      "book_id": "b_filmmakers_eye_vol1",
+      "title": "Angle Shift for Confidence Arc",
+      "summary": "Varying camera angles from high to low can subtly visualize a character's journey from lack of confidence and vulnerability to growing self-confidence and resolve.",
+      "soft_tags": [
+        "camera angle",
+        "character arc",
+        "confidence",
+        "vulnerability"
+      ],
+      "level": "scene",
+      "applies_when": "When a character undergoes a transformation in their emotional state or self-perception throughout the narrative.",
+      "expected_effect": "Visually maps the character's internal journey, making their development tangible and emotionally resonant for the audience.",
+      "caution": ""
+    },
+    {
+      "id": "t_pg23_03",
+      "book_id": "b_filmmakers_eye_vol1",
+      "title": "Frame Balance for Character Resolve",
+      "summary": "Use off-center, unbalanced compositions to reflect a character's uncertainty or lack of motivation, and shift to balanced framings as they gain resolve and self-respect.",
+      "soft_tags": [
+        "composition",
+        "balance",
+        "character arc",
+        "uncertainty",
+        "resolve"
+      ],
+      "level": "scene",
+      "applies_when": "To visually represent a character's internal struggle and ultimate achievement of a goal or state of mind.",
+      "expected_effect": "Mirrors the character's internal stability or instability, making their psychological journey clear through visual equilibrium.",
+      "caution": ""
+    },
+    {
+      "id": "t_pg23_04",
+      "book_id": "b_filmmakers_eye_vol1",
+      "title": "Lens Shift for Character Perspective",
+      "summary": "Employ wide-angle lenses to distort a character's appearance when they are unconfident or struggling, and transition to normal lenses as they gain confidence and clarity.",
+      "soft_tags": [
+        "lens choice",
+        "distortion",
+        "character perception",
+        "confidence"
+      ],
+      "level": "scene",
+      "applies_when": "To visually represent a character's internal state of mind or their distorted self-perception, evolving over a narrative arc.",
+      "expected_effect": "The shift in lens perspective visually communicates the character's internal transformation, from unease to self-assurance.",
+      "caution": ""
+    },
+    {
+      "id": "t_pg23_05",
+      "book_id": "b_filmmakers_eye_vol1",
+      "title": "Depth of Field for Isolation/Connection",
+      "summary": "Use shallow depth of field to isolate a character, visualizing their desire to block out the world; then use deep depth of field as they feel more accepted or connected.",
+      "soft_tags": [
+        "depth of field",
+        "isolation",
+        "acceptance",
+        "character arc",
+        "connection"
+      ],
+      "level": "scene",
+      "applies_when": "To visually portray a character's emotional journey regarding their relationship with their environment or other characters, from detachment to integration.",
+      "expected_effect": "Visually reinforces the character's internal state of being disconnected or connected, fostering audience understanding of their emotional arc.",
+      "caution": ""
+    },
+    {
+      "id": "t_pg24_01",
+      "book_id": "b_filmmakers_eye_vol1",
+      "title": "Two-Shot to Close-up for Detail",
+      "summary": "Use a two-shot to establish interaction, then tilt down to a tight close-up at a key moment to reveal a significant, often subtle, detail.",
+      "soft_tags": [
+        "shot sequence",
+        "detail",
+        "attention",
+        "two shot",
+        "close up",
+        "camera movement"
+      ],
+      "level": "shot",
+      "applies_when": "When a subtle physical detail holds significant narrative meaning and needs to be highlighted after establishing a broader interaction.",
+      "expected_effect": "Draws the audience's attention to a critical detail, emphasizing its importance and revealing a character's internal state or a plot point.",
+      "caution": ""
+    },
+    {
+      "id": "t_pg24_02",
+      "book_id": "b_filmmakers_eye_vol1",
+      "title": "Partial Cropping for Nervousness",
+      "summary": "In an over-the-shoulder shot, partially cropping a character from the frame can visualize their nervousness or discomfort.",
+      "soft_tags": [
+        "composition",
+        "cropping",
+        "nervousness",
+        "over the shoulder",
+        "emotion"
+      ],
+      "level": "shot",
+      "applies_when": "When aiming to subtly convey a character's internal state of anxiety or unease without explicit dialogue or performance.",
+      "expected_effect": "Creates a sense of visual discomfort or incompleteness that reflects the character's internal nervousness, making them appear more vulnerable or unsettled.",
+      "caution": "Ensure the cropping is intentional and serves a narrative purpose, not just poor framing."
+    },
+    {
+      "id": "t_pg24_03",
+      "book_id": "b_filmmakers_eye_vol1",
+      "title": "Contrasting Framing for Character States",
+      "summary": "Use contrasting compositional elements, like canted shots/excessive headroom versus even horizons/conventional framing, to visualize different emotional states between characters.",
+      "soft_tags": [
+        "composition",
+        "contrast",
+        "character states",
+        "canted angle",
+        "headroom",
+        "horizon"
+      ],
+      "level": "shot",
+      "applies_when": "When comparing or highlighting the differing emotional or psychological states of two or more characters within the same scene.",
+      "expected_effect": "Visually accentuates the disparity in characters' internal experiences, making their individual states clear and creating subtle dramatic tension or commentary.",
+      "caution": ""
+    },
+    {
+      "id": "t_pg26_01",
+      "book_id": "b_filmmakers_eye_vol1",
+      "title": "Kuleshov Effect (Contiguous Shots)",
+      "summary": "The juxtaposition of contiguous shots can create a new meaning that is absent from each individual shot, guiding audience interpretation of emotion or narrative.",
+      "soft_tags": [
+        "editing",
+        "montage",
+        "meaning creation",
+        "audience perception",
+        "kuleshov effect"
+      ],
+      "level": "scene",
+      "applies_when": "When editing a sequence of shots, particularly to convey emotion or build a new idea through the interaction of distinct images.",
+      "expected_effect": "Generates a powerful, cumulative meaning from the sequence, often leading the audience to infer emotions or connections that aren't explicitly shown in any single shot.",
+      "caution": "The perceived meaning is highly dependent on the audience's interpretation and cultural context."
+    },
+    {
+      "id": "t_pg26_02",
+      "book_id": "b_filmmakers_eye_vol1",
+      "title": "Recontextualized Recurring Image",
+      "summary": "A visually striking image revisited later in a film can attain an entirely new meaning, recontextualized by all the events that transpired since its first appearance.",
+      "soft_tags": [
+        "visual motif",
+        "repetition",
+        "meaning evolution",
+        "narrative arc",
+        "thematic depth"
+      ],
+      "level": "scene",
+      "applies_when": "When designing recurring visual motifs, character introductions, or location shots that are intended to evolve in meaning over the course of the film.",
+      "expected_effect": "Creates a deeper, more complex thematic resonance and emotional impact by demonstrating character or narrative change, engaging the audience's memory and comparative understanding.",
+      "caution": "Requires significant narrative development between repetitions for the recontextualization to be effective; superficial repetition will not yield the desired effect."
+    },
+    {
+      "id": "t_pg26_03",
+      "book_id": "b_filmmakers_eye_vol1",
+      "title": "Designed Image System for Storytelling",
+      "summary": "A film's image system, a unique interaction of all its images, should be intentionally designed to communicate themes, core ideas, motifs, character arcs, and tone cohesively.",
+      "soft_tags": [
+        "image system",
+        "visual language",
+        "cohesion",
+        "themes",
+        "narrative strategy"
+      ],
+      "level": "scene",
+      "applies_when": "Throughout the entire filmmaking process, from conceptualization to post-production, as the guiding principle for all visual choices.",
+      "expected_effect": "Results in a powerful and coherent visual narrative that seamlessly reinforces the story's underlying messages, characters, and emotional tone, creating a unique cinematic experience.",
+      "caution": "Unplanned image systems can still occur but may lack narrative precision or fail to fully support the story's intended meaning."
+    }
+  ],
+  "operations": [
+    {
+      "id": "o_pg16_01",
+      "theory_unit_id": "t_pg16_01",
+      "suggested_change": {
+        "Shot Size": "Long Shot",
+        "Set Dressing": "Clustered symbolic objects (e.g., empty chairs)"
+      },
+      "related_dimensions": [
+        "Shot Size",
+        "Set Dressing"
+      ],
+      "explanation_template": "A long shot captures the subject within their environment, allowing a large number of symbolic objects to be seen clustered around them, thereby suggesting the broad impact or quantity related to the subject's situation."
+    },
+    {
+      "id": "o_pg16_02",
+      "theory_unit_id": "t_pg16_02",
+      "suggested_change": {
+        "Camera Angle": "High"
+      },
+      "related_dimensions": [
+        "Camera Angle"
+      ],
+      "explanation_template": "Taking the shot from a high angle visually diminishes the character, making them appear defeated, vulnerable, and distraught to the audience."
+    },
+    {
+      "id": "o_pg16_03",
+      "theory_unit_id": "t_pg16_03",
+      "suggested_change": {
+        "Subject Placement": "Off-center, along rule of thirds lines/intersections"
+      },
+      "related_dimensions": [
+        "Subject Placement"
+      ],
+      "explanation_template": "Positioning the subject along the lines or intersections of the Rule of Thirds grid creates a dynamic composition, providing 'looking room' that suggests their focus or potential movement within the scene."
+    },
+    {
+      "id": "o_pg16_04",
+      "theory_unit_id": "t_pg16_04",
+      "suggested_change": {
+        "Headroom": "Less than standard for shot size (e.g., long shot)"
+      },
+      "related_dimensions": [
+        "Headroom",
+        "Shot Size"
+      ],
+      "explanation_template": "Reducing the standard amount of headroom for a given shot size visually compresses the character, reinforcing the unusual or awkward dramatic moment by adding a subtle sense of confinement or pressure."
+    },
+    {
+      "id": "o_pg16_05",
+      "theory_unit_id": "t_pg16_05",
+      "suggested_change": {
+        "Subject Placement": "Offset, surrounded by objects",
+        "Subject Size": "Comparatively small relative to environment"
+      },
+      "related_dimensions": [
+        "Subject Placement",
+        "Subject Size"
+      ],
+      "explanation_template": "Placing the subject comparatively small within the frame and surrounding them with objects, rather than centering them, makes it look as if the environment is cornering or pressuring them, conveying a sense of retaliation or overwhelming consequences."
+    },
+    {
+      "id": "o_pg16_06",
+      "theory_unit_id": "t_pg16_06",
+      "suggested_change": {
+        "Set Dressing": "Haphazardly arranged objects (e.g., chairs)"
+      },
+      "related_dimensions": [
+        "Set Dressing"
+      ],
+      "explanation_template": "A haphazard arrangement of objects in the scene can be interpreted as a visualization of the turmoil or chaos associated with the character or narrative, reflecting their emotional state or the impact of their actions."
+    },
+    {
+      "id": "o_pg17_01",
+      "theory_unit_id": "t_pg17_01",
+      "suggested_change": {
+        "Depth of Field": "Deep"
+      },
+      "related_dimensions": [
+        "Depth of Field",
+        "Focal Length",
+        "Aperture"
+      ],
+      "explanation_template": "Employing a deep depth of field (achieved through precise camera to subject distance, focal length, and aperture) ensures everything in the office is in sharp focus, allowing the audience to concentrate on both the character and the contextual elements sharing the space."
+    },
+    {
+      "id": "o_pg17_02",
+      "theory_unit_id": "t_pg17_02",
+      "suggested_change": {
+        "Shot Size": "Close-up"
+      },
+      "related_dimensions": [
+        "Shot Size"
+      ],
+      "explanation_template": "A close-up isolates the character's face or a key detail, making their emotions prominent and allowing the audience to connect directly with their feelings."
+    },
+    {
+      "id": "o_pg17_03",
+      "theory_unit_id": "t_pg17_03",
+      "suggested_change": {
+        "Shot Size": "Extreme Long Shot"
+      },
+      "related_dimensions": [
+        "Shot Size"
+      ],
+      "explanation_template": "An extreme long shot provides a comprehensive view of the environment, effectively introducing the location to the audience and establishing the scene's setting."
+    },
+    {
+      "id": "o_pg17_04",
+      "theory_unit_id": "t_pg17_04",
+      "suggested_change": {
+        "Rule Adherence": "Subvert conventional rule"
+      },
+      "related_dimensions": [
+        "Compositional Rule",
+        "Narrative Context"
+      ],
+      "explanation_template": "Intentionally deviating from a standard compositional rule, when narratively justified, can create a fresh visual impact or evoke surprising emotional/thematic resonance, provided the underlying purpose of the rule is understood."
+    },
+    {
+      "id": "o_pg21_01",
+      "theory_unit_id": "t_pg21_01",
+      "suggested_change": {
+        "Visual Information": "Only relevant elements",
+        "Set Dressing": "Minimal or purposeful"
+      },
+      "related_dimensions": [
+        "Set Dressing",
+        "Subject Placement",
+        "Visual Clutter"
+      ],
+      "explanation_template": "By meticulously curating the visual elements within the frame, ensuring only those critical to the shot's communicative purpose are present, the director can guide the audience's attention and prevent distractions from extraneous details."
+    },
+    {
+      "id": "o_pg22_01",
+      "theory_unit_id": "t_pg22_01",
+      "suggested_change": {
+        "Juxtaposition": "Symbolic elements with action",
+        "Scale/Placement": "Adjust for commentary (e.g., distant Statue of Liberty)"
+      },
+      "related_dimensions": [
+        "Subject Placement",
+        "Subject Size",
+        "Symbolic Elements"
+      ],
+      "explanation_template": "Include symbolic elements within the frame, carefully adjusting their size, angle, and location relative to the main action, to infuse the shot with the director's unique perspective and commentary on the narrative event."
+    },
+    {
+      "id": "o_pg22_02",
+      "theory_unit_id": "t_pg22_02",
+      "suggested_change": {
+        "Compositional Choice": "Align with established narrative context"
+      },
+      "related_dimensions": [
+        "Narrative Context",
+        "Shot Type",
+        "Camera Angle"
+      ],
+      "explanation_template": "Select a compositional choice (e.g., high angle) that aligns with the established narrative context, allowing its meaning to be properly inferred by the audience, whether it's conventional (vulnerability) or unconventional (dominance)."
+    },
+    {
+      "id": "o_pg23_01",
+      "theory_unit_id": "t_pg23_01",
+      "suggested_change": {
+        "Visual Strategy": "Design based on core themes"
+      },
+      "related_dimensions": [
+        "Lighting",
+        "Camerawork",
+        "Composition",
+        "Wardrobe",
+        "Locations",
+        "Lenses"
+      ],
+      "explanation_template": "Consciously design the entire visual strategy of the film, including specific compositional rules, by aligning every choice with the identified core themes, ensuring a consistent and deeply resonant visual interpretation of the story."
+    },
+    {
+      "id": "o_pg23_02",
+      "theory_unit_id": "t_pg23_02",
+      "suggested_change": {
+        "Camera Angle": "Slight High Angle"
+      },
+      "related_dimensions": [
+        "Camera Angle",
+        "Character Arc Stage"
+      ],
+      "explanation_template": "Use a slight high angle during early stages of the character arc to reflect their initial lack of confidence and psychological vulnerability."
+    },
+    {
+      "id": "o_pg23_03",
+      "theory_unit_id": "t_pg23_02",
+      "suggested_change": {
+        "Camera Angle": "Slight Low Angle"
+      },
+      "related_dimensions": [
+        "Camera Angle",
+        "Character Arc Stage"
+      ],
+      "explanation_template": "Gradually switch to slight low-angle shots as the character develops, subtly suggesting their growing self-confidence and change in attitude."
+    },
+    {
+      "id": "o_pg23_04",
+      "theory_unit_id": "t_pg23_03",
+      "suggested_change": {
+        "Subject Placement": "Off-center",
+        "Compositional Balance": "Unbalanced"
+      },
+      "related_dimensions": [
+        "Subject Placement",
+        "Compositional Balance",
+        "Character Arc Stage"
+      ],
+      "explanation_template": "Place the character off-center in unbalanced compositions before they make a decisive choice or gain resolve, visualizing their uncertainty or lack of motivation."
+    },
+    {
+      "id": "o_pg23_05",
+      "theory_unit_id": "t_pg23_03",
+      "suggested_change": {
+        "Subject Placement": "Centered or balanced",
+        "Compositional Balance": "Balanced"
+      },
+      "related_dimensions": [
+        "Subject Placement",
+        "Compositional Balance",
+        "Character Arc Stage"
+      ],
+      "explanation_template": "Shift to more balanced framings after the character makes a decision or achieves a state of self-respect, reflecting their newfound stability and resolve."
+    },
+    {
+      "id": "o_pg23_06",
+      "theory_unit_id": "t_pg23_04",
+      "suggested_change": {
+        "Lens Type": "Wide-angle lens"
+      },
+      "related_dimensions": [
+        "Lens Type",
+        "Character Arc Stage"
+      ],
+      "explanation_template": "Use wide-angle lenses to visually distort the character at the beginning of their journey, reflecting their lack of confidence or internal struggle."
+    },
+    {
+      "id": "o_pg23_07",
+      "theory_unit_id": "t_pg23_04",
+      "suggested_change": {
+        "Lens Type": "Normal lens"
+      },
+      "related_dimensions": [
+        "Lens Type",
+        "Character Arc Stage"
+      ],
+      "explanation_template": "Shift to normal lenses as the character gains confidence, signifying a return to clarity and a more grounded self-perception."
+    },
+    {
+      "id": "o_pg23_08",
+      "theory_unit_id": "t_pg23_05",
+      "suggested_change": {
+        "Depth of Field": "Shallow"
+      },
+      "related_dimensions": [
+        "Depth of Field",
+        "Character Arc Stage"
+      ],
+      "explanation_template": "Employ a shallow depth of field to isolate the character, visualizing their desire to block out the world or their feeling of detachment."
+    },
+    {
+      "id": "o_pg23_09",
+      "theory_unit_id": "t_pg23_05",
+      "suggested_change": {
+        "Depth of Field": "Deep"
+      },
+      "related_dimensions": [
+        "Depth of Field",
+        "Character Arc Stage"
+      ],
+      "explanation_template": "Shift to a deep depth of field when the character feels more accepted by their peers or integrated into their environment, visually showing their connection."
+    },
+    {
+      "id": "o_pg24_01",
+      "theory_unit_id": "t_pg24_01",
+      "suggested_change": {
+        "Shot Size 1": "Two Shot",
+        "Camera Movement 1": "N/A",
+        "Shot Size 2": "Tight Close-up",
+        "Camera Movement 2": "Tilt Down"
+      },
+      "related_dimensions": [
+        "Shot Size",
+        "Camera Movement"
+      ],
+      "explanation_template": "Begin with a two-shot to show the characters' interaction, then at a crucial narrative moment, tilt the camera down to reveal a tight close-up of a specific, meaningful detail (e.g., a twitching hand)."
+    },
+    {
+      "id": "o_pg24_02",
+      "theory_unit_id": "t_pg24_02",
+      "suggested_change": {
+        "Shot Type": "Over the Shoulder",
+        "Framing": "Partially crop nervous character"
+      },
+      "related_dimensions": [
+        "Shot Type",
+        "Framing"
+      ],
+      "explanation_template": "When using over-the-shoulder shots, compose the frame to partially crop the nervous character, visually representing their discomfort or unease to the audience."
+    },
+    {
+      "id": "o_pg24_03",
+      "theory_unit_id": "t_pg24_03",
+      "suggested_change": {
+        "Camera Angle": "Slightly Canted",
+        "Headroom": "Excessive"
+      },
+      "related_dimensions": [
+        "Camera Angle",
+        "Headroom"
+      ],
+      "explanation_template": "For a nervous or unsettled character, use a slightly canted shot coupled with an excessive amount of headroom to visually express their unease and instability."
+    },
+    {
+      "id": "o_pg24_04",
+      "theory_unit_id": "t_pg24_03",
+      "suggested_change": {
+        "Camera Angle": "Even Horizon",
+        "Framing": "Conventional"
+      },
+      "related_dimensions": [
+        "Camera Angle",
+        "Framing"
+      ],
+      "explanation_template": "For a stable or calm character, employ an even horizon and more conventional framing to contrast with the unsettled character, emphasizing their composure."
+    },
+    {
+      "id": "o_pg26_01",
+      "theory_unit_id": "t_pg26_01",
+      "suggested_change": {
+        "Editing Technique": "Juxtaposition of emotionally neutral shot with contextually loaded shots"
+      },
+      "related_dimensions": [
+        "Shot Content",
+        "Sequence Order"
+      ],
+      "explanation_template": "Edit an emotionally neutral shot (e.g., a neutral face) to be immediately followed by another shot with clear contextual meaning (e.g., a coffin), allowing the audience to project emotion onto the first shot based on the second."
+    },
+    {
+      "id": "o_pg26_02",
+      "theory_unit_id": "t_pg26_02",
+      "suggested_change": {
+        "Visual Motif": "Introduce striking image early, revisit later",
+        "Narrative Context": "Develop intervening events that alter its meaning"
+      },
+      "related_dimensions": [
+        "Shot Content",
+        "Narrative Structure",
+        "Symbolism"
+      ],
+      "explanation_template": "Introduce a particularly memorable image at the beginning of the story, then revisit that exact or similar image towards the end, allowing the intervening narrative events to infuse it with an entirely new, evolved meaning for the audience."
+    },
+    {
+      "id": "o_pg26_03",
+      "theory_unit_id": "t_pg26_03",
+      "suggested_change": {
+        "Visual Strategy": "Consciously plan all image interactions",
+        "Story Elements": "Map themes, arcs, motifs to visual expressions"
+      },
+      "related_dimensions": [
+        "Shot Composition",
+        "Lighting",
+        "Color Palette",
+        "Lenses",
+        "Editing Style"
+      ],
+      "explanation_template": "Consciously plan how all visual elements and their interactions across the film will collectively communicate the story's themes, character arcs, and tone, rather than allowing visual relationships to occur by accident."
+    }
+  ]
+}

@@ -1,0 +1,1104 @@
+{
+  "books": [
+    {
+      "id": "b_auto_gen",
+      "title": "The_Filmmaker's_Eye_Learning_(and_Breaking)_the_Ru..._----_(rules_of_cinematic_composition_&_technical_concepts).pdf"
+    }
+  ],
+  "theory_units": [
+    {
+      "id": "t_b_Mercado_FilmmakersEye_2020_pg1_01",
+      "book_id": "b_Mercado_FilmmakersEye_2020",
+      "title": "Aspect Ratio and Compositional Emphasis",
+      "summary": "The chosen aspect ratio defines the screen's width-to-height proportions, inherently influencing how visual elements are composed and whether characters or environments are visually emphasized.",
+      "soft_tags": [
+        "Aspect Ratio",
+        "Composition",
+        "Framing",
+        "Visual Weight",
+        "Environment vs. Character"
+      ],
+      "level": "scene",
+      "applies_when": "Deciding on the overall frame dimensions for a film or specific scenes, especially when the balance between character focus and environmental context is narratively important.",
+      "expected_effect": "Guides audience attention to specific visual elements (characters or surroundings); establishes a sense of scale (epic, intimate, balanced).",
+      "caution": ""
+    },
+    {
+      "id": "t_b_Mercado_FilmmakersEye_2020_pg4_01",
+      "book_id": "b_Mercado_FilmmakersEye_2020",
+      "title": "Aspect Ratio as a Narrative and Genre Tool",
+      "summary": "Aspect ratios can be strategically chosen or changed within a film to exploit historical associations, evoke specific genre aesthetics, or reflect narrative shifts and psychological states, adding layers of meaning.",
+      "soft_tags": [
+        "Aspect Ratio",
+        "Narrative",
+        "Genre",
+        "Period Piece",
+        "Visual Storytelling",
+        "Emotional Impact",
+        "Psychological Effect"
+      ],
+      "level": "scene",
+      "applies_when": "Intending to imbue a film or scene with specific historical context, genre homage, or to visually underscore shifts in narrative time, character perspective, or emotional tone.",
+      "expected_effect": "Reinforces narrative themes, evokes nostalgia, creates genre-specific atmosphere, generates psychological effects (e.g., claustrophobia, distancing), or clarifies temporal/structural shifts.",
+      "caution": "Unconventional or dynamically changing aspect ratios should be narratively justified to avoid audience confusion or distraction."
+    },
+    {
+      "id": "t_b_Mercado_FilmmakersEye_2020_pg4_02",
+      "book_id": "b_Mercado_FilmmakersEye_2020",
+      "title": "Rule of Thirds for Balanced Composition and Emphasis",
+      "summary": "Dividing the frame into thirds horizontally and vertically creates 'sweet spots' and lines, which are used to place important visual elements, horizons, or subjects for aesthetically pleasing and balanced compositions.",
+      "soft_tags": [
+        "Composition",
+        "Rule of Thirds",
+        "Framing",
+        "Aesthetics",
+        "Balance",
+        "Visual Guide"
+      ],
+      "level": "shot",
+      "applies_when": "Composing shots where aesthetic balance, visual harmony, or strategic emphasis of subjects/elements is desired.",
+      "expected_effect": "Creates visually pleasing and dynamic compositions; guides audience's eye; prevents static or unbalanced imagery.",
+      "caution": "Should be applied organically, not mechanically, considering shot size and mise-en-scène."
+    },
+    {
+      "id": "t_b_Mercado_FilmmakersEye_2020_pg5_01",
+      "book_id": "b_Mercado_FilmmakersEye_2020",
+      "title": "Rule of Thirds for Looking Room and Headroom",
+      "summary": "The Rule of Thirds is used to properly size 'looking room' (space in the direction a subject is facing) and 'headroom' (space above a subject's head) to balance compositions and direct attention in human subject shots.",
+      "soft_tags": [
+        "Composition",
+        "Framing",
+        "Headroom",
+        "Looking Room",
+        "Subject Framing",
+        "Rule of Thirds"
+      ],
+      "level": "shot",
+      "applies_when": "Framing human subjects, particularly in tighter shots like medium close-ups, to achieve balanced and natural-looking compositions.",
+      "expected_effect": "Creates balanced and aesthetically pleasing shots of human subjects; directs the audience's gaze; prevents visual tension unless intentionally desired.",
+      "caution": "Headroom amount varies with shot size; ignore rule organically for specific effects, not mechanically."
+    },
+    {
+      "id": "t_b_Mercado_FilmmakersEye_2020_pg5_02",
+      "book_id": "b_Mercado_FilmmakersEye_2020",
+      "title": "Subverting Rule of Thirds for Visual Tension",
+      "summary": "Intentionally ignoring the Rule of Thirds, such as centering a subject when looking room is expected, or providing insufficient headroom, can create a static, visually tense, or unusual composition to suggest danger or abnormality.",
+      "soft_tags": [
+        "Composition",
+        "Framing",
+        "Tension",
+        "Subversion",
+        "Rule of Thirds",
+        "Psychological Effect",
+        "Visual Storytelling"
+      ],
+      "level": "shot",
+      "applies_when": "The director wants to visually suggest uneasiness, danger, abnormality, or a static quality in a scene.",
+      "expected_effect": "Creates a feeling of tension, unease, claustrophobia, or suggests something is 'off' to the audience.",
+      "caution": "Use deliberately; unintended subversion can lead to amateur-looking shots."
+    },
+    {
+      "id": "t_b_Mercado_FilmmakersEye_2020_pg7_01",
+      "book_id": "b_Mercado_FilmmakersEye_2020",
+      "title": "Hitchcock's Rule: Size for Importance",
+      "summary": "The size of a subject (person or object) in the frame should be directly proportional to its narrative or emotional importance at that specific moment in the story.",
+      "soft_tags": [
+        "Composition",
+        "Framing",
+        "Emphasis",
+        "Narrative Importance",
+        "Hitchcock's Rule",
+        "Visual Storytelling"
+      ],
+      "level": "shot",
+      "applies_when": "Directing audience attention to a specific character or object whose narrative significance needs to be immediately understood or subtly underlined.",
+      "expected_effect": "Clearly communicates the current narrative importance of a subject; guides audience focus; enhances emotional impact.",
+      "caution": ""
+    },
+    {
+      "id": "t_b_Mercado_FilmmakersEye_2020_pg7_02",
+      "book_id": "b_Mercado_FilmmakersEye_2020",
+      "title": "Balanced Composition for Order and Uniformity",
+      "summary": "Distributing visual weight evenly across the frame by considering relative size, color, brightness, and placement of elements creates a balanced composition.",
+      "soft_tags": [
+        "Composition",
+        "Balance",
+        "Aesthetics",
+        "Visual Weight",
+        "Order",
+        "Uniformity",
+        "Emotional Impact"
+      ],
+      "level": "shot",
+      "applies_when": "Intending to convey a sense of order, uniformity, peacefulness, predetermination, or visual stability in a scene.",
+      "expected_effect": "Creates a harmonious and stable visual impression; evokes feelings of calm, control, or predictability.",
+      "caution": "Can also suggest 'chaos' if subverted by narrative context."
+    },
+    {
+      "id": "t_b_Mercado_FilmmakersEye_2020_pg7_03",
+      "book_id": "b_Mercado_FilmmakersEye_2020",
+      "title": "Unbalanced Composition for Uneasiness and Tension",
+      "summary": "Concentrating visual weight in one area of the frame creates an unbalanced composition, which can communicate feelings of uneasiness, turmoil, or tension.",
+      "soft_tags": [
+        "Composition",
+        "Unbalance",
+        "Visual Weight",
+        "Tension",
+        "Uneasiness",
+        "Emotional Impact"
+      ],
+      "level": "shot",
+      "applies_when": "Intending to evoke a sense of instability, discomfort, turmoil, or psychological tension in the audience regarding the scene's content.",
+      "expected_effect": "Creates an unsettling or dynamic visual impression; evokes feelings of unease, anxiety, or inappropriateness.",
+      "caution": ""
+    },
+    {
+      "id": "t_b_Mercado_FilmmakersEye_2020_pg8_01",
+      "book_id": "b_Mercado_FilmmakersEye_2020",
+      "title": "High-Angle Shot for Vulnerability and Powerlessness",
+      "summary": "Placing the camera above eye-level to look down on a subject typically visualizes their weakness, vulnerability, powerlessness, or can establish power dynamics.",
+      "soft_tags": [
+        "Camera Angle",
+        "Psychological State",
+        "Power Dynamics",
+        "Vulnerability",
+        "Weakness",
+        "Emotional Impact"
+      ],
+      "level": "shot",
+      "applies_when": "Intending to portray a character as weak, vulnerable, powerless, or to show another character's dominance over them.",
+      "expected_effect": "Evokes empathy or pity for the subject; highlights their diminished status; visually communicates their psychological state.",
+      "caution": "Excessive height can be distracting unless overt stylization is desired; minor adjustments are often sufficient."
+    },
+    {
+      "id": "t_b_Mercado_FilmmakersEye_2020_pg8_02",
+      "book_id": "b_Mercado_FilmmakersEye_2020",
+      "title": "Low-Angle Shot for Power and Confidence",
+      "summary": "Placing the camera below eye-level to look up at a subject typically visualizes their confidence, power, control, or can establish power dynamics.",
+      "soft_tags": [
+        "Camera Angle",
+        "Psychological State",
+        "Power Dynamics",
+        "Confidence",
+        "Power",
+        "Control",
+        "Emotional Impact"
+      ],
+      "level": "shot",
+      "applies_when": "Intending to portray a character as confident, powerful, in control, or to show their dominance over others.",
+      "expected_effect": "Evokes respect or intimidation; highlights their elevated status; visually communicates their psychological state.",
+      "caution": "Excessive height can be distracting unless overt stylization is desired; minor adjustments are often sufficient."
+    },
+    {
+      "id": "t_b_Mercado_FilmmakersEye_2020_pg8_03",
+      "book_id": "b_Mercado_FilmmakersEye_2020",
+      "title": "Relative Size Depth Cue for Z-axis Depth",
+      "summary": "Arranging similarly sized subjects along the z-axis (foreground, middleground, background) where closer objects appear larger and farther objects appear smaller, creates the illusion of depth.",
+      "soft_tags": [
+        "Composition",
+        "Depth",
+        "Z-axis",
+        "Illusion of Depth",
+        "Relative Size",
+        "Visual Perception"
+      ],
+      "level": "shot",
+      "applies_when": "Desiring to create a strong sense of three-dimensionality and spatial extension within a two-dimensional frame, especially with repetitive or recognizably sized objects.",
+      "expected_effect": "Enhances the perception of depth and space; makes the scene feel more immersive and dimensional.",
+      "caution": "Requires subjects whose relative size difference in the frame is clearly attributable to distance, not actual size difference."
+    },
+    {
+      "id": "t_b_Mercado_FilmmakersEye_2020_pg9_01",
+      "book_id": "b_Mercado_FilmmakersEye_2020",
+      "title": "Subject Overlapping Depth Cue for Z-axis Depth",
+      "summary": "Partially covering subjects along the z-axis of the frame (e.g., placing objects in the foreground that overlap middleground subjects) creates the illusion of depth, as the blocked subject is perceived as being farther away.",
+      "soft_tags": [
+        "Composition",
+        "Depth",
+        "Z-axis",
+        "Illusion of Depth",
+        "Overlapping",
+        "Foreground Elements",
+        "Visual Perception"
+      ],
+      "level": "shot",
+      "applies_when": "Desiring to create a sense of three-dimensionality in a shot, particularly by defining planes of depth through visual occlusion.",
+      "expected_effect": "Enhances the perception of depth and separation between foreground, middleground, and background elements; adds visual interest.",
+      "caution": "Foreground objects should be intentionally placed and can even be out of focus if their primary purpose is to create depth."
+    },
+    {
+      "id": "t_b_Mercado_FilmmakersEye_2020_pg9_02",
+      "book_id": "b_Mercado_FilmmakersEye_2020",
+      "title": "Creating Focal Points to Direct Gaze",
+      "summary": "Focal points are created by arranging visual elements (e.g., color, lighting, focus, frame within a frame) to naturally guide the audience's gaze to the primary center of interest and narrative point within a composition.",
+      "soft_tags": [
+        "Composition",
+        "Focal Point",
+        "Audience Gaze",
+        "Emphasis",
+        "Visual Storytelling",
+        "Mise-en-scène"
+      ],
+      "level": "shot",
+      "applies_when": "Desiring to explicitly direct audience attention to the most important character or object in a frame, ensuring its narrative significance is understood.",
+      "expected_effect": "Clearly communicates the primary subject of interest; prevents visual clutter; clarifies narrative intent; enhances visual impact.",
+      "caution": "Multiple competing focal points can dilute the effect."
+    },
+    {
+      "id": "t_b_Mercado_FilmmakersEye_2020_pg10_01",
+      "book_id": "b_Mercado_FilmmakersEye_2020",
+      "title": "Using Leading Lines to Guide Gaze",
+      "summary": "Leading lines use natural or human-made features (e.g., roads, shorelines, architecture) within a composition to create actual or implied lines that extend from foreground to background, directing the audience's gaze towards a main subject.",
+      "soft_tags": [
+        "Composition",
+        "Leading Lines",
+        "Audience Gaze",
+        "Emphasis",
+        "Depth",
+        "Visual Storytelling"
+      ],
+      "level": "shot",
+      "applies_when": "Desiring to subtly or overtly guide the audience's eye through the frame to a specific character or point of interest, often adding a sense of depth.",
+      "expected_effect": "Directs audience attention efficiently; creates a sense of depth and perspective; enhances the visual flow of the composition.",
+      "caution": "Ensure lines lead to the intended subject, not away or to distracting elements."
+    },
+    {
+      "id": "t_b_Mercado_FilmmakersEye_2020_pg11_01",
+      "book_id": "b_Mercado_FilmmakersEye_2020",
+      "title": "Normal Lenses for Natural Perspective and Facial Features",
+      "summary": "Normal lenses reproduce perspective similarly to human vision, making them preferred for human subjects, especially in close-ups, as they avoid overt distortion of facial features and do not exaggerate movement or distances along the z-axis.",
+      "soft_tags": [
+        "Lens Choice",
+        "Normal Lens",
+        "Perspective",
+        "Facial Features",
+        "Natural Look",
+        "Close-up"
+      ],
+      "level": "shot",
+      "applies_when": "Desiring a naturalistic portrayal of subjects and space, particularly for close-ups of human faces, or when avoiding exaggeration of depth and movement.",
+      "expected_effect": "A natural, undistorted visual; realistic portrayal of character expressions and interactions; balanced representation of distances.",
+      "caution": "Focal length for 'normal' varies by sensor format; a slightly longer focal length can be more flattering."
+    },
+    {
+      "id": "t_b_Mercado_FilmmakersEye_2020_pg11_02",
+      "book_id": "b_Mercado_FilmmakersEye_2020",
+      "title": "Wide-Angle Lenses for Exaggerated Depth and Dynamic Movement",
+      "summary": "Wide-angle lenses capture a wider angle of view, exaggerate distances along the z-axis making them appear longer, and make subjects moving towards/away from the camera appear faster, useful for dynamic scenes or environmental inclusion.",
+      "soft_tags": [
+        "Lens Choice",
+        "Wide-Angle Lens",
+        "Depth Exaggeration",
+        "Movement Dynamics",
+        "Environment",
+        "Action",
+        "Distortion"
+      ],
+      "level": "shot",
+      "applies_when": "Desiring to emphasize vastness, exaggerate perceived depth, make movement more dynamic (e.g., chase scenes), or include more of the environment in a shot.",
+      "expected_effect": "Creates a sense of expansive space; intensifies the speed of subject movement; can create an unsettling or distorted facial appearance if too close.",
+      "caution": "Very short focal lengths can optically distort faces if used too close to a subject."
+    },
+    {
+      "id": "t_b_Mercado_FilmmakersEye_2020_pg12_01",
+      "book_id": "b_Mercado_FilmmakersEye_2020",
+      "title": "Telephoto Lenses for Compressed Perspective and Isolated Subjects",
+      "summary": "Telephoto lenses magnify distant subjects, capture a narrower angle of view, compress perspective along the z-axis making backgrounds appear closer, and make subjects moving towards/away from the camera appear slower, useful for isolation or tension.",
+      "soft_tags": [
+        "Lens Choice",
+        "Telephoto Lens",
+        "Perspective Compression",
+        "Subject Isolation",
+        "Movement Dynamics",
+        "Tension"
+      ],
+      "level": "shot",
+      "applies_when": "Desiring to isolate a subject from its background, compress space, exclude unwanted elements, or make movement appear slower (e.g., for tension or suspense).",
+      "expected_effect": "Creates a flattened, compressed sense of space; isolates subjects effectively; slows down perceived movement; can provide a slightly flattering facial look if slightly telephoto.",
+      "caution": "Excessive compression can make subjects appear closer than they are, sometimes obscuring actual distance; slight telephoto can be flattering, but longer ones can also distort."
+    },
+    {
+      "id": "t_b_Mercado_FilmmakersEye_2020_pg13_01",
+      "book_id": "b_Mercado_FilmmakersEye_2020",
+      "title": "Prime Lenses for Superior Image Quality and Intimacy",
+      "summary": "Prime lenses (fixed focal length) generally offer superior image quality (contrast, color, sharpness) due to simpler optical designs. They are lighter, have shorter minimum focusing distances, and are often faster, allowing for closer, more intimate shots.",
+      "soft_tags": [
+        "Lens Choice",
+        "Prime Lens",
+        "Image Quality",
+        "Sharpness",
+        "Intimacy",
+        "Low Light",
+        "Depth of Field"
+      ],
+      "level": "shot",
+      "applies_when": "Image quality is paramount, intimacy in close-ups is desired, or shooting in low-light conditions with minimal equipment.",
+      "expected_effect": "Crisper, more vibrant images; ability to achieve very shallow depth of field; facilitates intimate framing; reduces need for heavy lighting.",
+      "caution": "Requires more time for lens changes when focal length variation is needed."
+    },
+    {
+      "id": "t_b_Mercado_FilmmakersEye_2020_pg13_02",
+      "book_id": "b_Mercado_FilmmakersEye_2020",
+      "title": "Zoom Lenses for Versatility and Dynamic Reframing",
+      "summary": "Zoom lenses (variable focal length) allow changing the angle of view and reframing a shot without moving the camera. While generally slower and potentially lower in image quality than primes, they offer speed and flexibility, enabling dynamic zoom shots.",
+      "soft_tags": [
+        "Lens Choice",
+        "Zoom Lens",
+        "Versatility",
+        "Efficiency",
+        "Reframing",
+        "Camera Movement",
+        "Zoom Shot"
+      ],
+      "level": "shot",
+      "applies_when": "Workflow efficiency is important, dynamic reframing within a shot is desired, or the ability to quickly adjust focal length without camera movement is beneficial.",
+      "expected_effect": "Faster production workflow; ability to create dynamic 'zoom shots'; adaptable framing without repositioning the camera; some potential compromise on image quality or low-light performance.",
+      "caution": "Generally slower (smaller max aperture) and can have inferior image quality compared to primes; complex optical design."
+    },
+    {
+      "id": "t_b_Mercado_FilmmakersEye_2020_pg13_03",
+      "book_id": "b_Mercado_FilmmakersEye_2020",
+      "title": "Macro Lenses for Extreme Close-up Detail",
+      "summary": "Macro lenses allow extremely close focusing distances, making them ideal for extreme close-up work where very small details need to be magnified to fill the frame with sharp focus.",
+      "soft_tags": [
+        "Lens Choice",
+        "Macro Lens",
+        "Extreme Close-up",
+        "Detail",
+        "Magnification",
+        "Focus"
+      ],
+      "level": "shot",
+      "applies_when": "The narrative requires revealing intricate details, textures, or small objects with high magnification and sharp focus.",
+      "expected_effect": "Highlights minute details; creates a sense of intimacy or intensity; reveals unseen aspects of a subject.",
+      "caution": "Depth of field can become extremely shallow at very close focus distances."
+    },
+    {
+      "id": "t_b_Mercado_FilmmakersEye_2020_pg14_01",
+      "book_id": "b_Mercado_FilmmakersEye_2020",
+      "title": "Tilt-Shift Lenses for Manipulating Focus Plane",
+      "summary": "Tilt-shift lenses, with their movable front element, allow tilting the plane of focus from perpendicular to diagonal, enabling selective focus effects such as having two subjects at different distances in sharp focus simultaneously or isolating focus along a diagonal axis.",
+      "soft_tags": [
+        "Lens Choice",
+        "Tilt-Shift Lens",
+        "Selective Focus",
+        "Plane of Focus",
+        "Depth of Field",
+        "Visual Effect"
+      ],
+      "level": "shot",
+      "applies_when": "A specific optical effect is needed to manipulate the plane of focus, such as keeping multiple subjects at varying distances sharp, or creating a miniature effect.",
+      "expected_effect": "Creates unique focus effects that draw attention to specific elements; can achieve sharpness across atypical depth planes.",
+      "caution": "Requires careful manipulation to achieve desired effect without unintended blur."
+    },
+    {
+      "id": "t_b_Mercado_FilmmakersEye_2020_pg14_02",
+      "book_id": "b_Mercado_FilmmakersEye_2020",
+      "title": "Split-Field Diopter for Dual Near/Far Focus",
+      "summary": "A split-field diopter is a half-lens attachment that allows a conventional lens to achieve sharp focus on both a very close foreground subject and a distant background subject simultaneously within the same shot.",
+      "soft_tags": [
+        "Lens Accessory",
+        "Split-Field Diopter",
+        "Dual Focus",
+        "Deep Focus Effect",
+        "Composition",
+        "Depth of Field"
+      ],
+      "level": "shot",
+      "applies_when": "The narrative requires keeping two important subjects, one in the extreme foreground and one in the far background, in sharp focus within a single frame, creating an unnatural 'deep focus' effect.",
+      "expected_effect": "Creates a visual anomaly where both near and far subjects are in sharp focus, drawing attention to the spatial relationship or simultaneous importance of disparate elements.",
+      "caution": "The visible line where the diopter edge meets the normal lens can be distracting if not carefully masked or integrated."
+    },
+    {
+      "id": "t_b_Mercado_FilmmakersEye_2020_pg14_03",
+      "book_id": "b_Mercado_FilmmakersEye_2020",
+      "title": "Depth of Field for Guiding Audience Attention",
+      "summary": "Depth of field, the range of acceptable focus along the z-axis, is a key visual storytelling technique used to direct audience attention: shallow depth of field isolates subjects, while deep depth of field keeps the entire scene in focus.",
+      "soft_tags": [
+        "Depth of Field",
+        "Focus",
+        "Audience Gaze",
+        "Isolation",
+        "Emphasis",
+        "Visual Storytelling",
+        "Composition"
+      ],
+      "level": "shot",
+      "applies_when": "Needing to direct the audience's attention to specific subjects within the frame or to encourage them to take in the entire visual information of a scene.",
+      "expected_effect": "Guides audience focus; creates visual hierarchy; enhances dramatic impact by isolating subjects or revealing context.",
+      "caution": "Managing light levels is crucial, especially when using aperture to control depth of field, often requiring ND filters or additional lighting."
+    },
+    {
+      "id": "t_b_filmmakers_eye_pg17_01",
+      "book_id": "b_filmmakers_eye_mercado_2020",
+      "title": "Prioritize Native ISO and Lighting for Image Quality in Low Light",
+      "summary": "To ensure optimal image quality and minimize noise in low-light conditions, prioritize using the camera's native ISO and supplement with artificial lighting instead of high ISO amplification.",
+      "soft_tags": [
+        "image quality",
+        "exposure",
+        "low light",
+        "ISO",
+        "technical",
+        "lighting strategy"
+      ],
+      "level": "shot",
+      "applies_when": "Shooting in low-light environments (e.g., outdoors at night) where maintaining high visual fidelity and minimizing digital noise is critical.",
+      "expected_effect": "A clean, high-quality image with minimal digital noise, accurate color reproduction, and rich detail, enhancing the overall visual aesthetic of the shot.",
+      "caution": "Drastically increasing ISO settings to compensate for inadequate exposure will digitally amplify the signal, introducing unwanted video noise and degrading image quality."
+    },
+    {
+      "id": "t_b_filmmakers_eye_pg17_02",
+      "book_id": "b_filmmakers_eye_mercado_2020",
+      "title": "Previsualize Frame Content and Spatial Relationships",
+      "summary": "Actively previsualize what elements will be included in or excluded from the frame, and carefully observe how chosen focal lengths and camera positions influence the spatial relationships between subjects and their environment, to precisely plan shot composition.",
+      "soft_tags": [
+        "preproduction",
+        "composition",
+        "framing",
+        "spatial relationships",
+        "focal length",
+        "camera position",
+        "narrative potential"
+      ],
+      "level": "shot",
+      "applies_when": "During any stage of shot planning, including location scouting, shot listing, and camera blocking, to ensure intentional and effective visual storytelling.",
+      "expected_effect": "Achieve precise and deliberate shot composition, optimize camera placement for desired perspective and depth, and enhance the narrative potential of a scene through controlled visual information.",
+      "caution": "Lack of thorough previsualization can lead to unintentional framing issues, inefficient production time, and a compromised visual narrative."
+    },
+    {
+      "id": "t_b_filmmakers_eye_pg19_01",
+      "book_id": "b_filmmakers_eye_mercado_2020",
+      "title": "Balance Monitoring with Production Momentum",
+      "summary": "While external field monitors are invaluable for technical review and compositional adjustments, avoid excessive and constant checking during a shoot to maintain production efficiency and crew momentum.",
+      "soft_tags": [
+        "production efficiency",
+        "monitoring",
+        "workflow management",
+        "technical checks",
+        "set etiquette"
+      ],
+      "level": "scene",
+      "applies_when": "Utilizing external field monitors or similar advanced monitoring tools on set to assess image quality, focus, exposure, and composition.",
+      "expected_effect": "An efficient and streamlined production workflow that still upholds high image quality standards, preventing unnecessary delays and maintaining the creative flow on set.",
+      "caution": "Over-checking monitoring tools can significantly slow down production, incur additional costs, and disrupt the crew's momentum, hindering overall progress."
+    }
+  ],
+  "operations": [
+    {
+      "id": "o_b_Mercado_FilmmakersEye_2020_pg1_01",
+      "theory_unit_id": "t_b_Mercado_FilmmakersEye_2020_pg1_01",
+      "suggested_change": {
+        "Aspect Ratio": "2.39:1 (Anamorphic/Scope)"
+      },
+      "related_dimensions": [
+        "Aspect Ratio"
+      ],
+      "explanation_template": "Using a 2.39:1 aspect ratio provides a very wide frame, inherently emphasizing locations and landscapes by including abundant horizontal space, often associated with epic scale and big-budget productions."
+    },
+    {
+      "id": "o_b_Mercado_FilmmakersEye_2020_pg1_02",
+      "theory_unit_id": "t_b_Mercado_FilmmakersEye_2020_pg1_01",
+      "suggested_change": {
+        "Aspect Ratio": "1.85:1 (Flat)"
+      },
+      "related_dimensions": [
+        "Aspect Ratio"
+      ],
+      "explanation_template": "Employing a 1.85:1 aspect ratio offers a balanced frame width, allowing for an equal presentation of characters and their surrounding locations, offering versatile compositional options."
+    },
+    {
+      "id": "o_b_Mercado_FilmmakersEye_2020_pg1_03",
+      "theory_unit_id": "t_b_Mercado_FilmmakersEye_2020_pg1_01",
+      "suggested_change": {
+        "Aspect Ratio": "2:1 (Univisium)"
+      },
+      "related_dimensions": [
+        "Aspect Ratio"
+      ],
+      "explanation_template": "Choosing a 2:1 aspect ratio bridges wider and taller formats, accommodating both wide landscapes and characters effectively without excessive extra space at the sides, suitable for modern multi-device viewing."
+    },
+    {
+      "id": "o_b_Mercado_FilmmakersEye_2020_pg1_04",
+      "theory_unit_id": "t_b_Mercado_FilmmakersEye_2020_pg1_01",
+      "suggested_change": {
+        "Aspect Ratio": "1.37:1 (Academy Ratio)"
+      },
+      "related_dimensions": [
+        "Aspect Ratio"
+      ],
+      "explanation_template": "Selecting a 1.37:1 aspect ratio (Academy Ratio) with its squarish shape strongly favors the presentation of characters, especially in tighter shots, often evoking classic cinematic aesthetics and focusing intimacy."
+    },
+    {
+      "id": "o_b_Mercado_FilmmakersEye_2020_pg4_05",
+      "theory_unit_id": "t_b_Mercado_FilmmakersEye_2020_pg4_02",
+      "suggested_change": {
+        "Subject Placement": "Sweet Spot",
+        "Key Elements": "Sweet Spot"
+      },
+      "related_dimensions": [
+        "Subject Placement",
+        "Visual Elements"
+      ],
+      "explanation_template": "Place important visual elements or subjects over the 'sweet spots' (crossing points of the grid) to create aesthetically pleasing and naturally engaging compositions."
+    },
+    {
+      "id": "o_b_Mercado_FilmmakersEye_2020_pg4_06",
+      "theory_unit_id": "t_b_Mercado_FilmmakersEye_2020_pg4_02",
+      "suggested_change": {
+        "Horizon Placement": "Top Third Line",
+        "or": "Bottom Third Line"
+      },
+      "related_dimensions": [
+        "Horizon Placement"
+      ],
+      "explanation_template": "Align horizons along the top or bottom horizontal lines of the grid in establishing and extreme long shots to create visual balance and depth."
+    },
+    {
+      "id": "o_b_Mercado_FilmmakersEye_2020_pg4_07",
+      "theory_unit_id": "t_b_Mercado_FilmmakersEye_2020_pg4_02",
+      "suggested_change": {
+        "Subject Placement": "Vertical Third Line"
+      },
+      "related_dimensions": [
+        "Subject Placement"
+      ],
+      "explanation_template": "Use vertical third lines to guide subject placement in two-shots or over-the-shoulder shots, ensuring balanced framing."
+    },
+    {
+      "id": "o_b_Mercado_FilmmakersEye_2020_pg5_01",
+      "theory_unit_id": "t_b_Mercado_FilmmakersEye_2020_pg5_01",
+      "suggested_change": {
+        "Subject Placement": "Vertical Third Line (opposite gaze direction)"
+      },
+      "related_dimensions": [
+        "Subject Placement",
+        "Looking Room"
+      ],
+      "explanation_template": "In tighter shots, place the subject over the vertical line opposite their gaze direction (e.g., left line if looking right) to provide balanced 'looking room' and counteract the visual weight of their gaze."
+    },
+    {
+      "id": "o_b_Mercado_FilmmakersEye_2020_pg5_02",
+      "theory_unit_id": "t_b_Mercado_FilmmakersEye_2020_pg5_01",
+      "suggested_change": {
+        "Eye-line Placement": "Top Third Line"
+      },
+      "related_dimensions": [
+        "Eye-line",
+        "Headroom"
+      ],
+      "explanation_template": "Align the subject's eyes with the top horizontal line in medium close-ups to ensure appropriate 'headroom' (space above their head), balancing the top of the frame."
+    },
+    {
+      "id": "o_b_Mercado_FilmmakersEye_2020_pg5_03",
+      "theory_unit_id": "t_b_Mercado_FilmmakersEye_2020_pg5_01",
+      "suggested_change": {
+        "Headroom": "Varies by shot size (more for wider, less for tighter)"
+      },
+      "related_dimensions": [
+        "Headroom",
+        "Shot Size"
+      ],
+      "explanation_template": "Adjust headroom proportionally to shot size: wider shots require more headroom, while medium close-ups should often crop the top of the head for correct spacing."
+    },
+    {
+      "id": "o_b_Mercado_FilmmakersEye_2020_pg5_04",
+      "theory_unit_id": "t_b_Mercado_FilmmakersEye_2020_pg5_02",
+      "suggested_change": {
+        "Subject Placement": "Center",
+        "Looking Room": "None"
+      },
+      "related_dimensions": [
+        "Subject Placement",
+        "Looking Room"
+      ],
+      "explanation_template": "Place a subject centrally or give them no looking room (or looking room on the 'wrong' side) to create a static, tense composition that suggests abnormality or danger."
+    },
+    {
+      "id": "o_b_Mercado_FilmmakersEye_2020_pg5_05",
+      "theory_unit_id": "t_b_Mercado_FilmmakersEye_2020_pg5_02",
+      "suggested_change": {
+        "Headroom": "Insufficient"
+      },
+      "related_dimensions": [
+        "Headroom"
+      ],
+      "explanation_template": "Provide insufficient headroom for a subject to induce a feeling of claustrophobia or suggest potential danger lurking beneath the surface."
+    },
+    {
+      "id": "o_b_Mercado_FilmmakersEye_2020_pg7_01",
+      "theory_unit_id": "t_b_Mercado_FilmmakersEye_2020_pg7_01",
+      "suggested_change": {
+        "Subject Size": "Large",
+        "Framing": "Dominant"
+      },
+      "related_dimensions": [
+        "Subject Size",
+        "Framing"
+      ],
+      "explanation_template": "Make the narratively important subject occupy a larger area of the frame to emphasize its significance at that moment."
+    },
+    {
+      "id": "o_b_Mercado_FilmmakersEye_2020_pg7_02",
+      "theory_unit_id": "t_b_Mercado_FilmmakersEye_2020_pg7_01",
+      "suggested_change": {
+        "Subject Size": "Small",
+        "Framing": "Recessive"
+      },
+      "related_dimensions": [
+        "Subject Size",
+        "Framing"
+      ],
+      "explanation_template": "Reduce the size or relegate less important subjects to the background to ensure primary focus remains on the most significant element."
+    },
+    {
+      "id": "o_b_Mercado_FilmmakersEye_2020_pg7_03",
+      "theory_unit_id": "t_b_Mercado_FilmmakersEye_2020_pg7_02",
+      "suggested_change": {
+        "Visual Weight Distribution": "Even",
+        "Symmetry": "High"
+      },
+      "related_dimensions": [
+        "Visual Weight",
+        "Placement",
+        "Symmetry",
+        "Color",
+        "Brightness",
+        "Size"
+      ],
+      "explanation_template": "Arrange visual elements symmetrically or distribute their visual weight (based on size, color, brightness, and placement) evenly across the frame to create a balanced and orderly composition."
+    },
+    {
+      "id": "o_b_Mercado_FilmmakersEye_2020_pg7_04",
+      "theory_unit_id": "t_b_Mercado_FilmmakersEye_2020_pg7_03",
+      "suggested_change": {
+        "Visual Weight Distribution": "Concentrated in one area",
+        "Symmetry": "Low"
+      },
+      "related_dimensions": [
+        "Visual Weight",
+        "Placement",
+        "Symmetry",
+        "Color",
+        "Brightness",
+        "Size"
+      ],
+      "explanation_template": "Concentrate the visual weight of elements (based on size, color, brightness, and placement) predominantly in one area of the frame to create an unbalanced composition that conveys uneasiness or tension."
+    },
+    {
+      "id": "o_b_Mercado_FilmmakersEye_2020_pg8_01",
+      "theory_unit_id": "t_b_Mercado_FilmmakersEye_2020_pg8_01",
+      "suggested_change": {
+        "Camera Angle": "High",
+        "Camera Height": "Slightly above eye-level"
+      },
+      "related_dimensions": [
+        "Camera Angle",
+        "Camera Height"
+      ],
+      "explanation_template": "Position the camera slightly above eye-level to look down on the subject, visually conveying their vulnerability, powerlessness, or a subdued emotional state."
+    },
+    {
+      "id": "o_b_Mercado_FilmmakersEye_2020_pg8_02",
+      "theory_unit_id": "t_b_Mercado_FilmmakersEye_2020_pg8_02",
+      "suggested_change": {
+        "Camera Angle": "Low",
+        "Camera Height": "Slightly below eye-level"
+      },
+      "related_dimensions": [
+        "Camera Angle",
+        "Camera Height"
+      ],
+      "explanation_template": "Position the camera slightly below eye-level to look up at the subject, visually conveying their power, confidence, or an authoritarian emotional state."
+    },
+    {
+      "id": "o_b_Mercado_FilmmakersEye_2020_pg8_03",
+      "theory_unit_id": "t_b_Mercado_FilmmakersEye_2020_pg8_03",
+      "suggested_change": {
+        "Subject Arrangement": "Along Z-axis",
+        "Subject Size": "Varying apparent size for known actual size"
+      },
+      "related_dimensions": [
+        "Blocking",
+        "Composition",
+        "Subject Placement",
+        "Scale"
+      ],
+      "explanation_template": "Block similarly sized objects at different distances along the z-axis, allowing their apparent size difference to cue the audience that smaller objects are farther away, thereby creating depth."
+    },
+    {
+      "id": "o_b_Mercado_FilmmakersEye_2020_pg9_01",
+      "theory_unit_id": "t_b_Mercado_FilmmakersEye_2020_pg9_01",
+      "suggested_change": {
+        "Framing": "Include foreground element",
+        "Object Overlap": "Partial"
+      },
+      "related_dimensions": [
+        "Framing",
+        "Blocking",
+        "Mise-en-scène",
+        "Depth"
+      ],
+      "explanation_template": "Place an object in the foreground that partially overlaps a middleground or background subject; the overlapping element creates a clear visual plane, making the obscured subject appear farther away and thus generating depth."
+    },
+    {
+      "id": "o_b_Mercado_FilmmakersEye_2020_pg9_02",
+      "theory_unit_id": "t_b_Mercado_FilmmakersEye_2020_pg9_02",
+      "suggested_change": {
+        "Color": "Contrasting",
+        "Subject": "Focal Point"
+      },
+      "related_dimensions": [
+        "Color",
+        "Costume",
+        "Subject Placement"
+      ],
+      "explanation_template": "Dress a character in a color that stands out against a monochromatic background to instantly draw the eye to them as the focal point."
+    },
+    {
+      "id": "o_b_Mercado_FilmmakersEye_2020_pg9_03",
+      "theory_unit_id": "t_b_Mercado_FilmmakersEye_2020_pg9_02",
+      "suggested_change": {
+        "Lighting": "Spotlight",
+        "Subject": "Focal Point"
+      },
+      "related_dimensions": [
+        "Lighting",
+        "Subject Placement"
+      ],
+      "explanation_template": "Use lighting to make a subject stand out in a dark environment, illuminating them as the primary focal point."
+    },
+    {
+      "id": "o_b_Mercado_FilmmakersEye_2020_pg9_04",
+      "theory_unit_id": "t_b_Mercado_FilmmakersEye_2020_pg9_02",
+      "suggested_change": {
+        "Focus": "Sharp",
+        "Other Elements": "Soft Focus"
+      },
+      "related_dimensions": [
+        "Focus",
+        "Depth of Field",
+        "Subject Placement"
+      ],
+      "explanation_template": "Ensure the important subject is the only visual element in sharp focus, isolating them as the focal point through selective depth of field."
+    },
+    {
+      "id": "o_b_Mercado_FilmmakersEye_2020_pg9_05",
+      "theory_unit_id": "t_b_Mercado_FilmmakersEye_2020_pg9_02",
+      "suggested_change": {
+        "Framing": "Frame within a frame"
+      },
+      "related_dimensions": [
+        "Framing",
+        "Composition"
+      ],
+      "explanation_template": "Utilize natural or artificial elements within the scene to create a 'frame within a frame' around the subject, creating a strong focal point."
+    },
+    {
+      "id": "o_b_Mercado_FilmmakersEye_2020_pg10_01",
+      "theory_unit_id": "t_b_Mercado_FilmmakersEye_2020_pg10_01",
+      "suggested_change": {
+        "Composition": "Arrange natural/man-made lines towards subject"
+      },
+      "related_dimensions": [
+        "Composition",
+        "Set Design",
+        "Blocking",
+        "Subject Placement"
+      ],
+      "explanation_template": "Arrange natural or architectural features within the scene to form actual or implied lines that converge on or point towards the main subject, guiding the audience's gaze."
+    },
+    {
+      "id": "o_b_Mercado_FilmmakersEye_2020_pg11_01",
+      "theory_unit_id": "t_b_Mercado_FilmmakersEye_2020_pg11_01",
+      "suggested_change": {
+        "Lens Type": "Normal Lens (e.g., 35mm for Super 35)",
+        "Shot Size": "Close-up"
+      },
+      "related_dimensions": [
+        "Lens Type",
+        "Focal Length",
+        "Shot Size",
+        "Camera-to-Subject Distance"
+      ],
+      "explanation_template": "Select a normal lens (or slightly longer) and position the camera at an appropriate distance for close-ups to capture human subjects with natural perspective and flattering, undistorted facial features."
+    },
+    {
+      "id": "o_b_Mercado_FilmmakersEye_2020_pg11_02",
+      "theory_unit_id": "t_b_Mercado_FilmmakersEye_2020_pg11_02",
+      "suggested_change": {
+        "Lens Type": "Wide-Angle Lens",
+        "Camera Placement": "Further from subject"
+      },
+      "related_dimensions": [
+        "Lens Type",
+        "Focal Length",
+        "Angle of View",
+        "Z-axis"
+      ],
+      "explanation_template": "Use a wide-angle lens to capture more of the environment, exaggerate distances along the z-axis, or make subjects moving towards/away from the camera appear to move faster, creating a dynamic feel."
+    },
+    {
+      "id": "o_b_Mercado_FilmmakersEye_2020_pg11_03",
+      "theory_unit_id": "t_b_Mercado_FilmmakersEye_2020_pg11_02",
+      "suggested_change": {
+        "Lens Type": "Wide-Angle Lens (very short focal length)",
+        "Camera-to-Subject Distance": "Very close"
+      },
+      "related_dimensions": [
+        "Lens Type",
+        "Focal Length",
+        "Camera-to-Subject Distance"
+      ],
+      "explanation_template": "Approach a subject very closely with a very short wide-angle lens to intentionally create optical distortion on facial features for stylized or unnerving effects."
+    },
+    {
+      "id": "o_b_Mercado_FilmmakersEye_2020_pg12_01",
+      "theory_unit_id": "t_b_Mercado_FilmmakersEye_2020_pg12_01",
+      "suggested_change": {
+        "Lens Type": "Telephoto Lens",
+        "Camera-to-Subject Distance": "Further from subject"
+      },
+      "related_dimensions": [
+        "Lens Type",
+        "Focal Length",
+        "Angle of View",
+        "Z-axis"
+      ],
+      "explanation_template": "Use a telephoto lens to magnify distant subjects, compress the background, and isolate the subject, or to make movement towards/away from the camera appear slower, building tension or suspense."
+    },
+    {
+      "id": "o_b_Mercado_FilmmakersEye_2020_pg12_02",
+      "theory_unit_id": "t_b_Mercado_FilmmakersEye_2020_pg12_01",
+      "suggested_change": {
+        "Lens Type": "Slightly Telephoto Lens",
+        "Shot Size": "Close-up"
+      },
+      "related_dimensions": [
+        "Lens Type",
+        "Focal Length",
+        "Shot Size"
+      ],
+      "explanation_template": "Opt for a slightly telephoto lens for close-ups of human subjects to achieve a slightly more flattering look compared to normal lenses, minimizing facial distortion."
+    },
+    {
+      "id": "o_b_Mercado_FilmmakersEye_2020_pg13_01",
+      "theory_unit_id": "t_b_Mercado_FilmmakersEye_2020_pg13_01",
+      "suggested_change": {
+        "Lens Type": "Prime Lens",
+        "Shot Size": "Close-up"
+      },
+      "related_dimensions": [
+        "Lens Type",
+        "Shot Size",
+        "Camera-to-Subject Distance"
+      ],
+      "explanation_template": "Select a prime lens for close-ups to utilize its shorter minimum focusing distance, achieving a greater sense of intimacy and sharper detail."
+    },
+    {
+      "id": "o_b_Mercado_FilmmakersEye_2020_pg13_02",
+      "theory_unit_id": "t_b_Mercado_FilmmakersEye_2020_pg13_01",
+      "suggested_change": {
+        "Lens Type": "Fast Prime Lens",
+        "Lighting": "Low Light"
+      },
+      "related_dimensions": [
+        "Lens Type",
+        "Aperture",
+        "Lighting"
+      ],
+      "explanation_template": "Use a fast prime lens in low-light situations to achieve proper exposure without compromising image quality via high ISO, or to reduce the need for powerful lighting equipment."
+    },
+    {
+      "id": "o_b_Mercado_FilmmakersEye_2020_pg13_03",
+      "theory_unit_id": "t_b_Mercado_FilmmakersEye_2020_pg13_02",
+      "suggested_change": {
+        "Lens Type": "Zoom Lens",
+        "Camera Movement": "None (for reframing)"
+      },
+      "related_dimensions": [
+        "Lens Type",
+        "Focal Length",
+        "Angle of View"
+      ],
+      "explanation_template": "Utilize a zoom lens to quickly adjust the focal length and reframe a shot without physically moving the camera, enhancing production efficiency and fluidity."
+    },
+    {
+      "id": "o_b_Mercado_FilmmakersEye_2020_pg13_04",
+      "theory_unit_id": "t_b_Mercado_FilmmakersEye_2020_pg13_02",
+      "suggested_change": {
+        "Lens Type": "Zoom Lens",
+        "Camera Movement": "Zoom (in-shot focal length change)"
+      },
+      "related_dimensions": [
+        "Lens Type",
+        "Focal Length",
+        "Camera Movement"
+      ],
+      "explanation_template": "Perform a 'zoom shot' by changing the focal length during a take to dynamically alter the angle of view and magnification within a single shot."
+    },
+    {
+      "id": "o_b_Mercado_FilmmakersEye_2020_pg13_05",
+      "theory_unit_id": "t_b_Mercado_FilmmakersEye_2020_pg13_03",
+      "suggested_change": {
+        "Lens Type": "Macro Lens",
+        "Shot Size": "Extreme Close-up"
+      },
+      "related_dimensions": [
+        "Lens Type",
+        "Shot Size",
+        "Focus",
+        "Camera-to-Subject Distance"
+      ],
+      "explanation_template": "Employ a macro lens for extreme close-up shots to maintain sharp focus on very small details even at extremely close camera-to-subject distances, magnifying them to fill the frame."
+    },
+    {
+      "id": "o_b_Mercado_FilmmakersEye_2020_pg14_01",
+      "theory_unit_id": "t_b_Mercado_FilmmakersEye_2020_pg14_01",
+      "suggested_change": {
+        "Lens Type": "Tilt-Shift Lens",
+        "Focus Plane": "Diagonal"
+      },
+      "related_dimensions": [
+        "Lens Type",
+        "Focus",
+        "Depth of Field"
+      ],
+      "explanation_template": "Use a tilt-shift lens to tilt the plane of focus, enabling two subjects at different distances (or along a diagonal axis) to be simultaneously in sharp focus, creating a unique visual emphasis."
+    },
+    {
+      "id": "o_b_Mercado_FilmmakersEye_2020_pg14_02",
+      "theory_unit_id": "t_b_Mercado_FilmmakersEye_2020_pg14_02",
+      "suggested_change": {
+        "Lens Accessory": "Split-Field Diopter",
+        "Focus": "Near and Far"
+      },
+      "related_dimensions": [
+        "Lens Accessory",
+        "Focus",
+        "Depth of Field",
+        "Subject Placement"
+      ],
+      "explanation_template": "Attach a split-field diopter to keep both an extreme foreground subject and a distant background subject in sharp focus simultaneously, creating a unique visual emphasis on their combined presence."
+    },
+    {
+      "id": "o_b_Mercado_FilmmakersEye_2020_pg14_03",
+      "theory_unit_id": "t_b_Mercado_FilmmakersEye_2020_pg14_03",
+      "suggested_change": {
+        "Aperture": "Wide (e.g., f/1.4)",
+        "Focus": "Shallow"
+      },
+      "related_dimensions": [
+        "Aperture",
+        "Depth of Field",
+        "Focus",
+        "Lighting"
+      ],
+      "explanation_template": "Use a wide aperture to create a shallow depth of field, isolating the subject in sharp focus against a blurry foreground and background, thereby directing the audience's attention solely to them."
+    },
+    {
+      "id": "o_b_Mercado_FilmmakersEye_2020_pg14_04",
+      "theory_unit_id": "t_b_Mercado_FilmmakersEye_2020_pg14_03",
+      "suggested_change": {
+        "Aperture": "Small (e.g., f/16)",
+        "Focus": "Deep"
+      },
+      "related_dimensions": [
+        "Aperture",
+        "Depth of Field",
+        "Focus",
+        "Lighting"
+      ],
+      "explanation_template": "Use a small aperture to create a deep depth of field, keeping almost everything in the foreground, middleground, and background in sharp focus, encouraging the audience to take in the entire visual information of the scene."
+    },
+    {
+      "id": "o_b_Mercado_FilmmakersEye_2020_pg14_05",
+      "theory_unit_id": "t_b_Mercado_FilmmakersEye_2020_pg14_03",
+      "suggested_change": {
+        "Camera-to-Subject Distance": "Closer",
+        "Focus": "Shallower"
+      },
+      "related_dimensions": [
+        "Camera-to-Subject Distance",
+        "Depth of Field",
+        "Composition"
+      ],
+      "explanation_template": "Move the camera closer to the subject to achieve a shallower depth of field, but be aware this will also alter the shot's composition and subject size."
+    },
+    {
+      "id": "o_b_Mercado_FilmmakersEye_2020_pg14_06",
+      "theory_unit_id": "t_b_Mercado_FilmmakersEye_2020_pg14_03",
+      "suggested_change": {
+        "Focal Length": "Longer",
+        "Focus": "Shallower (apparent, if subject size not maintained)"
+      },
+      "related_dimensions": [
+        "Focal Length",
+        "Depth of Field",
+        "Camera-to-Subject Distance"
+      ],
+      "explanation_template": "Use a longer focal length to inherently produce a shallower depth of field, though this effect is nullified if the camera-to-subject distance is adjusted to maintain subject size in the frame."
+    },
+    {
+      "id": "o_b_Mercado_FilmmakersEye_2020_pg15_01",
+      "theory_unit_id": "t_b_Mercado_FilmmakersEye_2020_pg14_03",
+      "suggested_change": {
+        "Lighting Filter": "Neutral Density (ND) Filter",
+        "Aperture": "Wide",
+        "Location": "Bright Daylight"
+      },
+      "related_dimensions": [
+        "Lighting Filter",
+        "Aperture",
+        "Lighting Condition",
+        "Depth of Field"
+      ],
+      "explanation_template": "When shooting in bright daylight, apply neutral density (ND) filtration while using a wide aperture to achieve a shallow depth of field without overexposing the image."
+    },
+    {
+      "id": "o_b_Mercado_FilmmakersEye_2020_pg15_02",
+      "theory_unit_id": "t_b_Mercado_FilmmakersEye_2020_pg14_03",
+      "suggested_change": {
+        "Lighting": "Increased Supplemental Light",
+        "Aperture": "Small",
+        "Location": "Low Light"
+      },
+      "related_dimensions": [
+        "Lighting",
+        "Aperture",
+        "Lighting Condition",
+        "Depth of Field"
+      ],
+      "explanation_template": "When shooting in low-light situations and aiming for a deep depth of field, increase supplemental lighting to compensate for the light reduction caused by a small aperture setting."
+    },
+    {
+      "id": "o_b_filmmakers_eye_pg17_01",
+      "theory_unit_id": "t_b_filmmakers_eye_pg17_01",
+      "suggested_change": {
+        "ISO Setting": "Native ISO",
+        "Exposure Compensation": "Via added lighting"
+      },
+      "related_dimensions": [
+        "ISO Setting",
+        "Lighting Strategy",
+        "Exposure"
+      ],
+      "explanation_template": "By setting the camera to its native ISO, the sensor operates at its optimal sensitivity, thereby minimizing digital amplification and associated noise. Supplemental artificial lighting then provides the necessary illumination for correct exposure without degrading the image quality, ensuring a cleaner visual."
+    },
+    {
+      "id": "o_b_filmmakers_eye_pg17_02",
+      "theory_unit_id": "t_b_filmmakers_eye_pg17_02",
+      "suggested_change": {
+        "Tool": "Director's Viewfinder (physical or app)",
+        "Action": "Select aspect ratio and focal length, adjust camera position in space"
+      },
+      "related_dimensions": [
+        "Focal Length",
+        "Camera Position",
+        "Aspect Ratio",
+        "Field of View",
+        "Spatial Relationships"
+      ],
+      "explanation_template": "Utilizing a director's viewfinder allows the filmmaker to simulate different lens choices and camera placements. By selecting a specific aspect ratio and focal length, and physically moving through the location, one can precisely observe how these factors alter the field of view, the elements framed, and the perceived spatial relationships, enabling informed compositional decisions before setting up the actual camera."
+    }
+  ]
+}

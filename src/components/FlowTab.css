@@ -1,0 +1,116 @@
+/* Flow Tab */
+.flow-tab {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.flow-panel-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  background: var(--bg-base);
+}
+
+.flow-panel-header h2 {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--text-secondary);
+  margin: 0;
+  border: none;
+  padding: 0;
+}
+
+.scene-flow-graph {
+  padding: 16px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.flow-row {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  height: 36px;
+}
+
+.flow-node {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  font-size: 10px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: var(--transition);
+  position: relative;
+  flex-shrink: 0;
+}
+
+.flow-node.strategy-node {
+  width: 34px;
+  height: 34px;
+  font-size: 12px;
+  font-weight: 800;
+  color: #000;
+}
+
+.flow-node.shot-node {
+  width: 28px;
+  height: 28px;
+  font-size: 10px;
+  border: 2px solid var(--border-light);
+  background: var(--bg-panel);
+  color: var(--text-secondary);
+}
+
+.flow-node.shot-node:hover {
+  background: var(--bg-elevated);
+  border-color: var(--text-muted);
+}
+
+.flow-node.shot-node.active {
+  border-color: var(--accent);
+  background: var(--accent-glow);
+  color: var(--accent);
+  box-shadow: 0 0 12px var(--accent-glow);
+}
+
+.flow-connector {
+  width: 20px;
+  height: 2px;
+  background: var(--border-light);
+  flex-shrink: 0;
+}
+
+.flow-connector.active {
+  background: var(--accent);
+  box-shadow: 0 0 6px var(--accent-glow);
+}
+
+.flow-row.active .flow-connector {
+  background: var(--accent);
+}
+
+.flow-strategy-label {
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  margin-left: 8px;
+  margin-right: 4px;
+  white-space: nowrap;
+  color: var(--text-muted);
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.flow-strategy-label.active {
+  color: var(--text-primary);
+}

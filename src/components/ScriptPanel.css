@@ -1,0 +1,121 @@
+/* Script Panel */
+.script-panel {
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid var(--border);
+  background: var(--bg-base);
+  overflow: hidden;
+}
+
+.panel-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  background: var(--bg-base);
+}
+
+.panel-header h2 {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--text-secondary);
+  border: none;
+  margin: 0;
+  padding: 0;
+}
+
+.panel-body {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.script-content {
+  padding: 20px 16px;
+  font-family: var(--font-script);
+  font-size: 13px;
+  line-height: 1.9;
+}
+
+.script-scene-heading {
+  font-size: 14px;
+  font-weight: 700;
+  text-transform: uppercase;
+  margin-bottom: 16px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+}
+
+.script-action {
+  color: var(--text-secondary);
+  margin: 10px 0;
+  font-style: italic;
+  line-height: 1.7;
+}
+
+.script-character {
+  color: var(--accent);
+  font-weight: 600;
+  text-transform: uppercase;
+  text-align: center;
+  margin-top: 14px;
+  margin-bottom: 2px;
+  font-size: 12px;
+  letter-spacing: 0.5px;
+}
+
+.script-parenthetical {
+  color: var(--text-muted);
+  text-align: center;
+  font-size: 11px;
+  margin-bottom: 2px;
+}
+
+.script-dialogue {
+  color: var(--text-primary);
+  text-align: center;
+  padding: 0 24px;
+  margin-bottom: 6px;
+}
+
+.script-transition {
+  text-align: right;
+  color: var(--text-muted);
+  font-weight: 600;
+  margin-top: 16px;
+  text-transform: uppercase;
+  font-size: 11px;
+}
+
+.script-beat-marker {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+  margin-right: 6px;
+  box-shadow: 0 0 6px var(--accent-glow);
+  vertical-align: middle;
+}
+
+.script-element.active-beat {
+  background: var(--accent-glow);
+  border-radius: var(--radius-sm);
+  padding: 4px 8px;
+  margin: 4px -8px;
+}
+
+.script-element.has-beat {
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  padding: 4px 8px;
+  margin: 4px -8px;
+  transition: background 0.2s;
+}
+
+.script-element.has-beat:hover {
+  background: rgba(255, 255, 255, 0.05);
+}

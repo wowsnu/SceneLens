@@ -1,0 +1,1016 @@
+{
+  "books": [
+    {
+      "id": "b_auto_gen",
+      "title": "Walter Murch - In the Blink of an Eye Revised 2nd Edition (2001, Silman-James Pr).pdf"
+    }
+  ],
+  "theory_units": [
+    {
+      "id": "t_book_pg10_01",
+      "book_id": "b_unknown",
+      "title": "Avoiding Moderate Visual Displacement Jumps",
+      "summary": "Cuts that feature moderate visual displacement (not subtle enough for perceived motion, nor dramatic enough for a clear context change) create a jarring mental effect on the audience.",
+      "soft_tags": [
+        "editing",
+        "continuity",
+        "visual flow",
+        "audience comfort",
+        "jump cut"
+      ],
+      "level": "shot",
+      "applies_when": "When transitioning between shots, especially those depicting the same subject or scene with minor changes.",
+      "expected_effect": "Avoids mental jarring, jump cuts, and audience disturbance, contributing to a smoother narrative flow.",
+      "caution": "Cutting from a full-figure master shot to a slightly tighter shot (e.g., ankles up) confuses the brain's perception, leading to a disturbing 'jump' rather than smooth motion or a clear change of context."
+    },
+    {
+      "id": "t_book_pg13_01",
+      "book_id": "b_unknown",
+      "title": "Economy of Detail: Most with the Least",
+      "summary": "Achieve the greatest emotional effect in the viewer's mind using the fewest on-screen elements, prioritizing suggestion over explicit exposition across all filmmaking crafts.",
+      "soft_tags": [
+        "minimalism",
+        "suggestion",
+        "audience engagement",
+        "efficiency",
+        "editing philosophy",
+        "composition",
+        "pacing"
+      ],
+      "level": "scene",
+      "applies_when": "Throughout all stages of filmmaking and across various crafts (e.g., sound mixing, acting, art direction, photography, music, costume, and editing).",
+      "expected_effect": "Engages the audience's imagination, transforms them into active participants rather than passive spectators, and creates a more powerful and lasting emotional impact.",
+      "caution": "Excessive detail or an overabundance of cuts can disengage the audience, making them feel constrained and reducing their imaginative participation."
+    },
+    {
+      "id": "t_book_pg15_R1_emotion",
+      "book_id": "b_unknown",
+      "title": "Rule of Six: Emotion (Criterion 1)",
+      "summary": "A good cut is true to the emotion of the moment, serving as the paramount criterion for editing decisions.",
+      "soft_tags": [
+        "editing",
+        "emotion",
+        "audience connection",
+        "prioritization",
+        "impact"
+      ],
+      "level": "scene",
+      "applies_when": "When evaluating any potential cut, especially when multiple options exist or conflicts arise with other criteria.",
+      "expected_effect": "Ensures the audience feels what the filmmaker intends, which is the most memorable aspect of their experience, even if other technical rules are bent.",
+      "caution": "Sacrificing emotional truth for lower-order criteria significantly diminishes the film's overall impact and audience connection."
+    },
+    {
+      "id": "t_book_pg15_R2_story",
+      "book_id": "b_unknown",
+      "title": "Rule of Six: Story Advancement (Criterion 2)",
+      "summary": "A good cut actively advances the story, propelling the narrative or character development forward.",
+      "soft_tags": [
+        "editing",
+        "storytelling",
+        "narrative progression",
+        "prioritization"
+      ],
+      "level": "scene",
+      "applies_when": "When evaluating the purpose and necessity of a cut within a sequence.",
+      "expected_effect": "Maintains audience engagement with the plot, prevents stagnation, and ensures efficient storytelling.",
+      "caution": "Cuts that do not advance the story are considered 'bad bits' and should be avoided unless serving a higher purpose."
+    },
+    {
+      "id": "t_book_pg15_R3_rhythm",
+      "book_id": "b_unknown",
+      "title": "Rule of Six: Rhythmic Interest (Criterion 3)",
+      "summary": "A good cut occurs at a moment that is rhythmically interesting, appropriate, and feels 'right' for the flow of the scene.",
+      "soft_tags": [
+        "editing",
+        "rhythm",
+        "pacing",
+        "timing",
+        "prioritization"
+      ],
+      "level": "shot",
+      "applies_when": "When determining the precise timing and duration of shots within an edited sequence.",
+      "expected_effect": "Contributes to the overall dynamic and energy of the film, enhancing the emotional and narrative impact through appropriate tempo.",
+      "caution": ""
+    },
+    {
+      "id": "t_book_pg15_R4_eyetrace",
+      "book_id": "b_unknown",
+      "title": "Rule of Six: Eye-Trace (Criterion 4)",
+      "summary": "A good cut acknowledges and manages the location and movement of the audience's focus of interest within the frame, guiding their eyes smoothly across transitions.",
+      "soft_tags": [
+        "editing",
+        "composition",
+        "visual attention",
+        "eye movement",
+        "prioritization"
+      ],
+      "level": "shot",
+      "applies_when": "When composing shots and planning transitions, to avoid disorienting the viewer's gaze.",
+      "expected_effect": "Maintains visual continuity and clarity, allowing the audience to instinctively follow the narrative without conscious effort.",
+      "caution": "While important, problems with eye-trace are often overlooked by the audience if higher-priority criteria (emotion, story, rhythm) are strongly satisfied."
+    },
+    {
+      "id": "t_book_pg15_R5_planarity",
+      "book_id": "b_unknown",
+      "title": "Rule of Six: Planarity (Criterion 5 - 180-Degree Rule)",
+      "summary": "A good cut respects the grammar of two-dimensional screen space as derived from three-dimensional reality, particularly concerning the stage-line (180-degree rule) and maintaining consistent screen direction.",
+      "soft_tags": [
+        "editing",
+        "spatial orientation",
+        "180-degree rule",
+        "screen direction",
+        "prioritization"
+      ],
+      "level": "scene",
+      "applies_when": "When positioning cameras and cutting between shots within a scene to maintain consistent screen direction and spatial relationships.",
+      "expected_effect": "Preserves a clear and unambiguous sense of space and character orientation for the audience, preventing disorientation.",
+      "caution": "Violations of planarity can be acceptable if higher-priority criteria are met, as the audience is often forgiving when emotion and story are compelling."
+    },
+    {
+      "id": "t_book_pg15_R6_spatial_continuity",
+      "book_id": "b_unknown",
+      "title": "Rule of Six: Three-Dimensional Spatial Continuity (Criterion 6)",
+      "summary": "The lowest priority criterion for a good cut is the precise preservation of three-dimensional continuity in actual space, regarding where people are and their relation to one another.",
+      "soft_tags": [
+        "editing",
+        "spatial continuity",
+        "blocking",
+        "set design",
+        "prioritization"
+      ],
+      "level": "scene",
+      "applies_when": "When planning or evaluating cuts, particularly concerning character placement and movement within the physical set.",
+      "expected_effect": "Maintains a believable and consistent physical world for the audience, though it is the least critical element for overall impact.",
+      "caution": "This criterion should be the first to be sacrificed if necessary to achieve higher-priority elements like emotion, story, or rhythm, as audiences tend to be unaware or unconcerned about these discrepancies when other elements are strong."
+    },
+    {
+      "id": "t_book_pg15_R_hierarchy",
+      "book_id": "b_unknown",
+      "title": "Rule of Six: Hierarchical Prioritization of Cuts",
+      "summary": "When making cuts, prioritize emotion and story above rhythm, eye-trace, planarity, and spatial continuity. Sacrifice lower-order criteria for higher-order ones if necessary.",
+      "soft_tags": [
+        "editing",
+        "decision making",
+        "hierarchy",
+        "prioritization",
+        "cut quality"
+      ],
+      "level": "scene",
+      "applies_when": "When selecting between multiple possible cuts or resolving conflicts between editing principles.",
+      "expected_effect": "Creates emotionally resonant and narratively effective films, as audience perception of higher-order criteria outweighs issues with lower-order ones, making minor technical inconsistencies imperceptible.",
+      "caution": "Strictly adhering to lower-order criteria (like spatial continuity) at the expense of emotion or story can lead to a technically 'correct' but ultimately ineffective film."
+    },
+    {
+      "id": "t_book_pg16_01",
+      "book_id": "b_unknown",
+      "title": "Hierarchy of Editing Priorities",
+      "summary": "When compromises are unavoidable during editing, prioritize cinematic elements in a specific hierarchical order: Emotion, then Story, then Rhythm, then Eye-Trace, then Planarity, and finally Spatial Continuity.",
+      "soft_tags": [
+        "editing",
+        "priorities",
+        "decision making",
+        "audience engagement",
+        "continuity",
+        "rhythm",
+        "emotional impact"
+      ],
+      "level": "scene",
+      "applies_when": "When an editor or director must make a choice that sacrifices one element for another during the editing process (e.g., for pacing, narrative clarity, or emotional effect).",
+      "expected_effect": "Ensures the most crucial elements for audience engagement and understanding (emotion and story) are preserved, minimizing audience confusion where possible, but prioritizing emotional resonance.",
+      "caution": "Violating this hierarchy by prioritizing lower-ranking elements over higher-ranking ones will likely result in an unsuccessful, confusing, or emotionally disengaging cut."
+    },
+    {
+      "id": "t_book_pg18_01",
+      "book_id": "b_unknown",
+      "title": "Cinematic Misdirection of Audience Attention",
+      "summary": "Intentionally guide the audience's attention to a specific part of the screen or sequence of events, thereby diverting their focus from other, less desirable or relevant details, akin to a magician's technique.",
+      "soft_tags": [
+        "audience attention",
+        "focus",
+        "psychology",
+        "staging",
+        "composition",
+        "editing",
+        "narrative control"
+      ],
+      "level": "scene",
+      "applies_when": "Whenever there is a need to control precisely where the audience is looking, what they are thinking, or what they are feeling, especially to conceal plot mechanics, heighten suspense, or ensure key information is processed.",
+      "expected_effect": "Directs audience thought and feeling, prevents them from noticing hidden or distracting elements, and enhances the intended narrative or emotional impact by controlling the flow of information.",
+      "caution": "Poorly executed misdirection can be obvious, drawing unwanted attention to the very thing it tries to conceal or making the audience feel manipulated, breaking immersion."
+    },
+    {
+      "id": "t_pg32_01",
+      "book_id": "b_unknown",
+      "title": "Interpreting Audience Feedback: Referred Pain",
+      "summary": "Audience complaints about a specific scene may indicate an underlying issue in earlier exposition or context, not necessarily a flaw in the scene itself.",
+      "soft_tags": [
+        "audience feedback",
+        "editing",
+        "storytelling",
+        "problem solving",
+        "narrative clarity"
+      ],
+      "level": "scene",
+      "applies_when": "When evaluating audience feedback or test screening results, especially concerning disliked scenes or points of confusion.",
+      "expected_effect": "Prevents misdiagnosis of story problems; leads to more effective, structural fixes rather than superficial scene alterations, ultimately improving narrative comprehension.",
+      "caution": "Do not blindly fix the scene audience complains about directly; investigate upstream causes, such as insufficient or unclear exposition provided earlier in the film."
+    },
+    {
+      "id": "t_pg36_01",
+      "book_id": "b_unknown",
+      "title": "The Cut as a Mental Blink",
+      "summary": "A filmic cut functions like a natural human blink, separating and punctuating ideas or segments of thought for the audience, mirroring how our minds process visual information.",
+      "soft_tags": [
+        "editing theory",
+        "audience perception",
+        "cognitive psychology",
+        "rhythm",
+        "narrative flow"
+      ],
+      "level": "shot",
+      "applies_when": "When deciding the precise moment to transition between two shots.",
+      "expected_effect": "Creates a natural and intuitive flow of information for the audience, making the edited film feel like an extension of their own thought process and enhancing comprehension.",
+      "caution": "The cut itself doesn't create the 'blink moment' but should align with the natural cognitive shift; a poorly placed cut can disrupt this natural rhythm."
+    },
+    {
+      "id": "t_pg36_02",
+      "book_id": "b_unknown",
+      "title": "Visual Discontinuity for Emphatic Cuts",
+      "summary": "A well-placed cut's punctuating effect is amplified by a strong visual discontinuity between the two juxtaposed shots.",
+      "soft_tags": [
+        "editing",
+        "visual impact",
+        "composition",
+        "transition",
+        "rhythm"
+      ],
+      "level": "shot",
+      "applies_when": "When transitioning between two shots and aiming for a clear, decisive separation of ideas or concepts.",
+      "expected_effect": "Creates a more thorough and impactful separation of ideas, making the transition more noticeable and effective for the audience, thereby reinforcing the mental punctuation.",
+      "caution": "This technique is most effective with well-placed cuts that align conceptually. Arbitrary visual discontinuity without underlying conceptual alignment may feel jarring or disorienting."
+    },
+    {
+      "id": "t_pg37_01",
+      "book_id": "b_unknown",
+      "title": "Editing to Actor's Internal Rhythm",
+      "summary": "Editors should attune themselves to the natural rhythms and blinks of a character, as embodied by a good actor, and extend these rhythms into the overall film's pacing.",
+      "soft_tags": [
+        "editing",
+        "performance",
+        "pacing",
+        "character",
+        "rhythm",
+        "actor's craft"
+      ],
+      "level": "scene",
+      "applies_when": "When editing performance-driven scenes, particularly dialogue or moments of internal thought, and aiming for naturalistic pacing.",
+      "expected_effect": "Creates a more natural, authentic, and engaging flow that resonates with the audience's subconscious understanding of human thought and emotion, fostering deeper connection to the character.",
+      "caution": "This relies on a good actor whose blinks genuinely reflect the character's thoughts. Inconsistent or unnatural actor blinks will lead to a 'scattered and nervous' rhythm if followed."
+    },
+    {
+      "id": "t_pg37_02",
+      "book_id": "b_unknown",
+      "title": "Real-Time Rhythm Selection for Cuts",
+      "summary": "Optimal cut points are intuitively felt and selected in real-time by the editor, reflecting a natural internal rhythm, rather than being meticulously chosen frame-by-frame.",
+      "soft_tags": [
+        "editing technique",
+        "intuition",
+        "rhythm",
+        "craft",
+        "workflow"
+      ],
+      "level": "shot",
+      "applies_when": "When selecting the outgoing frame ('out point') of a shot during the editing process to establish natural pacing.",
+      "expected_effect": "Produces a film with a natural, organic, and effective rhythm that resonates subconsciously with the audience, contributing to a fluid and engaging viewing experience.",
+      "caution": "Inability to consistently hit the same precise frame in real-time indicates a problem with the editor's understanding or approach to the shot. Avoid frame-by-frame comparison ('inching') to prevent 'rhythmic tone deafness' in the final film."
+    },
+    {
+      "id": "t_pg38_01",
+      "book_id": "b_unknown",
+      "title": "Dynamic Dialogue Cutting & Audience Attention",
+      "summary": "Effective dialogue editing mirrors real-life shifts in attention, allowing the audience to observe the listener's reaction even while the speaker is still talking, rather than cutting strictly after each line is finished.",
+      "soft_tags": [
+        "dialogue editing",
+        "audience attention",
+        "realism",
+        "pacing",
+        "subtext"
+      ],
+      "level": "scene",
+      "applies_when": "When editing a dialogue scene, especially when non-verbal reactions or character dynamics are important.",
+      "expected_effect": "Creates a psychologically complex and engaging dialogue, reflecting natural human interaction and maintaining audience interest in all characters involved, revealing subtext.",
+      "caution": "Avoid the 'Dragnet' system of cutting only after each speaker finishes, as it creates an unnatural, simplistic, and unengaging rhythm."
+    },
+    {
+      "id": "t_pg38_02",
+      "book_id": "b_unknown",
+      "title": "Cutting to Guide Audience Interpretation",
+      "summary": "The precise timing of a cut relative to a character's dialogue (before finishing, or lingering after) can direct audience attention and influence their interpretation of the character's truthfulness or intent.",
+      "soft_tags": [
+        "editing",
+        "character insight",
+        "audience psychology",
+        "narrative control",
+        "subtext"
+      ],
+      "level": "shot",
+      "applies_when": "When a character delivers dialogue and the director/editor wants to control how the audience perceives their words or underlying intentions.",
+      "expected_effect": "Subtly guides the audience's understanding of character, adding depth or ambiguity to their words, and influencing their emotional connection.",
+      "caution": "Cut points are organically fixed by the shot's rhythm and the audience's current thoughts; cutting 'between' these natural 'branch points' (e.g., in the middle of a processing delay) will feel either too long or not long enough, disrupting the flow."
+    },
+    {
+      "id": "t_pg39_01",
+      "book_id": "b_unknown",
+      "title": "Variable Cutting Rate for Scene Intensity",
+      "summary": "The rhythm and rate of cutting should be appropriate to the intensity and nature of the on-screen action, mirroring the natural human cognitive processing speed for such events.",
+      "soft_tags": [
+        "pacing",
+        "editing rhythm",
+        "action",
+        "dialogue",
+        "audience engagement",
+        "intensity"
+      ],
+      "level": "scene",
+      "applies_when": "When establishing the overall pace and energy of any given scene.",
+      "expected_effect": "Ensures the audience feels emotionally engaged and that the film's rhythm aligns with their subconscious expectations for the given content, enhancing immersion and impact.",
+      "caution": "Mismatched pacing (e.g., slow cuts in an intense fight, or rapid cuts in a quiet dialogue) can alienate or confuse the audience, reducing their engagement."
+    },
+    {
+      "id": "t_pg39_02",
+      "book_id": "b_unknown",
+      "title": "Editor as Audience's Anticipatory Guide",
+      "summary": "The editor's job is to anticipate and subtly control the audience's thought processes by placing cuts at psychologically opportune 'blink points,' slightly leading their natural shifts in attention.",
+      "soft_tags": [
+        "editing philosophy",
+        "audience psychology",
+        "pacing",
+        "narrative control",
+        "engagement"
+      ],
+      "level": "scene",
+      "applies_when": "Throughout the editing process, particularly when considering the flow and impact of transitions and the audience's cognitive journey.",
+      "expected_effect": "Creates a natural, exciting, and self-evident flow of events, making the audience feel deeply connected and understood by the film, as if it's reading their mind.",
+      "caution": "Being too far ahead or behind the audience's thought process creates problems, causing them to disengage, get confused, or lose interest."
+    },
+    {
+      "id": "t_pg41_01",
+      "book_id": "b_unknown",
+      "title": "Editor's Core Responsibility: Coherent Rhythm",
+      "summary": "The editor's central responsibility is to establish an interesting, coherent rhythm of emotion and thought, across all scales of the film, to foster audience trust and deep engagement.",
+      "soft_tags": [
+        "editing philosophy",
+        "audience engagement",
+        "emotional rhythm",
+        "narrative flow",
+        "trust"
+      ],
+      "level": "scene",
+      "applies_when": "As a foundational principle guiding all editing decisions, from individual cuts to overall film structure and pacing.",
+      "expected_effect": "A well-edited film feels like an exciting extension and elaboration of the audience's own feelings and thoughts, leading them to fully give themselves to the cinematic experience.",
+      "caution": "Poor editing creates a scattered, nervous rhythm, causing the audience to unconsciously hold back and disengage from the film, as they perceive the film's 'thinking' as chaotic or untrustworthy."
+    },
+    {
+      "id": "t_book_pg54_01",
+      "book_id": "b_unknown",
+      "title": "Prioritizing Actor's Eye Expression in Shot Selection",
+      "summary": "When selecting a shot, the ability to clearly perceive the expression in an actor’s eyes is a crucial determining factor, as it is vital for conveying emotional performance to the audience.",
+      "soft_tags": [
+        "editing",
+        "performance",
+        "shot_selection",
+        "emotional_clarity",
+        "audience_engagement"
+      ],
+      "level": "shot",
+      "applies_when": "When evaluating and selecting shots for a scene, particularly those focused on character reactions or internal emotional states.",
+      "expected_effect": "Ensures the audience fully grasps the character's internal state and emotional nuance, fostering deeper connection and understanding.",
+      "caution": "Low image resolution during the editing process can obscure eye expression, potentially leading to suboptimal shot choices and affecting the film's creative flow if not carefully managed."
+    },
+    {
+      "id": "t_book_pg69_01",
+      "book_id": "b_unknown",
+      "title": "Match Editing Pace to Narrative Content",
+      "summary": "The optimal editing pace (number of cuts per minute) should be intrinsically linked to the narrative's content, emotional tone, and artistic intention, akin to how musical compositions dictate tempo.",
+      "soft_tags": [
+        "Pacing",
+        "Rhythm",
+        "Editing Pace",
+        "Narrative Intent",
+        "Emotional Impact"
+      ],
+      "level": "scene",
+      "applies_when": "When determining the overall rhythm and cut frequency for a scene, sequence, or the entire film.",
+      "expected_effect": "Creates a harmonious and impactful viewing experience by ensuring the visual rhythm supports the story's emotional and informational flow, leading to deeper audience engagement.",
+      "caution": "Mismatched pace (e.g., slow, contemplative material cut quickly, or fast-paced action cut slowly) can feel jarring, ineffective, or betray the intended meaning."
+    },
+    {
+      "id": "t_book_pg70_01",
+      "book_id": "b_unknown",
+      "title": "Image Detail and Pace Interrelation",
+      "summary": "The amount of visible detail in an image fundamentally influences how quickly an audience can absorb the visual information. Less detail encourages quicker cuts, while rich detail necessitates longer takes for full comprehension and appreciation.",
+      "soft_tags": [
+        "Image Quality",
+        "Pacing",
+        "Visual Information",
+        "Audience Perception",
+        "Detail Retention"
+      ],
+      "level": "shot",
+      "applies_when": "During editing, especially when working with digitally compressed footage, and when reviewing the film for pacing decisions.",
+      "expected_effect": "Prevents the film from feeling 'choppy' or rushed, particularly when detail-rich images are projected on a large screen, ensuring the audience has ample time to process all visual information.",
+      "caution": "Undue reliance on low-detail monitor views during editing can lead to an artificially fast pace that feels choppy and unsatisfying on a high-detail theatrical projection."
+    },
+    {
+      "id": "t_book_pg70_02",
+      "book_id": "b_unknown",
+      "title": "Image Size and Perceptual Difference in Editing",
+      "summary": "The audience's perception and processing of an image change drastically with its size. Small screens are 'looked at' (entirely absorbed at once, encouraging quicker cuts), while large screens are 'looked into' (requiring more time to scan sections, necessitating a slower pace for deeper engagement).",
+      "soft_tags": [
+        "Image Size",
+        "Pacing",
+        "Audience Engagement",
+        "Viewing Experience",
+        "Screening Format"
+      ],
+      "level": "scene",
+      "applies_when": "When editing for theatrical release, particularly when the primary editing environment involves small monitors.",
+      "expected_effect": "Fosters a 'look-into' experience that deeply engages the cinematic audience, rather than a superficial 'look-at' one, and prevents edits from feeling rushed or overwhelming on a large screen.",
+      "caution": "Editing solely on small monitors can lead to a pace that feels too fast, superficial, or even 'choppy' when projected onto a large theatrical screen."
+    },
+    {
+      "id": "t_book_pg67_01",
+      "book_id": "b_unknown",
+      "title": "Analyze Structure via Inverted/Reversed Viewing",
+      "summary": "Viewing footage in non-standard ways, such as in reverse motion or spatially inverted (like in a mirror), can strip away narrative content, allowing the editor to perceive the pure visual and rhythmic structure of the material more objectively.",
+      "soft_tags": [
+        "Structural Analysis",
+        "Visual Rhythm",
+        "Editing Technique",
+        "Objective Review",
+        "Composition"
+      ],
+      "level": "scene",
+      "applies_when": "When an editor needs to re-evaluate the pacing, visual flow, or compositional balance of a sequence without being swayed by its narrative or emotional content.",
+      "expected_effect": "Reveals underlying structural issues or opportunities that might be obscured when viewing the material normally, leading to more refined and balanced edits.",
+      "caution": "Digital systems may suppress visual information during high-speed reverse playback, potentially diminishing the effectiveness of this technique compared to mechanical systems."
+    },
+    {
+      "id": "t_book_pg73_01",
+      "book_id": "b_unknown",
+      "title": "Proactive Planning and Detailed Notation",
+      "summary": "Despite the apparent ease and flexibility of digital editing, thorough pre-planning (a 'map') and detailed note-taking are crucial to avoid being overwhelmed by options, losing focus, or creating a disjointed film lacking long-term resonance.",
+      "soft_tags": [
+        "Workflow",
+        "Planning",
+        "Documentation",
+        "Creative Process",
+        "Efficiency",
+        "Structure"
+      ],
+      "level": "scene",
+      "applies_when": "Throughout the entire editing process, from first viewing of dailies to fine cut, especially with large amounts of material.",
+      "expected_effect": "Ensures a focused, coherent, and purposeful editing process, leading to a film with strong internal logic, organic flow, and lasting impact, rather than a collection of momentary effects.",
+      "caution": "The 'video game' feel of digital editing can deceptively reduce the perceived need for planning, leading to inefficiency, creative stagnation, and a final product that feels unmoored."
+    },
+    {
+      "id": "t_book_pg66_01",
+      "book_id": "b_unknown",
+      "title": "Utilize Assistants as First Audience",
+      "summary": "Assistants are valuable collaborators who can serve as an editor's first audience, providing honest, immediate feedback and fresh ideas, which is critical for grounding the creative process and enriching the final film.",
+      "soft_tags": [
+        "Collaboration",
+        "Feedback",
+        "Teamwork",
+        "Creative Process",
+        "Objectivity"
+      ],
+      "level": "scene",
+      "applies_when": "Throughout the editing process, particularly during rough cuts and assemblies when initial reactions are most valuable.",
+      "expected_effect": "Helps maintain objectivity on the material, identifies potential weaknesses or areas for improvement, and generates new creative solutions, leading to a more robust and well-received film.",
+      "caution": "Digital editing's potential for a 'one man/one machine' isolated workflow can inadvertently compromise this essential collaborative aspect, potentially leading to a less well-rounded final product."
+    },
+    {
+      "id": "t_book_pg66_02",
+      "book_id": "b_unknown",
+      "title": "Archive Progressively, Not Obsessively",
+      "summary": "While digital systems allow for endless versioning, it's crucial to archive only significantly different versions of a film periodically (e.g., every 2-3 weeks), rather than every minor iteration, to maintain creative focus and progression.",
+      "soft_tags": [
+        "Workflow",
+        "Version Control",
+        "Efficiency",
+        "Creative Focus",
+        "Data Management"
+      ],
+      "level": "scene",
+      "applies_when": "Throughout the post-production process when saving different cuts or versions of the film.",
+      "expected_effect": "Maintains artistic focus, promotes progressive editing decisions, and prevents the 'Frankenstein's monster' feel of a film stitched together from too many disparate variations, ensuring an organically whole and alive final product.",
+      "caution": "Obsessive archiving of every version can overwhelm the editor with too many options, leading to lost time, unproductive discussions, and a loss of organic flow and artistic focus in the film."
+    },
+    {
+      "id": "t_book_pg62_01",
+      "book_id": "b_unknown",
+      "title": "Shift Physical Perspective to See Anew",
+      "summary": "Changing one's physical relationship to the editing monitor or viewing environment (e.g., rotating 90 degrees to a different screen, standing up to cut) can help break habitual viewing patterns and allow for a fresh, objective perspective on the images.",
+      "soft_tags": [
+        "Creative Process",
+        "Perception",
+        "Editing Workflow",
+        "Objectivity",
+        "Cognitive Bias"
+      ],
+      "level": "scene",
+      "applies_when": "When an editor feels stuck, needs a fresh look at a sequence, or wants to combat 'monitor fatigue' and ingrained viewing habits during the editing process.",
+      "expected_effect": "Helps uncover overlooked issues, reveal new creative possibilities, or identify structural imbalances by altering the viewer's perceptual framework and fostering a more active engagement.",
+      "caution": ""
+    },
+    {
+      "id": "t_book_pg61_01",
+      "book_id": "b_unknown",
+      "title": "Picture-First Assembly for Visual Clarity",
+      "summary": "Assembling the initial cut of a scene or film without synchronized sound allows the editor to focus purely on the visual flow, rhythm, and picture logic, free from the potential distraction or premature influence of dialogue, music, or sound effects.",
+      "soft_tags": [
+        "Editing Workflow",
+        "Picture Editing",
+        "Rhythm",
+        "Focus",
+        "Visual Storytelling"
+      ],
+      "level": "scene",
+      "applies_when": "During the first assembly or rough cut stage of editing a scene or entire film.",
+      "expected_effect": "Produces a quicker initial assembly and ensures that the visual storytelling and pace stand strong on their own merits, establishing a robust picture cut before sound elements are integrated.",
+      "caution": "Requires subsequent careful synchronization and integration of sound elements, which, while easier with digital systems, still demands attention to maintain continuity and fidelity."
+    },
+    {
+      "id": "t_book_pg83_01",
+      "book_id": "b_unknown",
+      "title": "Revealing Subtle Thought with Closeups",
+      "summary": "Employing a closeup shot makes a character's subtle internal thoughts and emotional shifts visually apparent to the audience.",
+      "soft_tags": [
+        "shot size",
+        "emotion",
+        "psychology",
+        "character interiority"
+      ],
+      "level": "shot",
+      "applies_when": "When the director wants to convey a character's internal thinking, nuanced emotional shifts, or subtle reactions without relying on dialogue, or to emphasize a moment of deep internal process.",
+      "expected_effect": "The audience perceives the character's nuanced thought process and emotional state, fostering intimacy and psychological depth.",
+      "caution": ""
+    },
+    {
+      "id": "t_book_pg83_02",
+      "book_id": "b_unknown",
+      "title": "Mimicking Thought with Cuts",
+      "summary": "Sudden cuts between images can mimic the fragmented, non-linear, and agile nature of human thought processes.",
+      "soft_tags": [
+        "editing",
+        "pacing",
+        "psychology",
+        "cognition",
+        "transition"
+      ],
+      "level": "scene",
+      "applies_when": "When the director or editor aims to convey a character's rapid internal thought process, a sudden shift in focus, or the non-linear flow of consciousness, creating a dynamic cognitive experience.",
+      "expected_effect": "The audience experiences a cognitive rhythm similar to internal thought, conveying psychological immediacy and dynamism, and drawing them into the character's mind.",
+      "caution": ""
+    },
+    {
+      "id": "t_book_pg83_03",
+      "book_id": "b_unknown",
+      "title": "Orchestrating Collaborative Perspectives",
+      "summary": "A director should properly orchestrate the diverse perspectives and contributions of all crew members to create a multi-faceted and integrated film that appeals to and deeply engages a broad audience.",
+      "soft_tags": [
+        "directing approach",
+        "collaboration",
+        "team management",
+        "audience engagement",
+        "complexity"
+      ],
+      "level": "scene",
+      "applies_when": "Throughout the filmmaking process, particularly for complex narratives, to ensure that multiple creative inputs contribute cohesively to the final product's richness and appeal.",
+      "expected_effect": "Produces a multi-faceted and integrated film that has the greatest chance of catching and sustaining the interest of a diverse audience, which itself is a multi-faceted entity in search of integration.",
+      "caution": "Avoid encouraging a solitary monolithic vision, as this can discourage developed complexity in both the production and the theatrical enjoyment of the film, potentially diminishing its audience appeal."
+    }
+  ],
+  "operations": [
+    {
+      "id": "o_book_pg10_01",
+      "theory_unit_id": "t_book_pg10_01",
+      "suggested_change": {
+        "Shot Transition Style": "Avoid Moderate Displacement Jump"
+      },
+      "related_dimensions": [
+        "Shot Size",
+        "Camera Angle",
+        "Subject Framing"
+      ],
+      "explanation_template": "To avoid a jarring 'jump,' ensure the visual displacement between two consecutive shots is either very subtle (like continuous motion) or very substantial (clearly indicating a new context), rather than moderately different. This requires careful consideration of changes in '{{Shot Size}}' and '{{Camera Angle}}' between cuts."
+    },
+    {
+      "id": "o_book_pg14_01",
+      "theory_unit_id": "t_book_pg13_01",
+      "suggested_change": {
+        "Cut Frequency": "Reduced",
+        "Detail Level": "Suggested"
+      },
+      "related_dimensions": [
+        "Cut Frequency",
+        "Shot Duration",
+        "Visual Information"
+      ],
+      "explanation_template": "To engage the audience's imagination and achieve the greatest effect with the least, resist unnecessary cuts and allow longer takes. Focus on '{{Suggested Detail}}' rather than '{{Expository Detail}}' to invite audience participation."
+    },
+    {
+      "id": "o_book_pg15_01",
+      "theory_unit_id": "t_book_pg15_R_hierarchy",
+      "suggested_change": {
+        "Cut Selection Strategy": "Prioritize Emotion and Story"
+      },
+      "related_dimensions": [
+        "Cut Timing",
+        "Shot Size",
+        "Camera Angle",
+        "Actor Position",
+        "Screen Direction",
+        "Pacing",
+        "Continuity"
+      ],
+      "explanation_template": "When evaluating potential cuts, prioritize the criteria in this hierarchical order: 1) Emotion (most vital), 2) Story Advancement, 3) Rhythm, 4) Eye-Trace, 5) Planarity, and 6) Three-Dimensional Spatial Continuity (least vital). If a cut satisfies higher-priority criteria but violates lower-priority ones, make the cut. Strong satisfaction of higher-order criteria tends to render lower-order problems imperceptible or irrelevant to the audience, affecting '{{Cut Timing}}', '{{Continuity}}', or '{{Screen Direction}}' as needed."
+    },
+    {
+      "id": "o_book_pg16_01",
+      "theory_unit_id": "t_book_pg16_01",
+      "suggested_change": {
+        "Editing Decision": "Prioritize higher-ranking criteria (e.g., Emotion, Story) over lower-ranking ones (e.g., Spatial Continuity) when a conflict arises."
+      },
+      "related_dimensions": [
+        "Emotional Impact",
+        "Narrative Clarity",
+        "Editing Rhythm",
+        "Eye Trace",
+        "Screen Plane",
+        "Spatial Continuity"
+      ],
+      "explanation_template": "If a cut or sequence modification enhances emotion or story, it should be chosen even if it slightly compromises rhythm, eye-trace, planarity, or spatial continuity. The audience primarily engages with feeling and narrative over strict technical adherence."
+    },
+    {
+      "id": "o_book_pg18_01",
+      "theory_unit_id": "t_book_pg18_01",
+      "suggested_change": {
+        "Focus Point": "Shift to area of desired attention",
+        "Staging": "Emphasize key action/object",
+        "Cutting Point": "Cut to draw eye away/towards key information"
+      },
+      "related_dimensions": [
+        "Mise-en-scène",
+        "Framing",
+        "Composition",
+        "Camera Movement",
+        "Cutting Point",
+        "Lighting",
+        "Sound Design"
+      ],
+      "explanation_template": "Utilize elements like actor blocking, object placement, lighting, camera movement, or precise editing (e.g., a cut to a new point of interest) to guide the audience's eye away from (or towards) a particular area of the frame or sequence, controlling their awareness and emotional state."
+    },
+    {
+      "id": "o_pg32_01",
+      "theory_unit_id": "t_pg32_01",
+      "suggested_change": {
+        "Editing Decision": "Clarify earlier exposition/context"
+      },
+      "related_dimensions": [
+        "Exposition",
+        "Narrative Structure",
+        "Pacing"
+      ],
+      "explanation_template": "To address audience confusion or dislike for a later scene, consider adding or clarifying information in scenes that occur earlier in the narrative, as the audience's perceived 'pain' in the later scene may be 'referred' from a lack of necessary understanding established beforehand."
+    },
+    {
+      "id": "o_pg36_01",
+      "theory_unit_id": "t_pg36_01",
+      "suggested_change": {
+        "Editing Point": "End of a distinct idea or concept"
+      },
+      "related_dimensions": [
+        "Pacing",
+        "Narrative Flow",
+        "Information Delivery"
+      ],
+      "explanation_template": "Place cuts at the precise moment an idea or concept within a shot has been fully presented or concluded, mimicking the natural human tendency to 'blink' to separate one thought from the next, thereby signaling to the audience that a new idea is about to begin."
+    },
+    {
+      "id": "o_pg36_02",
+      "theory_unit_id": "t_pg36_02",
+      "suggested_change": {
+        "Visual Transition": "Extreme contrast",
+        "Shot Content": "Significantly different visual elements (e.g., dark interior to bright exterior)"
+      },
+      "related_dimensions": [
+        "Visual Contrast",
+        "Shot Content",
+        "Continuity",
+        "Emotional Impact"
+      ],
+      "explanation_template": "To maximize the punctuating effect of a cut, juxtapose shots with extreme visual differences, such as transitioning directly from a dark interior to a bright exterior, which parallels the mental 'reset' of a strong blink and creates a more thorough separation of ideas."
+    },
+    {
+      "id": "o_pg37_01",
+      "theory_unit_id": "t_pg37_01",
+      "suggested_change": {
+        "Editing Decision": "Align cut points with actor's natural blink rhythm"
+      },
+      "related_dimensions": [
+        "Pacing",
+        "Performance",
+        "Rhythm",
+        "Character Empathy"
+      ],
+      "explanation_template": "Carefully observe an actor's natural blinks during a performance, as these often coincide with shifts in thought or emotion. Use these 'blink points' as guides to place cuts, extending the actor's internal rhythm into the film's overall pacing to enhance realism and audience connection."
+    },
+    {
+      "id": "o_pg37_02",
+      "theory_unit_id": "t_pg37_02",
+      "suggested_change": {
+        "Editing Method": "Real-time marking",
+        "Tool": "Editing machine stop button"
+      },
+      "related_dimensions": [
+        "Pacing",
+        "Rhythm",
+        "Precision",
+        "Intuition"
+      ],
+      "explanation_template": "To achieve an authentic filmic rhythm, select the 'out point' of a shot by marking it in real-time, as if hitting a button at the precise moment it feels right. This intuitive method yields a more natural flow than frame-by-frame scrutiny."
+    },
+    {
+      "id": "o_pg38_01",
+      "theory_unit_id": "t_pg38_01",
+      "suggested_change": {
+        "Cut Timing": "During speaker's dialogue",
+        "Target": "Listener's reaction"
+      },
+      "related_dimensions": [
+        "Shot Selection",
+        "Pacing",
+        "Audience Attention",
+        "Subtext"
+      ],
+      "explanation_template": "Instead of waiting for a speaker to finish their line, cut to the listener while the speaker is still talking, especially when the listener's reaction or internal thought process is crucial to the scene's meaning or to build psychological complexity and realism."
+    },
+    {
+      "id": "o_pg38_02_a",
+      "theory_unit_id": "t_pg38_02",
+      "suggested_change": {
+        "Cut Timing": "Before character finishes speaking",
+        "Focus": "Dialogue's literal meaning"
+      },
+      "related_dimensions": [
+        "Pacing",
+        "Character Interpretation",
+        "Audience Focus",
+        "Narrative Control"
+      ],
+      "explanation_template": "To encourage the audience to focus solely on the face value of a character's words, cut away from them before they have finished speaking, preventing prolonged observation of their non-verbal cues that might reveal underlying intentions or complexities."
+    },
+    {
+      "id": "o_pg38_02_b",
+      "theory_unit_id": "t_pg38_02",
+      "suggested_change": {
+        "Cut Timing": "After character finishes speaking",
+        "Focus": "Character's internal state/truthfulness (e.g., lying)"
+      },
+      "related_dimensions": [
+        "Pacing",
+        "Character Interpretation",
+        "Audience Observation",
+        "Subtext"
+      ],
+      "explanation_template": "To allow the audience to discern a character's true intentions or whether they are lying, linger on their reaction shot after they have finished speaking, giving enough time for their expression to reveal subtext, doubt, or deception."
+    },
+    {
+      "id": "o_pg39_01_a",
+      "theory_unit_id": "t_pg39_01",
+      "suggested_change": {
+        "Cut Rate": "High (e.g., ~25 cuts/minute)",
+        "Scene Type": "Action/Fight"
+      },
+      "related_dimensions": [
+        "Pacing",
+        "Rhythm",
+        "Intensity",
+        "Audience Immersion"
+      ],
+      "explanation_template": "For action sequences or fights, significantly increase the cut rate (e.g., dozens of cuts per minute, around 25 CPM) to immerse the audience and emotionally participate in the rapid, conflicting thoughts and events taking place, mirroring natural physiological blinks during high stress."
+    },
+    {
+      "id": "o_pg39_01_b",
+      "theory_unit_id": "t_pg39_01",
+      "suggested_change": {
+        "Cut Rate": "Low (e.g., ~6 cuts/minute or less)",
+        "Scene Type": "Dialogue"
+      },
+      "related_dimensions": [
+        "Pacing",
+        "Rhythm",
+        "Focus",
+        "Intimacy"
+      ],
+      "explanation_template": "For dialogue scenes, maintain a lower cut rate (e.g., 6 cuts per minute or less in American films) to allow the audience to process information, observe nuances, and engage with the character interaction more thoughtfully, aligning with the slower mental rhythms of conversation."
+    },
+    {
+      "id": "o_pg39_02",
+      "theory_unit_id": "t_pg39_02",
+      "suggested_change": {
+        "Cut Timing": "Slightly before audience's natural cognitive shift"
+      },
+      "related_dimensions": [
+        "Pacing",
+        "Audience Engagement",
+        "Narrative Flow",
+        "Anticipation"
+      ],
+      "explanation_template": "Place cuts at potential 'blink points' – moments where the audience would naturally shift their focus or process a new idea – slightly leading them. This anticipates their thought processes, guiding them smoothly through the narrative while maintaining a feeling of natural discovery."
+    },
+    {
+      "id": "o_book_pg54_01",
+      "theory_unit_id": "t_book_pg54_01",
+      "suggested_change": {
+        "Shot Size": "Closer Shot"
+      },
+      "related_dimensions": [
+        "Shot Size"
+      ],
+      "explanation_template": "If the existing image quality or screen resolution (e.g., during editing with low-resolution proxies) prevents the clear perception of an actor's eye expression in a wider shot, the editor will tend to use a closer shot (e.g., a Medium Close-up or Close-up). This action is taken to ensure the primary emotional detail is visible to the audience, even if a wider shot would have been creatively adequate under optimal resolution conditions, but it can lead to an unintended increase in close-ups."
+    },
+    {
+      "id": "o_book_pg70_01",
+      "theory_unit_id": "t_book_pg70_01",
+      "suggested_change": {
+        "Editing Decision": "Hold shot longer"
+      },
+      "related_dimensions": [
+        "Editing Pace",
+        "Shot Duration"
+      ],
+      "explanation_template": "Recognize that high image detail requires more time for audience absorption. Adjust shot duration to allow viewers to fully process the visual information, preventing a choppy feel when projected on a large screen."
+    },
+    {
+      "id": "o_book_pg70_02",
+      "theory_unit_id": "t_book_pg70_01",
+      "suggested_change": {
+        "Production Practice": "Digitize at highest resolution",
+        "Review Practice": "Regular 35mm screenings"
+      },
+      "related_dimensions": [
+        "Image Quality",
+        "Resolution",
+        "Workflow",
+        "Screening Format"
+      ],
+      "explanation_template": "To accurately judge editing pace in relation to image detail, ensure the highest possible resolution during digitization and conduct frequent screenings of 35mm workprints or conformed film, allowing editors to experience the full visual richness of the material."
+    },
+    {
+      "id": "o_book_pg71_01",
+      "theory_unit_id": "t_book_pg70_02",
+      "suggested_change": {
+        "Review Practice": "Regular 35mm screenings on large screens"
+      },
+      "related_dimensions": [
+        "Screening Format",
+        "Viewing Environment",
+        "Editing Pace"
+      ],
+      "explanation_template": "To accurately gauge the pacing for a large-screen theatrical experience, conduct as many screenings as possible on a large screen, which forces a 'look-into' mode of viewing essential for cinema."
+    },
+    {
+      "id": "o_book_pg71_02",
+      "theory_unit_id": "t_book_pg70_02",
+      "suggested_change": {
+        "Editing Room Setup": "Simulate large screen size with physical markers"
+      },
+      "related_dimensions": [
+        "Editing Environment",
+        "Perceptual Trick"
+      ],
+      "explanation_template": "Place two paper figures, scaled to simulate human size on a large theatrical screen, next to your editing monitor. This visual cue helps recalibrate your perception, encouraging you to edit as if viewing on a much larger screen, counteracting the 'look-at' tendency of small monitors."
+    },
+    {
+      "id": "o_book_pg67_01",
+      "theory_unit_id": "t_book_pg67_01",
+      "suggested_change": {
+        "Review Technique": "View footage mirrored/inverted"
+      },
+      "related_dimensions": [
+        "Playback Speed",
+        "Playback Direction",
+        "Visual Orientation"
+      ],
+      "explanation_template": "Momentarily free the footage of its narrative content by playing it in reverse or viewing it in a mirror. This shift in perception allows you to focus solely on the sequence's alternating shapes, colors, and rhythm, revealing its underlying structure."
+    },
+    {
+      "id": "o_book_pg73_01",
+      "theory_unit_id": "t_book_pg73_01",
+      "suggested_change": {
+        "Workflow": "Maintain detailed notes during viewing and editing"
+      },
+      "related_dimensions": [
+        "Pre-production",
+        "Post-production",
+        "Organization"
+      ],
+      "explanation_template": "Establish a clear plan or 'map' for your editing process and meticulously document your observations and decisions. This provides a necessary framework to navigate the vast possibilities of digital editing and prevents aimless experimentation."
+    },
+    {
+      "id": "o_book_pg66_01",
+      "theory_unit_id": "t_book_pg66_01",
+      "suggested_change": {
+        "Workflow": "Foster a collaborative environment"
+      },
+      "related_dimensions": [
+        "Team Dynamics",
+        "Creative Input",
+        "Review Process"
+      ],
+      "explanation_template": "Recognize your assistants as your immediate audience and a source of fresh perspectives. Regularly present work and openly invite their feedback and ideas to refine the cut and explore new creative avenues, grounding your artistic vision."
+    },
+    {
+      "id": "o_book_pg66_02",
+      "theory_unit_id": "t_book_pg66_02",
+      "suggested_change": {
+        "Workflow": "Archive only significantly different versions periodically"
+      },
+      "related_dimensions": [
+        "Data Management",
+        "Creative Strategy",
+        "Version Control"
+      ],
+      "explanation_template": "Implement a disciplined archiving strategy by saving distinct film versions only every few weeks. This practice supports a progressive editing mindset, ensuring you move forward creatively without being bogged down by minor variations."
+    },
+    {
+      "id": "o_book_pg62_01",
+      "theory_unit_id": "t_book_pg62_01",
+      "suggested_change": {
+        "Editing Room Setup": "Utilize secondary monitors at different angles",
+        "Editor's Posture": "Change physical position while editing"
+      },
+      "related_dimensions": [
+        "Ergonomics",
+        "Cognitive Shift",
+        "Physical Engagement"
+      ],
+      "explanation_template": "Consciously alter your physical viewing position—such as moving to a secondary monitor or shifting from sitting to standing—to disrupt automatic perceptual processing and gain a renewed, objective view of your edited material."
+    },
+    {
+      "id": "o_book_pg61_01",
+      "theory_unit_id": "t_book_pg61_01",
+      "suggested_change": {
+        "Editing Workflow": "Mute sound during first assembly"
+      },
+      "related_dimensions": [
+        "Sound Design",
+        "Visual Rhythm",
+        "Focus"
+      ],
+      "explanation_template": "Temporarily disable sound during the first assembly of a scene to focus exclusively on the visual rhythm, cutting, and picture flow, ensuring the image sequence functions effectively on its own before sound integration."
+    },
+    {
+      "id": "o_book_pg83_01",
+      "theory_unit_id": "t_book_pg83_01",
+      "suggested_change": {
+        "Shot Size": "Close Up",
+        "Focus": "Character's Face"
+      },
+      "related_dimensions": [
+        "Shot Size",
+        "Focus"
+      ],
+      "explanation_template": "By using a {{Shot Size}} focused on the {{Focus}}, the director can make subtle internal thoughts and emotions of the character physically visible, enhancing the audience's understanding of their psychological state."
+    },
+    {
+      "id": "o_book_pg83_02",
+      "theory_unit_id": "t_book_pg83_02",
+      "suggested_change": {
+        "Editing Transition": "Hard Cut",
+        "Pacing": "Rapid"
+      },
+      "related_dimensions": [
+        "Editing Transition",
+        "Pacing"
+      ],
+      "explanation_template": "Employing a {{Editing Transition}} with {{Pacing}} between distinct images can effectively mimic the agile and often fragmented nature of human thought, drawing the audience into the character's mind."
+    },
+    {
+      "id": "o_book_pg83_03",
+      "theory_unit_id": "t_book_pg83_03",
+      "suggested_change": {
+        "Directing Approach": "Collaborative Orchestration",
+        "Team Input": "Encourage Diverse Perspectives"
+      },
+      "related_dimensions": [
+        "Directing Approach",
+        "Team Input"
+      ],
+      "explanation_template": "By adopting a {{Directing Approach}} that {{Team Input}}, the director can orchestrate a multi-faceted and integrated complexity, maximizing audience engagement and resonance."
+    }
+  ]
+}

@@ -1,0 +1,1140 @@
+{
+  "books": [
+    {
+      "id": "b_auto_gen",
+      "title": "dialogue.pdf"
+    }
+  ],
+  "theory_units": [
+    {
+      "id": "t_book_pg20_01",
+      "book_id": "b_unknown",
+      "title": "Direct-to-Camera Address for Audience Engagement",
+      "summary": "Characters addressing the camera directly can be used as a self-serving tactic to gain audience empathy, or to ignite intimacy and identification by placing the viewer in another character's subjective experience.",
+      "soft_tags": [
+        "audience engagement",
+        "subjective camera",
+        "intimacy",
+        "narration",
+        "character perspective"
+      ],
+      "level": "shot",
+      "applies_when": "When a character needs to express a secret or personal thought directly to the audience, or when the director wants the audience to deeply identify with another character's subjective experience of being addressed by the speaker.",
+      "expected_effect": "Audience feels whispered secrets are personal, leading to identification/empathy; audience is drawn to the character's side; audience is transported into another character's imagination."
+    },
+    {
+      "id": "t_book_pg29_01",
+      "book_id": "b_unknown",
+      "title": "Emphasizing Showing Over Telling in Scene Direction",
+      "summary": "Prioritize presenting scenes with authentic settings, believable characters pursuing desires through actions and plausible dialogue, rather than using dialogue solely for passive explanations or unmotivated exposition.",
+      "soft_tags": [
+        "dramatization",
+        "showing vs telling",
+        "subtext",
+        "characterization",
+        "pace",
+        "audience engagement",
+        "mise-en-scène"
+      ],
+      "level": "scene",
+      "applies_when": "When constructing any scene to convey character information, plot points, or themes.",
+      "expected_effect": "Deeper audience involvement and understanding of subtext, faster pace, characters who feel authentic and less like authorial spokespersons.",
+      "caution": "Telling erases subtext; characters flatten into spokespersons, and interest fades. Telling discourages curiosity and halts pace, whereas showing speeds involvement."
+    },
+    {
+      "id": "t_book_pg32_01",
+      "book_id": "b_unknown",
+      "title": "Exposition as Ammunition",
+      "summary": "Integrate pivotal expositional facts into character struggles, making characters use what they know as 'weapons' to achieve their goals during high-stakes moments.",
+      "soft_tags": [
+        "exposition",
+        "character_motivation",
+        "narrative_drive",
+        "revelation",
+        "conflict"
+      ],
+      "level": "scene",
+      "applies_when": "When a crucial piece of backstory or hidden information needs to be revealed to the audience with maximum emotional impact and to propel the plot forward.",
+      "expected_effect": "Delivers the pleasure of discovery, provides massive retrospective insight into character and past events, floods the audience with feeling, and propels narrative drive. The fact 'vanishes' into the story-goer's background awareness.",
+      "caution": "Avoid delivering exposition blandly or without a clear character motivation; it must serve the character's immediate desire in the scene."
+    },
+    {
+      "id": "t_book_pg33_02",
+      "book_id": "b_unknown",
+      "title": "Backstory Revelation for Turning Points",
+      "summary": "Reveal important expositional facts, often hidden as secrets, at key moments when a character faces a 'lesser-of-two-evils dilemma' to create powerful story turning points.",
+      "soft_tags": [
+        "backstory",
+        "secrets",
+        "dilemma",
+        "turning_point",
+        "narrative_structure"
+      ],
+      "level": "scene",
+      "applies_when": "When the story needs a major turning point, and a character's hidden past or secret can provide maximum dramatic impact.",
+      "expected_effect": "The pressure of the dilemma pries secrets loose, creating powerful turning points and inflicting more impact than straightforward actions. Can shock and move the audience.",
+      "caution": "Do not reveal too early or without a compelling dramatic reason, as the impact of the revelation will be diminished."
+    },
+    {
+      "id": "t_book_pg39_01",
+      "book_id": "b_unknown",
+      "title": "Natural Exposition Integration",
+      "summary": "Integrate exposition subtly and naturally within the narrative, making it integral to character actions, conflicts, or desires, rather than forcing it in through artificial or unbelievable devices.",
+      "soft_tags": [
+        "exposition",
+        "pacing",
+        "audience_engagement",
+        "credibility",
+        "dialogue",
+        "show_dont_tell"
+      ],
+      "level": "scene",
+      "applies_when": "Whenever exposition needs to be conveyed to the audience without disrupting narrative flow, breaking character credibility, or causing audience boredom.",
+      "expected_effect": "Audience receives necessary information without conscious awareness, maintaining immersion and belief in the characters and scene. Avoids disbelief and maintains narrative pace.",
+      "caution": "Avoid blatant devices like characters stating facts they already know, shots of newspapers with foot-high headlines, or conveniently tuned radios/TVs, as these are typically disbelieved and boring."
+    },
+    {
+      "id": "t_book_pg37_01",
+      "book_id": "b_unknown",
+      "title": "Dramatizing Voice-Over Exposition",
+      "summary": "To make voice-over narration more engaging and impactful, dramatize exposition by having the narrator interpolate scenes or generate inner conflict rather than just stating facts.",
+      "soft_tags": [
+        "voice_over",
+        "exposition",
+        "dramatization",
+        "narration",
+        "character_insight"
+      ],
+      "level": "scene",
+      "applies_when": "When using voice-over to convey exposition, especially to avoid generic 'and then... and then...' storytelling.",
+      "expected_effect": "Elevates voice-over from bland telling to active showing, providing deeper character insight and maintaining audience engagement through dramatic context.",
+      "caution": "Avoid simply pumping out bland facts in voice-over; the goal is to dramatize the content, making it active and compelling."
+    },
+    {
+      "id": "t_book_pg43_01",
+      "book_id": "b_unknown",
+      "title": "Physical Action & Non-Verbal Communication",
+      "summary": "Physical actions, including gestures, body language, facial expressions, and posture, can powerfully modify spoken language or entirely substitute for it, expressing feelings words cannot convey.",
+      "soft_tags": [
+        "performance",
+        "body_language",
+        "non_verbal",
+        "characterization",
+        "subtext",
+        "actor_direction"
+      ],
+      "level": "shot",
+      "applies_when": "In any scene with dialogue or character interaction, to deepen emotional expression, reveal subtext, or convey unstated feelings.",
+      "expected_effect": "Adds nuance, authenticity, and emotional depth to character interactions, revealing inner states beyond spoken words and enriching audience understanding.",
+      "caution": "Physical actions must be authentic to the character and situation; forced or unnatural gestures will appear artificial and break audience immersion."
+    },
+    {
+      "id": "t_book_pg43_02",
+      "book_id": "b_unknown",
+      "title": "Directing with Subtextual Action",
+      "summary": "A character's true identity is expressed through the actions they take beneath their spoken words, especially under pressure; identifying these subtextual actions is crucial for authentic performance.",
+      "soft_tags": [
+        "performance",
+        "character_motivation",
+        "subtext",
+        "actor_direction",
+        "scene_analysis",
+        "true_character"
+      ],
+      "level": "scene",
+      "applies_when": "When directing actors and analyzing a scene to ensure an authentic and impactful character portrayal, understanding what the character is 'doing' to another.",
+      "expected_effect": "Actor's performance rings true, expressing the character's core identity and underlying desires, deepening audience understanding and engagement.",
+      "caution": "Focusing only on spoken words, without understanding the subtextual action, leads to superficial or unbelievable performances."
+    },
+    {
+      "id": "t_book_pg55_01",
+      "book_id": "b_unknown",
+      "title": "Breaking the Fourth Wall for Asides",
+      "summary": "A character can directly address the camera/audience to provide private commentary, reveal inner thoughts, or offer meta-narrative observations not intended for other characters.",
+      "soft_tags": [
+        "direct address",
+        "fourth wall break",
+        "character insight",
+        "narration",
+        "meta-commentary"
+      ],
+      "level": "scene",
+      "applies_when": "When the director wishes to create an intimate connection with the audience, provide direct insight into a character's true intentions or worldview, or add a layer of detached commentary to the ongoing scene.",
+      "expected_effect": "Fosters intimacy and complicity between the character and the audience, enhances dramatic irony, deepens characterization, and can add comedic or philosophical dimensions to the narrative.",
+      "caution": "Must be used judiciously and consistently with the film's overall style to avoid pulling the audience out of the story's reality or appearing jarring."
+    },
+    {
+      "id": "t_book_pg58_01",
+      "book_id": "b_unknown",
+      "title": "Visual Primacy in Cinematic Storytelling",
+      "summary": "In film, images are the primary medium for conveying the story, with audiences instinctively absorbing narrative through visual cues first, while sound and dialogue serve as crucial, but secondary, supporting elements.",
+      "soft_tags": [
+        "visual storytelling",
+        "image-driven",
+        "cinematic language",
+        "audience perception",
+        "visual communication"
+      ],
+      "level": "scene",
+      "applies_when": "As a foundational principle for all cinematic storytelling, guiding decisions in shot composition, editing, mise-en-scène, and sound design to prioritize visual communication.",
+      "expected_effect": "Ensures the story is effectively communicated through the film's most potent medium, creating powerful emotional and narrative impacts that can transcend spoken language, even in 'moving moments' that are often mute.",
+      "caution": "Over-reliance on dialogue at the expense of visual storytelling can lead to a less engaging and less 'cinematic' experience, potentially resembling 'filmed theatre'."
+    },
+    {
+      "id": "t_book_pg59_01",
+      "book_id": "b_unknown",
+      "title": "Naturalistic Performance for Screen",
+      "summary": "Due to the camera and microphone's magnification of behavior, performances and dialogue delivery in film must appear naturalistic, believable, and spontaneous to maintain authenticity and avoid appearing amateurish.",
+      "soft_tags": [
+        "acting style",
+        "naturalism",
+        "performance direction",
+        "dialogue delivery",
+        "authenticity",
+        "magnification effect"
+      ],
+      "level": "shot",
+      "applies_when": "Consistently applied to screen acting and dialogue delivery across most film and television genres, especially those aiming for realism, unless a specific stylized genre or extreme character intentionally deviates from naturalism.",
+      "expected_effect": "Enhances audience immersion and credibility, allowing for subtle character expressions and inner lives to be perceived as genuine. Prevents performances from feeling 'acted' or 'phony'.",
+      "caution": "Any exaggerated, affected, or 'theatrical' gestures and dialogue will be magnified by the camera and microphone, making performances seem ludicrous and cueing the audience to disbelieve the character."
+    },
+    {
+      "id": "t_book_pg63_01",
+      "book_id": "b_unknown",
+      "title": "Close-Ups for Television Dialogue",
+      "summary": "For television or small screens, full-length shots make facial expressions difficult to read. The camera should close in on a character's face, especially during dialogue, to ensure clarity and engagement.",
+      "soft_tags": [
+        "television",
+        "shot composition",
+        "dialogue",
+        "readability",
+        "audience engagement",
+        "small screen"
+      ],
+      "level": "shot",
+      "applies_when": "Directing for television or any small screen medium where the legibility of facial expressions from full-length shots is compromised, particularly when characters are speaking.",
+      "expected_effect": "Enhances the audience's ability to discern character emotions, intentions, and reactions during dialogue, fostering a more intimate connection and deeper understanding of the spoken word on smaller displays.",
+      "caution": ""
+    },
+    {
+      "id": "t_book_pg81_01",
+      "book_id": "b_unknown",
+      "title": "Strategic Use of Pause in Dialogue and Scene Pacing",
+      "summary": "Pauses in dialogue serve to build tension and focus attention before a turning point, or to allow the audience to absorb and savor the aftermath after a turning point. They shape scene rhythm and emphasize gravity.",
+      "soft_tags": [
+        "pacing",
+        "tension",
+        "audience engagement",
+        "performance",
+        "dialogue rhythm",
+        "scene structure"
+      ],
+      "level": "scene",
+      "applies_when": "When approaching a critical moment, emphasizing a significant event, or allowing for audience emotional processing.",
+      "expected_effect": "Tightens tension, focuses audience attention, emphasizes an event's gravity, allows for absorption of meaning, and can lead to an explosive release of pent-up energy.",
+      "caution": "Overuse of pauses diminishes their effect; they must be judiciously placed and earned, adhering to the principle of economy."
+    },
+    {
+      "id": "t_book_pg82_01",
+      "book_id": "b_unknown",
+      "title": "Prioritizing Visual Storytelling Over Excessive Dialogue",
+      "summary": "When scenes become over-reliant on explicit dialogue, shift focus to visual storytelling, using images, paralanguage, and physical action to convey meaning instead of words.",
+      "soft_tags": [
+        "visual storytelling",
+        "economy",
+        "implicit communication",
+        "non-verbal communication",
+        "directing principle",
+        "characterization"
+      ],
+      "level": "scene",
+      "applies_when": "When dialogue is verbose, repetitive, or explicitly states what could be subtly communicated, or when aiming for a more engaging and dynamic scene.",
+      "expected_effect": "Increased audience engagement, deeper implicit meaning, richer characterization through non-verbal cues, and a more dynamic, less tedious scene flow.",
+      "caution": "None explicitly stated for the overall principle, but warns that 'stuffed, sluggish speeches' discourage interest."
+    },
+    {
+      "id": "t_book_pg82_03",
+      "book_id": "b_unknown",
+      "title": "Silence Invites Camera Focus for Emotional Revelation",
+      "summary": "Strategic use of silence in a scene encourages the camera to move in, magnifying subtle facial expressions and gestures to reveal deep internal thoughts and emotions that words cannot convey.",
+      "soft_tags": [
+        "camera technique",
+        "close-up",
+        "subtext",
+        "emotion",
+        "actor performance",
+        "silence",
+        "visual storytelling"
+      ],
+      "level": "shot",
+      "applies_when": "During moments of character silence, particularly when conveying profound internal states, unspoken reactions, or complex emotions without verbal exposition.",
+      "expected_effect": "Intensifies emotional impact, creates intimacy between character and audience, allows for subtle and nuanced performance, visually reveals subtext and inner turmoil.",
+      "caution": "Implies purposeful use; silence used without intention or context can feel empty or slow."
+    },
+    {
+      "id": "t_book_pg106_01",
+      "book_id": "b_unknown",
+      "title": "The Monologue Fallacy: Action/Reaction in Dialogue",
+      "summary": "Even internal thought is an inner dialogue, not an uninterrupted monologue. Prolonged, unreactive speech (internal or external) makes scenes lifeless and tedious, as consequential moments in life always involve a dynamic of action/reaction.",
+      "soft_tags": [
+        "dialogue",
+        "pacing",
+        "character",
+        "audience engagement",
+        "action/reaction",
+        "tedium"
+      ],
+      "level": "scene",
+      "applies_when": "Any scene involving a character's internal thoughts or a character delivering a long speech to others.",
+      "expected_effect": "Maintains audience engagement, increases realism and character depth, avoids tedium, highlights a character's inner life and adaptability to unexpected reactions.",
+      "caution": "Avoid passages of dialogue (internal or external) that go on for too long without a change in value charge or a discernible reaction from within the character or from others. A two-minute speech (300 words) is often too long without reaction."
+    },
+    {
+      "id": "t_book_pg107_01",
+      "book_id": "b_unknown",
+      "title": "The Duelogue Fallacy: Avoiding On-The-Nose Dialogue",
+      "summary": "A 'duelogue' is a face-to-face confrontation where two characters talk directly, explicitly, and emotionally about their immediate problem, leaving nothing unsaid. This 'on-the-nose' dialogue is unnatural, blocks deeper insight for the audience, and can lead to shallow performances, depriving the audience of the pleasure of discovering human truth beneath the surface.",
+      "soft_tags": [
+        "dialogue",
+        "realism",
+        "subtext",
+        "audience engagement",
+        "character depth",
+        "exposition",
+        "conflict"
+      ],
+      "level": "scene",
+      "applies_when": "Any scene involving conflict or important character interaction, especially when characters are discussing sensitive or personal issues that in real life would be skirted.",
+      "expected_effect": "Increases audience engagement by allowing them to infer meaning, enhances character realism and depth, prevents scenes from feeling artificial or boring by simulating how people truly circle problems.",
+      "caution": "Avoid dialogue that explicitly states characters' unspoken needs and emotions or directly addresses the immediate problem, as this blocks insight and falsifies life. We rarely talk face-to-face, openly and directly, about our truest needs or desires."
+    },
+    {
+      "id": "t_book_pg110_01",
+      "book_id": "b_unknown",
+      "title": "The Trialogue Principle: Funneling Conflict Through a Third Thing",
+      "summary": "To resolve 'on-the-nose' writing and create more realistic, engaging dialogue, introduce a 'third thing' that acts as a conduit or diversion for the central struggle between two characters in conflict. This triangular relationship allows characters to funnel their struggle indirectly.",
+      "soft_tags": [
+        "dialogue",
+        "subtext",
+        "conflict",
+        "character interaction",
+        "scene construction",
+        "indirect communication"
+      ],
+      "level": "scene",
+      "applies_when": "Designing scenes of conflict or deep emotional interaction between two characters, particularly when direct confrontation would feel unnatural or overly expository (a 'duelogue').",
+      "expected_effect": "Creates subtext, makes dialogue more nuanced and realistic, allows the audience to 'read between the lines' and discover deeper truths, prevents scenes from becoming dull or overtly expository by simulating real-world indirect communication.",
+      "caution": "The 'third thing' should organically relate to the characters or their situation, serving as a believable and purpose-filled medium for their indirect communication, rather than feeling contrived."
+    },
+    {
+      "id": "t_book_pg113_01",
+      "book_id": "b_unknown",
+      "title": "Avoiding Repetitious Beats & The Law of Diminishing Returns",
+      "summary": "Repetitiousness, whether of words ('accidental echoes') or underlying emotional beats (same value charge/action-reaction dynamic), makes dialogue lifeless, scenes antiprogressive, and bores the audience. The 'law of diminishing returns' dictates that repeated effects lose impact and can even reverse their intended emotional outcome if overused.",
+      "soft_tags": [
+        "dialogue",
+        "pacing",
+        "audience engagement",
+        "conflict",
+        "emotional arc",
+        "writing process",
+        "boredom"
+      ],
+      "level": "scene",
+      "applies_when": "Writing and revising dialogue and scene structure, especially during moments of conflict or heightened character interaction.",
+      "expected_effect": "Maintains audience engagement, prevents boredom, ensures emotional beats have their full intended impact, and allows scenes to progress dynamically towards a change in value.",
+      "caution": "Do not mistake textual rephrasing or using synonyms for a genuine change in beat; a beat only changes when the action/reaction dynamic shifts. Avoid repeating the same emotional beat more than once or twice within a scene, and be highly cautious of repeating similar emotional arcs across multiple consecutive scenes (e.g., three tragic scenes in a row can induce laughter). Repetition, though sometimes 'lifelike,' is 'lifeless' in effective storytelling."
+    },
+    {
+      "id": "t_book_pg117_01",
+      "book_id": "b_unknown",
+      "title": "Clarity in Dialogue: Specific Nouns & Verbs",
+      "summary": "Dialogue that relies on generic nouns and verbs, often modified by adjectives and adverbs, tends to blur meaning and forces the audience to mentally reprocess the line. Instant understanding and clear, vivid mental images are achieved by using specific nouns and verbs.",
+      "soft_tags": [
+        "dialogue",
+        "clarity",
+        "audience comprehension",
+        "writing style",
+        "specificity",
+        "imagery"
+      ],
+      "level": "scene",
+      "applies_when": "Crafting and refining dialogue to ensure instant comprehension and vivid mental imagery for the audience, and to avoid 'misshapen lines'.",
+      "expected_effect": "Immediate and clear understanding of the spoken word, vivid mental imagery for the audience, prevents audience confusion or disengagement by removing linguistic 'trip wires'.",
+      "caution": "Only use generic or ambiguous language intentionally when the goal is to create mystery, vagueness, or a specific character voice. Otherwise, prioritize specificity to sharpen meaning."
+    },
+    {
+      "id": "t_book_pg117_02",
+      "book_id": "b_unknown",
+      "title": "Pacing Meaning for Dialogue Rhythm",
+      "summary": "The precise timing of when a line's core meaning is delivered is crucial for maintaining the action/reaction rhythm of a scene. Meaning delivered too late (droning on) leads to impatience or boredom, while meaning delivered too soon (starting with the point then rambling) causes interest to wane.",
+      "soft_tags": [
+        "dialogue",
+        "pacing",
+        "audience engagement",
+        "rhythm",
+        "comprehension",
+        "sentence structure"
+      ],
+      "level": "scene",
+      "applies_when": "Structuring and refining individual lines of dialogue to optimize audience comprehension and maintain the natural action/reaction rhythm of the scene.",
+      "expected_effect": "Keeps the audience engaged, ensures optimal pacing, and allows the action/reaction dynamic to flow naturally, preventing breaks in interest or disengagement.",
+      "caution": "Avoid speeches that drone on before revealing their point or those that give away the meaning too early. Both disrupt the natural rhythm and can cause the audience to 'tune out' or 'skip over' content."
+    },
+    {
+      "id": "t_book_pg118_01",
+      "book_id": "b_unknown",
+      "title": "Precise Dialogue Cueing for Scene Rhythm",
+      "summary": "Dialogue relies on a natural action/reaction rhythm where a character's reaction is immediately cued by the meaning of the previous speaker's line. Misplaced cues, especially when the core meaning (the 'core word') of a speech appears too early, force actors to suppress their natural reaction, breaking the scene's rhythm and hindering performances.",
+      "soft_tags": [
+        "dialogue",
+        "pacing",
+        "acting",
+        "scene rhythm",
+        "performance",
+        "cueing"
+      ],
+      "level": "scene",
+      "applies_when": "Writing and refining dialogue for live performance (theatre or film) to ensure natural, crisp cueing and a smooth, instinctive action/reaction flow between characters.",
+      "expected_effect": "Creates a natural, well-paced rhythm in dialogue, allows actors to react organically and spontaneously, enhances the realism and flow of performances, and prevents awkward pauses or suppressed reactions that feel artificial.",
+      "caution": "Always ensure the 'core word' or phrase that seals the meaning and prompts a reaction from the other character is placed at or near the very end of a character's speech. Avoid placing crucial information too early if another character is expected to react immediately, as this creates 'mistimed cues'."
+    },
+    {
+      "id": "t_book_pg143_01",
+      "book_id": "b_unknown",
+      "title": "Visualizing a Character's Idealized Future",
+      "summary": "To reveal a character's internal dreams or idealized future, frame them in a close-up while they stare into space.",
+      "soft_tags": [
+        "characterization",
+        "internal thoughts",
+        "close-up",
+        "staging"
+      ],
+      "level": "shot",
+      "applies_when": "When a character is imagining or reflecting on their idealized future, particularly to highlight a 'dreamer' aspect of their personality or a specific character dimension.",
+      "expected_effect": "To visually convey the character's inner world, highlighting their dreams, aspirations, or self-deceptions, and making their internal state explicit to the audience.",
+      "caution": ""
+    },
+    {
+      "id": "t_book_pg181_01",
+      "book_id": "b_unknown",
+      "title": "Comedic Exaggeration for Audience Distance",
+      "summary": "Utilize over-the-top distortion in performance or dialogue to create psychological distance between the audience and characters, allowing behaviors to be judged as ridiculous rather than evoking empathy.",
+      "soft_tags": [
+        "comedy",
+        "performance",
+        "exaggeration",
+        "audience perception",
+        "emotional distance"
+      ],
+      "level": "scene",
+      "applies_when": "When aiming for comedic effect from character behavior or dialogue, especially in situations where genuine character pain or distress might otherwise evoke undesired empathy.",
+      "expected_effect": "Audience laughter stemming from the perception of characters' actions or statements as absurd and out of step with normalcy, rather than feeling pity or sympathy.",
+      "caution": "Must be clearly distinct from dramatic portrayals of pain to prevent empathy, which 'spells death' for comedy."
+    },
+    {
+      "id": "t_book_pg189_01",
+      "book_id": "b_unknown",
+      "title": "Comedic Depiction of Pain",
+      "summary": "Portray character suffering (physical or emotional) with a 'wild spirit' and over-the-top actions to ensure the audience perceives it as harmless and laughable, thereby preventing empathy and maintaining comedic distance.",
+      "soft_tags": [
+        "comedy",
+        "pain",
+        "performance",
+        "acting",
+        "emotional distance",
+        "audience empathy"
+      ],
+      "level": "scene",
+      "applies_when": "When staging scenes where characters experience distress, injury, or frustration that is intended to be humorous rather than tragic.",
+      "expected_effect": "Audience laughter; ensures the audience remains 'cool, critical, unempathetic' and on the safe side of pain.",
+      "caution": "Avoid any realistic depiction of suffering that could lead to genuine sympathy or compassion, as 'compassion kills laughs'."
+    },
+    {
+      "id": "t_book_pg189_02",
+      "book_id": "b_unknown",
+      "title": "Clarity in Comedic Presentation",
+      "summary": "Ensure all elements, including character intentions and subtext, are presented with crystal clarity to the audience, avoiding ambiguity, perplexity, or confusion that can stifle comedic impact.",
+      "soft_tags": [
+        "comedy",
+        "clarity",
+        "audience understanding",
+        "subtext",
+        "staging",
+        "performance"
+      ],
+      "level": "scene",
+      "applies_when": "Throughout the staging, performance, and dialogue delivery of any comedic scene or beat.",
+      "expected_effect": "Uninterrupted laughter and clear audience comprehension of the joke's mechanics and characters' motivations.",
+      "caution": "Ambiguity, perplexity, and verbose dialogue will 'suffocate laughter.' Focus on economy and clarity in presentation."
+    },
+    {
+      "id": "t_book_pg189_03",
+      "book_id": "b_unknown",
+      "title": "Precision Timing for Punchlines",
+      "summary": "Execute the comedic punchline at the exact moment the setup's emotional energy peaks, followed by a deliberate pause, to ensure maximum audience laughter and prevent 'stepping on' the laugh.",
+      "soft_tags": [
+        "comedy",
+        "timing",
+        "pacing",
+        "joke delivery",
+        "performance",
+        "editing"
+      ],
+      "level": "shot",
+      "applies_when": "When directing actors for dialogue delivery, staging actions, or editing the sequence of comedic beats.",
+      "expected_effect": "Explosive laughter from the audience; allows for full appreciation of the comedic beat.",
+      "caution": "Delivering the punch too soon results in a weak laugh; too late, a groan. Critically, ensure 'nothing must follow the punch that would stifle the laughter'."
+    },
+    {
+      "id": "t_book_pg194_01",
+      "book_id": "b_unknown",
+      "title": "Subtle Subtext for Delayed Revelation",
+      "summary": "Instruct actors to convey a character's hidden subtextual pain or secret subtly through ambiguous actions or internalized performance, avoiding overt expressions that would prematurely reveal the secret to the audience.",
+      "soft_tags": [
+        "acting",
+        "subtext",
+        "character development",
+        "audience anticipation",
+        "performance direction",
+        "drama"
+      ],
+      "level": "shot",
+      "applies_when": "When a character possesses a significant secret that is crucial for a later narrative reveal, and their current actions or mood are influenced by it.",
+      "expected_effect": "Maintains narrative suspense and allows for a more powerful, retrospective impact on audience perception when the secret is finally disclosed.",
+      "caution": "Overly explicit or leading actions will spoil the audience's discovery and diminish the impact of the later reveal."
+    },
+    {
+      "id": "t_book_pg223_01",
+      "book_id": "b_unknown",
+      "title": "Minimalist Dialogue for Subtextual Depth",
+      "summary": "Employing sparse and understated dialogue allows for maximal meaning by inviting the audience to infer unspoken thoughts and feelings, thereby enhancing scene credibility and dramatic power.",
+      "soft_tags": [
+        "dialogue",
+        "subtext",
+        "understatement",
+        "character_revelation",
+        "audience_engagement"
+      ],
+      "level": "scene",
+      "applies_when": "When crafting or directing scenes where deep meaning, complex emotions, or internal conflicts are conveyed through very few words, relying heavily on implied subtext rather than explicit statements.",
+      "expected_effect": "Increases audience engagement by prompting deeper interpretation, lends credibility and authenticity to character interactions, and amplifies emotional resonance through implication rather than explicit statement.",
+      "caution": "Avoid 'on-the-nose' writing where subtext is too obvious, or melodrama where massive vocal responses are given to minor motivations. The underlying motivations and subtext must be rich enough to support the sparseness; otherwise, lines can sound 'tinny' and 'acting clanks'."
+    },
+    {
+      "id": "t_book_pg232_01",
+      "book_id": "b_unknown",
+      "title": "Subtextual Communication through Pauses and Silent Gestures",
+      "summary": "Emphasizes conveying emotion and unspoken meaning through deliberate pauses in dialogue delivery and expressive non-verbal actions, rather than relying solely on extensive speech.",
+      "soft_tags": [
+        "subtext",
+        "performance",
+        "pacing",
+        "non-verbal communication",
+        "actor direction"
+      ],
+      "level": "scene",
+      "applies_when": "When aiming for subtlety, realism, or to deepen audience understanding of characters' inner states and relationships, especially in minimalist dialogue scenes.",
+      "expected_effect": "Increases realism, invites audience introspection, reveals deeper character connections, and creates a sense of lingering emotional weight.",
+      "caution": "Do not drown your script with endless dialogue and long speeches."
+    },
+    {
+      "id": "t_book_pg236_01",
+      "book_id": "b_unknown",
+      "title": "Emphasizing Inner Conflict with Vocalized & Non-Vocalized Hesitations",
+      "summary": "Utilize specific vocalized interjections (e.g., 'Oh…', 'Ah…', 'Hmmm…') and non-vocalized pauses (e.g., eye contact, staring into space) to represent a character's internal thought process or hidden emotions.",
+      "soft_tags": [
+        "performance",
+        "subtext",
+        "character depth",
+        "internal monologue",
+        "actor direction",
+        "pacing"
+      ],
+      "level": "shot",
+      "applies_when": "When characters are processing complex thoughts, concealing emotions, or experiencing an emotional conflict that isn't explicitly stated in dialogue.",
+      "expected_effect": "Creates a sense of character introspection, invites audience empathy, makes dialogue feel more naturalistic, and deepens subtext.",
+      "caution": ""
+    },
+    {
+      "id": "t_book_pg239_01",
+      "book_id": "b_unknown",
+      "title": "Mirroring Gestures to Signal Intimacy",
+      "summary": "Characters unconsciously imitating each other's posture and gestures can subtly communicate a developing intimacy or deep connection, even if they are unaware of it.",
+      "soft_tags": [
+        "intimacy",
+        "non-verbal communication",
+        "actor direction",
+        "subtext",
+        "character relationship",
+        "blocking"
+      ],
+      "level": "scene",
+      "applies_when": "When portraying the subtle development of connection, empathy, or attraction between characters, or when showing an established bond.",
+      "expected_effect": "Visually reinforces character bonds, creates a sense of realism in interactions, and allows the audience to perceive unspoken intimacy.",
+      "caution": ""
+    }
+  ],
+  "operations": [
+    {
+      "id": "o_book_pg20_01",
+      "theory_unit_id": "t_book_pg20_01",
+      "suggested_change": {
+        "Camera Angle": "Direct to Camera",
+        "Eye-line": "Direct to Camera"
+      },
+      "related_dimensions": [
+        "Camera Angle",
+        "Eye-line"
+      ],
+      "explanation_template": "By having the character speak directly to the camera, you establish an intimate, personal connection, inviting the audience into their confidence and potentially aligning them with the character's perspective or tactics."
+    },
+    {
+      "id": "o_book_pg20_02",
+      "theory_unit_id": "t_book_pg20_01",
+      "suggested_change": {
+        "Shot Size": "Close-up",
+        "Camera Angle": "Direct to Camera",
+        "Eye-line": "Direct to Camera",
+        "Camera Perspective": "Subjective"
+      },
+      "related_dimensions": [
+        "Shot Size",
+        "Camera Angle",
+        "Eye-line",
+        "Camera Perspective"
+      ],
+      "explanation_template": "Cutting to a close-up with the character looking directly into the camera, especially when representing another character's subjective vision, transports the audience into the perspective of the character being addressed, fostering deep identification and igniting intimacy."
+    },
+    {
+      "id": "o_book_pg30_01",
+      "theory_unit_id": "t_book_pg29_01",
+      "suggested_change": {
+        "Dialogue Content": "Reduce explicit exposition, make dialogue reactive",
+        "Character Action": "Perform visible actions that convey traits and context (e.g., smoking, giggling uncontrollably)",
+        "Mise-en-scène": "Integrate visual cues (e.g., unshaven appearance, specific clothing, setting details)",
+        "Blocking": "Stage characters to visually illustrate relationships or states (e.g., one character reacting to another's visible condition)"
+      },
+      "related_dimensions": [
+        "Dialogue Content",
+        "Character Action",
+        "Mise-en-scène",
+        "Blocking",
+        "Costume",
+        "Performance"
+      ],
+      "explanation_template": "Replace explicit verbal exposition with character actions, visual details, and implicit reactions, allowing the audience to infer information and subtext more dynamically and speeding up involvement."
+    },
+    {
+      "id": "o_book_pg30_02",
+      "theory_unit_id": "t_book_pg29_01",
+      "suggested_change": {
+        "Shot Composition": "Frame to include subtle expositional details in the background or periphery",
+        "Blocking": "Direct primary audience attention to a focal action or character while secondary, expository details are less prominent",
+        "Camera Movement": "Subtly reveal information through incidental pans or tilts, or focus pulls"
+      },
+      "related_dimensions": [
+        "Shot Composition",
+        "Blocking",
+        "Camera Movement",
+        "Mise-en-scène",
+        "Visual Emphasis",
+        "Focus"
+      ],
+      "explanation_template": "To 'smuggle' facts, compose shots or block actors to draw the audience's main attention in one direction while subtly revealing critical exposition through peripheral visual details, background elements, or incidental camera movements, allowing the audience to discover information without distraction."
+    },
+    {
+      "id": "o_book_pg33_01",
+      "theory_unit_id": "t_book_pg32_01",
+      "suggested_change": {},
+      "related_dimensions": [
+        "Performance",
+        "Dialogue Delivery",
+        "Scene Staging",
+        "Emotional Arc"
+      ],
+      "explanation_template": "Direct actors to deliver critical exposition as a character's 'weapon' during a high-stakes conflict, negotiation, or manipulation. Ensure the information serves the character's immediate desire, making the revelation impactful and the exposition feel organically earned by the scene's drama."
+    },
+    {
+      "id": "o_book_pg33_02",
+      "theory_unit_id": "t_book_pg33_02",
+      "suggested_change": {},
+      "related_dimensions": [
+        "Performance",
+        "Scene Staging",
+        "Dialogue Delivery",
+        "Dramatic Tension"
+      ],
+      "explanation_template": "Stage the revelation of a character's deep secret (backstory) during a moment of intense 'lesser-of-two-evils' dilemma, allowing the emotional pressure to naturally expose the truth and serving as a major dramatic turning point for the narrative."
+    },
+    {
+      "id": "o_book_pg40_01",
+      "theory_unit_id": "t_book_pg39_01",
+      "suggested_change": {},
+      "related_dimensions": [
+        "Dialogue",
+        "Character Motivation",
+        "Scene Conflict",
+        "Subtext"
+      ],
+      "explanation_template": "Instead of characters stating facts they already know for the audience's benefit, rewrite expositional facts so characters use them as 'weapons' in a scene of conflict, manipulation, or seduction, making the information delivery organic to the characters' active struggle and believable."
+    },
+    {
+      "id": "o_book_pg39_02",
+      "theory_unit_id": "t_book_pg39_01",
+      "suggested_change": {
+        "Visual Cue": "Subtle on-screen text (e.g., location, date)",
+        "Sound Cue": "Ambient, unobtrusive news broadcast (as background noise)"
+      },
+      "related_dimensions": [
+        "Visual Cues",
+        "Sound Design",
+        "Pacing",
+        "Editing"
+      ],
+      "explanation_template": "For quick-hit, factual exposition, use minimal and brief visual or audio cues (e.g., unobtrusive on-screen text for location/date, or a fleeting ambient news snippet) that allow the story to proceed quickly without significant interruption or drawing undue attention."
+    },
+    {
+      "id": "o_book_pg37_01",
+      "theory_unit_id": "t_book_pg37_01",
+      "suggested_change": {
+        "Performance": "Direct Address to Camera",
+        "Visuals": "Flashback/Imagined Scene",
+        "Dialogue": "Indirect or Verbatim Recall (in character's memory)"
+      },
+      "related_dimensions": [
+        "Performance",
+        "Voice Over",
+        "Editing",
+        "Visual Metaphor",
+        "Directorial Style"
+      ],
+      "explanation_template": "When using voice-over, have the narrating character (e.g., via direct address to camera or an imagined scenario) act out or vividly describe the exposition as a dramatized scene, rather than merely stating facts, to increase engagement and insight."
+    },
+    {
+      "id": "o_book_pg37_02",
+      "theory_unit_id": "t_book_pg37_01",
+      "suggested_change": {
+        "Performance": "Internal Monologue",
+        "Dialogue": "Self-to-Self Argument (voiced-over)"
+      },
+      "related_dimensions": [
+        "Performance",
+        "Voice Over",
+        "Internal State",
+        "Character Arc"
+      ],
+      "explanation_template": "Stage the exposition as an internal debate or 'self-to-self duel' within the narrating character (often through voice-over), revealing information through conflicting thoughts, memories, or arguments to provide deeper character insight."
+    },
+    {
+      "id": "o_book_pg43_01",
+      "theory_unit_id": "t_book_pg43_01",
+      "suggested_change": {
+        "Performance": "Specific Gesture, Facial Expression, Posture",
+        "Camera Focus": "Close-up on hands, eyes, mouth, or body language"
+      },
+      "related_dimensions": [
+        "Performance",
+        "Camera Focus",
+        "Blocking",
+        "Framing",
+        "Emotional Conveyance"
+      ],
+      "explanation_template": "Direct actors to use specific gestures, facial expressions, or posture to modify or underscore the meaning of their spoken words, or to express feelings that are not verbalized. Capture these nuanced details with appropriate camera framing, such as close-ups."
+    },
+    {
+      "id": "o_book_pg43_02",
+      "theory_unit_id": "t_book_pg43_01",
+      "suggested_change": {
+        "Performance": "Non-verbal reaction/action",
+        "Shot Type": "Reaction Shot, Cutaway to action"
+      },
+      "related_dimensions": [
+        "Performance",
+        "Shot Type",
+        "Editing",
+        "Emotional Conveyance"
+      ],
+      "explanation_template": "Convey a character's feelings, intent, or response entirely through non-verbal physical actions or body language, allowing the visuals and actor's silent performance to communicate what is left unsaid in dialogue."
+    },
+    {
+      "id": "o_book_pg43_03",
+      "theory_unit_id": "t_book_pg43_02",
+      "suggested_change": {},
+      "related_dimensions": [
+        "Performance",
+        "Actor's Intent",
+        "Scene Blocking",
+        "Dialogue Analysis"
+      ],
+      "explanation_template": "For each line or beat in a scene, identify the character's underlying desire ('What do they want?') and the active subtextual action ('What are they *doing* to achieve that desire?'). Guide the actor's delivery, blocking, and non-verbal choices to manifest this inner life, ensuring authenticity and emotional truth."
+    },
+    {
+      "id": "o_book_pg55_01",
+      "theory_unit_id": "t_book_pg55_01",
+      "suggested_change": {
+        "Camera Angle": "Direct or near-direct address",
+        "Character Gaze": "Directly into camera",
+        "Blocking": "Character breaks from other characters/action to acknowledge audience"
+      },
+      "related_dimensions": [
+        "Camera Angle",
+        "Character Gaze",
+        "Blocking"
+      ],
+      "explanation_template": "By having the character turn and directly address the camera, the director establishes an immediate and private channel of communication with the audience, bypassing other characters in the scene. This operationalizes the fourth wall break, achieving the intended effect of intimate insight or commentary."
+    },
+    {
+      "id": "o_book_pg58_01",
+      "theory_unit_id": "t_book_pg58_01",
+      "suggested_change": {
+        "Shot Composition": "Emphasize visual narrative cues",
+        "Dialogue Quantity": "Minimize where visuals can convey meaning",
+        "Mise-en-scène": "Rich with contextual and emotional information"
+      },
+      "related_dimensions": [
+        "Shot Composition",
+        "Dialogue Quantity",
+        "Mise-en-scène"
+      ],
+      "explanation_template": "To leverage film's visual primacy, directors should design shot compositions rich in narrative information, utilize mise-en-scène to convey context and emotion visually, and minimize dialogue where imagery can achieve the same or greater impact. This ensures the audience primarily absorbs the story through their eyes."
+    },
+    {
+      "id": "o_book_pg59_01",
+      "theory_unit_id": "t_book_pg59_01",
+      "suggested_change": {
+        "Acting Style": "Naturalistic",
+        "Dialogue Delivery": "Spontaneous and understated",
+        "Gesture and Facial Expression": "Subtle and organic"
+      },
+      "related_dimensions": [
+        "Acting Style",
+        "Dialogue Delivery",
+        "Gesture and Facial Expression"
+      ],
+      "explanation_template": "To achieve naturalistic performance for the screen, directors must guide actors towards spontaneous dialogue delivery, subtle gestures, and believable facial expressions. This counteracts the camera and microphone's magnification effect, ensuring performances appear authentic rather than 'acted' and amateurish."
+    },
+    {
+      "id": "o_book_pg63_01",
+      "theory_unit_id": "t_book_pg63_01",
+      "suggested_change": {
+        "Shot Size": "Close-Up",
+        "Camera Movement": "Push in"
+      },
+      "related_dimensions": [
+        "Shot Size",
+        "Camera Movement"
+      ],
+      "explanation_template": "By moving the camera to a {Shot Size} shot on the character's face, the director ensures that {Facial Expression/Emotion} is clearly visible and readable for the audience on smaller screens, facilitating understanding of the dialogue's subtext and enhancing {Audience Engagement}."
+    },
+    {
+      "id": "o_book_pg81_01",
+      "theory_unit_id": "t_book_pg81_01",
+      "suggested_change": {
+        "Pacing": "Momentary Halt",
+        "Performance": "Wordless Hesitation",
+        "Scene Rhythm": "Deceleration"
+      },
+      "related_dimensions": [
+        "Pacing",
+        "Performance",
+        "Scene Rhythm",
+        "Editing"
+      ],
+      "explanation_template": "Introduce a moment of wordless hesitation or a brief standstill prior to a turning point to dam emotional momentum, compress curiosity and concern, and allow pent-up energy to explode into the climactic beat."
+    },
+    {
+      "id": "o_book_pg81_02",
+      "theory_unit_id": "t_book_pg81_01",
+      "suggested_change": {
+        "Pacing": "Momentary Halt",
+        "Audience Experience": "Reflective Pause",
+        "Scene Rhythm": "Deceleration"
+      },
+      "related_dimensions": [
+        "Pacing",
+        "Audience Experience",
+        "Scene Rhythm",
+        "Editing"
+      ],
+      "explanation_template": "Insert a pause immediately after a turning point to allow the audience sufficient time to absorb the meaning of the change and savor its emotional or narrative aftermath."
+    },
+    {
+      "id": "o_book_pg82_01",
+      "theory_unit_id": "t_book_pg82_01",
+      "suggested_change": {
+        "Dialogue": "Minimize Verbal Explanations",
+        "Performance": "Utilize Non-Verbal Cues",
+        "Shot Composition": "Emphasize Facial Expressions/Gestures"
+      },
+      "related_dimensions": [
+        "Dialogue",
+        "Performance",
+        "Shot Composition",
+        "Actor Expression",
+        "Camera Focus"
+      ],
+      "explanation_template": "Substitute verbose verbal affirmations or disaffirmations with gestures, nods, glances, or other facial expressions. The camera can then be used to magnify these subtle cues, conveying implicit meaning."
+    },
+    {
+      "id": "o_book_pg82_02",
+      "theory_unit_id": "t_book_pg82_01",
+      "suggested_change": {
+        "Dialogue": "Minimize Verbal Exposition",
+        "Performance": "Emphasize Physical Behavior",
+        "Blocking": "Action-Driven Scene"
+      },
+      "related_dimensions": [
+        "Dialogue",
+        "Performance",
+        "Blocking",
+        "Action Design",
+        "Set Design"
+      ],
+      "explanation_template": "Replace verbal explanations of character actions and reactions with physical behaviors. Design the scene to allow characters to 'do' rather than 'say' their intentions or emotional states, painting word-pictures of action."
+    },
+    {
+      "id": "o_book_pg82_03",
+      "theory_unit_id": "t_book_pg82_03",
+      "suggested_change": {
+        "Dialogue": "Silence",
+        "Shot Size": "Medium Close to Close-up",
+        "Camera Focus": "Actor's Eyes/Face"
+      },
+      "related_dimensions": [
+        "Dialogue",
+        "Shot Size",
+        "Camera Focus",
+        "Performance Emphasis",
+        "Actor Expression"
+      ],
+      "explanation_template": "In moments of silence, employ close-ups on the actor's face, particularly the eyes, to leverage the camera's ability to magnify. This allows the camera to visually explore and reveal unspoken thoughts and deep emotions flowing behind the eyes and under the skin."
+    },
+    {
+      "id": "o_book_pg106_01",
+      "theory_unit_id": "t_book_pg106_01",
+      "suggested_change": {
+        "Dialogue Structure": "Interlaced action/reaction",
+        "Character Action": "Nonverbal reactions"
+      },
+      "related_dimensions": [
+        "Dialogue",
+        "Character Action",
+        "Pacing"
+      ],
+      "explanation_template": "To counteract the 'monologue fallacy' and keep a scene dynamic, explicitly weave a character's nonverbal reactions (looks, gestures, pauses, stumbling phrases) into their long speeches. This transforms an apparent monologue into a series of action/reaction beats, revealing inner thought processes or responses to external stimuli."
+    },
+    {
+      "id": "o_book_pg106_02",
+      "theory_unit_id": "t_book_pg106_01",
+      "suggested_change": {
+        "Scene Focus": "Reactions of other characters",
+        "Dialogue Presentation": "Impression of length rather than actual length"
+      },
+      "related_dimensions": [
+        "Scene Construction",
+        "Audience Perception",
+        "Pacing",
+        "Character Portrayal"
+      ],
+      "explanation_template": "When portraying a character who is naturally long-winded, avoid boring the audience by creating the *impression* of their lengthy speeches rather than having them actually speak for too long. Instead, shift the scene's focus to the reactions (e.g., boredom, weariness, discomfort) of other characters, thereby building the scene around the impact of the long speech rather than the speech itself."
+    },
+    {
+      "id": "o_book_pg113_01",
+      "theory_unit_id": "t_book_pg113_01",
+      "suggested_change": {
+        "Writing Process": "Record and playback dialogue"
+      },
+      "related_dimensions": [
+        "Dialogue",
+        "Revision",
+        "Sound"
+      ],
+      "explanation_template": "To identify and eliminate 'accidental echoes' (unintended repetition of words or phrases) in dialogue, record your written dialogue after each draft and play it back. Hearing it aloud will make these repetitions 'pop out,' indicating precisely where to cut or rewrite."
+    },
+    {
+      "id": "o_book_pg113_02",
+      "theory_unit_id": "t_book_pg113_01",
+      "suggested_change": {
+        "Dialogue Structure": "Evolving action/reaction beats",
+        "Scene Progression": "Advancing value charge"
+      },
+      "related_dimensions": [
+        "Dialogue",
+        "Scene Progression",
+        "Conflict Resolution",
+        "Pacing"
+      ],
+      "explanation_template": "Actively scour for and eliminate repetitious emotional beats where characters engage in the same action/reaction dynamic multiple times. Instead, ensure each beat 'tops' the previous one, advancing the scene towards a meaningful change in value charge at its turning point. This requires creative improvisation and finding the most character-specific language to propel the interaction forward, never compromising for 'good enough'."
+    },
+    {
+      "id": "o_book_pg117_01",
+      "theory_unit_id": "t_book_pg117_01",
+      "suggested_change": {
+        "Dialogue Word Choice": "Specific nouns and verbs"
+      },
+      "related_dimensions": [
+        "Dialogue",
+        "Clarity",
+        "Visual Language",
+        "Audience Comprehension"
+      ],
+      "explanation_template": "To enhance clarity and create vivid mental images in dialogue, replace generic nouns and verbs (especially when modified by multiple adjectives and adverbs) with precise, specific equivalents. This ensures the audience grasps the meaning instantly without needing multiple mental passes, making the line immediately comprehensible and impactful."
+    },
+    {
+      "id": "o_book_pg117_02",
+      "theory_unit_id": "t_book_pg117_02",
+      "suggested_change": {
+        "Dialogue Sentence Structure": "Strategic meaning placement (beginning, middle, or end)"
+      },
+      "related_dimensions": [
+        "Dialogue",
+        "Pacing",
+        "Audience Engagement",
+        "Sentence Structure"
+      ],
+      "explanation_template": "To skillfully time the meaning of each line and prevent 'mistimed meaning', employ principles of economy (saying the maximum in the fewest words) and master sentence designs (cumulative, balanced, and suspense). This allows for intentional placement of the core meaning at the beginning, middle, or end of a speech, optimizing audience engagement and rhythm."
+    },
+    {
+      "id": "o_book_pg118_01",
+      "theory_unit_id": "t_book_pg118_01",
+      "suggested_change": {
+        "Dialogue Structure": "Core meaning at or near end of speech"
+      },
+      "related_dimensions": [
+        "Dialogue",
+        "Pacing",
+        "Acting Performance",
+        "Cueing"
+      ],
+      "explanation_template": "To ensure crisp cueing and a well-paced action/reaction rhythm, structure dialogue so that the 'core word' or phrase that seals the meaning and prompts a reaction from the other character is placed at or near the very end of a character's speech. This allows the responding actor to react naturally and immediately without having to suppress their response while the other actor finishes."
+    },
+    {
+      "id": "o_book_pg143_01",
+      "theory_unit_id": "t_book_pg143_01",
+      "suggested_change": {
+        "Shot Size": "Close-up",
+        "Staging": "Character stares into space"
+      },
+      "related_dimensions": [
+        "Shot Size",
+        "Staging",
+        "Character Gaze"
+      ],
+      "explanation_template": "Framing the character in a close-up isolates them and emphasizes their internal state, while the 'staring into space' gaze visually suggests deep thought or imagination, effectively portraying their idealized future or internal dreams."
+    },
+    {
+      "id": "o_book_pg190_01",
+      "theory_unit_id": "t_book_pg189_03",
+      "suggested_change": {
+        "Pacing": "Introduce a beat of silence",
+        "Actor Delivery": "Hold reaction",
+        "Editing": "Insert pause before next cut/line"
+      },
+      "related_dimensions": [
+        "Pacing",
+        "Sound (Silence)",
+        "Actor Performance",
+        "Editing"
+      ],
+      "explanation_template": "Immediately after the comedic punchline is delivered, create a beat of silence or pause in action. This provides the audience with essential space and time to process the joke and laugh fully, ensuring that subsequent dialogue or action does not 'step on' the intended comedic effect."
+    },
+    {
+      "id": "o_book_pg194_01",
+      "theory_unit_id": "t_book_pg194_01",
+      "suggested_change": {
+        "Actor Movement": "Utilize ambiguous, internal physical gestures (e.g., dropping head on arms)",
+        "Actor Expression": "Convey internalized dread or discomfort rather than outward distress",
+        "Camera Focus": "Maintain distance or focus on ambiguous body language"
+      },
+      "related_dimensions": [
+        "Actor Movement",
+        "Actor Expression",
+        "Camera Focus",
+        "Blocking"
+      ],
+      "explanation_template": "When a character is concealing a secret, direct the actor to perform gestures that can be interpreted in multiple ways (e.g., dropping head out of frustration vs. suppressing morning sickness). This allows the actor to play the 'truth' internally while keeping the audience guessing, thereby preserving the impact of a later revelation."
+    },
+    {
+      "id": "o_book_pg223_01",
+      "theory_unit_id": "t_book_pg223_01",
+      "suggested_change": {
+        "Shot Size": "Medium Close to Close-Up",
+        "Camera Framing": "Emphasize subject's face and upper body to capture nuanced expressions",
+        "Blocking": "Subtle, internal actions and reactions"
+      },
+      "related_dimensions": [
+        "Shot Size",
+        "Camera Framing",
+        "Performance",
+        "Blocking"
+      ],
+      "explanation_template": "To facilitate the audience 'peering ever more deeply into the unsaid and unsayable' when dialogue is minimal, frame the shot to highlight subtle facial expressions and body language. Use closer shot sizes like Medium Close or Close-up to capture nuanced reactions. Direct actors to convey rich subtext through understated gestures and expressions, allowing the camera to linger on these non-verbal cues."
+    },
+    {
+      "id": "o_book_pg232_01",
+      "theory_unit_id": "t_book_pg232_01",
+      "suggested_change": {
+        "Action": "Character performs a silent gesture (e.g., nod, glance, expression) to convey emotion."
+      },
+      "related_dimensions": [
+        "Performance",
+        "Actor's Expression",
+        "Blocking"
+      ],
+      "explanation_template": "Expressing emotion with a silent gesture allows for nuance and avoids over-explaining with dialogue, inviting the audience to interpret."
+    },
+    {
+      "id": "o_book_pg232_02",
+      "theory_unit_id": "t_book_pg232_01",
+      "suggested_change": {
+        "Pacing": "Introduce a deliberate pause (short or long) before or after dialogue, or when a character cannot reply."
+      },
+      "related_dimensions": [
+        "Pacing",
+        "Dialogue Delivery",
+        "Performance"
+      ],
+      "explanation_template": "Permitting a question or unspoken response to linger in midair invites the audience inside the character's thought process and emphasizes unspoken subtext."
+    },
+    {
+      "id": "o_book_pg236_01",
+      "theory_unit_id": "t_book_pg236_01",
+      "suggested_change": {
+        "Dialogue Delivery": "Character uses 'Well…', 'Yeah…', 'Yes…', 'Oh…', 'Ah…', 'Hmmm…' as glides or moments of reflection."
+      },
+      "related_dimensions": [
+        "Performance",
+        "Dialogue Delivery",
+        "Actor's Expression"
+      ],
+      "explanation_template": "Vocalized hesitations halt the flow of words, opening a mini-pause for thought and inviting the audience into the character's internal state."
+    },
+    {
+      "id": "o_book_pg236_02",
+      "theory_unit_id": "t_book_pg236_01",
+      "suggested_change": {
+        "Action": "Character uses non-vocalized reactions such as laughter, nods, glances, pauses with eye contact, or pauses staring into space."
+      },
+      "related_dimensions": [
+        "Performance",
+        "Actor's Expression",
+        "Blocking"
+      ],
+      "explanation_template": "Non-vocalized reactions function as internal pauses, conveying unspoken thoughts and emotions and drawing the audience deeper into the character's experience."
+    },
+    {
+      "id": "o_book_pg239_01",
+      "theory_unit_id": "t_book_pg239_01",
+      "suggested_change": {
+        "Blocking": "Characters subtly adopt similar postures or gestures in response to each other."
+      },
+      "related_dimensions": [
+        "Blocking",
+        "Performance",
+        "Actor's Expression"
+      ],
+      "explanation_template": "Unconscious mirroring of posture and gestures signals a subconscious connection and growing intimacy between characters to the audience."
+    }
+  ]
+}

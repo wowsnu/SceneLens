@@ -1,0 +1,44 @@
+/* === Workspace Grid === */
+.workspace {
+  display: grid;
+  grid-template-columns: 260px 1fr 340px;
+  flex: 1;
+  overflow: hidden;
+  transition: grid-template-columns 0.4s ease;
+}
+
+/* Script mode: full-width center */
+.workspace.mode-script,
+.workspace.mode-storyboard,
+.workspace.mode-focus {
+  grid-template-columns: 1fr;
+}
+
+.workspace.mode-focus {
+  background: #000;
+}
+
+/* Detail mode: canvas + panel */
+.workspace.mode-detail {
+  grid-template-columns: 45fr 55fr;
+}
+
+/* Hide panels based on mode */
+.workspace.mode-script .script-panel,
+.workspace.mode-script .shot-panel,
+.workspace.mode-storyboard .script-panel,
+.workspace.mode-storyboard .shot-panel,
+.workspace.mode-focus .script-panel,
+.workspace.mode-focus .shot-panel {
+  display: none !important;
+}
+
+.workspace.mode-detail .script-panel {
+  display: none !important;
+}
+
+@media (max-width: 1200px) {
+  .workspace {
+    grid-template-columns: 220px 1fr 300px;
+  }
+}

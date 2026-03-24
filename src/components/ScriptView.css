@@ -1,0 +1,103 @@
+/* Script View (full-width reading mode) */
+.script-view {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.script-reading-container {
+  max-width: 800px;
+  margin: 40px auto;
+  padding: 60px 80px;
+  background: var(--bg-panel);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow);
+  font-family: var(--font-script);
+  font-size: 15px;
+  line-height: 1.9;
+}
+
+.script-beat-divider {
+  display: flex;
+  align-items: center;
+  margin: 40px 0 20px 0;
+  gap: 15px;
+}
+
+.beat-number {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--accent);
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  background: var(--accent-glow);
+  padding: 4px 10px;
+  border-radius: 12px;
+  border: 1px solid var(--accent-dim);
+  white-space: nowrap;
+}
+
+.beat-line {
+  flex: 1;
+  border: none;
+  border-top: 1px dashed var(--accent-dim);
+  opacity: 0.5;
+}
+
+/* Script elements in reading view */
+.script-view .script-scene-heading {
+  font-size: 17px;
+  font-weight: 700;
+  text-transform: uppercase;
+  margin-bottom: 24px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.script-view .script-action {
+  color: var(--text-secondary);
+  margin: 12px 0;
+  font-style: italic;
+  line-height: 1.8;
+}
+
+.script-view .script-character {
+  color: var(--accent);
+  font-weight: 600;
+  text-transform: uppercase;
+  text-align: center;
+  margin-top: 18px;
+  margin-bottom: 4px;
+  font-size: 13px;
+  letter-spacing: 0.5px;
+}
+
+.script-view .script-parenthetical {
+  color: var(--text-muted);
+  text-align: center;
+  font-size: 12px;
+  margin-bottom: 4px;
+}
+
+.script-view .script-dialogue {
+  color: var(--text-primary);
+  text-align: center;
+  padding: 0 40px;
+  margin-bottom: 8px;
+}
+
+.script-view .script-transition {
+  text-align: right;
+  color: var(--text-muted);
+  font-weight: 600;
+  margin-top: 20px;
+  text-transform: uppercase;
+  font-size: 12px;
+}
+
+.script-view .active-beat {
+  background: var(--accent-glow);
+  border-radius: var(--radius-sm);
+  padding: 4px 8px;
+  margin: 4px -8px;
+}
