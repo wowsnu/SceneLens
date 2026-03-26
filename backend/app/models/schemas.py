@@ -1,16 +1,17 @@
 from pydantic import BaseModel
 from typing import Optional, List, Dict
 
-# CIR (Cinematic Intermediate Representation) - 8 attributes
+# CIR (Cinematic Intermediate Representation)
 class CIR(BaseModel):
-    shotSize: str  # Extreme Close-Up / Close-Up / Medium Close-Up / Medium Shot / Medium Long Shot / Long Shot / Wide Shot / Extreme Wide Shot
-    cameraAngle: str  # Frontal / Three-Quarter / Profile / Rear / Dutch Tilt
-    cameraLevel: str  # High Angle / Eye Level / Low Angle / Top-Down / Ground Level
-    relation: str  # Single / Two-Shot / Over-the-Shoulder / Point of View / Group / Insert
-    blockingDistance: str  # Intimate / Personal / Social / Public
-    eyeline: str  # Direct / Averted / Off-Screen / Direct Address
-    occlusion: str  # None / Partial / Foreground Element / Deep Focus
-    motionHint: str  # Static / Pan / Tilt / Track / Zoom / Handheld / Both
+    shotSize: str           # Extreme Close-Up / Close-Up / Medium Close-Up / Medium Shot / Medium Long Shot / Long Shot / Extreme Wide Shot
+    horizontalAngle: str    # Frontal / Three-Quarter / Profile / Rear
+    verticalLevel: str      # High / Eye / Low / Top-Down / Ground
+    subjectConfig: str      # Single / Two-Shot / Group / Insert
+    viewpointFraming: str   # Objective / OTS / POV
+    eyeline: str            # Toward Subject / Averted / Off-Screen / Toward Camera
+    occlusion: str          # None / Partial / Heavy
+    depth: Optional[str]    # Shallow / Deep (optional)
+    motionHint: str         # Static / Pan / Tilt / Track / Zoom / Handheld (comma-separated if multiple)
 
 # Request: Analyze sketch
 class AnalyzeSketchRequest(BaseModel):

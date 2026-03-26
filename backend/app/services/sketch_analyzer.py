@@ -50,16 +50,17 @@ async def analyze_sketch(image_base64: str, script_context: str) -> AnalyzeSketc
 Analyze the provided storyboard sketch image and return your response as valid JSON only (no markdown, no code fences).
 Format:
 {{
-  "alignment": "Description of what you see in the sketch (in Korean)",
+  "alignment": "...(Korean description)...",
   "cir": {{
-    "shotSize": "Extreme Close-Up|Close-Up|Medium Close-Up|Medium Shot|Medium Long Shot|Long Shot|Wide Shot|Extreme Wide Shot",
-    "cameraAngle": "Frontal|Three-Quarter|Profile|Rear|Dutch Tilt",
-    "cameraLevel": "High Angle|Eye Level|Low Angle|Top-Down|Ground Level",
-    "relation": "Single|Two-Shot|Over-the-Shoulder|Point of View|Group|Insert",
-    "blockingDistance": "Intimate|Personal|Social|Public",
-    "eyeline": "Direct|Averted|Off-Screen|Direct Address",
-    "occlusion": "None|Partial|Foreground Element|Deep Focus",
-    "motionHint": "Static|Pan|Tilt|Track|Zoom|Handheld|Both"
+    "shotSize": "Extreme Close-Up|Close-Up|Medium Close-Up|Medium Shot|Medium Long Shot|Long Shot|Extreme Wide Shot",
+    "horizontalAngle": "Frontal|Three-Quarter|Profile|Rear",
+    "verticalLevel": "High|Eye|Low|Top-Down|Ground",
+    "subjectConfig": "Single|Two-Shot|Group|Insert",
+    "viewpointFraming": "Objective|OTS|POV",
+    "eyeline": "Toward Subject|Averted|Off-Screen|Toward Camera",
+    "occlusion": "None|Partial|Heavy",
+    "depth": "Shallow|Deep (optional, omit if not discernible)",
+    "motionHint": "Static|Pan|Tilt|Track|Zoom|Handheld (comma-separated if multiple)"
   }}
 }}
 """

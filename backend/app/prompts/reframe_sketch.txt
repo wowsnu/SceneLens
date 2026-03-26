@@ -16,57 +16,54 @@ CIR ATTRIBUTE GUIDE:
     Medium Shot: waist up
     Medium Long Shot: knees up
     Long Shot: full body visible
-    Wide Shot: characters small in environment
     Extreme Wide Shot: landscape/establishing, characters tiny or absent
 
-- cameraAngle (horizontal):
+- horizontalAngle:
     Frontal: subject faces camera directly
     Three-Quarter: slight diagonal angle (most common for dialogue)
     Profile: 90-degree side view
     Rear: camera behind subject, facing away
-    Dutch Tilt: camera rotated on its axis, diagonal horizon
 
-- cameraLevel (vertical):
-    High Angle: camera above, looking down at subject
-    Eye Level: camera at subject's eye height, neutral
-    Low Angle: camera below, looking up at subject
+- verticalLevel:
+    High: camera above, looking down at subject
+    Eye: camera at subject's eye height, neutral
+    Low: camera below, looking up at subject
     Top-Down: camera directly overhead (bird's eye)
-    Ground Level: camera at floor level
+    Ground: camera at floor level
 
-- relation (character arrangement):
+- subjectConfig:
     Single: one character in frame
-    Two-Shot: two characters visible and roughly equal
-    Over-the-Shoulder: looking past one character's shoulder to another
-    Point of View: camera sees what the character sees
+    Two-Shot: two characters visible
     Group: three or more characters
     Insert: extreme close-up of object or detail (no character)
 
-- blockingDistance (space between characters):
-    Intimate: touching or extremely close (0-18 inches)
-    Personal: personal space (18 inches - 4 feet)
-    Social: conversational distance (4-12 feet)
-    Public: separated by significant space (12+ feet)
+- viewpointFraming:
+    Objective: neutral third-person view
+    OTS: over-the-shoulder, looking past one character to another
+    POV: camera sees what the character sees
 
-- eyeline (where characters look):
-    Direct: characters looking directly at each other
-    Averted: intentionally looking away from each other
+- eyeline:
+    Toward Subject: characters looking directly at each other
+    Averted: intentionally looking away
     Off-Screen: looking at something outside the frame
-    Direct Address: breaking the 4th wall, looking into the lens
+    Toward Camera: breaking the 4th wall, looking into the lens
 
-- occlusion (visual obstruction):
-    None: clear, unobstructed view of all subjects
+- occlusion:
+    None: clear, unobstructed view
     Partial: subjects partially hidden by each other or objects
-    Foreground Element: object or figure blurs/frames the front of the lens
-    Deep Focus: multiple depth planes all in focus simultaneously
+    Heavy: significant obstruction of subjects
 
-- motionHint (implied movement):
+- depth (optional):
+    Shallow: background out of focus, subject isolated
+    Deep: foreground and background both in focus
+
+- motionHint (can be multiple):
     Static: no movement indicated
     Pan: camera rotates horizontally
     Tilt: camera rotates vertically
     Track: camera physically moves with subject
-    Zoom: focal length change (push in or pull out)
+    Zoom: focal length change
     Handheld: unstable, naturalistic camera movement
-    Both: both subject and camera movement indicated
 
 STRICT RULES:
 - Do NOT include any speech bubbles, dialogue text, captions, labels, or written words
