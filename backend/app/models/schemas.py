@@ -3,14 +3,14 @@ from typing import Optional, List, Dict
 
 # CIR (Cinematic Intermediate Representation) - 8 attributes
 class CIR(BaseModel):
-    shotSize: str  # Wide / Medium / Close
-    cameraAngle: str  # High / Neutral / Low
-    cameraLevel: str  # High / Eye / Low
-    relation: str  # Single / Two-shot / OTS
-    blockingDistance: str  # Far / Mid / Near
-    eyeline: str  # Face-to-face / Averted
-    occlusion: str  # None / Partial
-    motionHint: str  # Static / Moving
+    shotSize: str  # Extreme Close-Up / Close-Up / Medium Close-Up / Medium Shot / Medium Long Shot / Long Shot / Wide Shot / Extreme Wide Shot
+    cameraAngle: str  # Frontal / Three-Quarter / Profile / Rear / Dutch Tilt
+    cameraLevel: str  # High Angle / Eye Level / Low Angle / Top-Down / Ground Level
+    relation: str  # Single / Two-Shot / Over-the-Shoulder / Point of View / Group / Insert
+    blockingDistance: str  # Intimate / Personal / Social / Public
+    eyeline: str  # Direct / Averted / Off-Screen / Direct Address
+    occlusion: str  # None / Partial / Foreground Element / Deep Focus
+    motionHint: str  # Static / Pan / Tilt / Track / Zoom / Handheld / Both
 
 # Request: Analyze sketch
 class AnalyzeSketchRequest(BaseModel):
@@ -87,6 +87,16 @@ class GenerateLayersRequest(BaseModel):
 # Response: Generate sketch layers (batch)
 class GenerateLayersResponse(BaseModel):
     layers: Dict[str, str]  # { layer_name: base64_png }
+
+# Request: Reframe sketch with new CIR
+class ReframeSketchRequest(BaseModel):
+    image: str  # base64-encoded original sketch
+    cir: CIR    # target CIR values
+    script_context: Optional[str] = ""
+
+# Response: Reframe sketch
+class ReframeSketchResponse(BaseModel):
+    reframed_image: str  # base64-encoded reframed sketch
 
 # Request: Generate single layer
 class GenerateSingleLayerRequest(BaseModel):

@@ -30,6 +30,8 @@ with open(PROMPTS_DIR / "enhance_sketch.txt", "r") as f:
     ENHANCE_PROMPT = f.read()
 with open(PROMPTS_DIR / "generate_sketch.txt", "r") as f:
     GENERATE_PROMPT = f.read()
+with open(PROMPTS_DIR / "reframe_sketch.txt", "r") as f:
+    REFRAME_PROMPT = f.read()
 
 
 def _remove_background(image_bytes: bytes) -> bytes:
@@ -117,6 +119,34 @@ Now generate a professional storyboard sketch for this scene.
 """
 
     result_bytes = _gemini_generate_image(prompt)
+    return _image_bytes_to_base64(result_bytes)
+
+
+async def reframe_sketch(
+    image_base64: str,
+    cir: dict,
+    script_context: str = "",
+) -> str:
+    """Redraw sketch with new CIR composition. Returns base64 PNG."""
+    if image_base64.startswith('data:'):
+        image_base64 = image_base64.split(',')[1]
+
+    image_bytes = base64.b64decode(image_base64)
+
+    cir_desc = "\n".join(f"  - {k}: {v}" for k, v in cir.items())
+
+    prompt = f"""{REFRAME_PROMPT}
+
+[Target CIR Values]
+{cir_desc}
+
+[Scene Context]
+{script_context or 'Same scene as the input sketch'}
+
+Now redraw the sketch applying the target CIR composition above.
+"""
+
+    result_bytes = _gemini_generate_image(prompt, image_bytes)
     return _image_bytes_to_base64(result_bytes)
 
 

@@ -4,8 +4,9 @@ from app.models.schemas import (
     GenerateSketchRequest, GenerateSketchResponse,
     GenerateLayersRequest, GenerateLayersResponse,
     GenerateSingleLayerRequest, GenerateSingleLayerResponse,
+    ReframeSketchRequest, ReframeSketchResponse,
 )
-from app.services.image_generator import enhance_sketch, generate_sketch, generate_sketch_layers, generate_single_layer
+from app.services.image_generator import enhance_sketch, generate_sketch, generate_sketch_layers, generate_single_layer, reframe_sketch
 
 router = APIRouter()
 
@@ -46,6 +47,19 @@ async def generate_layers_endpoint(request: GenerateLayersRequest):
             request.layers,
         )
         return GenerateLayersResponse(layers=layers)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/reframe-sketch", response_model=ReframeSketchResponse)
+async def reframe_sketch_endpoint(request: ReframeSketchRequest):
+    try:
+        reframed_image = await reframe_sketch(
+            request.image,
+            request.cir.model_dump(),
+            request.script_context,
+        )
+        return ReframeSketchResponse(reframed_image=reframed_image)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
