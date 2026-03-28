@@ -126,8 +126,9 @@ async def reframe_sketch(
     image_base64: str,
     cir: dict,
     script_context: str = "",
-) -> str:
-    """Redraw sketch with new CIR composition. Returns base64 PNG."""
+    original_cir: dict = None,
+) -> dict:
+    """Redraw sketch with new CIR composition. Returns dict with reframed_image and description."""
     if image_base64.startswith('data:'):
         image_base64 = image_base64.split(',')[1]
 
@@ -135,8 +136,16 @@ async def reframe_sketch(
 
     cir_desc = "\n".join(f"  - {k}: {v}" for k, v in cir.items())
 
-    prompt = f"""{REFRAME_PROMPT}
+    original_cir_section = ""
+    if original_cir:
+        original_cir_desc = "\n".join(f"  - {k}: {v}" for k, v in original_cir.items())
+        original_cir_section = f"""
+[Original CIR Values (before reframe)]
+{original_cir_desc}
+"""
 
+    prompt = f"""{REFRAME_PROMPT}
+{original_cir_section}
 [Target CIR Values]
 {cir_desc}
 
@@ -144,10 +153,39 @@ async def reframe_sketch(
 {script_context or 'Same scene as the input sketch'}
 
 Now redraw the sketch applying the target CIR composition above.
+After the image, provide a single short paragraph (2-3 sentences) in Korean describing:
+1. What changed from the original composition
+2. What cinematic effect this achieves in the scene
+Format: <description>your text here</description>
 """
 
-    result_bytes = _gemini_generate_image(prompt, image_bytes)
-    return _image_bytes_to_base64(result_bytes)
+    client = get_client()
+    contents = [prompt, types.Part.from_bytes(data=image_bytes, mime_type='image/png')]
+    response = client.models.generate_content(
+        model='gemini-2.5-flash-image',
+        contents=contents,
+        config=types.GenerateContentConfig(
+            response_modalities=['TEXT', 'IMAGE'],
+        ),
+    )
+
+    result_image = None
+    description = ""
+    for part in response.candidates[0].content.parts:
+        if part.inline_data is not None:
+            result_image = part.inline_data.data
+        elif part.text:
+            text = part.text
+            if '<description>' in text and '</description>' in text:
+                description = text.split('<description>')[1].split('</description>')[0].strip()
+
+    if result_image is None:
+        raise ValueError("Gemini did not return an image")
+
+    return {
+        "reframed_image": _image_bytes_to_base64(result_image),
+        "description": description,
+    }
 
 
 LAYER_PROMPTS = {

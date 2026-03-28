@@ -93,11 +93,13 @@ class GenerateLayersResponse(BaseModel):
 class ReframeSketchRequest(BaseModel):
     image: str  # base64-encoded original sketch
     cir: CIR    # target CIR values
+    original_cir: Optional[CIR] = None  # original CIR before reframe
     script_context: Optional[str] = ""
 
 # Response: Reframe sketch
 class ReframeSketchResponse(BaseModel):
     reframed_image: str  # base64-encoded reframed sketch
+    description: str = ""  # brief description of what changed
 
 # Request: Generate single layer
 class GenerateSingleLayerRequest(BaseModel):

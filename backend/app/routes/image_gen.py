@@ -54,12 +54,13 @@ async def generate_layers_endpoint(request: GenerateLayersRequest):
 @router.post("/reframe-sketch", response_model=ReframeSketchResponse)
 async def reframe_sketch_endpoint(request: ReframeSketchRequest):
     try:
-        reframed_image = await reframe_sketch(
+        result = await reframe_sketch(
             request.image,
             request.cir.model_dump(),
             request.script_context,
+            request.original_cir.model_dump() if request.original_cir else None,
         )
-        return ReframeSketchResponse(reframed_image=reframed_image)
+        return ReframeSketchResponse(**result)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
