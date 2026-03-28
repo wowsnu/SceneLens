@@ -10,26 +10,26 @@ Your task is to REDRAW the sketch with the new composition specified by the CIR 
 
 CIR ATTRIBUTE GUIDE:
 - shotSize:
-    Extreme Close-Up: face/detail only, fills frame
-    Close-Up: head and shoulders
-    Medium Close-Up: chest/bust up
-    Medium Shot: waist up
-    Medium Long Shot: knees up
-    Long Shot: full body visible
+    Extreme Close-Up: Tight on eyes or a specific detail; fills the entire frame.
+    Close-Up: Head and shoulders only.
+    Medium Close-Up: Chest up; bottom frame cuts at the mid-torso.
+    Medium Shot: Waist up; bottom frame cuts at the belt line.
+    Medium Long Shot: Knees up; bottom frame cuts just below the knees.
+    Long Shot: Full body visible; feet are close to the bottom edge.
     Extreme Wide Shot: landscape/establishing, characters tiny or absent
 
 - horizontalAngle:
-    Frontal: subject faces camera directly
-    Three-Quarter: slight diagonal angle (most common for dialogue)
-    Profile: 90-degree side view
-    Rear: camera behind subject, facing away
+    Frontal: Subject faces the camera lens directly ($0^\circ$).
+    Three-Quarter: Subject faces $45^\circ$ toward camera-left or camera-right.
+    Profile: Pure $90^\circ$ side view; subject faces the side of the frame.
+    Rear: Subject’s back is to the camera, facing into the scene.
 
 - verticalLevel:
-    High: camera above, looking down at subject
-    Eye: camera at subject's eye height, neutral
-    Low: camera below, looking up at subject
-    Top-Down: camera directly overhead (bird's eye)
-    Ground: camera at floor level
+    High: Camera is high, looking down. Floor/ground is dominant; subjects appear smaller.
+    Eye: Camera at subject's eye level. Neutral, flat perspective.
+    Low: Camera is low, looking up. Subjects appear dominant/heroic; background sky or ceiling is more visible.
+    Top-Down: Bird's-eye view; camera is perpendicular to the ground.
+    Ground: Camera is on the floor, looking straight or slightly up.
 
 - subjectConfig:
     Single: one character in frame
@@ -38,32 +38,23 @@ CIR ATTRIBUTE GUIDE:
     Insert: extreme close-up of object or detail (no character)
 
 - viewpointFraming:
-    Objective: neutral third-person view
-    OTS: over-the-shoulder, looking past one character to another
-    POV: camera sees what the character sees
-
+    Objective: Neutral third-person observer view. No foreground obstructions.
+    OTS: Camera is behind one character. That character’s shoulder and back of head occupy approx. 1/4 of the frame corner (rendered dark/silhouetted). The other character is in the background, facing the camera.
+    POV: The camera IS the character’s eyes. STRICT: Absolutely zero parts of the POV character (arms, nose, body) are visible. Subjects in frame must look directly into the lens as if making eye contact with the viewer.
 - eyeline:
-    Toward Subject: characters looking directly at each other
-    Averted: intentionally looking away
-    Off-Screen: looking at something outside the frame
-    Toward Camera: breaking the 4th wall, looking into the lens
+    Toward Subject: Character looks at the other character in the frame.
+    Averted: Character intentionally looks away from the other subject
+    Off-Screen: Character looks at something outside the 16:9 frame.
+    Toward Camera: Character breaks the 4th wall, looking directly into the lens.
 
 - occlusion:
-    None: clear, unobstructed view
-    Partial: subjects partially hidden by each other or objects
+    None: specify if objects or characters block the view.
+    Partial: Subject is sharp; background is rendered with simple, blurred, or faded lines.
     Heavy: significant obstruction of subjects
 
 - depth (optional):
-    Shallow: background out of focus, subject isolated
-    Deep: foreground and background both in focus
-
-- motionHint (can be multiple):
-    Static: no movement indicated
-    Pan: camera rotates horizontally
-    Tilt: camera rotates vertically
-    Track: camera physically moves with subject
-    Zoom: focal length change
-    Handheld: unstable, naturalistic camera movement
+    Shallow: Subject is sharp; background is blurred/minimal to force focus on the character.
+    Deep: Everything from foreground to background is in sharp focus to show the entire environment.
 
 STRICT RULES:
 - Do NOT include any speech bubbles, dialogue text, captions, labels, or written words
