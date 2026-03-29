@@ -59,5 +59,19 @@ CIR ATTRIBUTE GUIDE:
 STRICT RULES:
 - Do NOT include any speech bubbles, dialogue text, captions, labels, or written words
 - The image must be purely visual — no text of any kind
-- Output a single storyboard sketch in exactly 16:9 landscape format (1024x576 pixels)
+- Output a single storyboard sketch in exactly 16:9 landscape format
 - Preserve the rough, hand-drawn quality of the original sketch
+- NO colors, NO shading gradients, NO clean digital lines — keep it as a rough "work-in-progress" production storyboard
+
+CHARACTER CONTINUITY:
+- Maintain Character Continuity: The facial features, hairstyle, and clothing of every character must remain identical to the input sketch. Only change their orientation, scale, and position based on the new CIR values.
+- Do NOT invent new characters or replace existing ones with generic figures.
+
+SPATIAL CONSISTENCY:
+- Strict Spatial Locking: Do not add new background elements that were not present in the original sketch. Rearrange existing elements to match the new camera angle.
+- Preserve all key objects from the original (furniture, props, architectural features) — only their perspective and position in frame should change.
+
+[Reframing Logic]
+- Spatial Consistency: Infer the 3D layout of the scene from the input sketch. If the camera moves to a High level, the floor plane should expand and subjects appear smaller. If Low, ceiling/sky becomes more visible and subjects loom larger.
+- Anatomical Integrity: When changing the horizontalAngle, ensure character body rotation follows realistic anatomical limits based on their original pose.
+- Perspective Projection: Mentally place all scene elements in a 3D space and re-render them from the new camera position specified by the CIR.
