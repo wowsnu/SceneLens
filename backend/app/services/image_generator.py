@@ -54,7 +54,7 @@ def _gemini_generate_image(prompt: str, input_image_bytes: bytes = None) -> byte
         contents.append(types.Part.from_bytes(data=input_image_bytes, mime_type='image/png'))
 
     response = client.models.generate_content(
-        model='gemini-3.1-flash-image-preview',
+        model='gemini-2.5-flash-image',
         contents=contents,
         config=types.GenerateContentConfig(
             response_modalities=['TEXT', 'IMAGE'],
@@ -162,7 +162,7 @@ Format: <description>your text here</description>
     client = get_client()
     contents = [prompt, types.Part.from_bytes(data=image_bytes, mime_type='image/png')]
     response = client.models.generate_content(
-        model='gemini-3.1-flash-image-preview',
+        model='gemini-2.5-flash-image',
         contents=contents,
         config=types.GenerateContentConfig(
             response_modalities=['TEXT', 'IMAGE'],
