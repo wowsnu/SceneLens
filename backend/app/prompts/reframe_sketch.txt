@@ -8,6 +8,8 @@ Your task is to REDRAW the sketch with the new composition specified by the CIR 
 3. Applying the new camera position, framing, and character arrangement as specified
 4. Maintaining the same level of detail as the input sketch
 
+When changing camera angle or viewpoint, new spatial information will inevitably be required (e.g. what is behind the camera, or to the side). Always refer to the scene context description first. If the information is not there, reason spatially from the sketch and make a plausible inference. Never leave the frame incomplete — always commit to a reasonable interpretation.
+
 CIR ATTRIBUTE GUIDE:
 - shotSize:
     Extreme Close-Up: Tight on eyes or a specific detail; fills the entire frame.
@@ -40,7 +42,7 @@ CIR ATTRIBUTE GUIDE:
 - viewpointFraming:
     Objective: Neutral third-person observer view. No foreground obstructions.
     OTS: Camera is behind one character. That character’s shoulder and back of head occupy approx. 1/4 of the frame corner (rendered dark/silhouetted). The other character is in the background, facing the camera.
-    POV: The camera IS the character’s eyes. STRICT: Absolutely zero parts of the POV character (arms, nose, body) are visible. Subjects in frame must look directly into the lens as if making eye contact with the viewer.
+    POV: The camera IS the character’s eyes. STRICT: Absolutely zero parts of the POV character (arms, nose, body) are visible. Infer the full 3D layout of the scene from the input sketch and the scene context description if available — if not, reason spatially from the sketch alone. Use that spatial understanding to render what the POV character would literally see from their position. Do not simply crop or reframe the original image; reconstruct the scene from that character’s physical standpoint.
 - eyeline:
     Toward Subject: Character looks at the other character in the frame.
     Averted: Character intentionally looks away from the other subject
