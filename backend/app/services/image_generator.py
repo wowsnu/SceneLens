@@ -1,10 +1,8 @@
 import os
-import io
 import base64
 from pathlib import Path
 from google import genai
 from google.genai import types
-from PIL import Image
 try:
     from rembg import remove as rembg_remove
     HAS_REMBG = True
@@ -368,40 +366,36 @@ SPEED AND QUALITY INSTRUCTIONS:
 - The output should look like it was drawn in the same session as the input.
 
 Now redraw the sketch applying ONLY the changes above. Keep everything else identical to the input.
-After the image, provide a single short paragraph (2-3 sentences) in Korean describing:
-1. What changed from the original composition
-2. What cinematic effect this achieves in the scene
-Format: <description>your text here</description>
 """
 
     client = get_client()
-    contents = [prompt] + [
-        "[Input sketch to reframe:]",
-        types.Part.from_bytes(data=image_bytes, mime_type='image/png'),
-    ]
-    gen_config = types.GenerateContentConfig(
-        response_modalities=['TEXT', 'IMAGE'],
-    )
-    if model == 'gemini-3.1-flash-image-preview':
-        gen_config = types.GenerateContentConfig(
-            response_modalities=['TEXT', 'IMAGE'],
-            thinking_config=types.ThinkingConfig(thinking_budget=0),
-        )
-    response = client.models.generate_content(
-        model=model,
-        contents=contents,
-        config=gen_config,
-    )
+    import asyncio
+
+    def _gen_img():
+        contents = [prompt, "\n[Input sketch to reframe:]\n", types.Part.from_bytes(data=image_bytes, mime_type='image/png')]
+        gen_config = types.GenerateContentConfig(response_modalities=['IMAGE'])
+        if model == 'gemini-3.1-flash-image-preview':
+            gen_config = types.GenerateContentConfig(
+                response_modalities=['IMAGE'],
+                thinking_config=types.ThinkingConfig(thinking_budget=0),
+            )
+        return client.models.generate_content(model=model, contents=contents, config=gen_config)
+
+    def _gen_desc():
+        desc_prompt = f"""[Scene Context]\n{script_context or 'Same scene'}\n\n[What to change]\n{changed_section}\n\n위 변경사항(What to change)을 바탕으로, 1. 기존 구도에서 무엇이 바뀌었는지 2. 이로 인해 어떤 영화적/시각적 효과가 생기는지 한국어로 2~3문장으로 짧고 명확하게 설명해주세요. 포맷 태그 없이 오직 설명 텍스트만 출력하세요."""
+        res = client.models.generate_content(model='gemini-2.5-flash', contents=[desc_prompt])
+        return res.text.strip()
+
+    img_task = asyncio.create_task(asyncio.to_thread(_gen_img))
+    desc_task = asyncio.create_task(asyncio.to_thread(_gen_desc))
+
+    response, description = await asyncio.gather(img_task, desc_task)
 
     result_image = None
-    description = ""
     for part in response.candidates[0].content.parts:
         if part.inline_data is not None:
             result_image = part.inline_data.data
-        elif part.text:
-            text = part.text
-            if '<description>' in text and '</description>' in text:
-                description = text.split('<description>')[1].split('</description>')[0].strip()
+            break
 
     if result_image is None:
         raise ValueError("Gemini did not return an image")

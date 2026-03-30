@@ -1,3 +1,4 @@
+import time
 from fastapi import APIRouter, HTTPException
 from app.models.schemas import (
     EnhanceSketchRequest, EnhanceSketchResponse,
@@ -53,6 +54,8 @@ async def generate_layers_endpoint(request: GenerateLayersRequest):
 
 @router.post("/reframe-sketch", response_model=ReframeSketchResponse)
 async def reframe_sketch_endpoint(request: ReframeSketchRequest):
+    t0 = time.time()
+    print(f"[reframe-sketch] START model={request.model} cir={request.cir.model_dump()}")
     try:
         result = await reframe_sketch(
             request.image,
@@ -61,8 +64,12 @@ async def reframe_sketch_endpoint(request: ReframeSketchRequest):
             request.original_cir.model_dump() if request.original_cir else None,
             request.model,
         )
+        elapsed = time.time() - t0
+        print(f"[reframe-sketch] DONE model={request.model} elapsed={elapsed:.1f}s")
         return ReframeSketchResponse(**result)
     except Exception as e:
+        elapsed = time.time() - t0
+        print(f"[reframe-sketch] ERROR model={request.model} elapsed={elapsed:.1f}s error={e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
