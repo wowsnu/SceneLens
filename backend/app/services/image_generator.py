@@ -48,189 +48,158 @@ CIR_VISUAL_EXAMPLES = {
 CIR_DESCRIPTIONS = {
     'shotSize': {
         'Extreme Close-Up': (
-            "This is the tightest possible framing. Fill the ENTIRE frame with a single facial feature — eyes, mouth, or a specific object detail. "
-            "The face must occupy 80%+ of the frame height. No neck, no shoulders, no background should be visible. "
-            "Every pore, wrinkle, and texture should be readable. This shot creates maximum psychological intensity and forces the viewer to focus on one single detail. "
-            "If the subject is an object (e.g. a hand, a coin), it should fill the frame completely."
+            "Shot on a 100mm macro lens. This is the tightest possible framing. Fill the ENTIRE frame with a single facial feature — eyes, mouth, or a specific object detail. "
+            "The face must occupy 80%+ of the frame height. The frame is tightly cropped at the forehead and chin, ensuring only the central features are within the boundaries. "
+            "Every pore, wrinkle, and texture should be readable, creating maximum psychological intensity. "
+            "If the subject is an object, it must scale to touch the frame edges."
         ),
         'Close-Up': (
-            "Frame from the top of the head to just below the shoulders. The face is the dominant element — it should take up roughly 50-60% of the frame height. "
+            "Shot on an 85mm portrait telephoto lens. Frame is cropped from the top of the head to just below the shoulders. "
+            "The face is the dominant element, taking up roughly 50-60% of the frame height. "
             "Both eyes, nose, and mouth are fully visible and emotionally readable. "
-            "The background is present but out of focus or minimal — it should not compete with the face. "
-            "This shot communicates emotion, reaction, and inner state clearly."
+            "The background is present but compressed and soft, preventing it from competing with the subject's face."
         ),
         'Medium Close-Up': (
-            "Frame from the top of the head to approximately mid-chest (just below the collar/tie/neckline). "
-            "The face is prominent and readable but the upper body provides context about posture and clothing. "
-            "Background is visible and provides environmental context. "
-            "This is the most common shot for dialogue — intimate enough to read emotion, wide enough to show body language."
+            "Shot on a 50mm standard lens. Frame is cropped from the top of the head to approximately mid-chest. "
+            "The face is prominent and readable, while the upper body provides clear context about posture and clothing. "
+            "Background elements are visible and structured, providing clear environmental context for dialogue."
         ),
         'Medium Shot': (
-            "Frame from the top of the head to the waist/belt line. Full upper body visible including arms and hands. "
-            "The character's gestures and hand movements are visible and meaningful. "
-            "Background occupies roughly 1/3 of the frame and clearly establishes the environment. "
-            "This shot balances character and space — used for action, conversation, and interaction."
+            "Shot on a 35mm lens. Frame is cropped from the top of the head to the waist/belt line. "
+            "Full upper body is visible, capturing character gestures and hand movements clearly. "
+            "The background occupies roughly 1/3 of the frame, establishing a balanced 3D spatial relationship between character and environment."
         ),
         'Medium Long Shot': (
-            "Frame from the top of the head to just below the knees. Nearly full body visible. "
-            "The character's full posture, stance, and movement are readable. "
-            "Background and environment are clearly visible and contextually important. "
-            "This shot is used when both the character's full physicality AND the environment matter equally."
+            "Shot on a 24mm wide lens. Frame is cropped from the top of the head to just below the knees. "
+            "Nearly full body visible, revealing full posture, stance, and movement. "
+            "Background and environment are distinct and wrap around the character, giving equal visual weight to the physical space."
         ),
         'Long Shot': (
-            "The full body is visible from head to toe. Feet are near the bottom edge of the frame. "
-            "The character is clearly identifiable but their face is not the focus. "
-            "The surrounding environment — room, street, landscape — is equally important and takes up at least half the frame. "
-            "This shot establishes the character's relationship to their physical space."
+            "Shot on an 18mm wide lens. The full body is entirely visible from head to toe within the frame boundaries. "
+            "Feet rest near the bottom edge. The character is clearly identifiable, but the surrounding environment — room, street, or landscape — "
+            "takes up at least 60% of the frame, establishing the character's exact physical scale within the space."
         ),
         'Extreme Wide Shot': (
-            "CRITICAL: The environment and location COMPLETELY dominate this shot. "
-            "Characters, if present at all, must appear TINY — no taller than 10-15% of the total frame height. "
-            "Individual faces are completely unreadable. Characters appear as small figures in a vast space. "
-            "The entire room, building exterior, landscape, or environment should be visible. "
-            "This shot is about place, isolation, and scale — NOT about people. "
-            "Think of an aerial view of a building, or a person standing alone in a massive empty field."
+            "CRITICAL: Shot on a 14mm ultra-wide lens. The environment and location COMPLETELY dominate this shot. "
+            "Characters must appear TINY — no taller than 10-15% of the total frame height. "
+            "Characters appear as small, unreadable figures integrated into a vast, expansive space. "
+            "The entire room, building exterior, or landscape stretches across the frame, emphasizing massive scale and isolation."
         ),
     },
     'horizontalAngle': {
         'Frontal': (
-            "The subject faces the camera directly and squarely at exactly 0°. "
-            "Both eyes are fully visible and symmetrically placed. The full front of the face and body is toward the lens. "
-            "This creates a direct, confrontational, or confessional feeling. "
-            "The subject should appear to be looking straight at — or just past — the camera."
+            "0-degree camera axis. The subject faces the camera directly and squarely. "
+            "Both eyes are fully visible and symmetrically placed. The full front of the face and body is completely parallel to the camera lens. "
+            "The subject appears to be looking straight at — or just past — the camera lens."
         ),
         'Three-Quarter': (
-            "The subject is turned approximately 45° away from the camera, showing a diagonal view of the face and body. "
-            "Both eyes are still visible, but one side of the face is more prominent. The nose breaks the far eye's silhouette. "
-            "This is the most natural and commonly used angle for conversation and drama — it gives depth to the face without full profile. "
-            "The body should also be angled, not just the face."
+            "45-degree camera axis. The subject is turned diagonally away from the camera. "
+            "Both eyes are visible, but the facial structure shows deep 3D volume. The nose breaks the far eye's silhouette. "
+            "The body shoulders are physically angled, creating a clear sense of depth and natural conversation perspective."
         ),
         'Profile': (
-            "The subject is at a strict 90° angle — a pure side view. Only one side of the face and body is visible. "
-            "The far eye is completely hidden behind the nose. The ear is fully visible. "
-            "The subject should be looking toward the left or right edge of the frame, not toward the camera. "
-            "This angle creates a graphic, silhouette-like quality and is used for isolation, contemplation, or stylized shots."
+            "90-degree orthogonal camera axis. A pure side view. Only one exact half of the face and body is visible. "
+            "The far eye and far shoulder are completely occluded by the near side. The ear is centrally visible. "
+            "The subject looks directly toward the left or right edge of the frame, perpendicular to the lens."
         ),
         'Rear': (
-            "The camera is positioned directly behind the subject. The back of the head and the full back of the body face the camera. "
-            "The subject's face is NOT visible. The viewer sees what the subject is looking at — the scene in front of them. "
-            "This creates mystery, distance, and a sense of the subject observing something. "
-            "The environment in front of the subject should be clearly visible."
+            "180-degree camera axis. The camera is positioned physically behind the subject. "
+            "The back of the head and the full back of the torso face the lens. "
+            "The viewer sees exactly what the subject is looking at, looking past their back into the forward environment."
         ),
     },
     'verticalLevel': {
         'High': (
-            "The camera is positioned significantly above the subject's head, angled downward. "
-            "The top of the subject's head is visible. The floor or ground plane is prominent in the frame. "
-            "The subject appears smaller, more vulnerable, and less powerful than normal. "
-            "This angle gives the viewer a sense of superiority or surveillance over the subject. "
-            "The horizon line is above mid-frame. Vertical lines in the scene converge downward."
+            "Elevated camera position pointing downward. The top of the subject's head and shoulders are highly visible. "
+            "The floor or ground plane takes up the majority of the lower frame. "
+            "Vertical lines in the environment subtly converge downward due to the high vantage point."
         ),
         'Eye': (
-            "The camera is positioned exactly at the subject's eye level — neither above nor below. "
-            "This is the neutral, natural perspective that mirrors how we see other people in real life. "
-            "The horizon line falls at approximately mid-frame. No distortion or perspective skew. "
-            "Used for straightforward, balanced scenes without a power dynamic implied by camera angle."
+            "Neutral vertical axis. The camera lens is perfectly aligned with the subject's eye level. "
+            "Zero vertical tilt. The horizon line rests exactly at mid-frame, with perfectly parallel vertical lines and no perspective distortion."
         ),
         'Low': (
-            "IMPORTANT: This must look dramatically different from Eye level. "
-            "The camera is positioned at or below the subject's waist, angled sharply UPWARD. "
-            "The ceiling, sky, or upper environment fills the top portion of the frame — at least 30-40%. "
-            "The underside of the subject's chin and jaw is prominently visible. "
-            "The subject's body converges upward due to perspective distortion, making them appear tall and imposing. "
-            "Feet may be near the bottom of the frame. The subject looks powerful, threatening, or heroic. "
-            "The horizon line is very LOW in the frame — near the bottom third."
+            "CRITICAL: Shot on a 14mm wide-angle lens from below the waist, tilting sharply UPWARD. "
+            "Extreme upward perspective distortion. The ceiling, sky, or tall background structures fill the top 40% of the frame. "
+            "The underside of the subject's chin is prominent, and their body dramatically converges upward, making them look towering and imposing."
         ),
         'Top-Down': (
-            "The camera is directly overhead, looking straight down at 90° perpendicular to the ground. "
-            "The ground/floor fills the entire frame. Subjects appear as flat, two-dimensional shapes viewed from above. "
-            "No vertical walls or standing objects are visible — only horizontal surfaces. "
-            "Characters appear as flat figures on the floor. This is a pure bird's-eye view."
+            "Overhead drone perspective. The camera is locked at a 90-degree downward tilt, directly above the scene. "
+            "Orthographic-like flat projection. The floor fills the entire frame, and subjects appear as flat 2D shapes viewed strictly from above. "
+            "No vertical walls or standing profiles are visible."
         ),
         'Ground': (
-            "The camera is placed at floor level, nearly touching the ground. "
-            "The camera looks horizontally across the ground plane or slightly upward. "
-            "The floor surface — tiles, carpet, dirt, pavement — dominates the lower portion of the frame. "
-            "Subjects' feet and legs are at eye level. This creates an insect-eye perspective, "
-            "making the environment feel vast and subjects feel towering."
+            "Worm's-eye view. The camera physical body is resting directly on the floor surface, pointing horizontally. "
+            "The textured floor surface (tiles, dirt, asphalt) heavily dominates the immediate foreground. "
+            "Subjects' feet and legs dominate the midground at eye level."
         ),
     },
     'viewpointFraming': {
         'Objective': (
-            "The camera is a neutral, invisible observer outside the scene. "
-            "No character's perspective is implied. No foreground obstructions. "
-            "The viewer watches the scene as a detached third party. "
-            "This is the default cinematic perspective — the camera has no relationship with any character."
+            "Third-person omniscient perspective. A detached, invisible camera observing the scene. "
+            "Clean framing with no foreground obstructions or implied psychological connection to any character."
         ),
         'OTS': (
-            "The camera is positioned just behind and to the side of one character (Character A). "
-            "Character A's shoulder, the back of their head, and part of their body occupy approximately 1/4 of a frame corner in the foreground — rendered dark or silhouetted. "
-            "Character B is in the background, facing the camera and clearly lit. Character B is the focus of the shot. "
-            "The spatial relationship between the two characters must be clear — they are facing each other. "
-            "This shot creates intimacy and shows the dynamic between two characters."
+            "Strict 3-layer depth composition. FOREGROUND: A heavily out-of-focus, dark silhouette of Character A's shoulder and back of head occupies the bottom left/right corner. "
+            "MIDGROUND: Character B is fully lit, sharp, and in focus, facing the camera. "
+            "BACKGROUND: Out of focus environment. The spatial distance between the foreground shoulder and midground character must be highly distinct."
         ),
         'POV': (
-            "The camera IS the eyes of a specific character. This is pure first-person perspective. "
-            "ABSOLUTE RULE: Zero parts of the POV character are visible — no hands, no nose, no body, no shadow. "
-            "The frame shows ONLY what that character would literally see from their exact physical position and eye height. "
-            "Infer the POV character's position from the scene context and reconstruct the spatial layout accordingly. "
-            "Other characters in the scene should appear as if they are looking back at the POV character — i.e., looking toward the camera."
+            "True first-person perspective. The camera lens acts exactly as the character's physical eyes. "
+            "The viewer sees the world extending outward from the camera plane. "
+            "Other characters in the scene look directly into the camera lens, reacting to the viewer's physical presence in the space."
         ),
     },
     'occlusion': {
         'None': (
-            "The primary subject is fully and clearly visible with no obstructions. "
-            "Nothing blocks any part of the subject's body or face. Clean, unobstructed framing."
+            "Clear, completely unobstructed line of sight. The primary subject is fully visible from edge to edge within their framing. "
+            "No environmental elements overlap the subject."
         ),
         'Partial': (
-            "A foreground element partially blocks the view of the primary subject. "
-            "This could be a shoulder in OTS, a door frame, furniture, another person's arm, or any object. "
-            "The subject is still recognizable and readable, but part of their body is cut off or hidden. "
-            "This adds depth, realism, and a sense that the camera is embedded in the scene."
+            "A distinct FOREGROUND element (like a door frame, plant, or furniture) partially intersects the line of sight to the MIDGROUND subject. "
+            "The subject remains readable, but physical depth is established through this overlapping of 3D objects."
         ),
         'Heavy': (
-            "Large portions of the primary subject are intentionally hidden or obscured. "
-            "The subject may be barely visible — seen through a crack, behind a wall, or with most of their body blocked. "
-            "The obstruction should be clearly intentional and dramatically motivated. "
-            "This creates mystery, tension, and a sense of surveillance or concealment."
+            "A massive FOREGROUND obstacle blocks 70-90% of the MIDGROUND subject. "
+            "The subject is tightly framed through a narrow gap, crack, or window, creating a voyeuristic and constrained spatial relationship."
         ),
     },
     'depth': {
         'Shallow': (
-            "Apply a shallow depth of field. The primary subject is rendered in sharp, crisp detail. "
-            "The background is significantly blurred, softened, or simplified to near-abstraction. "
-            "This isolates the subject visually and directs 100% of the viewer's attention to them. "
-            "In a sketch, render background elements with lighter, less detailed lines."
+            "Shot with an f/1.4 wide aperture. Extreme shallow depth of field. "
+            "The primary subject is incredibly sharp, while the background and foreground instantly fall off into creamy, abstract bokeh blur. "
+            "Complete visual isolation of the subject."
         ),
         'Deep': (
-            "Everything in the frame — foreground, midground, and background — is in sharp, equal focus. "
-            "Every element of the environment is rendered with equal detail and clarity. "
-            "This allows the viewer to read the entire scene simultaneously and creates a sense of spatial depth and context."
+            "Shot with an f/16 narrow aperture. Extreme deep focus. "
+            "Every single element — from the closest foreground object to the infinite background — is rendered with crisp, sharp, equal clarity. "
+            "Complex spatial layouts are perfectly readable."
         ),
     },
     'motionHint': {
-        'Static': "No camera movement. Completely still, locked-off composition. Clean lines with no motion blur.",
+        'Static': (
+            "Shot with a very fast shutter speed (1/1000s). Completely locked-off camera. "
+            "Tack-sharp image with absolutely zero motion blur or streaking on any element."
+        ),
         'Pan': (
-            "Suggest a horizontal camera sweep using motion blur lines or streaking on background elements. "
-            "Horizontal blur lines extend from the edges of moving elements. The subject may be sharp while background streaks horizontally."
+            "Photographic motion blur caused by a slow shutter speed during a horizontal camera sweep. "
+            "The background environment forms distinct horizontal streaks, while the tracked subject remains relatively sharp."
         ),
         'Tilt': (
-            "Suggest a vertical camera sweep. Vertical blur lines or streaking on elements. "
-            "The composition implies the camera is moving up or down."
+            "Photographic motion blur caused by a vertical camera sweep. "
+            "The background environment forms distinct vertical streaks, simulating rapid upward or downward camera movement."
         ),
         'Track': (
-            "Suggest the camera physically moving through space alongside the subject. "
-            "Background elements show depth-based motion parallax — objects closer to the camera blur more than distant ones."
+            "Depth-based motion parallax blur. The camera moves through 3D space alongside the subject. "
+            "Foreground objects blur aggressively as they pass the lens, while the midground subject stays sharp."
         ),
         'Zoom': (
-            "Suggest a focal length change (push-in or pull-out). "
-            "Converging perspective lines toward the center of the frame. "
-            "Background elements appear to rush toward or away from the camera."
+            "Radial lens zoom blur effect. Distinct motion blur lines aggressively expand outward from the dead center of the frame, "
+            "simulating a rapid push-in or pull-out of the focal length."
         ),
         'Handheld': (
-            "Slight frame instability and organic, unsteady framing. "
-            "The composition is slightly off-center or tilted. Lines are not perfectly straight. "
-            "Creates a documentary, urgent, or intimate feeling."
+            "Organic, un-stabilized camera movement. The framing is slightly dutch-angled (tilted horizon). "
+            "Composition feels raw, imperfect, and slightly off-center, imitating a heavy shoulder-mounted camera."
         ),
     },
 }
@@ -358,9 +327,10 @@ async def reframe_sketch(
     if changed_attrs:
         lines = []
         for k, v in changed_attrs.items():
+            desc = CIR_DESCRIPTIONS.get(k, {}).get(v, v)
             from_val = original_cir.get(k) if original_cir else None
             from_str = f" (was: {from_val})" if from_val else ""
-            lines.append(f"- {k}: {v}{from_str}")
+            lines.append(f"  - {k}: {v}{from_str}\n    → {desc}")
         changed_section = "[What to change]\n" + "\n".join(lines)
     else:
         changed_section = "[What to change]\n- Apply requested CIR values as-is."
