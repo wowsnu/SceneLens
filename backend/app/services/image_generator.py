@@ -369,6 +369,12 @@ async def reframe_sketch(
 
 {unchanged_section}
 
+SPEED AND QUALITY INSTRUCTIONS:
+- Do NOT overthink or over-render. Draw quickly and simply.
+- Match the rough, hand-drawn quality of the input sketch exactly. Do NOT improve or polish it.
+- No high detail, no photorealism, no clean lines. Keep the same loose, sketchy style as the original.
+- The output should look like it was drawn in the same session as the input.
+
 Now redraw the sketch applying ONLY the changes above. Keep everything else identical to the input.
 After the image, provide a single short paragraph (2-3 sentences) in Korean describing:
 1. What changed from the original composition
@@ -394,7 +400,7 @@ Format: <description>your text here</description>
         types.Part.from_bytes(data=image_bytes, mime_type='image/png'),
     ]
     response = client.models.generate_content(
-        model='gemini-2.5-flash-image',
+        model='gemini-3.1-flash-image-preview',
         contents=contents,
         config=types.GenerateContentConfig(
             response_modalities=['TEXT', 'IMAGE'],
