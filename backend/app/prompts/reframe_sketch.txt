@@ -18,7 +18,7 @@ CIR ATTRIBUTE GUIDE:
     Medium Shot: Waist up; bottom frame cuts at the belt line.
     Medium Long Shot: Knees up; bottom frame cuts just below the knees.
     Long Shot: Full body visible; feet are close to the bottom edge.
-    Extreme Wide Shot: landscape/establishing, characters tiny or absent
+    Extreme Wide Shot: The environment completely dominates the frame. Characters must appear very small — no taller than 15-20% of the frame height. Individual facial features are not readable. The purpose is to show the location/setting, not the characters.
 
 - horizontalAngle:
     Frontal: Subject faces the camera lens directly ($0^\circ$).
