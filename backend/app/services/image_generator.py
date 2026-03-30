@@ -326,6 +326,7 @@ async def reframe_sketch(
     cir: dict,
     script_context: str = "",
     original_cir: dict = None,
+    model: str = "gemini-2.5-flash-image",
 ) -> dict:
     """Redraw sketch with new CIR composition. Returns dict with reframed_image and description."""
     if image_base64.startswith('data:'):
@@ -378,13 +379,18 @@ Format: <description>your text here</description>
         "[Input sketch to reframe:]",
         types.Part.from_bytes(data=image_bytes, mime_type='image/png'),
     ]
-    response = client.models.generate_content(
-        model='gemini-3.1-flash-image-preview',
-        contents=contents,
-        config=types.GenerateContentConfig(
+    gen_config = types.GenerateContentConfig(
+        response_modalities=['TEXT', 'IMAGE'],
+    )
+    if model == 'gemini-3.1-flash-image-preview':
+        gen_config = types.GenerateContentConfig(
             response_modalities=['TEXT', 'IMAGE'],
             thinking_config=types.ThinkingConfig(thinking_budget=0),
-        ),
+        )
+    response = client.models.generate_content(
+        model=model,
+        contents=contents,
+        config=gen_config,
     )
 
     result_image = None
