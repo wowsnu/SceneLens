@@ -404,6 +404,7 @@ Format: <description>your text here</description>
         contents=contents,
         config=types.GenerateContentConfig(
             response_modalities=['TEXT', 'IMAGE'],
+            thinking_config=types.ThinkingConfig(thinking_budget=0),
         ),
     )
 
