@@ -306,6 +306,7 @@ async def reframe_sketch(
     original_cir: dict = None,
     include_description: bool = True,
     model: str = "gemini-2.5-flash-image",
+    intent: str = "",
 ) -> dict:
     """Redraw sketch with new CIR composition. Returns dict with reframed_image and description."""
     if image_base64.startswith('data:'):
@@ -338,7 +339,11 @@ async def reframe_sketch(
     print(f"[reframe-sketch] changed_attrs={list(changed_attrs.keys())}")
     print(f"[reframe-sketch] changed_section=\n{changed_section}")
 
+    intent_section = f"[Director's Intent — HIGHEST PRIORITY]\n{intent}\nApply this intent above all else. It overrides default compositional choices." if intent else ""
+
     prompt = f"""{REFRAME_PROMPT}
+
+{intent_section}
 
 [Scene Context]
 {script_context or 'Same scene as the input sketch'}

@@ -93,6 +93,7 @@ class ReframeSketchRequest(BaseModel):
     cir: CIR    # target CIR values
     original_cir: Optional[CIR] = None  # original CIR before reframe
     script_context: Optional[str] = ""
+    intent: Optional[str] = ""  # director's intent — highest priority instruction
     include_description: Optional[bool] = False
     model: Optional[str] = "gemini-2.5-flash-image"  # gemini-2.5-flash-image / gemini-3.1-flash-image-preview / gpt-image-1.5
 
