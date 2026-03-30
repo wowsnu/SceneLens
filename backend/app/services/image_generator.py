@@ -393,7 +393,7 @@ Now redraw the sketch applying ONLY the changes above. Keep everything else iden
                 image=("sketch.png", image_bytes, "image/png"),
                 prompt=prompt,
                 n=1,
-                size="512x512",
+                size="1024x1024",
             )
             img_b64 = response.data[0].b64_json
             return base64.b64decode(img_b64)
