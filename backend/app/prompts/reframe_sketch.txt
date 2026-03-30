@@ -10,53 +10,6 @@ Your task is to REDRAW the sketch with the new composition specified by the CIR 
 
 When changing camera angle or viewpoint, new spatial information will inevitably be required (e.g. what is behind the camera, or to the side). Always refer to the scene context description first. If the information is not there, reason spatially from the sketch and make a plausible inference. Never leave the frame incomplete — always commit to a reasonable interpretation.
 
-CIR ATTRIBUTE GUIDE:
-- shotSize:
-    Extreme Close-Up: Tight on eyes or a specific detail; fills the entire frame.
-    Close-Up: Head and shoulders only.
-    Medium Close-Up: Chest up; bottom frame cuts at the mid-torso.
-    Medium Shot: Waist up; bottom frame cuts at the belt line.
-    Medium Long Shot: Knees up; bottom frame cuts just below the knees.
-    Long Shot: Full body visible; feet are close to the bottom edge.
-    Extreme Wide Shot: The environment completely dominates the frame. Characters must appear very small — no taller than 15-20% of the frame height. Individual facial features are not readable. The purpose is to show the location/setting, not the characters.
-
-- horizontalAngle:
-    Frontal: Subject faces the camera lens directly ($0^\circ$).
-    Three-Quarter: Subject faces $45^\circ$ toward camera-left or camera-right.
-    Profile: Pure $90^\circ$ side view; subject faces the side of the frame.
-    Rear: Subject’s back is to the camera, facing into the scene.
-
-- verticalLevel:
-    High: Camera is above subject's head, angled downward. Floor/ground occupies more of the frame. Subject's top of head is visible. Subject appears smaller and more vulnerable.
-    Eye: Camera is exactly at subject's eye height. Horizon line is at mid-frame. Neutral, flat perspective with no distortion.
-    Low: Camera is below subject's waist, angled upward. Ceiling or sky occupies the upper portion of the frame. The underside of the subject's chin is visible. Feet are near the bottom edge. Subject looms large and appears dominant or threatening. This must look DISTINCTLY different from Eye level — the upward perspective distortion must be clearly visible.
-    Top-Down: Camera is directly overhead, perpendicular to the ground. Floor/ground fills the frame. Subjects appear as flat shapes from above.
-    Ground: Camera is at floor level, looking horizontally or slightly upward across the ground plane.
-
-- subjectConfig:
-    Single: one character in frame
-    Two-Shot: two characters visible
-    Group: three or more characters
-    Insert: extreme close-up of object or detail (no character)
-
-- viewpointFraming:
-    Objective: Neutral third-person observer view. No foreground obstructions.
-    OTS: Camera is behind one character. That character’s shoulder and back of head occupy approx. 1/4 of the frame corner (rendered dark/silhouetted). The other character is in the background, facing the camera.
-    POV: The camera IS the character’s eyes. STRICT: Absolutely zero parts of the POV character (arms, nose, body) are visible. Infer the full 3D layout of the scene from the input sketch and the scene context description if available — if not, reason spatially from the sketch alone. Use that spatial understanding to render what the POV character would literally see from their position. Do not simply crop or reframe the original image; reconstruct the scene from that character’s physical standpoint.
-- eyeline:
-    Toward Subject: Character looks at the other character in the frame.
-    Averted: Character intentionally looks away from the other subject
-    Off-Screen: Character looks at something outside the 16:9 frame.
-    Toward Camera: Character breaks the 4th wall, looking directly into the lens.
-
-- occlusion:
-    None: specify if objects or characters block the view.
-    Partial: Subject is sharp; background is rendered with simple, blurred, or faded lines.
-    Heavy: significant obstruction of subjects
-
-- depth (optional):
-    Shallow: Subject is sharp; background is blurred/minimal to force focus on the character.
-    Deep: Everything from foreground to background is in sharp focus to show the entire environment.
 
 STRICT RULES:
 - Do NOT include any speech bubbles, dialogue text, captions, labels, or written words
