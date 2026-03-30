@@ -27,11 +27,11 @@ CIR ATTRIBUTE GUIDE:
     Rear: Subject’s back is to the camera, facing into the scene.
 
 - verticalLevel:
-    High: Camera is high, looking down. Floor/ground is dominant; subjects appear smaller.
-    Eye: Camera at subject's eye level. Neutral, flat perspective.
-    Low: Camera is low, looking up. Subjects appear dominant/heroic; background sky or ceiling is more visible.
-    Top-Down: Bird's-eye view; camera is perpendicular to the ground.
-    Ground: Camera is on the floor, looking straight or slightly up.
+    High: Camera is above subject's head, angled downward. Floor/ground occupies more of the frame. Subject's top of head is visible. Subject appears smaller and more vulnerable.
+    Eye: Camera is exactly at subject's eye height. Horizon line is at mid-frame. Neutral, flat perspective with no distortion.
+    Low: Camera is below subject's waist, angled upward. Ceiling or sky occupies the upper portion of the frame. The underside of the subject's chin is visible. Feet are near the bottom edge. Subject looms large and appears dominant or threatening. This must look DISTINCTLY different from Eye level — the upward perspective distortion must be clearly visible.
+    Top-Down: Camera is directly overhead, perpendicular to the ground. Floor/ground fills the frame. Subjects appear as flat shapes from above.
+    Ground: Camera is at floor level, looking horizontally or slightly upward across the ground plane.
 
 - subjectConfig:
     Single: one character in frame

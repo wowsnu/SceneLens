@@ -6,9 +6,7 @@ class CIR(BaseModel):
     shotSize: str           # Extreme Close-Up / Close-Up / Medium Close-Up / Medium Shot / Medium Long Shot / Long Shot / Extreme Wide Shot
     horizontalAngle: str    # Frontal / Three-Quarter / Profile / Rear
     verticalLevel: str      # High / Eye / Low / Top-Down / Ground
-    subjectConfig: str      # Single / Two-Shot / Group / Insert
     viewpointFraming: str   # Objective / OTS / POV
-    eyeline: str            # Toward Subject / Averted / Off-Screen / Toward Camera
     occlusion: str          # None / Partial / Heavy
     depth: Optional[str]    # Shallow / Deep (optional)
     motionHint: str         # Static / Pan / Tilt / Track / Zoom / Handheld (comma-separated if multiple)

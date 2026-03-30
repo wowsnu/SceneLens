@@ -4,14 +4,15 @@ Your task is to analyze a storyboard sketch and extract cinematic attributes (Ci
 
 The CIR attributes are:
 
-1. **shotSize**: The framing of the subject
-   - Extreme Close-Up: face or specific detail only, fills the frame
-   - Close-Up: head and shoulders
-   - Medium Close-Up: chest/bust up
-   - Medium Shot: waist up
+1. **shotSize**: The framing of the PRIMARY subject (the character who is the main focus, not a foreground silhouette/shoulder)
+   - Extreme Close-Up: eyes or specific detail fills almost the entire frame; face takes up 80%+ of frame height
+   - Close-Up: head dominates the frame; chin to top of head visible, face takes up 50%+ of frame height
+   - Medium Close-Up: chest up; face clearly readable but background also visible
+   - Medium Shot: waist up; significant background visible around the subject
    - Medium Long Shot: knees up
-   - Long Shot: full body visible
+   - Long Shot: full body visible with substantial surrounding environment
    - Extreme Wide Shot: landscape/establishing, characters tiny or absent
+   NOTE: If a foreground silhouette/shoulder (OTS) partially blocks the view, judge shotSize by the BACKGROUND subject's framing, not the foreground element.
 
 2. **horizontalAngle**: Horizontal camera angle relative to the subject
    - Frontal: subject faces camera directly
@@ -26,34 +27,22 @@ The CIR attributes are:
    - Top-Down: camera directly overhead (bird's eye)
    - Ground: camera at floor level
 
-4. **subjectConfig**: Number and arrangement of subjects in frame
-   - Single: one character in frame
-   - Two-Shot: two characters visible
-   - Group: three or more characters
-   - Insert: extreme close-up of object or detail (no character)
-
-5. **viewpointFraming**: Camera viewpoint relationship
+4. **viewpointFraming**: Camera viewpoint relationship
    - Objective: neutral third-person view, no character's perspective
    - OTS: over-the-shoulder, looking past one character to another
    - POV: camera sees what the character sees (point of view)
 
-6. **eyeline**: Where the subject(s) are looking
-   - Toward Subject: characters looking directly at each other
-   - Averted: intentionally looking away
-   - Off-Screen: looking at something outside the frame
-   - Toward Camera: looking directly into the lens (4th wall)
-
-7. **occlusion**: Visual obstruction in the frame
-   - None: clear, unobstructed view
-   - Partial: subjects partially hidden by each other or objects
+5. **occlusion**: Visual obstruction in the frame
+   - None: clear, unobstructed view of the primary subject
+   - Partial: primary subject partially hidden by foreground elements (e.g. OTS shoulder, objects). OTS shots should almost always be Partial.
    - Heavy: significant obstruction of subjects
 
-8. **depth** (optional): Depth of field feel
+6. **depth** (optional): Depth of field feel
    - Shallow: background out of focus, subject isolated
    - Deep: foreground and background both in focus
    - (omit if not discernible from the sketch)
 
-9. **motionHint**: Implied camera or subject movement
+7. **motionHint**: Implied camera or subject movement
    - Static: no movement indicated
    - Pan: camera rotates horizontally
    - Tilt: camera rotates vertically
@@ -74,9 +63,7 @@ Format:
     "shotSize": "...",
     "horizontalAngle": "...",
     "verticalLevel": "...",
-    "subjectConfig": "...",
     "viewpointFraming": "...",
-    "eyeline": "...",
     "occlusion": "...",
     "depth": "...(or omit if not discernible)",
     "motionHint": "Static"
