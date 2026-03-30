@@ -335,6 +335,7 @@ async def reframe_sketch(
     cir: dict,
     script_context: str = "",
     original_cir: dict = None,
+    include_description: bool = True,
     model: str = "gemini-2.5-flash-image",
 ) -> dict:
     """Redraw sketch with new CIR composition. Returns dict with reframed_image and description."""
@@ -357,11 +358,12 @@ async def reframe_sketch(
     if changed_attrs:
         lines = []
         for k, v in changed_attrs.items():
-            desc = CIR_DESCRIPTIONS.get(k, {}).get(v, v)
             from_val = original_cir.get(k) if original_cir else None
             from_str = f" (was: {from_val})" if from_val else ""
-            lines.append(f"  - {k}: {v}{from_str}\n    → {desc}")
+            lines.append(f"- {k}: {v}{from_str}")
         changed_section = "[What to change]\n" + "\n".join(lines)
+    else:
+        changed_section = "[What to change]\n- Apply requested CIR values as-is."
 
     prompt = f"""{REFRAME_PROMPT}
 
@@ -391,7 +393,7 @@ Now redraw the sketch applying ONLY the changes above. Keep everything else iden
                 image=("sketch.png", image_bytes, "image/png"),
                 prompt=prompt,
                 n=1,
-                size="1536x1024",
+                size="512x512",
             )
             img_b64 = response.data[0].b64_json
             return base64.b64decode(img_b64)
@@ -415,9 +417,12 @@ Now redraw the sketch applying ONLY the changes above. Keep everything else iden
         return res.text.strip()
 
     img_task = asyncio.create_task(asyncio.to_thread(_gen_img))
-    desc_task = asyncio.create_task(asyncio.to_thread(_gen_desc))
-
-    result_image, description = await asyncio.gather(img_task, desc_task)
+    description = ""
+    if include_description:
+        desc_task = asyncio.create_task(asyncio.to_thread(_gen_desc))
+        result_image, description = await asyncio.gather(img_task, desc_task)
+    else:
+        result_image = await img_task
 
     if result_image is None:
         raise ValueError("Model did not return an image")

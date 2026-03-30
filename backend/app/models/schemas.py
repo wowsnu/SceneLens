@@ -93,7 +93,8 @@ class ReframeSketchRequest(BaseModel):
     cir: CIR    # target CIR values
     original_cir: Optional[CIR] = None  # original CIR before reframe
     script_context: Optional[str] = ""
-    model: Optional[str] = "gemini-2.5-flash-image"  # gemini-2.5-flash-image or gemini-3.1-flash-image-preview
+    include_description: Optional[bool] = False
+    model: Optional[str] = "gemini-2.5-flash-image"  # gemini-2.5-flash-image / gemini-3.1-flash-image-preview / gpt-image-1.5
 
 # Response: Reframe sketch
 class ReframeSketchResponse(BaseModel):
