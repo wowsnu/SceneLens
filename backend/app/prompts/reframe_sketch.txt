@@ -21,8 +21,9 @@ STRICT RULES:
 - NO colors, NO shading gradients, NO clean digital lines — keep it as a rough "work-in-progress" production storyboard
 
 CHARACTER CONTINUITY:
-- Maintain Character Continuity: The facial features, hairstyle, and clothing of every character must remain identical to the input sketch. Only change their orientation, scale, and position based on the new CIR values.
-- Do NOT invent new characters or replace existing ones with generic figures.
+- CRITICAL: Count the exact number of characters in the input sketch. The output must contain EXACTLY the same number of characters — no more, no less.
+- Do NOT invent new characters under any circumstances. Do NOT add background figures, silhouettes, or any additional people.
+- The facial features, hairstyle, and clothing of every character must remain identical to the input sketch. Only change their orientation, scale, and position based on the new CIR values.
 
 SPATIAL CONSISTENCY:
 - Strict Spatial Locking: Do not add new background elements that were not present in the original sketch. Rearrange existing elements to match the new camera angle.

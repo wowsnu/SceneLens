@@ -110,9 +110,13 @@ CIR_DESCRIPTIONS = {
     },
     'verticalLevel': {
         'High': (
-            "Elevated camera position pointing downward. The top of the subject's head and shoulders are highly visible. "
-            "The floor or ground plane takes up the majority of the lower frame. "
-            "Vertical lines in the environment subtly converge downward due to the high vantage point."
+            "CRITICAL: The camera is mounted HIGH above the scene, angled steeply DOWNWARD. "
+            "You are looking DOWN at the subjects from above their heads. "
+            "The TOP of the subjects' heads must be clearly visible — you can see the crown of their heads. "
+            "The FLOOR takes up a large portion of the frame. "
+            "Subjects appear SMALL and compressed. The ceiling is NOT visible. "
+            "This is NOT eye level — the perspective must show strong downward convergence. "
+            "Imagine a security camera mounted near the ceiling looking down at the room."
         ),
         'Eye': (
             "Neutral vertical axis. The camera lens is perfectly aligned with the subject's eye level. "
@@ -140,14 +144,24 @@ CIR_DESCRIPTIONS = {
             "Clean framing with no foreground obstructions or implied psychological connection to any character."
         ),
         'OTS': (
-            "Strict 3-layer depth composition. FOREGROUND: A heavily out-of-focus, dark silhouette of Character A's shoulder and back of head occupies the bottom left/right corner. "
-            "MIDGROUND: Character B is fully lit, sharp, and in focus, facing the camera. "
-            "BACKGROUND: Out of focus environment. The spatial distance between the foreground shoulder and midground character must be highly distinct."
+            "Over-the-shoulder shot. CRITICAL RULES: "
+            "1. DO NOT add new characters. Use ONLY the characters already present in the input sketch. "
+            "2. Physically place the camera behind ONE of the existing characters (Character A). "
+            "3. Character A's shoulder and the back of their head occupy the foreground corner — dark, slightly blurred, silhouetted. "
+            "4. The OTHER existing character (Character B) is in the midground, facing the camera, fully lit and sharp. "
+            "5. SPATIAL REASONING: Infer where Character A is physically standing from the input sketch. "
+            "Move the camera to that position, behind their shoulder. The background must reflect this new camera position — "
+            "you are now seeing the scene from Character A's side, looking toward Character B. "
+            "The environment around Character B should be visible in the background."
         ),
         'POV': (
-            "True first-person perspective. The camera lens acts exactly as the character's physical eyes. "
-            "The viewer sees the world extending outward from the camera plane. "
-            "Other characters in the scene look directly into the camera lens, reacting to the viewer's physical presence in the space."
+            "Point-of-view shot. CRITICAL RULES: "
+            "1. DO NOT add new characters. Use ONLY the characters already present in the input sketch. "
+            "2. The camera IS the physical eyes of one specific character. Zero parts of that character are visible. "
+            "3. SPATIAL REASONING: Determine where the POV character is standing in the scene. "
+            "Reconstruct the full 3D environment from their exact eye position and height. "
+            "4. The other character(s) should be seen as if looking back at the POV character — facing toward the camera. "
+            "5. The background must reflect the POV character's actual physical viewpoint in the scene."
         ),
     },
     'occlusion': {
