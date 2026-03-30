@@ -26,6 +26,14 @@ def get_client():
 
 # Load prompts
 PROMPTS_DIR = Path(__file__).parent.parent / "prompts"
+EXAMPLES_DIR = PROMPTS_DIR / "examples"
+
+# Visual examples for specific CIR values
+CIR_VISUAL_EXAMPLES = {
+    'shotSize': {
+        'Extreme Wide Shot': EXAMPLES_DIR / "extreme_wide_shot.jpg",
+    }
+}
 with open(PROMPTS_DIR / "enhance_sketch.txt", "r") as f:
     ENHANCE_PROMPT = f.read()
 with open(PROMPTS_DIR / "generate_sketch.txt", "r") as f:
@@ -159,8 +167,23 @@ After the image, provide a single short paragraph (2-3 sentences) in Korean desc
 Format: <description>your text here</description>
 """
 
+    # Add visual examples for specific CIR values
+    example_parts = []
+    for attr, value_map in CIR_VISUAL_EXAMPLES.items():
+        cir_value = cir.get(attr)
+        if cir_value and cir_value in value_map:
+            example_path = value_map[cir_value]
+            if example_path.exists():
+                example_bytes = example_path.read_bytes()
+                mime = 'image/jpeg' if str(example_path).endswith('.jpg') else 'image/png'
+                example_parts.append(f"[Visual reference for {attr} = '{cir_value}']: The following image is an example of what a '{cir_value}' shot looks like. Study the camera distance, framing, and how subjects appear in the frame. Apply the same compositional logic — not the specific scene content — to your output.")
+                example_parts.append(types.Part.from_bytes(data=example_bytes, mime_type=mime))
+
     client = get_client()
-    contents = [prompt, types.Part.from_bytes(data=image_bytes, mime_type='image/png')]
+    contents = [prompt] + example_parts + [
+        "[Input sketch to reframe:]",
+        types.Part.from_bytes(data=image_bytes, mime_type='image/png'),
+    ]
     response = client.models.generate_content(
         model='gemini-2.5-flash-image',
         contents=contents,
