@@ -3,6 +3,7 @@ import base64
 from pathlib import Path
 from google import genai
 from google.genai import types
+from openai import OpenAI
 try:
     from rembg import remove as rembg_remove
     HAS_REMBG = True
@@ -12,6 +13,7 @@ except ImportError:
 
 # Lazy initialization
 _client = None
+_openai_client = None
 
 def get_client():
     global _client
@@ -21,6 +23,15 @@ def get_client():
             raise ValueError("GEMINI_API_KEY not found in environment variables")
         _client = genai.Client(api_key=api_key)
     return _client
+
+def get_openai_client():
+    global _openai_client
+    if _openai_client is None:
+        api_key = os.getenv("OPENAI_API_KEY")
+        if not api_key:
+            raise ValueError("OPENAI_API_KEY not found in environment variables")
+        _openai_client = OpenAI(api_key=api_key)
+    return _openai_client
 
 # Load prompts
 PROMPTS_DIR = Path(__file__).parent.parent / "prompts"
@@ -368,37 +379,48 @@ SPEED AND QUALITY INSTRUCTIONS:
 Now redraw the sketch applying ONLY the changes above. Keep everything else identical to the input.
 """
 
-    client = get_client()
     import asyncio
 
+    gemini_client = get_client()
+
     def _gen_img():
-        contents = [prompt, "\n[Input sketch to reframe:]\n", types.Part.from_bytes(data=image_bytes, mime_type='image/png')]
-        gen_config = types.GenerateContentConfig(response_modalities=['IMAGE'])
-        if model == 'gemini-3.1-flash-image-preview':
-            gen_config = types.GenerateContentConfig(
-                response_modalities=['IMAGE'],
-                thinking_config=types.ThinkingConfig(thinking_budget=0),
+        if model == 'gpt-image-1.5':
+            oai = get_openai_client()
+            response = oai.images.edit(
+                model='gpt-image-1.5',
+                image=("sketch.png", image_bytes, "image/png"),
+                prompt=prompt,
+                n=1,
+                size="1536x1024",
             )
-        return client.models.generate_content(model=model, contents=contents, config=gen_config)
+            img_b64 = response.data[0].b64_json
+            return base64.b64decode(img_b64)
+        else:
+            contents = [prompt, "\n[Input sketch to reframe:]\n", types.Part.from_bytes(data=image_bytes, mime_type='image/png')]
+            gen_config = types.GenerateContentConfig(response_modalities=['IMAGE'])
+            if model == 'gemini-3.1-flash-image-preview':
+                gen_config = types.GenerateContentConfig(
+                    response_modalities=['IMAGE'],
+                    thinking_config=types.ThinkingConfig(thinking_budget=0),
+                )
+            res = gemini_client.models.generate_content(model=model, contents=contents, config=gen_config)
+            for part in res.candidates[0].content.parts:
+                if part.inline_data is not None:
+                    return part.inline_data.data
+            raise ValueError("Gemini did not return an image")
 
     def _gen_desc():
         desc_prompt = f"""[Scene Context]\n{script_context or 'Same scene'}\n\n[What to change]\n{changed_section}\n\n위 변경사항(What to change)을 바탕으로, 1. 기존 구도에서 무엇이 바뀌었는지 2. 이로 인해 어떤 영화적/시각적 효과가 생기는지 한국어로 2~3문장으로 짧고 명확하게 설명해주세요. 포맷 태그 없이 오직 설명 텍스트만 출력하세요."""
-        res = client.models.generate_content(model='gemini-2.5-flash', contents=[desc_prompt])
+        res = gemini_client.models.generate_content(model='gemini-2.5-flash', contents=[desc_prompt])
         return res.text.strip()
 
     img_task = asyncio.create_task(asyncio.to_thread(_gen_img))
     desc_task = asyncio.create_task(asyncio.to_thread(_gen_desc))
 
-    response, description = await asyncio.gather(img_task, desc_task)
-
-    result_image = None
-    for part in response.candidates[0].content.parts:
-        if part.inline_data is not None:
-            result_image = part.inline_data.data
-            break
+    result_image, description = await asyncio.gather(img_task, desc_task)
 
     if result_image is None:
-        raise ValueError("Gemini did not return an image")
+        raise ValueError("Model did not return an image")
 
     return {
         "reframed_image": _image_bytes_to_base64(result_image),
