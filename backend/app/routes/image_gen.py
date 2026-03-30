@@ -56,6 +56,7 @@ async def generate_layers_endpoint(request: GenerateLayersRequest):
 async def reframe_sketch_endpoint(request: ReframeSketchRequest):
     t0 = time.time()
     print(f"[reframe-sketch] START model={request.model} cir={request.cir.model_dump()}")
+    print(f"[reframe-sketch] original_cir={request.original_cir.model_dump() if request.original_cir else None}")
     try:
         result = await reframe_sketch(
             request.image,

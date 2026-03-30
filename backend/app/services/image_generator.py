@@ -335,6 +335,9 @@ async def reframe_sketch(
     else:
         changed_section = "[What to change]\n- Apply requested CIR values as-is."
 
+    print(f"[reframe-sketch] changed_attrs={list(changed_attrs.keys())}")
+    print(f"[reframe-sketch] changed_section=\n{changed_section}")
+
     prompt = f"""{REFRAME_PROMPT}
 
 [Scene Context]
