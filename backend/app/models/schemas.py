@@ -72,10 +72,12 @@ class GenerateSketchRequest(BaseModel):
     script_context: str
     intent: Optional[str] = ""
     cir: Optional[CIR] = None
+    output_format: Optional[str] = "png"  # "png" or "svg"
 
 # Response: Generate sketch
 class GenerateSketchResponse(BaseModel):
-    generated_image: str  # base64-encoded generated sketch
+    generated_image: str  # base64-encoded PNG or raw SVG string
+    output_format: str = "png"  # "png" or "svg"
 
 # Request: Generate sketch layers (batch)
 class GenerateLayersRequest(BaseModel):

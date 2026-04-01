@@ -4,6 +4,7 @@ from pathlib import Path
 from google import genai
 from google.genai import types
 from openai import OpenAI
+import httpx
 try:
     from rembg import remove as rembg_remove
     HAS_REMBG = True
@@ -32,6 +33,12 @@ def get_openai_client():
             raise ValueError("OPENAI_API_KEY not found in environment variables")
         _openai_client = OpenAI(api_key=api_key)
     return _openai_client
+
+def get_recraft_api_key():
+    api_key = os.getenv("RECRAFT_API_KEY")
+    if not api_key:
+        raise ValueError("RECRAFT_API_KEY not found in environment variables")
+    return api_key
 
 # Load prompts
 PROMPTS_DIR = Path(__file__).parent.parent / "prompts"
@@ -311,6 +318,67 @@ Now generate a professional storyboard sketch for this scene.
 
     result_bytes = _gemini_generate_image(prompt)
     return _image_bytes_to_base64(result_bytes)
+
+
+async def generate_sketch_svg(
+    script_context: str,
+    intent: str = "",
+    cir: dict = None,
+) -> str:
+    """Generate a storyboard sketch as SVG using Recraft API. Returns SVG string."""
+    api_key = get_recraft_api_key()
+
+    cir_desc = ""
+    if cir:
+        cir_parts = []
+        for k, v in cir.items():
+            if v and k not in ('motionHint', 'depth'):
+                cir_parts.append(f"{k}: {v}")
+        if cir_parts:
+            cir_desc = ", ".join(cir_parts) + ". "
+
+    intent_desc = f"Director's intent: {intent}. " if intent else ""
+
+    prompt = (
+        f"{cir_desc}"
+        f"{intent_desc}"
+        f"Scene: {script_context}. "
+        "Black and white minimalist storyboard sketch. "
+        "Clean contour lines only, pure white background, absolutely no shading, no fill, no color. "
+        "Rough hand-drawn pencil style. 16:9 cinematic frame."
+    )
+
+    print(f"[recraft] Generating SVG sketch, prompt length={len(prompt)}")
+
+    async with httpx.AsyncClient(timeout=120.0) as client:
+        response = await client.post(
+            "https://external.api.recraft.ai/v1/images/generations",
+            headers={
+                "Authorization": f"Bearer {api_key}",
+                "Content-Type": "application/json",
+            },
+            json={
+                "prompt": prompt,
+                "model": "recraftv4_vector",
+                "size": "1365x1024",
+                "response_format": "b64_json",
+            },
+        )
+
+    if response.status_code != 200:
+        raise ValueError(f"Recraft API error: {response.status_code} {response.text}")
+
+    data = response.json()
+    b64 = data["data"][0].get("b64_json")
+    if not b64:
+        raise ValueError("Recraft did not return b64_json")
+
+    # b64_json for SVG is the raw SVG bytes encoded in base64
+    svg_bytes = base64.b64decode(b64)
+    svg_str = svg_bytes.decode("utf-8")
+
+    print(f"[recraft] SVG generated, size={len(svg_str)} chars")
+    return svg_str
 
 
 async def reframe_sketch(

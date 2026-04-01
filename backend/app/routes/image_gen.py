@@ -7,7 +7,7 @@ from app.models.schemas import (
     GenerateSingleLayerRequest, GenerateSingleLayerResponse,
     ReframeSketchRequest, ReframeSketchResponse,
 )
-from app.services.image_generator import enhance_sketch, generate_sketch, generate_sketch_layers, generate_single_layer, reframe_sketch
+from app.services.image_generator import enhance_sketch, generate_sketch, generate_sketch_svg, generate_sketch_layers, generate_single_layer, reframe_sketch
 
 router = APIRouter()
 
@@ -29,12 +29,23 @@ async def enhance_sketch_endpoint(request: EnhanceSketchRequest):
 async def generate_sketch_endpoint(request: GenerateSketchRequest):
     try:
         cir_dict = request.cir.model_dump() if request.cir else None
-        generated_image = await generate_sketch(
-            request.script_context,
-            request.intent,
-            cir_dict,
-        )
-        return GenerateSketchResponse(generated_image=generated_image)
+        output_format = request.output_format or "png"
+
+        if output_format == "svg":
+            print(f"[generate-sketch] Using Recraft SVG")
+            svg_str = await generate_sketch_svg(
+                request.script_context,
+                request.intent,
+                cir_dict,
+            )
+            return GenerateSketchResponse(generated_image=svg_str, output_format="svg")
+        else:
+            generated_image = await generate_sketch(
+                request.script_context,
+                request.intent,
+                cir_dict,
+            )
+            return GenerateSketchResponse(generated_image=generated_image, output_format="png")
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
