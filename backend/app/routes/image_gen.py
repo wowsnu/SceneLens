@@ -5,9 +5,10 @@ from app.models.schemas import (
     GenerateSketchRequest, GenerateSketchResponse,
     GenerateLayersRequest, GenerateLayersResponse,
     GenerateSingleLayerRequest, GenerateSingleLayerResponse,
+    GenerateSvgLayersRequest, GenerateSvgLayersResponse,
     ReframeSketchRequest, ReframeSketchResponse,
 )
-from app.services.image_generator import enhance_sketch, generate_sketch, generate_sketch_svg, generate_sketch_layers, generate_single_layer, reframe_sketch
+from app.services.image_generator import enhance_sketch, generate_sketch, generate_sketch_svg, generate_sketch_layers, generate_single_layer, generate_svg_layers, reframe_sketch
 
 router = APIRouter()
 
@@ -86,6 +87,28 @@ async def reframe_sketch_endpoint(request: ReframeSketchRequest):
     except Exception as e:
         elapsed = time.time() - t0
         print(f"[reframe-sketch] ERROR model={request.model} elapsed={elapsed:.1f}s error={e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/generate-svg-layers", response_model=GenerateSvgLayersResponse)
+async def generate_svg_layers_endpoint(request: GenerateSvgLayersRequest):
+    t0 = time.time()
+    layer_names = request.layers or ["background", "character"]
+    print(f"[generate-svg-layers] START layers={layer_names}")
+    try:
+        cir_dict = request.cir.model_dump() if request.cir else None
+        result = await generate_svg_layers(
+            request.script_context,
+            request.intent,
+            cir_dict,
+            layer_names,
+        )
+        elapsed = time.time() - t0
+        print(f"[generate-svg-layers] DONE elapsed={elapsed:.1f}s")
+        return GenerateSvgLayersResponse(layers=result)
+    except Exception as e:
+        elapsed = time.time() - t0
+        print(f"[generate-svg-layers] ERROR elapsed={elapsed:.1f}s error={e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 

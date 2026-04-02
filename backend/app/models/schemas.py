@@ -115,3 +115,14 @@ class GenerateSingleLayerRequest(BaseModel):
 class GenerateSingleLayerResponse(BaseModel):
     layer: str
     image: str  # base64_png
+
+# Request: Generate SVG layers (object-level separation)
+class GenerateSvgLayersRequest(BaseModel):
+    script_context: str
+    intent: Optional[str] = ""
+    cir: Optional[CIR] = None
+    layers: Optional[List[str]] = ["background", "character"]
+
+# Response: Generate SVG layers
+class GenerateSvgLayersResponse(BaseModel):
+    layers: Dict[str, Optional[str]]  # { layer_name: svg_string or null if failed }

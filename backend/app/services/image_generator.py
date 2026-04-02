@@ -407,6 +407,121 @@ Additional constraints:
     return svg_str
 
 
+async def generate_svg_layer(
+    script_context: str,
+    layer_name: str,
+    intent: str = "",
+    cir: dict = None,
+) -> str:
+    """Generate a single SVG layer (e.g. 'background', 'character') using Recraft API."""
+    import asyncio
+    api_key = get_recraft_api_key()
+
+    cir_block = ""
+    if cir:
+        cir_lines = []
+        for k, v in cir.items():
+            if v and k not in ('motionHint', 'depth'):
+                cir_lines.append(f"  - {k}: {v}")
+        if cir_lines:
+            cir_block = "\n[Composition Reference]\n" + "\n".join(cir_lines)
+
+    layer_instructions = {
+        "background": (
+            "Draw ONLY the background environment/setting with NO characters or people. "
+            "Include architecture, furniture, landscape, sky, walls, floors — everything that forms the scene's space. "
+            "Leave the areas where characters would stand EMPTY."
+        ),
+        "character": (
+            "Draw ONLY the character(s) described in the scene. NO background, NO furniture, NO environment. "
+            "Pure white/transparent background. Draw the full body of each character with their pose and expression. "
+            "Characters should be positioned as described in the scene context."
+        ),
+        "props": (
+            "Draw ONLY the key props and objects mentioned in the scene (books, cups, weapons, vehicles, etc). "
+            "NO background, NO characters. Pure white/transparent background. "
+            "Draw each prop clearly and separately."
+        ),
+        "foreground": (
+            "Draw ONLY foreground elements that would appear closest to the camera. "
+            "This could include objects in the extreme foreground used for depth (door frames, plants, shoulders). "
+            "NO background, NO main characters. Pure white/transparent background."
+        ),
+    }
+
+    layer_desc = layer_instructions.get(layer_name, f"Draw ONLY the {layer_name} elements of the scene. Nothing else.")
+
+    prompt = f"""Storyboard layer generation — {layer_name} layer only.
+
+Scene: {script_context}
+{f"Director's intent: {intent}" if intent else ""}
+{cir_block}
+
+{layer_desc}
+
+Style: Black and white minimalist storyboard sketch. Clean contour lines only, no shading, no fill, no gradients.
+Pure white background. Rough hand-drawn pencil style. 16:9 cinematic frame.
+"""
+
+    print(f"[recraft] Generating SVG layer '{layer_name}', prompt length={len(prompt)}")
+
+    async with httpx.AsyncClient(timeout=120.0) as client:
+        response = await client.post(
+            "https://external.api.recraft.ai/v1/images/generations",
+            headers={
+                "Authorization": f"Bearer {api_key}",
+                "Content-Type": "application/json",
+            },
+            json={
+                "prompt": prompt,
+                "model": "recraftv4_vector",
+                "size": "16:9",
+                "response_format": "b64_json",
+            },
+        )
+
+    if response.status_code != 200:
+        raise ValueError(f"Recraft API error for layer '{layer_name}': {response.status_code} {response.text}")
+
+    data = response.json()
+    b64 = data["data"][0].get("b64_json")
+    if not b64:
+        raise ValueError(f"Recraft did not return b64_json for layer '{layer_name}'")
+
+    svg_bytes = base64.b64decode(b64)
+    svg_str = svg_bytes.decode("utf-8")
+    print(f"[recraft] SVG layer '{layer_name}' generated, size={len(svg_str)} chars")
+    return svg_str
+
+
+async def generate_svg_layers(
+    script_context: str,
+    intent: str = "",
+    cir: dict = None,
+    layers: list = None,
+) -> dict:
+    """Generate multiple SVG layers in parallel. Returns {layer_name: svg_string}."""
+    import asyncio
+    if not layers:
+        layers = ["background", "character"]
+
+    tasks = [
+        generate_svg_layer(script_context, layer_name, intent, cir)
+        for layer_name in layers
+    ]
+    results = await asyncio.gather(*tasks, return_exceptions=True)
+
+    layer_svgs = {}
+    for layer_name, result in zip(layers, results):
+        if isinstance(result, Exception):
+            print(f"[recraft] Layer '{layer_name}' failed: {result}")
+            layer_svgs[layer_name] = None
+        else:
+            layer_svgs[layer_name] = result
+
+    return layer_svgs
+
+
 async def reframe_sketch(
     image_base64: str,
     cir: dict,
