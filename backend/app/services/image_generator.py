@@ -325,6 +325,7 @@ async def generate_sketch_svg(
     intent: str = "",
     cir: dict = None,
     scene_script: str = "",
+    detail_level: int = 50,
 ) -> str:
     """Generate a storyboard sketch as SVG using Recraft API. Returns SVG string."""
     api_key = get_recraft_api_key()
@@ -367,14 +368,11 @@ async def generate_sketch_svg(
 
 Additional constraints:
 - Render exactly ONE storyboard panel (a single 16:9 frame). Do not draw multiple frames or a sequence.
-- Black and white minimalist storyboard sketch delivered as crisp SVG vector lines.
-- Clean contour lines only, absolutely no shading, fill, gradients, or texture; pure white background.
-- Rough hand-drawn pencil energy while remaining legible; lock composition to a 16:9 cinematic frame.
-- IMPORTANT for SVG structure: Use as FEW paths as possible. Draw each object (character, prop, furniture) with minimal strokes.
-- Prefer closed contour shapes over many scattered small strokes. Each character or object should be a self-contained outline.
+- Black and white storyboard sketch delivered as crisp SVG vector lines. Pure white background.
+- Drawing complexity: {detail_level}/100. (0 = extremely simple iconic sketch with minimal bold strokes and few paths, easy to separate objects. 100 = highly detailed illustration with hatching, cross-hatching, fine textures, expressive line work, and rich visual detail.) Adjust stroke count, line detail, and rendering complexity to match this level.
 """
 
-    print(f"[recraft] Generating SVG sketch, prompt length={len(prompt)}")
+    print(f"[recraft] Generating SVG sketch, detail_level={detail_level}, prompt length={len(prompt)}")
 
     async with httpx.AsyncClient(timeout=120.0) as client:
         response = await client.post(
@@ -412,6 +410,7 @@ async def generate_svg_layer(
     layer_name: str,
     intent: str = "",
     cir: dict = None,
+    detail_level: int = 50,
 ) -> str:
     """Generate a single SVG layer (e.g. 'background', 'character') using Recraft API."""
     import asyncio
@@ -456,6 +455,13 @@ async def generate_svg_layer(
         f"Pure white/transparent background. Each element should be a clear, self-contained outline."
     )
 
+    style_line = (
+        f"Style: Black and white storyboard sketch. Pure white background. 16:9 frame. "
+        f"Drawing complexity: {detail_level}/100. "
+        f"(0 = minimal bold outlines only, 100 = rich hatching and fine detail.) "
+        f"Match complexity to this level."
+    )
+
     prompt = f"""Storyboard layer generation — {layer_name} layer only.
 
 Scene: {script_context}
@@ -464,8 +470,7 @@ Scene: {script_context}
 
 {layer_desc}
 
-Style: Black and white minimalist storyboard sketch. Clean contour lines only, no shading, no fill, no gradients.
-Pure white background. Rough hand-drawn pencil style. 16:9 cinematic frame.
+{style_line}
 """
 
     print(f"[recraft] Generating SVG layer '{layer_name}', prompt length={len(prompt)}")
@@ -504,6 +509,7 @@ async def generate_svg_layers(
     intent: str = "",
     cir: dict = None,
     layers: list = None,
+    detail_level: int = 50,
 ) -> dict:
     """Generate multiple SVG layers in parallel. Returns {layer_name: svg_string}."""
     import asyncio
@@ -511,7 +517,7 @@ async def generate_svg_layers(
         layers = ["background", "character"]
 
     tasks = [
-        generate_svg_layer(script_context, layer_name, intent, cir)
+        generate_svg_layer(script_context, layer_name, intent, cir, detail_level)
         for layer_name in layers
     ]
     results = await asyncio.gather(*tasks, return_exceptions=True)
