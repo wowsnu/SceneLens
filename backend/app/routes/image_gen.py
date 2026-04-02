@@ -47,6 +47,7 @@ async def generate_sketch_endpoint(request: GenerateSketchRequest):
             )
             return GenerateSketchResponse(generated_image=generated_image, output_format="png")
     except Exception as e:
+        print(f"[generate-sketch] ERROR: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
