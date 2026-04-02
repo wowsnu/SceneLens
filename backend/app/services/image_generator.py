@@ -432,9 +432,10 @@ async def generate_svg_layer(
             "Leave the areas where characters would stand EMPTY."
         ),
         "character": (
-            "Draw ONLY the character(s) described in the scene. NO background, NO furniture, NO environment. "
-            "Pure white/transparent background. Draw the full body of each character with their pose and expression. "
-            "Characters should be positioned as described in the scene context."
+            "Draw the character in a SINGLE illustration — exactly ONE image, ONE frame. "
+            "NEVER draw multiple panels, thumbnails, a grid, or a sequence. "
+            "NO background, NO furniture, NO environment. Pure white background only. "
+            "Draw full body with pose and expression."
         ),
         "props": (
             "Draw ONLY the key props and objects mentioned in the scene (books, cups, weapons, vehicles, etc). "
@@ -448,21 +449,50 @@ async def generate_svg_layer(
         ),
     }
 
-    layer_desc = layer_instructions.get(
-        layer_name,
-        f"Draw ONLY the '{layer_name}' elements of the scene. "
-        f"NO other elements — no background, no characters, no props unless they ARE the '{layer_name}' layer. "
-        f"Pure white/transparent background. Each element should be a clear, self-contained outline."
-    )
+    # Parse "category:detail" format (e.g. "character:철수", "props:sword")
+    base_category = layer_name
+    detail_name = None
+    if ':' in layer_name:
+        base_category, detail_name = layer_name.split(':', 1)
+        base_category = base_category.strip().lower()
+        detail_name = detail_name.strip()
+
+    if detail_name and base_category == 'character':
+        layer_desc = (
+            f"Draw ONLY the character '{detail_name}' as a SINGLE illustration — exactly ONE person on ONE frame. "
+            f"DO NOT draw multiple panels, frames, or a storyboard grid. "
+            f"DO NOT draw any other characters — ONLY '{detail_name}'. "
+            f"NO background, NO furniture, NO environment. Pure white/transparent background. "
+            f"Draw the full body with pose and expression as described in the scene."
+        )
+    elif detail_name and base_category == 'props':
+        layer_desc = (
+            f"Draw ONLY the prop '{detail_name}' — nothing else. "
+            f"NO background, NO characters. Pure white/transparent background. "
+            f"Draw it clearly as a single object."
+        )
+    elif detail_name:
+        layer_desc = (
+            f"Draw ONLY '{detail_name}' from the '{base_category}' category. Nothing else. "
+            f"Pure white/transparent background."
+        )
+    else:
+        layer_desc = layer_instructions.get(
+            layer_name,
+            f"Draw ONLY the '{layer_name}' elements of the scene. "
+            f"NO other elements — no background, no characters, no props unless they ARE the '{layer_name}' layer. "
+            f"Pure white/transparent background. Each element should be a clear, self-contained outline."
+        )
 
     style_line = (
-        f"Style: Black and white storyboard sketch. Pure white background. 16:9 frame. "
+        f"Style: Black and white line drawing. Pure white background. Single 16:9 illustration. "
+        f"DO NOT create multiple panels, frames, thumbnails, or a grid layout. Output exactly ONE drawing. "
         f"Drawing complexity: {detail_level}/100. "
         f"(0 = minimal bold outlines only, 100 = rich hatching and fine detail.) "
         f"Match complexity to this level."
     )
 
-    prompt = f"""Storyboard layer generation — {layer_name} layer only.
+    prompt = f"""Generate a SINGLE illustration for the '{layer_name}' layer. Output exactly ONE image, NOT multiple panels or a grid.
 
 Scene: {script_context}
 {f"Director's intent: {intent}" if intent else ""}
