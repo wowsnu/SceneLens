@@ -370,6 +370,8 @@ Additional constraints:
 - Black and white minimalist storyboard sketch delivered as crisp SVG vector lines.
 - Clean contour lines only, absolutely no shading, fill, gradients, or texture; pure white background.
 - Rough hand-drawn pencil energy while remaining legible; lock composition to a 16:9 cinematic frame.
+- IMPORTANT for SVG structure: Use as FEW paths as possible. Draw each object (character, prop, furniture) with minimal strokes.
+- Prefer closed contour shapes over many scattered small strokes. Each character or object should be a self-contained outline.
 """
 
     print(f"[recraft] Generating SVG sketch, prompt length={len(prompt)}")
