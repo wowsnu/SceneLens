@@ -70,6 +70,7 @@ class EnhanceSketchResponse(BaseModel):
 # Request: Generate sketch
 class GenerateSketchRequest(BaseModel):
     script_context: str
+    scene_script: Optional[str] = ""
     intent: Optional[str] = ""
     cir: Optional[CIR] = None
     output_format: Optional[str] = "png"  # "png" or "svg"

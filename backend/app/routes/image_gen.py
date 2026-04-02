@@ -37,6 +37,7 @@ async def generate_sketch_endpoint(request: GenerateSketchRequest):
                 request.script_context,
                 request.intent,
                 cir_dict,
+                request.scene_script or "",
             )
             return GenerateSketchResponse(generated_image=svg_str, output_format="svg")
         else:

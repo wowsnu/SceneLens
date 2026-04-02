@@ -324,29 +324,53 @@ async def generate_sketch_svg(
     script_context: str,
     intent: str = "",
     cir: dict = None,
+    scene_script: str = "",
 ) -> str:
     """Generate a storyboard sketch as SVG using Recraft API. Returns SVG string."""
     api_key = get_recraft_api_key()
 
-    cir_desc = ""
+    focus_block = (script_context or "").strip()
+    full_scene = (scene_script or "").strip()
+    if not focus_block:
+        focus_block = full_scene or "Use the highlighted beat below to draw the storyboard."
+
+    cir_block = ""
     if cir:
-        cir_parts = []
+        cir_lines = []
         for k, v in cir.items():
             if v and k not in ('motionHint', 'depth'):
-                cir_parts.append(f"{k}: {v}")
-        if cir_parts:
-            cir_desc = ", ".join(cir_parts) + ". "
+                cir_lines.append(f"  - {k}: {v}")
+        if cir_lines:
+            cir_block = "\n[Suggested Composition (CIR)]\n" + "\n".join(cir_lines)
 
-    intent_desc = f"Director's intent: {intent}. " if intent else ""
+    scene_section = ""
+    if full_scene:
+        scene_section = (
+            "[Scene Script - full scene]\n"
+            f"{full_scene}\n\n"
+        )
 
-    prompt = (
-        f"{cir_desc}"
-        f"{intent_desc}"
-        f"Scene: {script_context}. "
-        "Black and white minimalist storyboard sketch. "
-        "Clean contour lines only, pure white background, absolutely no shading, no fill, no color. "
-        "Rough hand-drawn pencil style. 16:9 cinematic frame."
+    focus_section = (
+        "[Frame Focus - draw exactly this beat]\n"
+        "<<< Everything inside the brackets MUST be visualized. Other lines are only context. >>>\n"
+        "[[FOCUS]]\n"
+        f"{focus_block}\n"
+        "[[/FOCUS]]"
     )
+
+    prompt = f"""{GENERATE_PROMPT}
+
+{scene_section}{focus_section}
+
+[Director's Intent]
+{intent or 'Cinematic storyboard for this exact beat'}{cir_block}
+
+Additional constraints:
+- Render exactly ONE storyboard panel (a single 16:9 frame). Do not draw multiple frames or a sequence.
+- Black and white minimalist storyboard sketch delivered as crisp SVG vector lines.
+- Clean contour lines only, absolutely no shading, fill, gradients, or texture; pure white background.
+- Rough hand-drawn pencil energy while remaining legible; lock composition to a 16:9 cinematic frame.
+"""
 
     print(f"[recraft] Generating SVG sketch, prompt length={len(prompt)}")
 
