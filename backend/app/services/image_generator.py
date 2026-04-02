@@ -360,7 +360,7 @@ async def generate_sketch_svg(
             json={
                 "prompt": prompt,
                 "model": "recraftv4_vector",
-                "size": "1365x1024",
+                "size": "16:9",
                 "response_format": "b64_json",
             },
         )
