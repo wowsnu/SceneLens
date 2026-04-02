@@ -449,7 +449,12 @@ async def generate_svg_layer(
         ),
     }
 
-    layer_desc = layer_instructions.get(layer_name, f"Draw ONLY the {layer_name} elements of the scene. Nothing else.")
+    layer_desc = layer_instructions.get(
+        layer_name,
+        f"Draw ONLY the '{layer_name}' elements of the scene. "
+        f"NO other elements — no background, no characters, no props unless they ARE the '{layer_name}' layer. "
+        f"Pure white/transparent background. Each element should be a clear, self-contained outline."
+    )
 
     prompt = f"""Storyboard layer generation — {layer_name} layer only.
 

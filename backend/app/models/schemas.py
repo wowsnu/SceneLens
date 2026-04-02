@@ -74,6 +74,7 @@ class GenerateSketchRequest(BaseModel):
     intent: Optional[str] = ""
     cir: Optional[CIR] = None
     output_format: Optional[str] = "png"  # "png" or "svg"
+    detail_level: Optional[int] = 50  # 0=simple/minimal, 100=detailed/rich
 
 # Response: Generate sketch
 class GenerateSketchResponse(BaseModel):
@@ -122,6 +123,7 @@ class GenerateSvgLayersRequest(BaseModel):
     intent: Optional[str] = ""
     cir: Optional[CIR] = None
     layers: Optional[List[str]] = ["background", "character"]
+    detail_level: Optional[int] = 50
 
 # Response: Generate SVG layers
 class GenerateSvgLayersResponse(BaseModel):

@@ -39,6 +39,7 @@ async def generate_sketch_endpoint(request: GenerateSketchRequest):
                 request.intent,
                 cir_dict,
                 request.scene_script or "",
+                request.detail_level or 50,
             )
             return GenerateSketchResponse(generated_image=svg_str, output_format="svg")
         else:
@@ -102,6 +103,7 @@ async def generate_svg_layers_endpoint(request: GenerateSvgLayersRequest):
             request.intent,
             cir_dict,
             layer_names,
+            request.detail_level or 50,
         )
         elapsed = time.time() - t0
         print(f"[generate-svg-layers] DONE elapsed={elapsed:.1f}s")
