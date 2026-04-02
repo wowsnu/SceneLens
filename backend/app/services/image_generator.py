@@ -1,6 +1,10 @@
 import os
+import re
+import math
 import base64
 from pathlib import Path
+from collections import defaultdict
+import xml.etree.ElementTree as ET
 from google import genai
 from google.genai import types
 from openai import OpenAI
@@ -43,6 +47,16 @@ def get_recraft_api_key():
 # Load prompts
 PROMPTS_DIR = Path(__file__).parent.parent / "prompts"
 EXAMPLES_DIR = PROMPTS_DIR / "examples"
+
+SVG_NAMESPACE = "http://www.w3.org/2000/svg"
+ET.register_namespace("", SVG_NAMESPACE)
+
+COLOR_ROLE_TARGETS = {
+    "main_subject": (255, 0, 0),   # Pure red ink for characters / hero props
+    "environment": (0, 0, 255),    # Pure blue ink for background / set
+}
+COLOR_DISTANCE_TOLERANCE = 36  # Allow small deviations (AI rarely hits perfect HEX)
+RGB_FUNC_RE = re.compile(r'rgba?\s*\(([^)]+)\)')
 
 # Visual examples for specific CIR values
 CIR_VISUAL_EXAMPLES = {
@@ -243,6 +257,135 @@ def _image_bytes_to_base64(image_bytes: bytes) -> str:
     return base64.b64encode(image_bytes).decode('utf-8')
 
 
+def _parse_style_attribute(style_str: str) -> dict:
+    style_dict = {}
+    if not style_str:
+        return style_dict
+    for chunk in style_str.split(';'):
+        if ':' not in chunk:
+            continue
+        key, value = chunk.split(':', 1)
+        key = key.strip()
+        if not key:
+            continue
+        style_dict[key] = value.strip()
+    return style_dict
+
+
+def _serialize_style_dict(style_dict: dict) -> str:
+    return ";".join(f"{k}:{v}" for k, v in style_dict.items())
+
+
+def _extract_stroke_value(elem) -> str:
+    stroke = elem.get('stroke')
+    if stroke and stroke.strip():
+        return stroke.strip()
+    style_attr = elem.get('style')
+    if style_attr:
+        style_dict = _parse_style_attribute(style_attr)
+        stroke = style_dict.get('stroke')
+        if stroke:
+            return stroke.strip()
+    return None
+
+
+def _set_element_stroke(elem, color: str):
+    style_attr = elem.get('style')
+    if style_attr:
+        style_dict = _parse_style_attribute(style_attr)
+        style_dict['stroke'] = color
+        elem.set('style', _serialize_style_dict(style_dict))
+    elem.set('stroke', color)
+
+
+def _hex_to_rgb(value: str):
+    if not value:
+        return None
+    value = value.lstrip('#')
+    if len(value) == 3:
+        value = ''.join(ch * 2 for ch in value)
+    if len(value) != 6:
+        return None
+    try:
+        return tuple(int(value[i:i+2], 16) for i in range(0, 6, 2))
+    except ValueError:
+        return None
+
+
+def _parse_rgb_component(comp: str):
+    comp = comp.strip()
+    if comp.endswith('%'):
+        try:
+            percent = float(comp[:-1])
+        except ValueError:
+            return None
+        return max(0, min(255, int(round(255 * (percent / 100.0)))))
+    try:
+        return max(0, min(255, int(round(float(comp)))))
+    except ValueError:
+        return None
+
+
+def _parse_svg_color_value(value: str):
+    if not value:
+        return None
+    value = value.strip()
+    if value.lower() == 'none':
+        return None
+    if value.startswith('#'):
+        return _hex_to_rgb(value)
+    match = RGB_FUNC_RE.match(value)
+    if match:
+        parts = [part.strip() for part in match.group(1).split(',')]
+        if len(parts) >= 3:
+            comps = [_parse_rgb_component(part) for part in parts[:3]]
+            if all(component is not None for component in comps):
+                return tuple(comps)
+    return None
+
+
+def _match_color_role(rgb_tuple):
+    if not rgb_tuple:
+        return None
+    r, g, b = rgb_tuple
+    for role, target_rgb in COLOR_ROLE_TARGETS.items():
+        tr, tg, tb = target_rgb
+        dist = math.sqrt((r - tr) ** 2 + (g - tg) ** 2 + (b - tb) ** 2)
+        if dist <= COLOR_DISTANCE_TOLERANCE:
+            return role
+    return None
+
+
+def _apply_color_role_metadata(svg_str: str) -> str:
+    try:
+        root = ET.fromstring(svg_str)
+    except ET.ParseError as exc:
+        print(f"[recraft] SVG parse error (color grouping skipped): {exc}")
+        return svg_str
+
+    role_counts = defaultdict(int)
+    mutated = False
+
+    for elem in root.iter():
+        stroke_val = _extract_stroke_value(elem)
+        if not stroke_val:
+            continue
+        rgb = _parse_svg_color_value(stroke_val)
+        role = _match_color_role(rgb) if rgb else None
+        if role:
+            role_counts[role] += 1
+            elem.set('data-color-role', role)
+            if not elem.get('id'):
+                elem.set('id', f"{role}-path-{role_counts[role]}")
+        _set_element_stroke(elem, "#000000")
+        mutated = True
+
+    if not mutated:
+        return svg_str
+
+    return ET.tostring(root, encoding='unicode')
+
+
 def _gemini_generate_image(prompt: str, input_image_bytes: bytes = None) -> bytes:
     """Call Gemini image model and return raw image bytes."""
     client = get_client()
@@ -365,10 +508,14 @@ async def generate_sketch_svg(
 [Director's Intent]
 {intent or 'Cinematic storyboard for this exact beat'}{cir_block}
 
+Color coding instructions:
+- Primary characters, hero props, and any subject the viewer should track MUST be drawn exclusively with pure HEX #FF0000 lines.
+- Background architecture, set dressing, and atmospheric elements MUST be drawn exclusively with pure HEX #0000FF lines.
+- Absolutely no other pen colors are allowed. Every stroke must be either #FF0000 or #0000FF.
+
 Additional constraints:
 - Render exactly ONE storyboard panel (a single 16:9 frame). Do not draw multiple frames or a sequence.
-- Black and white minimalist storyboard sketch delivered as crisp SVG vector lines.
-- Clean contour lines only, absolutely no shading, fill, gradients, or texture; pure white background.
+- Clean contour lines only; absolutely no shading, fill, gradients, or texture. Pure white background.
 - Rough hand-drawn pencil energy while remaining legible; lock composition to a 16:9 cinematic frame.
 """
 
@@ -400,9 +547,10 @@ Additional constraints:
     # b64_json for SVG is the raw SVG bytes encoded in base64
     svg_bytes = base64.b64decode(b64)
     svg_str = svg_bytes.decode("utf-8")
+    processed_svg = _apply_color_role_metadata(svg_str)
 
-    print(f"[recraft] SVG generated, size={len(svg_str)} chars")
-    return svg_str
+    print(f"[recraft] SVG generated, size={len(processed_svg)} chars (raw={len(svg_str)} chars)")
+    return processed_svg
 
 
 async def reframe_sketch(
