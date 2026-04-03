@@ -368,7 +368,8 @@ async def generate_sketch_svg(
 
 Additional constraints:
 - Render exactly ONE storyboard panel (a single 16:9 frame). Do not draw multiple frames or a sequence.
-- Black and white storyboard sketch delivered as crisp SVG vector lines. Pure white background.
+- Black and white line drawing delivered as crisp SVG vector lines. Pure white background.
+- ABSOLUTELY NO text, speech bubbles, dialogue, captions, labels, or written words of any kind in the image.
 - Drawing complexity: {detail_level}/100. (0 = extremely simple iconic sketch with minimal bold strokes and few paths, easy to separate objects. 100 = highly detailed illustration with hatching, cross-hatching, fine textures, expressive line work, and rich visual detail.) Adjust stroke count, line detail, and rendering complexity to match this level.
 """
 
@@ -487,6 +488,7 @@ async def generate_svg_layer(
     style_line = (
         f"Style: Black and white line drawing. Pure white background. Single 16:9 illustration. "
         f"DO NOT create multiple panels, frames, thumbnails, or a grid layout. Output exactly ONE drawing. "
+        f"ABSOLUTELY NO text, speech bubbles, dialogue, captions, labels, or written words of any kind. "
         f"Drawing complexity: {detail_level}/100. "
         f"(0 = minimal bold outlines only, 100 = rich hatching and fine detail.) "
         f"Match complexity to this level."
@@ -635,7 +637,7 @@ Now redraw the sketch applying ONLY the changes above. Keep everything else iden
                 image=("sketch.png", image_bytes, "image/png"),
                 prompt=prompt,
                 n=1,
-                size="1024x1024",
+                size="1536x1024",
             )
             img_b64 = response.data[0].b64_json
             return base64.b64decode(img_b64)
