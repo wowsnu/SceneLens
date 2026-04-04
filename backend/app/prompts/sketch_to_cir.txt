@@ -53,7 +53,10 @@ The CIR attributes are:
 
 OUTPUT FORMAT INSTRUCTIONS:
 - Do not include any conversational filler. Output ONLY valid JSON (no markdown, no code fences).
-- **alignment**: A brief description of what you see in the sketch. **WRITE IN KOREAN.**
+- **alignment**: A cinematic analysis of the sketch composition. **WRITE IN KOREAN.** Include:
+  1. What the shot shows (brief factual description)
+  2. How this composition emotionally affects the viewer (e.g. tension, intimacy, isolation, power dynamic)
+  3. Whether this framing aligns well with the scene context and intent — if not, briefly suggest what could be improved (e.g. "Low angle would amplify the character's dominance here")
 - Use EXACTLY the option names listed above.
 
 Format:
