@@ -7,8 +7,9 @@ from app.models.schemas import (
     GenerateSingleLayerRequest, GenerateSingleLayerResponse,
     GenerateSvgLayersRequest, GenerateSvgLayersResponse,
     ReframeSketchRequest, ReframeSketchResponse,
+    VectorizeRequest, VectorizeResponse,
 )
-from app.services.image_generator import enhance_sketch, generate_sketch, generate_sketch_svg, generate_sketch_layers, generate_single_layer, generate_svg_layers, reframe_sketch
+from app.services.image_generator import enhance_sketch, generate_sketch, generate_sketch_svg, generate_sketch_layers, generate_single_layer, generate_svg_layers, reframe_sketch, vectorize_image
 
 router = APIRouter()
 
@@ -88,6 +89,21 @@ async def reframe_sketch_endpoint(request: ReframeSketchRequest):
     except Exception as e:
         elapsed = time.time() - t0
         print(f"[reframe-sketch] ERROR model={request.model} elapsed={elapsed:.1f}s error={e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/vectorize", response_model=VectorizeResponse)
+async def vectorize_endpoint(request: VectorizeRequest):
+    t0 = time.time()
+    print(f"[vectorize] START")
+    try:
+        svg_str = await vectorize_image(request.image)
+        elapsed = time.time() - t0
+        print(f"[vectorize] DONE elapsed={elapsed:.1f}s svg_len={len(svg_str)}")
+        return VectorizeResponse(svg=svg_str)
+    except Exception as e:
+        elapsed = time.time() - t0
+        print(f"[vectorize] ERROR elapsed={elapsed:.1f}s error={e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 

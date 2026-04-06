@@ -98,7 +98,7 @@ class ReframeSketchRequest(BaseModel):
     original_cir: Optional[CIR] = None  # original CIR before reframe
     script_context: Optional[str] = ""
     intent: Optional[str] = ""  # director's intent — highest priority instruction
-    include_description: Optional[bool] = False
+    include_description: Optional[bool] = True
     model: Optional[str] = "gemini-2.5-flash-image"  # gemini-2.5-flash-image / gemini-3.1-flash-image-preview / gpt-image-1.5
 
 # Response: Reframe sketch
@@ -128,3 +128,11 @@ class GenerateSvgLayersRequest(BaseModel):
 # Response: Generate SVG layers
 class GenerateSvgLayersResponse(BaseModel):
     layers: Dict[str, Optional[str]]  # { layer_name: svg_string or null if failed }
+
+# Request: Vectorize image to SVG
+class VectorizeRequest(BaseModel):
+    image: str  # base64-encoded PNG
+
+# Response: Vectorize
+class VectorizeResponse(BaseModel):
+    svg: str  # SVG string

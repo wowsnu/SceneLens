@@ -786,3 +786,42 @@ Generate this layer now.
         results[layer_name] = _image_bytes_to_base64(raw_bytes)
 
     return results
+
+
+async def vectorize_image(image_base64: str) -> str:
+    """Convert a raster image (PNG) to SVG using Recraft vectorize API. Returns SVG string."""
+    api_key = get_recraft_api_key()
+
+    if image_base64.startswith('data:'):
+        image_base64 = image_base64.split(',')[1]
+
+    image_bytes = base64.b64decode(image_base64)
+
+    print(f"[recraft] Vectorizing image, size={len(image_bytes)} bytes")
+
+    async with httpx.AsyncClient(timeout=120.0) as client:
+        response = await client.post(
+            "https://external.api.recraft.ai/v1/images/vectorize",
+            headers={
+                "Authorization": f"Bearer {api_key}",
+            },
+            files={
+                "file": ("sketch.png", image_bytes, "image/png"),
+            },
+            data={
+                "response_format": "b64_json",
+            },
+        )
+
+    if response.status_code != 200:
+        raise ValueError(f"Recraft vectorize error: {response.status_code} {response.text}")
+
+    data = response.json()
+    b64 = data.get("image", {}).get("b64_json")
+    if not b64:
+        raise ValueError("Recraft vectorize did not return b64_json")
+
+    svg_bytes = base64.b64decode(b64)
+    svg_str = svg_bytes.decode("utf-8")
+    print(f"[recraft] Vectorized, SVG size={len(svg_str)} chars")
+    return svg_str
