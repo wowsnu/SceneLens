@@ -373,6 +373,7 @@ Format:
 
 # ── Context Cache Lifecycle ───────────────────────────────────────────
 
+THEORY_TEXTS_PATH = Path(__file__).parent.parent / "db" / "theory_texts.json"
 _THEORY_CACHE_NAME = None
 
 def warmup_theory_cache():
