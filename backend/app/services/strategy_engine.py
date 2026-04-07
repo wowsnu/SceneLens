@@ -371,19 +371,26 @@ Format:
         return SuggestStrategiesResponse(strategies=[])
 
 
-# ── Method 2: Context Caching Approach (Optimized) ─────────────────────────
+# ── Context Cache Lifecycle ───────────────────────────────────────────
 
-# Load theory PDF texts (pre-extracted)
-THEORY_TEXTS_PATH = Path(__file__).parent.parent / "db" / "theory_texts.json"
-_THEORY_CACHE_NAME = None  # Store cache name for reuse
+_THEORY_CACHE_NAME = None
 
-def _get_theory_cache():
-    """Create or retrieve context cache for theory books."""
+def warmup_theory_cache():
+    """
+    Initialize and warmup the context cache by uploading theory books.
+    This should be called at server startup to prevent first-request timeouts.
+    """
     global _THEORY_CACHE_NAME
     if _THEORY_CACHE_NAME:
+        print(f"[TheoryEngine] Cache already warmed up: {_THEORY_CACHE_NAME}")
         return _THEORY_CACHE_NAME
 
+    print("[TheoryEngine] Warming up context cache with film theory books...")
     try:
+        if not THEORY_TEXTS_PATH.exists():
+            print(f"[TheoryEngine] Warning: {THEORY_TEXTS_PATH} not found. Caching skipped.")
+            return None
+
         with open(THEORY_TEXTS_PATH, "r", encoding="utf-8") as f:
             theory_texts = json.load(f)
 
@@ -393,22 +400,33 @@ def _get_theory_cache():
             reference_text += f"\n\n{'='*60}\n[Book: {clean_name}]\n{'='*60}\n{text}\n"
 
         client = get_client()
-        # Create a new context cache for the theory books
-        # Cache lasts 2 hours by default, but can be managed
+        
+        # Check if a cache with the same display name already exists to avoid duplicates
+        # (Though SDK caches are usually session-based, this is a good practice)
+        existing_caches = client.caches.list()
+        for c in existing_caches:
+            if c.display_name == "Film Theory Library":
+                _THEORY_CACHE_NAME = c.name
+                print(f"[TheoryEngine] Found existing cache: {_THEORY_CACHE_NAME}")
+                return _THEORY_CACHE_NAME
+
+        # Create a new context cache
         cache = client.caches.create(
             model='gemini-2.5-flash',
-            config=types.CreateCacheConfig(
-                display_name="Film Theory Library",
-                system_instruction="You are an expert film director and cinematographer. Use the provided film theory books to provide strategic advice.",
-                contents=[reference_text],
-                ttl_seconds=7200, # 2 hours
-            )
+            config={
+                'display_name': 'Film Theory Library',
+                'system_instruction': 'You are an expert film director and cinematographer. Use the provided film theory books to provide strategic advice.',
+                'contents': [reference_text],
+                'ttl': '7200s', # 2 hours
+            }
         )
         _THEORY_CACHE_NAME = cache.name
-        print(f"[TheoryEngine] Context Cache created: {_THEORY_CACHE_NAME}")
+        print(f"[TheoryEngine] Context Cache created and warmed up: {_THEORY_CACHE_NAME}")
         return _THEORY_CACHE_NAME
     except Exception as e:
-        print(f"[TheoryEngine] Failed to create cache: {e}")
+        print(f"[TheoryEngine] Failed to warmup cache: {e}")
+        import traceback
+        traceback.print_exc()
         return None
 
 
@@ -422,7 +440,7 @@ async def suggest_strategies_v2(
     [Method 2] Context Caching + Multimodal approach.
     Uses cached film theory books and the actual sketch image for analysis.
     """
-    cache_name = _get_theory_cache()
+    cache_name = warmup_theory_cache()
     
     prompt = f"""{STRATEGY_PROMPT}
 

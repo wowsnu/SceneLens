@@ -1,15 +1,30 @@
+import asyncio
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
+from contextlib import asynccontextmanager
 
 from app.routes import sketch, strategy, overlay, image_gen
+from app.services.strategy_engine import warmup_theory_cache
 
 load_dotenv()
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup: Warmup the theory cache
+    print("[Main] Starting up... Warming up theory cache.")
+    # Run warmup in a separate thread if it's blocking, 
+    # but here we can just call it since it's initial setup.
+    warmup_theory_cache()
+    yield
+    # Shutdown: Clean up if needed
+    print("[Main] Shutting down...")
 
 app = FastAPI(
     title="SceneLens Cinematic Reasoning Engine",
     version="2.0",
-    description="AI-powered storyboard analysis and cinematic strategy generation"
+    description="AI-powered storyboard analysis and cinematic strategy generation",
+    lifespan=lifespan
 )
 
 # CORS for React frontend
