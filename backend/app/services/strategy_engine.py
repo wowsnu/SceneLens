@@ -133,7 +133,7 @@ def _normalize_dim(dim: str) -> str:
 def filter_theories_by_cir_and_intent(
     cir: CIR,
     intent: str,
-    max_theories: int = 15,
+    max_theories: int = 8,
 ) -> List[dict]:
     """
     Two-stage filtering:
@@ -208,7 +208,7 @@ def filter_theories_by_cir_and_intent(
         # Get linked operations
         ops = _OPS_BY_THEORY_ID.get(tid, [])
         ops_data = []
-        for op in ops[:2]:  # Max 2 operations per theory to keep prompt size manageable
+        for op in ops[:1]:  # Max 1 operation per theory to keep prompt compact
             ops_data.append({
                 "suggested_change": op.get("suggested_change", {}),
                 "related_dimensions": op.get("related_dimensions", []),
