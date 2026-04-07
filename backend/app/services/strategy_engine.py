@@ -371,35 +371,59 @@ Format:
         return SuggestStrategiesResponse(strategies=[])
 
 
-# ── Method 2: Full PDF text approach ──────────────────────────────
+# ── Method 2: Context Caching Approach (Optimized) ─────────────────────────
 
 # Load theory PDF texts (pre-extracted)
 THEORY_TEXTS_PATH = Path(__file__).parent.parent / "db" / "theory_texts.json"
-try:
-    with open(THEORY_TEXTS_PATH, "r", encoding="utf-8") as f:
-        THEORY_TEXTS = json.load(f)
+_THEORY_CACHE_NAME = None  # Store cache name for reuse
 
-    _THEORY_REFERENCE = ""
-    for filename, text in THEORY_TEXTS.items():
-        clean_name = filename.replace(".pdf", "").replace("_", " ").replace("(1)", "").strip()
-        _THEORY_REFERENCE += f"\n\n{'='*60}\n[Book: {clean_name}]\n{'='*60}\n{text}"
+def _get_theory_cache():
+    """Create or retrieve context cache for theory books."""
+    global _THEORY_CACHE_NAME
+    if _THEORY_CACHE_NAME:
+        return _THEORY_CACHE_NAME
 
-    print(f"[TheoryEngine] v2: Loaded {len(THEORY_TEXTS)} books, ~{len(_THEORY_REFERENCE)//4:,} tokens")
-except FileNotFoundError:
-    THEORY_TEXTS = {}
-    _THEORY_REFERENCE = ""
-    print("[TheoryEngine] v2: theory_texts.json not found, falling back to v1")
+    try:
+        with open(THEORY_TEXTS_PATH, "r", encoding="utf-8") as f:
+            theory_texts = json.load(f)
+
+        reference_text = ""
+        for filename, text in theory_texts.items():
+            clean_name = filename.replace(".pdf", "").replace("_", " ").replace("(1)", "").strip()
+            reference_text += f"\n\n{'='*60}\n[Book: {clean_name}]\n{'='*60}\n{text}\n"
+
+        client = get_client()
+        # Create a new context cache for the theory books
+        # Cache lasts 2 hours by default, but can be managed
+        cache = client.caches.create(
+            model='gemini-2.5-flash',
+            config=types.CreateCacheConfig(
+                display_name="Film Theory Library",
+                system_instruction="You are an expert film director and cinematographer. Use the provided film theory books to provide strategic advice.",
+                contents=[reference_text],
+                ttl_seconds=7200, # 2 hours
+            )
+        )
+        _THEORY_CACHE_NAME = cache.name
+        print(f"[TheoryEngine] Context Cache created: {_THEORY_CACHE_NAME}")
+        return _THEORY_CACHE_NAME
+    except Exception as e:
+        print(f"[TheoryEngine] Failed to create cache: {e}")
+        return None
 
 
 async def suggest_strategies_v2(
     cir: CIR,
     intent: str,
-    script_context: str = ""
+    script_context: str = "",
+    image_base64: str = None
 ) -> SuggestStrategiesResponse:
     """
-    [Method 2] Full PDF text approach.
-    Sends entire film theory book texts to Gemini and lets it find relevant principles.
+    [Method 2] Context Caching + Multimodal approach.
+    Uses cached film theory books and the actual sketch image for analysis.
     """
+    cache_name = _get_theory_cache()
+    
     prompt = f"""{STRATEGY_PROMPT}
 
 [Current CIR State]
@@ -411,11 +435,11 @@ async def suggest_strategies_v2(
 [Scene Context]
 {script_context}
 
-Based on the current CIR, director's intent, and the film theory reference books provided below,
-generate 2-3 alternative REFRAMING strategies as valid JSON (no markdown, no code fences).
-
-Find the most relevant cinematographic principles from the reference books that apply to this
-specific composition and intent. Cite the specific book and principle you are referencing.
+[Instruction]
+1. ANALYZE the provided sketch image and its current CIR metadata against the Director's Intent and Scene Context.
+2. REFERENCE specific cinematographic principles from your cached film theory library.
+3. PROPOSE 2-3 alternative REFRAMING strategies as valid JSON.
+4. Each strategy must include a clear 'theory_rationale' citing the specific book and principle used.
 
 CRITICAL: Each strategy has exactly 1 shot — an adjusted version of the CURRENT composition.
 Only change 2-4 CIR attributes per strategy. Keep the rest identical to the current CIR.
@@ -429,7 +453,15 @@ Format:
       "shots": [
         {{
           "order": 1,
-          "cir": {{ "shotSize": "...", "horizontalAngle": "...", "verticalLevel": "...", "viewpointFraming": "...", "eyeline": "...", "occlusion": "...", "depth": "...", "motionHint": "..." }},
+          "cir": {{ 
+            "shotSize": "...", 
+            "horizontalAngle": "...", 
+            "verticalLevel": "...", 
+            "viewpointFraming": "...", 
+            "occlusion": "...", 
+            "depth": "...", 
+            "motionHint": "..." 
+          }},
           "theory_rationale": "한글로 이론 근거 설명 (어떤 책의 어떤 원리를 참고했는지 포함)...",
           "source": "Book title"
         }}
@@ -438,20 +470,27 @@ Format:
     }}
   ]
 }}
-
-[Film Theory Reference Books]
-{_THEORY_REFERENCE}
 """
 
-    print(f"[Strategy v2] Prompt size: ~{len(prompt)//4:,} tokens")
+    contents = [prompt]
+    if image_base64:
+        # Add the image to the multimodal prompt
+        contents.append(types.Part.from_bytes(
+            data=image_base64,
+            mime_type="image/png" if not image_base64.startswith("data:image/jpeg") else "image/jpeg"
+        ))
 
     client = get_client()
     response = None
     for attempt in range(3):
         try:
+            # Use the cached context for generation
             response = client.models.generate_content(
                 model='gemini-2.5-flash',
-                contents=prompt
+                contents=contents,
+                config=types.GenerateContentConfig(
+                    cached_content=cache_name
+                ) if cache_name else None
             )
             break
         except Exception as e:
@@ -462,11 +501,13 @@ Format:
                 await asyncio.sleep(wait)
             else:
                 raise
+
     if response is None:
         raise Exception("Gemini API unavailable after 3 retries")
 
     try:
         text = response.text.strip()
+        # Clean up markdown if present
         if text.startswith('```'):
             text = text.split('```')[1]
             if text.startswith('json'):
@@ -477,6 +518,8 @@ Format:
 
         strategies = []
         for strat_data in data.get("strategies", []):
+            # Map verticalLevel back to verticalLevel (the schema uses verticalLevel, verticalLevel, horizontalAngle, etc.)
+            # Ensure CIR mapping is correct for the Pydantic model
             shots = [
                 Shot(
                     order=shot["order"],
@@ -504,11 +547,13 @@ Format:
 async def suggest_strategies(
     cir: CIR,
     intent: str,
-    script_context: str = ""
+    script_context: str = "",
+    image_base64: str = None
 ) -> SuggestStrategiesResponse:
-    if _THEORY_REFERENCE:
-        print("[Strategy] Using method 2 (full PDF texts)")
-        return await suggest_strategies_v2(cir, intent, script_context)
+    # Always prefer v2 (now with caching and multimodal support)
+    if THEORY_TEXTS_PATH.exists():
+        print("[Strategy] Using method 2 (Context Caching + Multimodal)")
+        return await suggest_strategies_v2(cir, intent, script_context, image_base64)
     else:
-        print("[Strategy] Using method 1 (keyword matching)")
+        print("[Strategy] Using method 1 (Keyword matching fallback)")
         return await suggest_strategies_v1(cir, intent, script_context)
