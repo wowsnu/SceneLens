@@ -1,11 +1,16 @@
 import os
 import json
 import asyncio
+import logging
 from pathlib import Path
 from typing import List, Dict, Set
 from google import genai
 from google.genai import types
 from app.models.schemas import CIR, Strategy, Shot, SuggestStrategiesResponse
+
+# Setup logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 # Lazy initialization - client will be created when first needed
 _client = None
@@ -383,13 +388,13 @@ def warmup_theory_cache():
     """
     global _THEORY_CACHE_NAME
     if _THEORY_CACHE_NAME:
-        print(f"[TheoryEngine] Cache already warmed up: {_THEORY_CACHE_NAME}")
+        logger.info(f"[TheoryEngine] Cache already warmed up: {_THEORY_CACHE_NAME}")
         return _THEORY_CACHE_NAME
 
-    print("[TheoryEngine] Warming up context cache with film theory books...")
+    logger.info("[TheoryEngine] Warming up context cache with film theory books...")
     try:
         if not THEORY_TEXTS_PATH.exists():
-            print(f"[TheoryEngine] Warning: {THEORY_TEXTS_PATH} not found. Caching skipped.")
+            logger.warning(f"[TheoryEngine] Warning: {THEORY_TEXTS_PATH} not found. Caching skipped.")
             return None
 
         with open(THEORY_TEXTS_PATH, "r", encoding="utf-8") as f:
@@ -402,14 +407,16 @@ def warmup_theory_cache():
 
         client = get_client()
         
-        # Check if a cache with the same display name already exists to avoid duplicates
-        # (Though SDK caches are usually session-based, this is a good practice)
-        existing_caches = client.caches.list()
-        for c in existing_caches:
-            if c.display_name == "Film Theory Library":
-                _THEORY_CACHE_NAME = c.name
-                print(f"[TheoryEngine] Found existing cache: {_THEORY_CACHE_NAME}")
-                return _THEORY_CACHE_NAME
+        # Check if a cache with the same display name already exists
+        try:
+            existing_caches = client.caches.list()
+            for c in existing_caches:
+                if c.display_name == "Film Theory Library":
+                    _THEORY_CACHE_NAME = c.name
+                    logger.info(f"[TheoryEngine] Found existing cache: {_THEORY_CACHE_NAME}")
+                    return _THEORY_CACHE_NAME
+        except Exception as cache_list_err:
+            logger.debug(f"Could not list caches: {cache_list_err}")
 
         # Create a new context cache
         cache = client.caches.create(
@@ -422,10 +429,10 @@ def warmup_theory_cache():
             }
         )
         _THEORY_CACHE_NAME = cache.name
-        print(f"[TheoryEngine] Context Cache created and warmed up: {_THEORY_CACHE_NAME}")
+        logger.info(f"[TheoryEngine] Context Cache created and warmed up: {_THEORY_CACHE_NAME}")
         return _THEORY_CACHE_NAME
     except Exception as e:
-        print(f"[TheoryEngine] Failed to warmup cache: {e}")
+        logger.error(f"[TheoryEngine] Failed to warmup cache: {e}")
         import traceback
         traceback.print_exc()
         return None
