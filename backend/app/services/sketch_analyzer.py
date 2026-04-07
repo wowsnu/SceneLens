@@ -1,6 +1,7 @@
 import os
 import json
 import base64
+import asyncio
 from pathlib import Path
 from google import genai
 from google.genai import types
@@ -65,12 +66,26 @@ Format:
 }}
 """
 
-    # Generate content with new API
+    # Generate content with retry on transient errors
     client = get_client()
-    response = client.models.generate_content(
-        model='gemini-3-flash-preview',
-        contents=[prompt, types.Part.from_bytes(data=image_bytes, mime_type='image/png')]
-    )
+    response = None
+    for attempt in range(3):
+        try:
+            response = client.models.generate_content(
+                model='gemini-3-flash-preview',
+                contents=[prompt, types.Part.from_bytes(data=image_bytes, mime_type='image/png')]
+            )
+            break
+        except Exception as e:
+            err_str = str(e)
+            if '503' in err_str or 'UNAVAILABLE' in err_str or 'overloaded' in err_str.lower():
+                wait = (attempt + 1) * 3
+                print(f"[Analyzer] Gemini 503, retry {attempt+1}/3 in {wait}s...")
+                await asyncio.sleep(wait)
+            else:
+                raise
+    if response is None:
+        raise Exception("Gemini API unavailable after 3 retries")
 
     # Parse JSON response
     try:

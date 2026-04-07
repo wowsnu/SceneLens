@@ -1,5 +1,6 @@
 import os
 import json
+import asyncio
 from pathlib import Path
 from typing import List, Dict, Set
 from google import genai
@@ -317,10 +318,24 @@ Format:
 """
 
     client = get_client()
-    response = client.models.generate_content(
-        model='gemini-3-flash-preview',
-        contents=prompt
-    )
+    response = None
+    for attempt in range(3):
+        try:
+            response = client.models.generate_content(
+                model='gemini-3-flash-preview',
+                contents=prompt
+            )
+            break
+        except Exception as e:
+            err_str = str(e)
+            if '503' in err_str or 'UNAVAILABLE' in err_str or 'overloaded' in err_str.lower():
+                wait = (attempt + 1) * 3
+                print(f"[Strategy] Gemini 503, retry {attempt+1}/3 in {wait}s...")
+                await asyncio.sleep(wait)
+            else:
+                raise
+    if response is None:
+        raise Exception("Gemini API unavailable after 3 retries")
 
     # Parse JSON response
     try:

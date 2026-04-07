@@ -1,3 +1,4 @@
+import traceback
 from fastapi import APIRouter, HTTPException
 from app.models.schemas import SuggestStrategiesRequest, SuggestStrategiesResponse
 from app.services.strategy_engine import suggest_strategies
@@ -32,4 +33,6 @@ async def suggest_strategies_endpoint(request: SuggestStrategiesRequest):
         )
         return result
     except Exception as e:
+        print(f"[suggest-strategies] ERROR: {e}")
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
