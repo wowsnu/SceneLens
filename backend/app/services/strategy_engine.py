@@ -251,16 +251,14 @@ def filter_theories_by_cir_and_intent(
     return results
 
 
-async def suggest_strategies(
+async def suggest_strategies_v1(
     cir: CIR,
     intent: str,
     script_context: str = ""
 ) -> SuggestStrategiesResponse:
     """
-    Generate 2-3 branching cinematic strategies based on:
-    - Current CIR state
-    - Director's intention
-    - Film theory DB (CIR-dimension + intent-tag filtering)
+    [Method 1] Keyword-matching based strategy suggestion.
+    Uses CIR-dimension + intent-tag filtering from theory_db.json.
 
     Args:
         cir: Current cinematic intermediate representation
@@ -371,3 +369,146 @@ Format:
     except (json.JSONDecodeError, KeyError) as e:
         print(f"Failed to parse strategy response: {response.text}")
         return SuggestStrategiesResponse(strategies=[])
+
+
+# ── Method 2: Full PDF text approach ──────────────────────────────
+
+# Load theory PDF texts (pre-extracted)
+THEORY_TEXTS_PATH = Path(__file__).parent.parent / "db" / "theory_texts.json"
+try:
+    with open(THEORY_TEXTS_PATH, "r", encoding="utf-8") as f:
+        THEORY_TEXTS = json.load(f)
+
+    _THEORY_REFERENCE = ""
+    for filename, text in THEORY_TEXTS.items():
+        clean_name = filename.replace(".pdf", "").replace("_", " ").replace("(1)", "").strip()
+        _THEORY_REFERENCE += f"\n\n{'='*60}\n[Book: {clean_name}]\n{'='*60}\n{text}"
+
+    print(f"[TheoryEngine] v2: Loaded {len(THEORY_TEXTS)} books, ~{len(_THEORY_REFERENCE)//4:,} tokens")
+except FileNotFoundError:
+    THEORY_TEXTS = {}
+    _THEORY_REFERENCE = ""
+    print("[TheoryEngine] v2: theory_texts.json not found, falling back to v1")
+
+
+async def suggest_strategies_v2(
+    cir: CIR,
+    intent: str,
+    script_context: str = ""
+) -> SuggestStrategiesResponse:
+    """
+    [Method 2] Full PDF text approach.
+    Sends entire film theory book texts to Gemini and lets it find relevant principles.
+    """
+    prompt = f"""{STRATEGY_PROMPT}
+
+[Current CIR State]
+{cir.model_dump_json(indent=2)}
+
+[Director's Intent]
+{intent}
+
+[Scene Context]
+{script_context}
+
+Based on the current CIR, director's intent, and the film theory reference books provided below,
+generate 2-3 alternative REFRAMING strategies as valid JSON (no markdown, no code fences).
+
+Find the most relevant cinematographic principles from the reference books that apply to this
+specific composition and intent. Cite the specific book and principle you are referencing.
+
+CRITICAL: Each strategy has exactly 1 shot — an adjusted version of the CURRENT composition.
+Only change 2-4 CIR attributes per strategy. Keep the rest identical to the current CIR.
+Do NOT propose a completely different shot type. The sketch already exists.
+
+Format:
+{{
+  "strategies": [
+    {{
+      "name": "전략 A: 한글 설명",
+      "shots": [
+        {{
+          "order": 1,
+          "cir": {{ "shotSize": "...", "horizontalAngle": "...", "verticalLevel": "...", "viewpointFraming": "...", "eyeline": "...", "occlusion": "...", "depth": "...", "motionHint": "..." }},
+          "theory_rationale": "한글로 이론 근거 설명 (어떤 책의 어떤 원리를 참고했는지 포함)...",
+          "source": "Book title"
+        }}
+      ],
+      "intention_tags": ["tension", "emotion"]
+    }}
+  ]
+}}
+
+[Film Theory Reference Books]
+{_THEORY_REFERENCE}
+"""
+
+    print(f"[Strategy v2] Prompt size: ~{len(prompt)//4:,} tokens")
+
+    client = get_client()
+    response = None
+    for attempt in range(3):
+        try:
+            response = client.models.generate_content(
+                model='gemini-2.5-flash-preview-05-20',
+                contents=prompt
+            )
+            break
+        except Exception as e:
+            err_str = str(e)
+            if '503' in err_str or 'UNAVAILABLE' in err_str or 'overloaded' in err_str.lower():
+                wait = (attempt + 1) * 3
+                print(f"[Strategy v2] Gemini 503, retry {attempt+1}/3 in {wait}s...")
+                await asyncio.sleep(wait)
+            else:
+                raise
+    if response is None:
+        raise Exception("Gemini API unavailable after 3 retries")
+
+    try:
+        text = response.text.strip()
+        if text.startswith('```'):
+            text = text.split('```')[1]
+            if text.startswith('json'):
+                text = text[4:]
+            text = text.strip()
+
+        data = json.loads(text)
+
+        strategies = []
+        for strat_data in data.get("strategies", []):
+            shots = [
+                Shot(
+                    order=shot["order"],
+                    cir=CIR(**shot["cir"]),
+                    theory_rationale=shot["theory_rationale"],
+                    source=shot["source"]
+                )
+                for shot in strat_data["shots"]
+            ]
+            strategies.append(Strategy(
+                name=strat_data["name"],
+                shots=shots,
+                intention_tags=strat_data.get("intention_tags", [])
+            ))
+
+        return SuggestStrategiesResponse(strategies=strategies)
+
+    except (json.JSONDecodeError, KeyError) as e:
+        print(f"[Strategy v2] Failed to parse response: {response.text}")
+        return SuggestStrategiesResponse(strategies=[])
+
+
+# ── Default: use v2 if available, fallback to v1 ─────────────────
+
+async def suggest_strategies(
+    cir: CIR,
+    intent: str,
+    script_context: str = ""
+) -> SuggestStrategiesResponse:
+    if _THEORY_REFERENCE:
+        print("[Strategy] Using method 2 (full PDF texts)")
+        return await suggest_strategies_v2(cir, intent, script_context)
+    else:
+        print("[Strategy] Using method 1 (keyword matching)")
+        return await suggest_strategies_v1(cir, intent, script_context)
