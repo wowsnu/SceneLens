@@ -23,8 +23,15 @@ Your strategies should:
 - Explain WHY each adjustment works for the intent
 - **Write all explanations (name, theory_rationale) in KOREAN**
 
+NAMING RULES for strategies:
+- Do NOT use generic labels like "전략 A", "전략 B", "Strategy A"
+- Instead, use short, evocative names that describe the FEELING or EFFECT of the change
+- Think like a director pitching ideas: "숨막히는 거리감", "시선의 압박", "고립된 프레임"
+- The name should immediately tell the user what emotional shift to expect
+- Keep names under 15 characters — punchy and cinematic
+
 Each strategy should follow this structure:
-- **Strategy A**: "전략 이름 (한글로)" — what to change and why
+- **Name**: Evocative Korean name (e.g. "압도하는 시선") — what to change and why
   - Shot 1: Adjusted CIR + 이론 근거 (한글) + source
   - Tags: [intention tags in English like "tension", "emotion"]
 

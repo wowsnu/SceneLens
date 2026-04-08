@@ -631,16 +631,41 @@ Now redraw the sketch applying ONLY the changes above. Keep everything else iden
 
     def _gen_img():
         if model == 'gpt-image-1.5':
+            import time
             oai = get_openai_client()
-            response = oai.images.edit(
-                model='gpt-image-1.5',
-                image=("sketch.png", image_bytes, "image/png"),
-                prompt=prompt,
-                n=1,
-                size="1536x1024",
-            )
-            img_b64 = response.data[0].b64_json
-            return base64.b64decode(img_b64)
+            last_err = None
+            for attempt in range(3):
+                try:
+                    response = oai.images.edit(
+                        model='gpt-image-1.5',
+                        image=("sketch.png", image_bytes, "image/png"),
+                        prompt=prompt,
+                        n=1,
+                        size="1536x1024",
+                    )
+                    img_b64 = response.data[0].b64_json
+                    return base64.b64decode(img_b64)
+                except Exception as e:
+                    last_err = e
+                    err_str = str(e)
+                    if '429' in err_str or 'rate_limit' in err_str:
+                        wait = (attempt + 1) * 15
+                        print(f"[reframe-sketch] GPT 429, retry {attempt+1}/3 in {wait}s...")
+                        time.sleep(wait)
+                    elif 'moderation_blocked' in err_str or 'safety' in err_str:
+                        print(f"[reframe-sketch] GPT moderation blocked, falling back to Gemini")
+                        break  # fall through to Gemini
+                    else:
+                        raise
+            # Fallback to Gemini if GPT failed
+            print(f"[reframe-sketch] GPT failed ({last_err}), using Gemini fallback")
+            contents = [prompt, "\n[Input sketch to reframe:]\n", types.Part.from_bytes(data=image_bytes, mime_type='image/png')]
+            gen_config = types.GenerateContentConfig(response_modalities=['IMAGE'])
+            res = gemini_client.models.generate_content(model='gemini-2.5-flash-image', contents=contents, config=gen_config)
+            for part in res.candidates[0].content.parts:
+                if part.inline_data is not None:
+                    return part.inline_data.data
+            raise ValueError("Gemini fallback did not return an image")
         else:
             contents = [prompt, "\n[Input sketch to reframe:]\n", types.Part.from_bytes(data=image_bytes, mime_type='image/png')]
             gen_config = types.GenerateContentConfig(response_modalities=['IMAGE'])
