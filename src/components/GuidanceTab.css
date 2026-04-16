@@ -1,0 +1,303 @@
+/* GuidanceTab.css */
+.guidance-tab {
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+  color: var(--text-main);
+}
+
+.guidance-section {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.guidance-section h3 {
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.guidance-section h3 svg {
+  opacity: 0.6;
+}
+
+/* === CIR Attrs Grid === */
+.attrs-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+}
+
+.attr-item {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border-subtle);
+  padding: 10px 12px;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.attr-label {
+  font-size: 10px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.attr-value {
+  font-size: 13px;
+  font-weight: 500;
+}
+
+/* === Composition Analysis Text === */
+.comp-text {
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--text-main);
+  background: linear-gradient(to right, rgba(59, 130, 246, 0.1), transparent);
+  padding: 16px;
+  border-left: 2px solid var(--accent-blue);
+  border-radius: 0 8px 8px 0;
+}
+
+/* === Proposal Cards (The Library Cards) === */
+.proposals-list {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.proposal-card {
+  position: relative;
+  background: var(--bg-panel);
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+  padding: 20px;
+  cursor: pointer;
+  transition: var(--transition-smooth);
+  overflow: hidden;
+}
+
+.proposal-card:hover {
+  background: var(--bg-panel-hover);
+  border-color: var(--border-bright);
+  transform: translateY(-2px);
+}
+
+.proposal-card.active {
+  background: rgba(59, 130, 246, 0.05);
+  border-color: var(--accent-blue);
+  box-shadow: 0 0 20px rgba(59, 130, 246, 0.15);
+}
+
+.proposal-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.proposal-badge {
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 700;
+  color: white;
+}
+
+.proposal-name {
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+/* Theory Section within Card */
+.proposal-theory {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.proposal-source {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--accent-amber);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin-bottom: 8px;
+  display: inline-block;
+  padding: 2px 6px;
+  background: rgba(245, 158, 11, 0.1);
+  border-radius: 4px;
+}
+
+.proposal-rationale {
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--text-main);
+  font-style: italic;
+  opacity: 0.9;
+}
+
+/* CIR Diff UI */
+.proposal-cir-diff {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 12px;
+}
+
+.cir-diff-item {
+  background: rgba(255, 255, 255, 0.05);
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 11px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--border-subtle);
+}
+
+.cir-diff-label {
+  color: var(--text-muted);
+}
+
+.cir-diff-arrow {
+  opacity: 0.4;
+}
+
+/* Preview Image */
+.proposal-preview {
+  margin: 12px 0;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid var(--border-subtle);
+}
+
+.proposal-overlay-img {
+  width: 100%;
+  display: block;
+}
+
+/* Loading state */
+.proposal-loading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--text-muted);
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 8px;
+  margin-top: 12px;
+}
+
+.proposal-loading svg {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* Waiting State */
+.analysis-waiting {
+  height: 400px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 20px;
+  color: var(--text-muted);
+}
+
+.status-icon {
+  width: 64px;
+  height: 64px;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border-subtle);
+}
+
+.status-text {
+  max-width: 200px;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+/* Overlay Toggles */
+.toggle-row {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.toggle-label {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+/* Simple Custom Toggle Switch */
+.toggle-switch {
+  width: 32px;
+  height: 18px;
+  background: var(--border-bright);
+  border-radius: 10px;
+  position: relative;
+  transition: var(--transition-smooth);
+}
+
+input:checked + .toggle-switch {
+  background: var(--accent-blue);
+}
+
+.toggle-switch::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 14px;
+  height: 14px;
+  background: white;
+  border-radius: 50%;
+  transition: var(--transition-smooth);
+}
+
+input:checked + .toggle-switch::after {
+  left: 16px;
+}
+
+input[type="checkbox"] {
+  display: none;
+}
+
+.proposal-generate-hint {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--accent-blue);
+  margin-top: 12px;
+  opacity: 0.8;
+}

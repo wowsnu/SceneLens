@@ -1,0 +1,158 @@
+.shot-panel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: var(--bg-panel);
+  border-left: 1px solid var(--border-subtle);
+  overflow: hidden;
+}
+
+/* 📍 미니맵 섹션 스타일 */
+.mini-map-section {
+  flex: 0 0 280px;
+  border-bottom: 1px solid var(--border-subtle);
+  background: rgba(0, 0, 0, 0.2);
+  display: flex;
+  flex-direction: column;
+  transition: flex 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.mini-map-section.collapsed {
+  flex: 0 0 32px;
+}
+
+.spatial-fullscreen {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  background: #08080a;
+  animation: spatial-expand 0.35s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+@keyframes spatial-expand {
+  from {
+    clip-path: inset(0 0 0 60%);
+    opacity: 0.5;
+  }
+  to {
+    clip-path: inset(0 0 0 0%);
+    opacity: 1;
+  }
+}
+
+.spatial-fullscreen-header {
+  height: 44px;
+  padding: 0 20px;
+  display: flex;
+  align-items: center;
+  border-bottom: 1px solid rgba(255,255,255,0.07);
+  background: #111114;
+  flex-shrink: 0;
+}
+
+.section-header {
+  height: 32px;
+  padding: 0 12px;
+  display: flex;
+  align-items: center;
+  background: var(--bg-header);
+}
+
+.map-header-actions {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.section-label {
+  font-size: 10px;
+  font-weight: 800;
+  color: var(--text-muted);
+  letter-spacing: 0.5px;
+}
+
+.map-expand-btn {
+  margin-left: auto;
+  background: transparent;
+  border: 1px solid var(--border-bright);
+  color: var(--text-muted);
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.map-expand-btn:hover {
+  color: var(--text-main);
+  background: var(--border-subtle);
+}
+
+.mini-map-container {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.mini-map-container.hidden {
+  display: none;
+}
+
+/* 🔍 인스펙터 콘텐츠 영역 스타일 */
+.inspector-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.tab-header {
+  height: 36px;
+  display: flex;
+  border-bottom: 1px solid var(--border-subtle);
+  background: var(--bg-header);
+}
+
+.tab-btn {
+  flex: 1;
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border-right: 1px solid var(--border-subtle);
+}
+
+.tab-btn:last-child {
+  border-right: none;
+}
+
+.tab-btn.active {
+  background: var(--bg-panel);
+  color: var(--accent-blue);
+  box-shadow: inset 0 -2px 0 var(--accent-blue);
+}
+
+.tab-content-area {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px;
+}
+
+/* Custom Scrollbar for the inspector */
+.tab-content-area::-webkit-scrollbar {
+  width: 4px;
+}
+
+.tab-content-area::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 2px;
+}

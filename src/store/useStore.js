@@ -1,0 +1,281 @@
+import { create } from 'zustand'
+
+// Screenplay data
+const SCREENPLAY = [
+  { type: 'scene-heading', text: 'INT. RURAL GAS STATION — DAY', beat: 0 },
+  { type: 'action', text: 'An old, dusty gas station. The PROPRIETOR (60s) stands behind the counter. ANTON CHIGURH (40s), a terrifyingly calm man, finishes a bag of cashews.', beat: 0 },
+  { type: 'character', text: 'CHIGURH', beat: 0 },
+  { type: 'dialogue', text: "What's the most you ever lost on a coin toss?", beat: 0 },
+  { type: 'character', text: 'PROPRIETOR', beat: 0 },
+  { type: 'dialogue', text: 'Sir?', beat: 0 },
+  { type: 'character', text: 'CHIGURH', beat: 0 },
+  { type: 'dialogue', text: 'The most. You ever lost. On a coin toss.', beat: 0 },
+  { type: 'action', text: 'Chigurh pulls a quarter from his pocket. He flips it, catches it, and slaps it on the counter.', beat: 1 },
+  { type: 'character', text: 'CHIGURH', beat: 1 },
+  { type: 'dialogue', text: 'Call it.', beat: 1 },
+  { type: 'character', text: 'PROPRIETOR', beat: 2 },
+  { type: 'dialogue', text: 'For what?', beat: 2 },
+  { type: 'character', text: 'CHIGURH', beat: 2 },
+  { type: 'dialogue', text: "You need to call it. I can't call it for you. It wouldn't be fair.", beat: 2 },
+  { type: 'character', text: 'PROPRIETOR', beat: 2 },
+  { type: 'dialogue', text: "I didn't put nothin' up.", beat: 2 },
+  { type: 'character', text: 'CHIGURH', beat: 2 },
+  { type: 'dialogue', text: "Yes, you did. You've been putting it up your whole life, you just didn't know it.", beat: 2 },
+  { type: 'action', text: 'Chigurh leans in slightly. His eyes are dead, unblinking.', beat: 3 },
+  { type: 'character', text: 'CHIGURH', beat: 3 },
+  { type: 'dialogue', text: 'You know what date is on this coin?', beat: 3 },
+  { type: 'character', text: 'PROPRIETOR', beat: 3 },
+  { type: 'dialogue', text: 'No.', beat: 3 },
+  { type: 'character', text: 'CHIGURH', beat: 3 },
+  { type: 'dialogue', text: "1958. It's been traveling twenty-two years to get here. And now it's here. And you have to say. Call it.", beat: 3 },
+  { type: 'action', text: 'The oppressive silence stretches. The Proprietor looks at the coin, then at Chigurh.', beat: 4 },
+  { type: 'character', text: 'PROPRIETOR', beat: 4 },
+  { type: 'dialogue', text: 'Look, I need to know what I stand to win.', beat: 4 },
+  { type: 'character', text: 'CHIGURH', beat: 4 },
+  { type: 'dialogue', text: 'Everything.', beat: 4 },
+  { type: 'action', text: 'The Proprietor swallows hard.', beat: 5 },
+  { type: 'character', text: 'PROPRIETOR', beat: 5 },
+  { type: 'dialogue', text: 'Alright. Heads then.', beat: 5 },
+  { type: 'action', text: 'Chigurh slowly lifts his hand from the coin. He looks at it.', beat: 6 },
+  { type: 'character', text: 'CHIGURH', beat: 6 },
+  { type: 'dialogue', text: 'Well done.', beat: 6 },
+  { type: 'action', text: 'Chigurh slides the coin across the counter to him.', beat: 6 },
+  { type: 'character', text: 'CHIGURH', beat: 6 },
+  { type: 'dialogue', text: "Don't put it in your pocket, sir. Or it'll get mixed in with the others and become just a coin. Which it is.", beat: 6 },
+  { type: 'action', text: 'Chigurh turns and leaves the store.', beat: 6 },
+  { type: 'transition', text: 'CUT TO BLACK.', beat: 6 },
+]
+
+// Dummy strategy data with image paths and spatial coordinates
+const DEMO_STRATEGIES = [
+  {
+    id: 'A',
+    name: 'Slow Burn Tension',
+    shots: [
+      { order: 1, image: null, x: 450, y: 700, angle: -90, intent: 'ESTABLISH SPACE', cir: { shotSize: 'Wide', relation: 'Master' } },
+      { order: 2, image: null, x: 200, y: 450, angle: -30, intent: 'SUBJECTIVE PRESSURE', cir: { shotSize: 'Medium', relation: 'OTS' } },
+      { order: 3, image: null, x: 500, y: 250, angle: 90, intent: 'REACTION EMPHASIS', cir: { shotSize: 'Close-Up', relation: 'Single' } },
+      { order: 4, image: null, x: 750, y: 450, angle: -150, intent: 'ISOLATION / VULNERABILITY', cir: { shotSize: 'Medium Close', relation: 'Single' } },
+      { order: 5, image: null, x: 350, y: 350, angle: 0, intent: 'RELATIONSHIP RESET', cir: { shotSize: 'Medium', relation: 'Two-shot' } },
+      { order: 6, image: null, x: 450, y: 800, angle: -90, intent: 'CLIMATIC BEAT', cir: { shotSize: 'ECU', relation: 'Single' } },
+      { order: 7, image: null, x: 450, y: 900, angle: -90, intent: 'CLIMATIC BEAT', cir: { shotSize: 'ECU', relation: 'Single' } },
+    ]
+  },
+]
+
+const STRATEGY_COLORS = [
+  { color: '#10b981', bg: 'rgba(16, 185, 129, 0.1)', raw: '#10b981' },
+  { color: '#8b5cf6', bg: 'rgba(139, 92, 246, 0.1)', raw: '#8b5cf6' },
+  { color: '#ef4444', bg: 'rgba(239, 68, 68, 0.1)', raw: '#ef4444' },
+]
+
+const useStore = create((set, get) => ({
+  viewMode: 'script',
+  setViewMode: (mode) => set({ viewMode: mode }),
+  overviewTab: 'spatial',
+  setOverviewTab: (tab) => set({ overviewTab: tab }),
+  isScriptOpen: false,
+  isDrawerExpanded: false,
+  setIsDrawerExpanded: (val) => set({ isDrawerExpanded: val }),
+  drawerTab: 'script',
+  setDrawerTab: (tab) => set({ drawerTab: tab }),
+  toggleScript: () => set((state) => ({ isScriptOpen: !state.isScriptOpen })),
+  setScriptOpen: (val) => set({ isScriptOpen: val }),
+  screenplay: SCREENPLAY,
+  setScreenplay: (script) => set({ screenplay: script }),
+  
+  // 비트 나누기: 특정 지점에서 대본을 자르고 그 자리에 새로운 샷 칸 삽입
+  splitBeat: (elementIndex) => set((state) => {
+    const newScreenplay = [...state.screenplay]
+    
+    // 1. 해당 지점부터 끝까지 일단 비트 번호 증가
+    for (let i = elementIndex; i < newScreenplay.length; i++) {
+      newScreenplay[i].beat = (newScreenplay[i].beat || 0) + 1
+    }
+
+    // 2. 비트 번호 순차 재정렬 (0, 1, 2... 빈 틈 없게)
+    let currentNewBeat = 0
+    let lastOldBeat = newScreenplay[0].beat
+    newScreenplay[0].beat = 0
+    for (let i = 1; i < newScreenplay.length; i++) {
+      if (newScreenplay[i].beat !== lastOldBeat) {
+        currentNewBeat++
+        lastOldBeat = newScreenplay[i].beat
+      }
+      newScreenplay[i].beat = currentNewBeat
+    }
+
+    // 3. 삽입될 샷의 인덱스 계산 (방금 생성된 비트 번호가 삽입 위치)
+    const insertAt = newScreenplay[elementIndex].beat
+
+    // 4. 스토리보드 샷 리스트 중간에 정확히 삽입
+    const newStrategies = [...state.strategies]
+    const strategy = { ...newStrategies[state.activeStrategy] }
+    const newShots = [...strategy.shots]
+    
+    newShots.splice(insertAt, 0, { 
+      order: insertAt + 1, 
+      intent: 'NEW SHOT',
+      cir: { shotSize: 'Medium', relation: 'Single' }
+    })
+    
+    // order 재정렬
+    newShots.forEach((s, idx) => { s.order = idx + 1 })
+    
+    strategy.shots = newShots
+    newStrategies[state.activeStrategy] = strategy
+
+    // 5. 스케치 데이터(Draw) 밀어주기
+    const newShotSketches = { ...state.shotSketches }
+    const strategyPrefix = `${state.activeStrategy}-`
+    const keys = Object.keys(newShotSketches)
+      .filter(k => k.startsWith(strategyPrefix))
+      .map(k => parseInt(k.split('-')[1]))
+      .sort((a, b) => b - a)
+
+    keys.forEach(idx => {
+      if (idx >= insertAt) {
+        newShotSketches[`${strategyPrefix}${idx + 1}`] = newShotSketches[`${strategyPrefix}${idx}`]
+        delete newShotSketches[`${strategyPrefix}${idx}`]
+      }
+    })
+
+    return { screenplay: newScreenplay, strategies: newStrategies, shotSketches: newShotSketches }
+  }),
+
+  // 비트 합치기: 현재 비트를 이전 비트와 병합하고 해당 샷 삭제
+  mergeBeat: (elementIndex) => set((state) => {
+    if (elementIndex === 0) return state
+    const newScreenplay = [...state.screenplay]
+    
+    // 1. 삭제될 샷의 인덱스 파악 (현재 요소의 비트 번호)
+    const deleteIdx = newScreenplay[elementIndex].beat
+    const targetBeat = newScreenplay[elementIndex - 1].beat
+
+    // 2. 비트 병합
+    const currentBeat = newScreenplay[elementIndex].beat
+    for (let i = elementIndex; i < newScreenplay.length; i++) {
+      if (newScreenplay[i].beat === currentBeat) {
+        newScreenplay[i].beat = targetBeat
+      }
+    }
+
+    // 3. 비트 번호 순차 재정렬
+    let currentNewBeat = 0
+    let lastOldBeat = newScreenplay[0].beat
+    newScreenplay[0].beat = 0
+    for (let i = 1; i < newScreenplay.length; i++) {
+      if (newScreenplay[i].beat !== lastOldBeat) {
+        currentNewBeat++
+        lastOldBeat = newScreenplay[i].beat
+      }
+      newScreenplay[i].beat = currentNewBeat
+    }
+
+    // 4. 스토리보드 샷 삭제
+    const newStrategies = [...state.strategies]
+    const strategy = { ...newStrategies[state.activeStrategy] }
+    const newShots = [...strategy.shots]
+    
+    newShots.splice(deleteIdx, 1)
+    newShots.forEach((s, idx) => { s.order = idx + 1 })
+
+    strategy.shots = newShots
+    newStrategies[state.activeStrategy] = strategy
+
+    // 5. 스케치 데이터 당기기
+    const newShotSketches = { ...state.shotSketches }
+    const strategyPrefix = `${state.activeStrategy}-`
+    delete newShotSketches[`${strategyPrefix}${deleteIdx}`]
+    
+    const keys = Object.keys(newShotSketches)
+      .filter(k => k.startsWith(strategyPrefix))
+      .map(k => parseInt(k.split('-')[1]))
+      .sort((a, b) => a - b)
+
+    keys.forEach(idx => {
+      if (idx > deleteIdx) {
+        newShotSketches[`${strategyPrefix}${idx - 1}`] = newShotSketches[`${strategyPrefix}${idx}`]
+        delete newShotSketches[`${strategyPrefix}${idx}`]
+      }
+    })
+
+    return { screenplay: newScreenplay, strategies: newStrategies, shotSketches: newShotSketches }
+  }),
+
+  activeBeat: 0,
+  setActiveBeat: (beat) => set({ activeBeat: beat }),
+  strategies: DEMO_STRATEGIES,
+  activeStrategy: 0,
+  setStrategies: (strategies) => set({ strategies }),
+  setActiveStrategy: (idx) => set({ activeStrategy: idx }),
+  activeShot: 0,
+  setActiveShot: (idx) => set({ activeShot: idx }),
+  analysisResult: null,
+  setAnalysisResult: (result) => set({ analysisResult: result }),
+  proposals: [],
+  setProposals: (proposals) => set({ proposals }),
+  isAnalyzing: false,
+  setIsAnalyzing: (val) => set({ isAnalyzing: val }),
+  canvasDataUrl: null,
+  setCanvasDataUrl: (url) => set({ canvasDataUrl: url }),
+  pendingCanvasImage: null,
+  setPendingCanvasImage: (url) => set({ pendingCanvasImage: url }),
+  drawingTool: 'pen',
+  setDrawingTool: (tool) => set({ drawingTool: tool }),
+  penType: 'ink',
+  setPenType: (type) => set({ penType: type }),
+  brushSize: 3,
+  setBrushSize: (size) => set({ brushSize: size }),
+  isGenerating: false,
+  setIsGenerating: (val) => set({ isGenerating: val }),
+  isEnhancing: false,
+  setIsEnhancing: (val) => set({ isEnhancing: val }),
+  intent: '',
+  setIntent: (val) => set({ intent: val }),
+  chatMessages: [],
+  addChatMessage: (msg) => set((state) => ({
+    chatMessages: [...state.chatMessages, { ...msg, id: Date.now(), timestamp: new Date() }]
+  })),
+  detailTab: 'guidance',
+  setDetailTab: (tab) => set({ detailTab: tab }),
+  strategyColors: STRATEGY_COLORS,
+  getStrategyColor: (idx) => STRATEGY_COLORS[idx % STRATEGY_COLORS.length],
+  overlays: { thirds: true, eyeline: true, annotations: true },
+  toggleOverlay: (key) => set((state) => ({
+    overlays: { ...state.overlays, [key]: !state.overlays[key] }
+  })),
+  zenMode: false,
+  setZenMode: (val) => set({ zenMode: val }),
+  shotSketches: {},
+  setShotSketch: (key, dataUrl) => set((state) => ({
+    shotSketches: { ...state.shotSketches, [key]: dataUrl }
+  })),
+  flowBranches: [{ id: 'branch-main', label: 'Main', shots: [], isMain: true }],
+  flowActiveBranch: 0,
+  flowActiveShot: 0,
+  setFlowActiveShot: (idx) => set({ flowActiveShot: idx }),
+  setFlowActiveBranch: (idx) => set({ flowActiveBranch: idx }),
+
+  // --- New Layout System States ---
+  layoutMode: 'unified', // 'unified' | 'maximized'
+  maximizedPanel: null, // null | 'left' | 'center' | 'right'
+  setMaximizedPanel: (panel) => set({ maximizedPanel: panel }),
+  
+  leftPanelVisible: true,
+  setLeftPanelVisible: (val) => set({ leftPanelVisible: val }),
+  
+  rightPanelVisible: true,
+  setRightPanelVisible: (val) => set({ rightPanelVisible: val }),
+  
+  centerTab: 'canvas', // 'map' | 'canvas' | 'guidance'
+  setCenterTab: (tab) => set({ centerTab: tab }),
+
+  isLabMode: false,
+  setLabMode: (val) => set({ isLabMode: val }),
+
+  bottomPanelVisible: true,
+  setBottomPanelVisible: (val) => set({ bottomPanelVisible: val }),
+}))
+
+export default useStore

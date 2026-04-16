@@ -1,0 +1,214 @@
+:root {
+  --bg-main: #0c0c0e;
+  --bg-panel: #141417;
+  --bg-header: #1a1a1e;
+  --border-subtle: rgba(255, 255, 255, 0.05);
+  --border-bright: rgba(255, 255, 255, 0.12);
+  --accent-blue: #3e82f6;
+  --accent-glow: rgba(62, 130, 246, 0.4);
+  --text-main: #f4f4f5;
+  --text-muted: #a1a1aa;
+  --transition-smooth: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+* {
+  box-sizing: border-box;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+.app-container {
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background-color: var(--bg-main);
+  color: var(--text-main);
+  overflow: hidden;
+}
+
+.floating-fullscreen-btn {
+  position: fixed;
+  bottom: 14px;
+  right: 12px;
+  z-index: 1000;
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(20, 20, 24, 0.7);
+  backdrop-filter: blur(14px);
+  color: rgba(255, 255, 255, 0.78);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.floating-fullscreen-btn:hover {
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.2);
+  background: rgba(30, 30, 36, 0.85);
+}
+
+/* Unified Workspace Layout */
+.unified-workspace {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+  gap: 1px;
+  background-color: #000;
+}
+
+.panel-container {
+  display: flex;
+  flex-direction: column;
+  background-color: var(--bg-panel);
+  min-width: 0;
+  overflow: hidden;
+}
+
+/* LEFT */
+.left-panel {
+  flex: 0 0 320px;
+  max-width: 320px;
+  border-right: 1px solid var(--border-subtle);
+  transition: flex 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+              max-width 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+              opacity 0.35s ease;
+}
+
+.left-panel.collapsed {
+  flex: 0 0 40px;
+  max-width: 40px;
+}
+
+.left-panel.maximized {
+  flex: 1;
+  max-width: 100vw;
+}
+
+/* CENTER */
+.center-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  transition: flex 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+              opacity 0.25s ease,
+              transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* RIGHT */
+.right-panel {
+  flex: 0 0 360px;
+  border-left: 1px solid var(--border-subtle);
+  transition: flex 0.35s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.25s ease;
+}
+
+.right-panel.reframe-lab-active {
+  flex: 0 0 480px;
+  background: #09090b;
+}
+
+/* Hidden panel */
+.panel-hidden {
+  flex: 0 0 0px !important;
+  min-width: 0 !important;
+  max-width: 0 !important;
+  opacity: 0;
+  overflow: hidden;
+  pointer-events: none;
+  transform: translateX(-20px);
+}
+
+/* Panel chrome */
+.panel-header {
+  height: 44px;
+  padding: 0 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background-color: var(--bg-header);
+  border-bottom: 1px solid var(--border-subtle);
+  flex-shrink: 0;
+}
+
+.panel-title {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.panel-control-btn {
+  background: transparent;
+  border: 1px solid var(--border-bright);
+  color: var(--text-muted);
+  font-size: 10px;
+  padding: 3px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: var(--transition-smooth);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.panel-control-btn:hover {
+  background: var(--border-subtle);
+  color: var(--text-main);
+}
+
+.panel-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Timeline dock */
+.timeline-dock {
+  flex-shrink: 0;
+  width: calc(100% - 32px);
+  margin: 10px auto 0;
+  background: rgba(14, 14, 18, 0.8);
+  backdrop-filter: blur(32px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  padding: 8px 10px;
+}
+
+/* Zen Mode */
+.zen-mode {
+  width: 100vw;
+  height: 100vh;
+  background: #000;
+  position: relative;
+  overflow: hidden;
+}
+
+.zen-exit-btn {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 11px;
+  font-weight: 600;
+  padding: 6px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.zen-exit-btn:hover {
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.2);
+}
