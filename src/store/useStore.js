@@ -69,6 +69,8 @@ const STRATEGY_COLORS = [
   { color: '#ef4444', bg: 'rgba(239, 68, 68, 0.1)', raw: '#ef4444' },
 ]
 
+const getShotKey = (strategyIdx, shotIdx) => `${strategyIdx}-${shotIdx}`
+
 const useStore = create((set, get) => ({
   viewMode: 'script',
   setViewMode: (mode) => set({ viewMode: mode }),
@@ -140,7 +142,25 @@ const useStore = create((set, get) => ({
       }
     })
 
-    return { screenplay: newScreenplay, strategies: newStrategies, shotSketches: newShotSketches }
+    const newReframeHistory = { ...state.reframeHistory }
+    const historyKeys = Object.keys(newReframeHistory)
+      .filter(k => k.startsWith(strategyPrefix))
+      .map(k => parseInt(k.split('-')[1]))
+      .sort((a, b) => b - a)
+
+    historyKeys.forEach(idx => {
+      if (idx >= insertAt) {
+        newReframeHistory[getShotKey(state.activeStrategy, idx + 1)] = newReframeHistory[getShotKey(state.activeStrategy, idx)]
+        delete newReframeHistory[getShotKey(state.activeStrategy, idx)]
+      }
+    })
+
+    return {
+      screenplay: newScreenplay,
+      strategies: newStrategies,
+      shotSketches: newShotSketches,
+      reframeHistory: newReframeHistory,
+    }
   }),
 
   // 비트 합치기: 현재 비트를 이전 비트와 병합하고 해당 샷 삭제
@@ -200,7 +220,27 @@ const useStore = create((set, get) => ({
       }
     })
 
-    return { screenplay: newScreenplay, strategies: newStrategies, shotSketches: newShotSketches }
+    const newReframeHistory = { ...state.reframeHistory }
+    delete newReframeHistory[getShotKey(state.activeStrategy, deleteIdx)]
+
+    const historyKeys = Object.keys(newReframeHistory)
+      .filter(k => k.startsWith(strategyPrefix))
+      .map(k => parseInt(k.split('-')[1]))
+      .sort((a, b) => a - b)
+
+    historyKeys.forEach(idx => {
+      if (idx > deleteIdx) {
+        newReframeHistory[getShotKey(state.activeStrategy, idx - 1)] = newReframeHistory[getShotKey(state.activeStrategy, idx)]
+        delete newReframeHistory[getShotKey(state.activeStrategy, idx)]
+      }
+    })
+
+    return {
+      screenplay: newScreenplay,
+      strategies: newStrategies,
+      shotSketches: newShotSketches,
+      reframeHistory: newReframeHistory,
+    }
   }),
 
   activeBeat: 0,
@@ -251,6 +291,39 @@ const useStore = create((set, get) => ({
   setShotSketch: (key, dataUrl) => set((state) => ({
     shotSketches: { ...state.shotSketches, [key]: dataUrl }
   })),
+  reframeHistory: {},
+  addReframeHistoryEntry: (strategyIdx, shotIdx, entry) => set((state) => {
+    const key = getShotKey(strategyIdx, shotIdx)
+    const existing = state.reframeHistory[key] || []
+
+    if (entry.image && existing.some((item) => item.image === entry.image)) {
+      return state
+    }
+
+    const nextEntry = {
+      id: entry.id || `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      image: entry.image,
+      cir: entry.cir || null,
+      changedFields: entry.changedFields || [],
+      description: entry.description || '',
+      label: entry.label || `Version ${existing.length + 1}`,
+      createdAt: entry.createdAt || new Date().toISOString(),
+      source: entry.source || 'reframe',
+    }
+
+    return {
+      reframeHistory: {
+        ...state.reframeHistory,
+        [key]: [...existing, nextEntry],
+      }
+    }
+  }),
+  clearReframeHistoryForShot: (strategyIdx, shotIdx) => set((state) => {
+    const key = getShotKey(strategyIdx, shotIdx)
+    const nextHistory = { ...state.reframeHistory }
+    delete nextHistory[key]
+    return { reframeHistory: nextHistory }
+  }),
   flowBranches: [{ id: 'branch-main', label: 'Main', shots: [], isMain: true }],
   flowActiveBranch: 0,
   flowActiveShot: 0,

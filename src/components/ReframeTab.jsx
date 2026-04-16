@@ -7,6 +7,7 @@ const FIELD_CONFIG = [
   {
     key: 'shotSize',
     label: 'Shot Size',
+    hint: '프레이밍 크기를 시각적으로 바꿉니다.',
     options: [
       'Extreme Close-Up',
       'Close-Up',
@@ -20,34 +21,212 @@ const FIELD_CONFIG = [
   {
     key: 'horizontalAngle',
     label: 'Horizontal Angle',
+    hint: '인물을 어느 방향에서 보는지 정합니다.',
     options: ['Frontal', 'Three-Quarter', 'Profile', 'Rear'],
   },
   {
     key: 'verticalLevel',
     label: 'Vertical Level',
+    hint: '카메라 높이와 시선 압박감을 조절합니다.',
     options: ['High', 'Eye', 'Low', 'Top-Down', 'Ground'],
   },
   {
     key: 'viewpointFraming',
     label: 'Viewpoint',
+    hint: '누구의 시점처럼 느껴질지 정합니다.',
     options: ['Objective', 'OTS', 'POV'],
   },
   {
     key: 'occlusion',
     label: 'Occlusion',
+    hint: '가려짐을 통해 거리감과 긴장을 만듭니다.',
     options: ['None', 'Partial', 'Heavy'],
   },
   {
     key: 'depth',
     label: 'Depth',
+    hint: '초점 심도로 피사체 분리를 만듭니다.',
     options: ['', 'Shallow', 'Deep'],
   },
   {
     key: 'motionHint',
     label: 'Motion',
+    hint: '카메라 움직임의 느낌을 지정합니다.',
     options: ['Static', 'Pan', 'Tilt', 'Track', 'Zoom', 'Handheld'],
   },
 ]
+
+const OPTION_VISUALS = {
+  shotSize: {
+    'Extreme Close-Up': {
+      image: '/img/extreme_closeup.png',
+      eyebrow: 'Detail',
+      description: '얼굴의 일부만 꽉 차게',
+    },
+    'Close-Up': {
+      image: '/img/ref_closeup.png',
+      eyebrow: 'Emotion',
+      description: '표정과 감정을 전면으로',
+    },
+    'Medium Close-Up': {
+      image: '/img/closeup_woman.png',
+      eyebrow: 'Dialogue',
+      description: '상반신 중심의 대화 샷',
+    },
+    'Medium Shot': {
+      image: '/img/closeup_man.png',
+      eyebrow: 'Gesture',
+      description: '몸짓과 관계가 읽히는 거리',
+    },
+    'Medium Long Shot': {
+      eyebrow: 'Body',
+      description: '무릎 아래까지 읽히는 거리',
+      accent: 'linear-gradient(135deg, rgba(222, 184, 135, 0.25), rgba(245, 158, 11, 0.18))',
+    },
+    'Long Shot': {
+      image: '/img/ref_diner.png',
+      eyebrow: 'Space',
+      description: '환경과 인물의 균형',
+    },
+    'Extreme Wide Shot': {
+      image: '/img/wide_establishing.png',
+      eyebrow: 'Scale',
+      description: '공간이 압도하는 구도',
+    },
+  },
+  horizontalAngle: {
+    Frontal: {
+      image: '/img/ref_interrogation.png',
+      eyebrow: 'Confront',
+      description: '정면에서 힘 대결을 강조',
+    },
+    'Three-Quarter': {
+      image: '/img/closeup_woman.png',
+      eyebrow: 'Natural',
+      description: '가장 자연스러운 입체감',
+    },
+    Profile: {
+      image: '/img/closeup_man.png',
+      eyebrow: 'Graphic',
+      description: '실루엣이 강한 옆모습',
+    },
+    Rear: {
+      eyebrow: 'Mystery',
+      description: '등 뒤에서 심리적 거리감',
+      accent: 'linear-gradient(135deg, rgba(107, 114, 128, 0.32), rgba(31, 41, 55, 0.28))',
+    },
+  },
+  verticalLevel: {
+    High: {
+      image: '/img/high_angle.png',
+      eyebrow: 'Observe',
+      description: '위에서 내려보며 작게',
+    },
+    Eye: {
+      image: '/img/ref_interrogation.png',
+      eyebrow: 'Neutral',
+      description: '눈높이의 기본 구도',
+    },
+    Low: {
+      image: '/img/low_angle.png',
+      eyebrow: 'Power',
+      description: '올려다보며 위압감',
+    },
+    'Top-Down': {
+      eyebrow: 'Planar',
+      description: '완전히 내려찍는 오버헤드',
+      accent: 'linear-gradient(135deg, rgba(56, 189, 248, 0.22), rgba(14, 165, 233, 0.14))',
+    },
+    Ground: {
+      eyebrow: 'Floor',
+      description: '바닥 가까이에서 올려봄',
+      accent: 'linear-gradient(135deg, rgba(120, 113, 108, 0.3), rgba(63, 63, 70, 0.24))',
+    },
+  },
+  viewpointFraming: {
+    Objective: {
+      image: '/img/ref_diner.png',
+      eyebrow: 'Detached',
+      description: '중립적인 관찰자 시점',
+    },
+    OTS: {
+      image: '/img/ots_shot.png',
+      eyebrow: 'Relation',
+      description: '어깨 너머로 관계를 강조',
+    },
+    POV: {
+      eyebrow: 'Subjective',
+      description: '인물의 눈으로 직접 보기',
+      accent: 'linear-gradient(135deg, rgba(16, 185, 129, 0.24), rgba(6, 182, 212, 0.16))',
+    },
+  },
+  occlusion: {
+    None: {
+      image: '/img/ref_diner.png',
+      eyebrow: 'Clear',
+      description: '가림 없이 정면 노출',
+    },
+    Partial: {
+      image: '/img/alt_canted.png',
+      eyebrow: 'Layered',
+      description: '전경 일부로 깊이 추가',
+    },
+    Heavy: {
+      eyebrow: 'Conceal',
+      description: '좁은 틈으로 훔쳐보는 느낌',
+      accent: 'linear-gradient(135deg, rgba(239, 68, 68, 0.24), rgba(120, 53, 15, 0.24))',
+    },
+  },
+  depth: {
+    '': {
+      eyebrow: 'Auto',
+      description: '분석 결과에 맡기기',
+      accent: 'linear-gradient(135deg, rgba(148, 163, 184, 0.22), rgba(71, 85, 105, 0.16))',
+    },
+    Shallow: {
+      eyebrow: 'Focus',
+      description: '주인공만 또렷하게 분리',
+      accent: 'linear-gradient(135deg, rgba(59, 130, 246, 0.22), rgba(99, 102, 241, 0.18))',
+    },
+    Deep: {
+      eyebrow: 'Space',
+      description: '전경부터 배경까지 선명하게',
+      accent: 'linear-gradient(135deg, rgba(245, 158, 11, 0.22), rgba(249, 115, 22, 0.16))',
+    },
+  },
+  motionHint: {
+    Static: {
+      image: '/img/ref_interrogation.png',
+      eyebrow: 'Locked',
+      description: '정지된 구도로 긴장 유지',
+    },
+    Pan: {
+      eyebrow: 'Sweep',
+      description: '좌우로 훑는 움직임',
+      accent: 'linear-gradient(135deg, rgba(34, 197, 94, 0.2), rgba(16, 185, 129, 0.14))',
+    },
+    Tilt: {
+      image: '/img/alt_canted.png',
+      eyebrow: 'Tilt',
+      description: '상하로 쓸어 올리는 감각',
+    },
+    Track: {
+      eyebrow: 'Follow',
+      description: '대상과 함께 따라 움직임',
+      accent: 'linear-gradient(135deg, rgba(244, 114, 182, 0.2), rgba(236, 72, 153, 0.14))',
+    },
+    Zoom: {
+      image: '/img/alt_pushin.png',
+      eyebrow: 'Push',
+      description: '안으로 밀고 들어가는 압박',
+    },
+    Handheld: {
+      image: '/img/alt_handheld.png',
+      eyebrow: 'Raw',
+      description: '거친 현장감과 불안정성',
+    },
+  },
+}
 
 const DEFAULT_CIR = {
   shotSize: 'Medium Shot',
@@ -107,6 +286,21 @@ function pickBeatScript(screenplay, activeBeat) {
   return screenplay.map((line) => line.text).join(' ')
 }
 
+function getOptionVisual(fieldKey, option) {
+  return OPTION_VISUALS[fieldKey]?.[option] || {
+    eyebrow: 'Option',
+    description: option || 'Auto',
+    accent: 'linear-gradient(135deg, rgba(71, 85, 105, 0.22), rgba(30, 41, 59, 0.18))',
+  }
+}
+
+function formatHistoryTime(isoString) {
+  if (!isoString) return ''
+  const date = new Date(isoString)
+  if (Number.isNaN(date.getTime())) return ''
+  return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+}
+
 export default function ReframeTab() {
   const strategies = useStore((s) => s.strategies)
   const setStrategies = useStore((s) => s.setStrategies)
@@ -120,6 +314,8 @@ export default function ReframeTab() {
   const setPendingCanvasImage = useStore((s) => s.setPendingCanvasImage)
   const intent = useStore((s) => s.intent)
   const setIntent = useStore((s) => s.setIntent)
+  const reframeHistory = useStore((s) => s.reframeHistory)
+  const addReframeHistoryEntry = useStore((s) => s.addReframeHistoryEntry)
 
   const [targetCir, setTargetCir] = useState(DEFAULT_CIR)
   const [model, setModel] = useState('gemini-2.5-flash-image')
@@ -127,6 +323,8 @@ export default function ReframeTab() {
   const [error, setError] = useState('')
 
   const currentShot = strategies[activeStrategy]?.shots?.[activeShot]
+  const shotHistoryKey = `${activeStrategy}-${activeShot}`
+  const historyEntries = reframeHistory[shotHistoryKey] || []
 
   const baseCir = useMemo(() => {
     if (analysisResult?.cir) return normalizeCir(analysisResult.cir)
@@ -142,8 +340,37 @@ export default function ReframeTab() {
     return FIELD_CONFIG.filter(({ key }) => (targetCir[key] || '') !== (baseCir[key] || ''))
   }, [targetCir, baseCir])
 
+  const currentVersionImage = canvasDataUrl || currentShot?.image || null
+
   const updateField = (key, value) => {
     setTargetCir((prev) => ({ ...prev, [key]: value }))
+  }
+
+  const applyHistoryEntry = (entry) => {
+    if (!entry?.image) return
+
+    setPendingCanvasImage(entry.image)
+    setCanvasDataUrl(entry.image)
+    if (entry.cir) {
+      setTargetCir(normalizeCir(entry.cir))
+    }
+
+    const updated = strategies.map((strategy, strategyIdx) => {
+      if (strategyIdx !== activeStrategy) return strategy
+      const shots = [...strategy.shots]
+      if (!shots[activeShot]) return strategy
+
+      shots[activeShot] = {
+        ...shots[activeShot],
+        image: entry.image,
+        cir: entry.cir ? { ...shots[activeShot].cir, ...entry.cir } : shots[activeShot].cir,
+        theory_rationale: entry.description || shots[activeShot].theory_rationale,
+      }
+
+      return { ...strategy, shots }
+    })
+
+    setStrategies(updated)
   }
 
   const handleReframe = async () => {
@@ -159,6 +386,16 @@ export default function ReframeTab() {
     try {
       const imageBase64 = canvasDataUrl.split(',')[1]
       const scriptContext = pickBeatScript(screenplay, activeBeat)
+      const reframeCount = historyEntries.filter((entry) => entry.source === 'reframe').length + 1
+
+      addReframeHistoryEntry(activeStrategy, activeShot, {
+        image: canvasDataUrl,
+        cir: baseCir,
+        changedFields: [],
+        description: currentShot?.theory_rationale || '',
+        label: historyEntries.length === 0 ? 'Original' : 'Source',
+        source: 'source',
+      })
 
       const result = await reframeSketch(
         imageBase64,
@@ -172,6 +409,20 @@ export default function ReframeTab() {
       const reframedDataUrl = `data:image/png;base64,${result.reframed_image}`
       setPendingCanvasImage(reframedDataUrl)
       setCanvasDataUrl(reframedDataUrl)
+
+      addReframeHistoryEntry(activeStrategy, activeShot, {
+        image: reframedDataUrl,
+        cir: targetCir,
+        changedFields: changedFields.map(({ key, label }) => ({
+          key,
+          label,
+          from: baseCir[key] || 'Auto',
+          to: targetCir[key] || 'Auto',
+        })),
+        description: result.description || '',
+        label: `Reframe ${reframeCount}`,
+        source: 'reframe',
+      })
 
       const updated = strategies.map((strategy, strategyIdx) => {
         if (strategyIdx !== activeStrategy) return strategy
@@ -212,30 +463,58 @@ export default function ReframeTab() {
           <>
             <p className="reframe-desc">분석된 구도를 기준으로 수정하고 재생성합니다.</p>
             <div className="reframe-fields">
-              {FIELD_CONFIG.map(({ key, label, options }) => {
+              {FIELD_CONFIG.map(({ key, label, hint, options }) => {
                 const isChanged = (targetCir[key] || '') !== (baseCir[key] || '')
                 return (
-                  <label className="reframe-field" key={key}>
+                  <section className="reframe-field reframe-field--cards" key={key}>
                     <div className="reframe-field-header">
-                      <span>{label}</span>
+                      <div className="reframe-field-heading">
+                        <span>{label}</span>
+                        <p>{hint}</p>
+                      </div>
                       {baseCir[key] && (
                         <span className="reframe-base-badge" title="Analyzed value">
                           {baseCir[key]}
                         </span>
                       )}
                     </div>
-                    <select
-                      value={targetCir[key] || ''}
-                      onChange={(e) => updateField(key, e.target.value)}
-                      className={isChanged ? 'reframe-select--changed' : ''}
-                    >
-                      {options.map((opt) => (
-                        <option key={opt || 'none'} value={opt}>
-                          {opt || 'Auto'}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
+                    <div className={`reframe-card-grid ${isChanged ? 'reframe-card-grid--changed' : ''}`}>
+                      {options.map((opt) => {
+                        const visual = getOptionVisual(key, opt)
+                        const isSelected = (targetCir[key] || '') === opt
+                        const isBase = (baseCir[key] || '') === opt
+                        return (
+                          <button
+                            type="button"
+                            key={opt || 'auto'}
+                            className={`reframe-option-card ${isSelected ? 'is-selected' : ''} ${isBase ? 'is-base' : ''}`}
+                            onClick={() => updateField(key, opt)}
+                          >
+                            <div
+                              className={`reframe-option-visual ${visual.image ? 'has-image' : 'is-abstract'}`}
+                              style={visual.image ? undefined : { background: visual.accent }}
+                            >
+                              {visual.image ? (
+                                <img src={visual.image} alt={`${label} ${opt || 'Auto'} example`} />
+                              ) : (
+                                <div className="reframe-option-abstract">
+                                  <span>{visual.eyebrow}</span>
+                                </div>
+                              )}
+                              <div className="reframe-option-overlay">
+                                <span className="reframe-option-eyebrow">{visual.eyebrow}</span>
+                                {isBase && <span className="reframe-option-badge">Current</span>}
+                              </div>
+                            </div>
+                            <div className="reframe-option-copy">
+                              <strong>{opt || 'Auto'}</strong>
+                              <span>{visual.description}</span>
+                            </div>
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </section>
                 )
               })}
             </div>
@@ -283,6 +562,61 @@ export default function ReframeTab() {
         </button>
 
         {error && <div className="reframe-error">{error}</div>}
+      </div>
+
+      <div className="reframe-section">
+        <div className="reframe-history-header">
+          <div>
+            <h3>Reframe History</h3>
+            <p>이 샷에서 만든 리프레임 결과를 계속 보관합니다. 클릭하면 다시 캔버스로 불러옵니다.</p>
+          </div>
+          {historyEntries.length > 0 && (
+            <span className="reframe-history-count">{historyEntries.length} versions</span>
+          )}
+        </div>
+
+        {historyEntries.length === 0 ? (
+          <div className="reframe-history-empty">아직 저장된 리프레임 버전이 없습니다.</div>
+        ) : (
+          <div className="reframe-history-list">
+            {[...historyEntries].reverse().map((entry) => {
+              const isCurrent = currentVersionImage === entry.image
+              return (
+                <button
+                  type="button"
+                  key={entry.id}
+                  className={`reframe-history-card ${isCurrent ? 'is-current' : ''}`}
+                  onClick={() => applyHistoryEntry(entry)}
+                >
+                  <div className="reframe-history-thumb">
+                    <img src={entry.image} alt={entry.label} />
+                    <div className="reframe-history-overlay">
+                      <span>{entry.label}</span>
+                      {isCurrent && <span className="reframe-history-badge">Current</span>}
+                    </div>
+                  </div>
+                  <div className="reframe-history-copy">
+                    <div className="reframe-history-meta">
+                      <strong>{entry.label}</strong>
+                      <span>{formatHistoryTime(entry.createdAt)}</span>
+                    </div>
+                    {entry.changedFields?.length > 0 ? (
+                      <div className="reframe-history-changes">
+                        {entry.changedFields.map((field) => (
+                          <span key={`${entry.id}-${field.key}`} className="reframe-history-chip">
+                            {field.label}: {field.to}
+                          </span>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="reframe-history-caption">원본 또는 직전 기준 스케치</div>
+                    )}
+                  </div>
+                </button>
+              )
+            })}
+          </div>
+        )}
       </div>
     </div>
   )
