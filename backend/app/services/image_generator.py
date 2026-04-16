@@ -296,6 +296,19 @@ def _build_svg_editability_constraints(detail_level: int) -> str:
 - Simplicity is more important than realism. When in doubt, leave details out."""
 
 
+def _get_recraft_svg_generation_config(detail_level: int) -> dict:
+    level = _clamp_detail_level(detail_level)
+    if level <= 60:
+        return {
+            "model": "recraftv2_vector",
+            "style": "Doodle Line art",
+        }
+    return {
+        "model": "recraftv2_vector",
+        "style": "Line art",
+    }
+
+
 def _count_svg_drawable_elements(svg_str: str) -> dict:
     counts = {}
     for tag in ("path", "line", "polyline", "polygon", "rect", "circle", "ellipse"):
@@ -402,6 +415,7 @@ async def generate_sketch_svg(
     """Generate a storyboard sketch as SVG using Recraft API. Returns SVG string."""
     api_key = get_recraft_api_key()
     detail_level = _clamp_detail_level(detail_level)
+    recraft_config = _get_recraft_svg_generation_config(detail_level)
 
     focus_block = (script_context or "").strip()
     full_scene = (scene_script or "").strip()
@@ -450,7 +464,10 @@ Additional constraints:
 {editability_constraints}
 """
 
-    print(f"[recraft] Generating SVG sketch, detail_level={detail_level}, prompt length={len(prompt)}")
+    print(
+        f"[recraft] Generating SVG sketch, detail_level={detail_level}, "
+        f"model={recraft_config['model']}, style={recraft_config['style']}, prompt length={len(prompt)}"
+    )
 
     async with httpx.AsyncClient(timeout=120.0) as client:
         response = await client.post(
@@ -461,7 +478,8 @@ Additional constraints:
             },
             json={
                 "prompt": prompt,
-                "model": "recraftv4_vector",
+                "model": recraft_config["model"],
+                "style": recraft_config["style"],
                 "size": "16:9",
                 "response_format": "b64_json",
             },
@@ -495,6 +513,7 @@ async def generate_svg_layer(
     import asyncio
     api_key = get_recraft_api_key()
     detail_level = _clamp_detail_level(detail_level)
+    recraft_config = _get_recraft_svg_generation_config(detail_level)
 
     cir_block = ""
     if cir:
@@ -587,7 +606,10 @@ Scene: {script_context}
 {editability_constraints}
 """
 
-    print(f"[recraft] Generating SVG layer '{layer_name}', prompt length={len(prompt)}")
+    print(
+        f"[recraft] Generating SVG layer '{layer_name}', detail_level={detail_level}, "
+        f"model={recraft_config['model']}, style={recraft_config['style']}, prompt length={len(prompt)}"
+    )
 
     async with httpx.AsyncClient(timeout=120.0) as client:
         response = await client.post(
@@ -598,7 +620,8 @@ Scene: {script_context}
             },
             json={
                 "prompt": prompt,
-                "model": "recraftv4_vector",
+                "model": recraft_config["model"],
+                "style": recraft_config["style"],
                 "size": "16:9",
                 "response_format": "b64_json",
             },

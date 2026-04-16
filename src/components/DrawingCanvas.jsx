@@ -22,6 +22,7 @@ export default function DrawingCanvas() {
   const isEnhancing = useStore((s) => s.isEnhancing)
   const pendingCanvasImage = useStore((s) => s.pendingCanvasImage)
   const setPendingCanvasImage = useStore((s) => s.setPendingCanvasImage)
+  const comparePreview = useStore((s) => s.comparePreview)
   const strategies = useStore((s) => s.strategies)
   const activeStrategy = useStore((s) => s.activeStrategy)
   const activeShot = useStore((s) => s.activeShot)
@@ -451,21 +452,34 @@ export default function DrawingCanvas() {
       <canvas
         ref={canvasRef}
         className="draw-canvas"
-        onMouseDown={startDrawing}
-        onMouseMove={draw}
-        onMouseUp={stopDrawing}
-        onMouseLeave={stopDrawing}
-        onTouchStart={startDrawing}
-        onTouchMove={draw}
-        onTouchEnd={stopDrawing}
+        onMouseDown={comparePreview ? undefined : startDrawing}
+        onMouseMove={comparePreview ? undefined : draw}
+        onMouseUp={comparePreview ? undefined : stopDrawing}
+        onMouseLeave={comparePreview ? undefined : stopDrawing}
+        onTouchStart={comparePreview ? undefined : startDrawing}
+        onTouchMove={comparePreview ? undefined : draw}
+        onTouchEnd={comparePreview ? undefined : stopDrawing}
       />
       <canvas ref={overlayRef} className="overlay-canvas" />
+      {comparePreview?.originalImage && comparePreview?.candidateImage && (
+        <div className="compare-preview-overlay">
+          <div className="compare-preview-panel compare-preview-panel--left">
+            <img src={comparePreview.originalImage} alt="Original storyboard" />
+            <div className="compare-preview-label">Original</div>
+          </div>
+          <div className="compare-preview-divider" />
+          <div className="compare-preview-panel compare-preview-panel--right">
+            <img src={comparePreview.candidateImage} alt="Reframed storyboard" />
+            <div className="compare-preview-label">Reframed</div>
+          </div>
+        </div>
+      )}
       {(isAnalyzing || isGenerating || isEnhancing) && (
         <div className="scanning-overlay">
           <div className="scan-line" />
         </div>
       )}
-      {!hasDrawn && (
+      {!hasDrawn && !comparePreview && (
         <div className="canvas-hint">
           <div>Draw your storyboard sketch</div>
           <button className="canvas-hint-load-btn" onClick={() => loadShotImage('/img/mock_reframe.png')}>

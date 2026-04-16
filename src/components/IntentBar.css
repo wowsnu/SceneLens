@@ -41,6 +41,59 @@
   border-radius: 10px;
 }
 
+.intent-description {
+  margin: 4px 8px 2px;
+  padding: 12px 14px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.045);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.intent-description.preview {
+  border-color: rgba(245, 158, 11, 0.22);
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.09), rgba(239, 68, 68, 0.06));
+}
+
+.intent-description-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.intent-description-badge {
+  border-radius: 999px;
+  padding: 4px 8px;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #f3f4f6;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.intent-description.preview .intent-description-badge {
+  color: #f59e0b;
+  background: rgba(245, 158, 11, 0.12);
+  border-color: rgba(245, 158, 11, 0.2);
+}
+
+.intent-description-title {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.48);
+}
+
+.intent-description p {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: #e7e7ea;
+}
+
 .chat-msg-bubble {
   display: flex;
   flex-direction: column;
@@ -76,6 +129,31 @@
 .chat-msg-bubble.user p {
   background: rgba(255, 255, 255, 0.08);
   border-bottom-right-radius: 4px;
+}
+
+.chat-strategy-btn {
+  margin-top: 8px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 9px 16px;
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.15), rgba(139, 92, 246, 0.15));
+  border: 1px solid rgba(245, 158, 11, 0.4);
+  border-radius: 10px;
+  color: #f59e0b;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  cursor: pointer;
+  transition: all 0.2s;
+  width: 100%;
+  justify-content: center;
+}
+
+.chat-strategy-btn:hover {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.25), rgba(139, 92, 246, 0.25));
+  border-color: rgba(245, 158, 11, 0.7);
+  transform: translateY(-1px);
 }
 
 /* Input Area: Runway Look */

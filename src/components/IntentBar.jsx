@@ -3,6 +3,25 @@ import useStore from '../store/useStore'
 import { analyzeSketch, suggestStrategies } from '../services/api'
 import './IntentBar.css'
 
+function StrategyReadyBubble() {
+  const setShowStrategyOverlay = useStore((s) => s.setShowStrategyOverlay)
+  return (
+    <div className="chat-msg-bubble assistant">
+      <span className="msg-role">AI</span>
+      <p>촬영 전략 추천이 준비됐어요.</p>
+      <button
+        className="chat-strategy-btn"
+        onClick={() => setShowStrategyOverlay(true)}
+      >
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+        </svg>
+        추천 전략 3가지 확인하기
+      </button>
+    </div>
+  )
+}
+
 export default function IntentBar() {
   const intent = useStore((s) => s.intent)
   const setIntent = useStore((s) => s.setIntent)
@@ -14,6 +33,10 @@ export default function IntentBar() {
   const isAnalyzing = useStore((s) => s.isAnalyzing)
   const chatMessages = useStore((s) => s.chatMessages)
   const addChatMessage = useStore((s) => s.addChatMessage)
+  const strategies = useStore((s) => s.strategies)
+  const activeStrategy = useStore((s) => s.activeStrategy)
+  const activeShot = useStore((s) => s.activeShot)
+  const comparePreview = useStore((s) => s.comparePreview)
   
   const messagesEndRef = useRef(null)
 
@@ -24,6 +47,13 @@ export default function IntentBar() {
 
   const setCenterTab = useStore((s) => s.setCenterTab)
   const setDetailTab = useStore((s) => s.setDetailTab)
+  const currentShot = strategies[activeStrategy]?.shots?.[activeShot]
+  const compareKey = `${activeStrategy}-${activeShot}`
+  const activeDescription =
+    comparePreview?.shotKey === compareKey
+      ? comparePreview.description
+      : currentShot?.theory_rationale
+  const descriptionMode = comparePreview?.shotKey === compareKey ? 'Preview' : 'Current'
 
   const handleAnalyze = async () => {
     if (isAnalyzing) return
@@ -47,15 +77,20 @@ export default function IntentBar() {
         const analysis = await analyzeSketch(base64, scriptText)
         setAnalysisResult(analysis)
         
-        addChatMessage({ 
-          role: 'assistant', 
-          text: analysis.alignment || '분석이 완료되었습니다. 실험실(Guidance Lab)에서 시네마틱 카드를 확인하세요.' 
+        addChatMessage({
+          role: 'assistant',
+          text: analysis.alignment || '분석이 완료되었습니다.'
         })
 
         if (analysis?.cir) {
-          useStore.setState({ 
-            pendingStrategiesPromise: suggestStrategies(base64, scriptText, intentText, analysis.cir) 
-          })
+          suggestStrategies(base64, scriptText, intentText, analysis.cir)
+            .then((result) => {
+              if (result?.strategies?.length) {
+                useStore.getState().setProposals(result.strategies)
+                useStore.getState().addChatMessage({ role: 'action', text: 'strategies_ready' })
+              }
+            })
+            .catch((err) => console.error('[suggestStrategies]', err))
         }
       } else {
         // 스케치가 없는 경우 가짜 딜레이 후 안내 메시지
@@ -78,13 +113,28 @@ export default function IntentBar() {
     <div className="intent-bar chat-mode">
       {chatMessages.length > 0 && (
         <div className="chat-messages">
-          {chatMessages.map((msg, i) => (
-            <div key={i} className={`chat-msg-bubble ${msg.role}`}>
-              <span className="msg-role">{msg.role === 'user' ? 'Director' : 'AI'}</span>
-              <p>{msg.text}</p>
-            </div>
-          ))}
+          {chatMessages.map((msg, i) => {
+            if (msg.role === 'action' && msg.text === 'strategies_ready') {
+              return <StrategyReadyBubble key={i} />
+            }
+            return (
+              <div key={i} className={`chat-msg-bubble ${msg.role}`}>
+                <span className="msg-role">{msg.role === 'user' ? 'Director' : 'AI'}</span>
+                <p>{msg.text}</p>
+              </div>
+            )
+          })}
           <div ref={messagesEndRef} />
+        </div>
+      )}
+
+      {activeDescription && (
+        <div className={`intent-description ${comparePreview?.shotKey === compareKey ? 'preview' : ''}`}>
+          <div className="intent-description-header">
+            <span className="intent-description-badge">{descriptionMode}</span>
+            <span className="intent-description-title">Reframe Note</span>
+          </div>
+          <p>{activeDescription}</p>
         </div>
       )}
 

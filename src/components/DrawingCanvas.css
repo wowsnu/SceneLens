@@ -22,6 +22,51 @@
   z-index: 2;
 }
 
+.compare-preview-overlay {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  grid-template-columns: 1fr 2px 1fr;
+  z-index: 6;
+  box-shadow: 0 0 60px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(255, 255, 255, 0.1);
+  background: #fff;
+}
+
+.compare-preview-panel {
+  position: relative;
+  overflow: hidden;
+  background: #fff;
+}
+
+.compare-preview-panel img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+  background: #fff;
+}
+
+.compare-preview-divider {
+  background: linear-gradient(180deg, rgba(245, 158, 11, 0.95), rgba(239, 68, 68, 0.95));
+  box-shadow: 0 0 20px rgba(245, 158, 11, 0.3);
+}
+
+.compare-preview-label {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  border-radius: 999px;
+  padding: 5px 10px;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #fff;
+  background: rgba(15, 15, 15, 0.78);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(6px);
+}
+
 .scanning-overlay {
   position: absolute;
   top: 0; left: 0; right: 0; bottom: 0;

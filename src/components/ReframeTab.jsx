@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import useStore from '../store/useStore'
-import { reframeSketch } from '../services/api'
+import { reframeSketch, vectorizeImage } from '../services/api'
 import './ReframeTab.css'
 
 const FIELD_CONFIG = [
@@ -316,11 +316,15 @@ export default function ReframeTab() {
   const setIntent = useStore((s) => s.setIntent)
   const reframeHistory = useStore((s) => s.reframeHistory)
   const addReframeHistoryEntry = useStore((s) => s.addReframeHistoryEntry)
+  const comparePreview = useStore((s) => s.comparePreview)
+  const setComparePreview = useStore((s) => s.setComparePreview)
+  const clearComparePreview = useStore((s) => s.clearComparePreview)
 
   const [targetCir, setTargetCir] = useState(DEFAULT_CIR)
   const [model, setModel] = useState('gemini-2.5-flash-image')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [vectorizingId, setVectorizingId] = useState('')
 
   const currentShot = strategies[activeStrategy]?.shots?.[activeShot]
   const shotHistoryKey = `${activeStrategy}-${activeShot}`
@@ -349,6 +353,7 @@ export default function ReframeTab() {
   const applyHistoryEntry = (entry) => {
     if (!entry?.image) return
 
+    clearComparePreview()
     setPendingCanvasImage(entry.image)
     setCanvasDataUrl(entry.image)
     if (entry.cir) {
@@ -371,6 +376,84 @@ export default function ReframeTab() {
     })
 
     setStrategies(updated)
+  }
+
+  const applyCommittedImage = ({ image, cir, description }) => {
+    setPendingCanvasImage(image)
+    setCanvasDataUrl(image)
+    if (cir) {
+      setTargetCir(normalizeCir(cir))
+    }
+
+    const updated = strategies.map((strategy, strategyIdx) => {
+      if (strategyIdx !== activeStrategy) return strategy
+      const shots = [...strategy.shots]
+      if (!shots[activeShot]) return strategy
+
+      shots[activeShot] = {
+        ...shots[activeShot],
+        image,
+        cir: cir ? { ...shots[activeShot].cir, ...cir } : shots[activeShot].cir,
+        theory_rationale: description || shots[activeShot].theory_rationale,
+      }
+
+      return { ...strategy, shots }
+    })
+
+    setStrategies(updated)
+  }
+
+  const handleApplyCompare = () => {
+    if (!comparePreview?.candidateImage) return
+    applyCommittedImage({
+      image: comparePreview.candidateImage,
+      cir: comparePreview.candidateCir,
+      description: comparePreview.description,
+    })
+    clearComparePreview()
+  }
+
+  const handleKeepOriginal = () => {
+    clearComparePreview()
+  }
+
+  const handleVectorizeHistoryEntry = async (entry) => {
+    if (!entry?.image || vectorizingId) return
+    if (entry.image.startsWith('data:image/svg+xml')) {
+      applyHistoryEntry(entry)
+      return
+    }
+
+    setVectorizingId(entry.id)
+    setError('')
+
+    try {
+      const base64 = entry.image.startsWith('data:') ? entry.image.split(',')[1] : entry.image
+      const result = await vectorizeImage(base64)
+      const svgDataUrl = `data:image/svg+xml;utf8,${encodeURIComponent(result.svg)}`
+      const existingSvg = historyEntries.find((item) => item.image === svgDataUrl)
+
+      if (!existingSvg) {
+        addReframeHistoryEntry(activeStrategy, activeShot, {
+          image: svgDataUrl,
+          cir: entry.cir,
+          changedFields: entry.changedFields || [],
+          description: entry.description || '',
+          label: `${entry.label} SVG`,
+          source: 'vectorized',
+        })
+      }
+
+      applyCommittedImage({
+        image: svgDataUrl,
+        cir: entry.cir,
+        description: entry.description,
+      })
+    } catch (err) {
+      setError(err.message || 'SVG 변환 중 오류가 발생했습니다.')
+    } finally {
+      setVectorizingId('')
+    }
   }
 
   const handleReframe = async () => {
@@ -411,8 +494,6 @@ export default function ReframeTab() {
       )
 
       const reframedDataUrl = `data:image/png;base64,${result.reframed_image}`
-      setPendingCanvasImage(reframedDataUrl)
-      setCanvasDataUrl(reframedDataUrl)
 
       addReframeHistoryEntry(activeStrategy, activeShot, {
         image: reframedDataUrl,
@@ -428,22 +509,20 @@ export default function ReframeTab() {
         source: 'reframe',
       })
 
-      const updated = strategies.map((strategy, strategyIdx) => {
-        if (strategyIdx !== activeStrategy) return strategy
-        const shots = [...strategy.shots]
-        if (!shots[activeShot]) return strategy
-
-        shots[activeShot] = {
-          ...shots[activeShot],
-          image: reframedDataUrl,
-          cir: { ...shots[activeShot].cir, ...targetCir },
-          theory_rationale: result.description || shots[activeShot].theory_rationale,
-        }
-
-        return { ...strategy, shots }
+      setComparePreview({
+        shotKey: shotHistoryKey,
+        originalImage: canvasDataUrl,
+        candidateImage: reframedDataUrl,
+        candidateCir: targetCir,
+        changedFields: changedFields.map(({ key, label }) => ({
+          key,
+          label,
+          from: baseCir[key] || 'Auto',
+          to: targetCir[key] || 'Auto',
+        })),
+        description: result.description || '',
+        createdAt: new Date().toISOString(),
       })
-
-      setStrategies(updated)
     } catch (err) {
       setError(err.message || 'Reframe 요청 중 오류가 발생했습니다.')
     } finally {
@@ -573,6 +652,35 @@ export default function ReframeTab() {
         {error && <div className="reframe-error">{error}</div>}
       </div>
 
+      {comparePreview?.shotKey === shotHistoryKey && (
+        <div className="reframe-section reframe-compare-panel">
+          <div className="reframe-history-header">
+            <div>
+              <h3>Compare View</h3>
+              <p>중앙 캔버스에서 원본과 리프레임 결과를 반반 비교 중입니다.</p>
+            </div>
+            <span className="reframe-history-count">Preview</span>
+          </div>
+          {comparePreview.changedFields?.length > 0 && (
+            <div className="reframe-history-changes">
+              {comparePreview.changedFields.map((field) => (
+                <span key={`compare-${field.key}`} className="reframe-history-chip">
+                  {field.label}: {field.from} → {field.to}
+                </span>
+              ))}
+            </div>
+          )}
+          <div className="reframe-compare-actions">
+            <button type="button" className="reframe-compare-btn primary" onClick={handleApplyCompare}>
+              Apply Reframe
+            </button>
+            <button type="button" className="reframe-compare-btn" onClick={handleKeepOriginal}>
+              Keep Original
+            </button>
+          </div>
+        </div>
+      )}
+
       <div className="reframe-section">
         <div className="reframe-history-header">
           <div>
@@ -590,13 +698,18 @@ export default function ReframeTab() {
           <div className="reframe-history-list">
             {[...historyEntries].reverse().map((entry) => {
               const isCurrent = currentVersionImage === entry.image
+              const isSvg = entry.image?.startsWith('data:image/svg+xml')
+              const isVectorizing = vectorizingId === entry.id
               return (
-                <button
-                  type="button"
+                <div
                   key={entry.id}
                   className={`reframe-history-card ${isCurrent ? 'is-current' : ''}`}
-                  onClick={() => applyHistoryEntry(entry)}
                 >
+                  <button
+                    type="button"
+                    className="reframe-history-main"
+                    onClick={() => applyHistoryEntry(entry)}
+                  >
                   <div className="reframe-history-thumb">
                     <img src={entry.image} alt={entry.label} />
                     <div className="reframe-history-overlay">
@@ -621,7 +734,21 @@ export default function ReframeTab() {
                       <div className="reframe-history-caption">원본 또는 직전 기준 스케치</div>
                     )}
                   </div>
-                </button>
+                  </button>
+                  <div className="reframe-history-actions">
+                    <button type="button" className="reframe-history-action-btn" onClick={() => applyHistoryEntry(entry)}>
+                      Use This
+                    </button>
+                    <button
+                      type="button"
+                      className={`reframe-history-action-btn ${isSvg ? 'svg-ready' : ''}`}
+                      onClick={() => handleVectorizeHistoryEntry(entry)}
+                      disabled={isVectorizing}
+                    >
+                      {isVectorizing ? 'Vectorizing...' : isSvg ? 'Open SVG' : 'Vectorize SVG'}
+                    </button>
+                  </div>
+                </div>
               )
             })}
           </div>

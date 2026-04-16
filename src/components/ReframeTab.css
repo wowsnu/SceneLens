@@ -165,16 +165,13 @@
 }
 
 .reframe-history-card {
-  display: grid;
-  grid-template-columns: 112px minmax(0, 1fr);
-  gap: 10px;
+  display: flex;
+  flex-direction: column;
   width: 100%;
   border: 1px solid #2f2f2f;
   border-radius: 12px;
   overflow: hidden;
   background: linear-gradient(180deg, #151515, #101010);
-  cursor: pointer;
-  text-align: left;
   transition: border-color 140ms ease, transform 140ms ease, box-shadow 140ms ease;
 }
 
@@ -242,6 +239,18 @@
   padding: 10px 12px 10px 0;
 }
 
+.reframe-history-main {
+  display: grid;
+  grid-template-columns: 112px minmax(0, 1fr);
+  gap: 10px;
+  width: 100%;
+  border: none;
+  background: transparent;
+  padding: 0;
+  text-align: left;
+  cursor: pointer;
+}
+
 .reframe-history-meta {
   display: flex;
   align-items: center;
@@ -280,6 +289,75 @@
   font-size: 11px;
   color: #7d7d7d;
   line-height: 1.45;
+}
+
+.reframe-history-actions {
+  display: flex;
+  gap: 8px;
+  padding: 0 12px 12px;
+}
+
+.reframe-history-action-btn {
+  flex: 1;
+  border: 1px solid #363636;
+  border-radius: 10px;
+  padding: 9px 10px;
+  background: #171717;
+  color: #ececec;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 140ms ease, border-color 140ms ease, background 140ms ease;
+}
+
+.reframe-history-action-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  border-color: #575757;
+}
+
+.reframe-history-action-btn:disabled {
+  opacity: 0.65;
+  cursor: wait;
+}
+
+.reframe-history-action-btn.svg-ready {
+  border-color: rgba(59, 130, 246, 0.32);
+  color: #93c5fd;
+}
+
+.reframe-compare-panel {
+  border-color: rgba(245, 158, 11, 0.2);
+  background: linear-gradient(180deg, rgba(39, 24, 10, 0.96), rgba(20, 20, 20, 0.98));
+}
+
+.reframe-compare-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.reframe-compare-btn {
+  flex: 1;
+  border: 1px solid #3a3a3a;
+  border-radius: 10px;
+  padding: 10px 12px;
+  background: #171717;
+  color: #f1f1f1;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: border-color 140ms ease, background 140ms ease, transform 140ms ease;
+}
+
+.reframe-compare-btn:hover {
+  transform: translateY(-1px);
+  border-color: #5a5a5a;
+}
+
+.reframe-compare-btn.primary {
+  border-color: rgba(245, 158, 11, 0.4);
+  background: linear-gradient(135deg, #f59e0b, #ef4444);
+  color: #fff;
 }
 
 /* 분석 전 잠김 상태 */
@@ -487,6 +565,10 @@
   }
 
   .reframe-history-card {
+    width: 100%;
+  }
+
+  .reframe-history-main {
     grid-template-columns: 1fr;
   }
 
