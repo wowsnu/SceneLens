@@ -686,7 +686,7 @@ async def reframe_sketch(
             lines.append(f"  - {k}: {v}{from_str}\n    → {desc}")
         changed_section = "[What to change]\n" + "\n".join(lines)
     else:
-        changed_section = "[What to change]\n- Apply requested CIR values as-is."
+        raise ValueError("No CIR changes requested. Change at least one attribute before reframing.")
 
     print(f"[reframe-sketch] changed_attrs={list(changed_attrs.keys())}")
     print(f"[reframe-sketch] changed_section=\n{changed_section}")
@@ -768,14 +768,20 @@ Now redraw the sketch applying ONLY the changes above. Keep everything else iden
 
     def _gen_desc():
         desc_prompt = f"""[Scene Context]\n{script_context or 'Same scene'}\n\n[What to change]\n{changed_section}\n\n위 변경사항(What to change)을 바탕으로, 1. 기존 구도에서 무엇이 바뀌었는지 2. 이로 인해 어떤 영화적/시각적 효과가 생기는지 한국어로 2~3문장으로 짧고 명확하게 설명해주세요. 포맷 태그 없이 오직 설명 텍스트만 출력하세요."""
-        res = gemini_client.models.generate_content(model='gemini-2.5-flash', contents=[desc_prompt])
+        res = gemini_client.models.generate_content(model='gemini-2.5-flash-lite', contents=[desc_prompt])
         return res.text.strip()
 
     img_task = asyncio.create_task(asyncio.to_thread(_gen_img))
     description = ""
     if include_description:
         desc_task = asyncio.create_task(asyncio.to_thread(_gen_desc))
-        result_image, description = await asyncio.gather(img_task, desc_task)
+        result_image, desc_result = await asyncio.gather(img_task, desc_task, return_exceptions=True)
+        if isinstance(result_image, Exception):
+            raise result_image
+        if isinstance(desc_result, Exception):
+            print(f"[reframe-sketch] WARNING description generation failed: {desc_result}")
+        else:
+            description = desc_result
     else:
         result_image = await img_task
 

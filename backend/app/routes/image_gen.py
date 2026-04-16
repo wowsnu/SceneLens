@@ -71,14 +71,19 @@ async def generate_layers_endpoint(request: GenerateLayersRequest):
 @router.post("/reframe-sketch", response_model=ReframeSketchResponse)
 async def reframe_sketch_endpoint(request: ReframeSketchRequest):
     t0 = time.time()
-    print(f"[reframe-sketch] START model={request.model} cir={request.cir.model_dump()}")
-    print(f"[reframe-sketch] original_cir={request.original_cir.model_dump() if request.original_cir else None}")
+    cir_dict = request.cir.model_dump()
+    original_cir_dict = request.original_cir.model_dump() if request.original_cir else None
+    print(f"[reframe-sketch] START model={request.model} cir={cir_dict}")
+    print(f"[reframe-sketch] original_cir={original_cir_dict}")
     try:
+        if original_cir_dict and cir_dict == original_cir_dict:
+            raise HTTPException(status_code=400, detail="No CIR changes requested. Change at least one attribute before reframing.")
+
         result = await reframe_sketch(
             request.image,
-            request.cir.model_dump(),
+            cir_dict,
             request.script_context,
-            request.original_cir.model_dump() if request.original_cir else None,
+            original_cir_dict,
             request.include_description if request.include_description is not None else True,
             request.model,
             request.intent or "",
@@ -86,6 +91,8 @@ async def reframe_sketch_endpoint(request: ReframeSketchRequest):
         elapsed = time.time() - t0
         print(f"[reframe-sketch] DONE model={request.model} elapsed={elapsed:.1f}s")
         return ReframeSketchResponse(**result)
+    except HTTPException:
+        raise
     except Exception as e:
         elapsed = time.time() - t0
         print(f"[reframe-sketch] ERROR model={request.model} elapsed={elapsed:.1f}s error={e}")

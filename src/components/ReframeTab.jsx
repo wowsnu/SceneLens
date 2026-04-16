@@ -375,6 +375,10 @@ export default function ReframeTab() {
 
   const handleReframe = async () => {
     if (loading) return
+    if (changedFields.length === 0) {
+      setError('변경된 구도가 없습니다. 속성을 하나 이상 바꾼 뒤 Reframe 하세요.')
+      return
+    }
     if (!canvasDataUrl) {
       setError('먼저 캔버스에 스케치를 불러오거나 그려주세요.')
       return
@@ -557,7 +561,12 @@ export default function ReframeTab() {
           <div className="reframe-no-change">변경된 속성이 없습니다. 현재 CIR 그대로 재생성됩니다.</div>
         )}
 
-        <button className={`reframe-apply-btn ${loading ? 'loading' : ''}`} onClick={handleReframe} disabled={loading}>
+        <button
+          className={`reframe-apply-btn ${loading ? 'loading' : ''}`}
+          onClick={handleReframe}
+          disabled={loading || changedFields.length === 0}
+          title={changedFields.length === 0 ? '속성을 하나 이상 변경해야 합니다.' : undefined}
+        >
           {loading ? 'REFRAMING...' : 'APPLY REFRAME'}
         </button>
 
