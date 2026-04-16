@@ -1,5 +1,6 @@
 import os
 import base64
+import re
 from pathlib import Path
 from google import genai
 from google.genai import types
@@ -232,6 +233,77 @@ with open(PROMPTS_DIR / "reframe_sketch.txt", "r") as f:
     REFRAME_PROMPT = f.read()
 
 
+def _clamp_detail_level(detail_level: int) -> int:
+    return max(0, min(100, int(detail_level)))
+
+
+def _get_svg_complexity_profile(detail_level: int) -> dict:
+    level = _clamp_detail_level(detail_level)
+    if level <= 15:
+        return {
+            "name": "ultra-minimal editable draft",
+            "target_elements": "8-14",
+            "max_elements": 18,
+            "interior_strokes": "0-1",
+            "environment_detail": "only the 1-3 most important environment shapes",
+        }
+    if level <= 35:
+        return {
+            "name": "minimal editable storyboard",
+            "target_elements": "12-22",
+            "max_elements": 28,
+            "interior_strokes": "0-2",
+            "environment_detail": "only essential geometry and anchor props",
+        }
+    if level <= 60:
+        return {
+            "name": "balanced storyboard sketch",
+            "target_elements": "20-36",
+            "max_elements": 44,
+            "interior_strokes": "1-3",
+            "environment_detail": "moderate environment context only",
+        }
+    if level <= 80:
+        return {
+            "name": "detailed storyboard sketch",
+            "target_elements": "30-55",
+            "max_elements": 70,
+            "interior_strokes": "2-4",
+            "environment_detail": "clear secondary forms allowed",
+        }
+    return {
+        "name": "high-detail storyboard illustration",
+        "target_elements": "50+",
+        "max_elements": 999,
+        "interior_strokes": "3+",
+        "environment_detail": "rich secondary detail allowed",
+    }
+
+
+def _build_svg_editability_constraints(detail_level: int) -> str:
+    profile = _get_svg_complexity_profile(detail_level)
+    return f"""SVG EDITABILITY PRIORITY:
+- Highest priority: make the SVG easy for a human to manually edit after generation.
+- Treat this as a {profile["name"]}.
+- Use as FEW visible vector elements as possible. Target about {profile["target_elements"]} drawable elements total. Try to stay under {profile["max_elements"]} visible elements.
+- Each major object should be drawn with one clean outer contour plus only {profile["interior_strokes"]} interior strokes.
+- Show {profile["environment_detail"]}. If a shape is not compositionally important, omit it.
+- Prefer simple open strokes and primitive geometry over fragmented tiny paths.
+- NO hatching, NO cross-hatching, NO texture strokes, NO scribble shading, NO decorative detail, NO tiny repeated marks.
+- NO masks, clipPaths, filters, gradients, patterns, embedded rasters, opacity tricks, or complex filled black regions.
+- Pure black strokes on a pure white background. Keep large empty areas empty.
+- Favor clear silhouettes, eyelines, limb direction, horizon/architecture lines, and only the key props needed to understand the shot.
+- Simplicity is more important than realism. When in doubt, leave details out."""
+
+
+def _count_svg_drawable_elements(svg_str: str) -> dict:
+    counts = {}
+    for tag in ("path", "line", "polyline", "polygon", "rect", "circle", "ellipse"):
+        counts[tag] = len(re.findall(rf"<{tag}\b", svg_str))
+    counts["total"] = sum(counts.values())
+    return counts
+
+
 def _remove_background(image_bytes: bytes) -> bytes:
     """Remove background from image using rembg, return transparent PNG bytes."""
     if HAS_REMBG:
@@ -329,6 +401,7 @@ async def generate_sketch_svg(
 ) -> str:
     """Generate a storyboard sketch as SVG using Recraft API. Returns SVG string."""
     api_key = get_recraft_api_key()
+    detail_level = _clamp_detail_level(detail_level)
 
     focus_block = (script_context or "").strip()
     full_scene = (scene_script or "").strip()
@@ -358,6 +431,7 @@ async def generate_sketch_svg(
         f"{focus_block}\n"
         "[[/FOCUS]]"
     )
+    editability_constraints = _build_svg_editability_constraints(detail_level)
 
     prompt = f"""{GENERATE_PROMPT}
 
@@ -370,7 +444,10 @@ Additional constraints:
 - Render exactly ONE storyboard panel (a single 16:9 frame). Do not draw multiple frames or a sequence.
 - Black and white line drawing delivered as crisp SVG vector lines. Pure white background.
 - ABSOLUTELY NO text, speech bubbles, dialogue, captions, labels, or written words of any kind in the image.
-- Drawing complexity: {detail_level}/100. (0 = extremely simple iconic sketch with minimal bold strokes and few paths, easy to separate objects. 100 = highly detailed illustration with hatching, cross-hatching, fine textures, expressive line work, and rich visual detail.) Adjust stroke count, line detail, and rendering complexity to match this level.
+- Drawing complexity: {detail_level}/100. (0 = extremely simple iconic sketch with minimal bold strokes and very few paths, easy to edit. 100 = highly detailed illustration with hatching, cross-hatching, fine textures, expressive line work, and rich visual detail.) Adjust stroke count, line detail, and rendering complexity to match this level.
+- Output should feel like a rough production blocking sketch, not a polished illustration.
+
+{editability_constraints}
 """
 
     print(f"[recraft] Generating SVG sketch, detail_level={detail_level}, prompt length={len(prompt)}")
@@ -402,7 +479,8 @@ Additional constraints:
     svg_bytes = base64.b64decode(b64)
     svg_str = svg_bytes.decode("utf-8")
 
-    print(f"[recraft] SVG generated, size={len(svg_str)} chars")
+    svg_counts = _count_svg_drawable_elements(svg_str)
+    print(f"[recraft] SVG generated, size={len(svg_str)} chars, drawable_elements={svg_counts['total']}, breakdown={svg_counts}")
     return svg_str
 
 
@@ -416,6 +494,7 @@ async def generate_svg_layer(
     """Generate a single SVG layer (e.g. 'background', 'character') using Recraft API."""
     import asyncio
     api_key = get_recraft_api_key()
+    detail_level = _clamp_detail_level(detail_level)
 
     cir_block = ""
     if cir:
@@ -484,13 +563,14 @@ async def generate_svg_layer(
             f"NO other elements — no background, no characters, no props unless they ARE the '{layer_name}' layer. "
             f"Pure white/transparent background. Each element should be a clear, self-contained outline."
         )
+    editability_constraints = _build_svg_editability_constraints(detail_level)
 
     style_line = (
         f"Style: Black and white line drawing. Pure white background. Single 16:9 illustration. "
         f"DO NOT create multiple panels, frames, thumbnails, or a grid layout. Output exactly ONE drawing. "
         f"ABSOLUTELY NO text, speech bubbles, dialogue, captions, labels, or written words of any kind. "
         f"Drawing complexity: {detail_level}/100. "
-        f"(0 = minimal bold outlines only, 100 = rich hatching and fine detail.) "
+        f"(0 = minimal bold outlines only with very few paths, 100 = rich hatching and fine detail.) "
         f"Match complexity to this level."
     )
 
@@ -503,6 +583,8 @@ Scene: {script_context}
 {layer_desc}
 
 {style_line}
+
+{editability_constraints}
 """
 
     print(f"[recraft] Generating SVG layer '{layer_name}', prompt length={len(prompt)}")
@@ -532,7 +614,11 @@ Scene: {script_context}
 
     svg_bytes = base64.b64decode(b64)
     svg_str = svg_bytes.decode("utf-8")
-    print(f"[recraft] SVG layer '{layer_name}' generated, size={len(svg_str)} chars")
+    svg_counts = _count_svg_drawable_elements(svg_str)
+    print(
+        f"[recraft] SVG layer '{layer_name}' generated, size={len(svg_str)} chars, "
+        f"drawable_elements={svg_counts['total']}, breakdown={svg_counts}"
+    )
     return svg_str
 
 

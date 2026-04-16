@@ -1,0 +1,153 @@
+/* SideDrawer.css (Immersive Mode Support) */
+.side-drawer-container {
+  height: 100%;
+  display: flex;
+  flex-direction: row;
+  z-index: 100;
+  flex-shrink: 0;
+  background: var(--bg-main);
+  border-right: 1px solid var(--border-subtle);
+  pointer-events: auto;
+}
+
+/* === Global Tab Rail === */
+.tab-rail {
+  width: 72px;
+  height: 100%;
+  background: #09090b;
+  border-right: 1px solid var(--border-subtle);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-top: 24px;
+  gap: 12px;
+  z-index: 2;
+}
+
+.rail-btn {
+  width: 48px;
+  height: 48px;
+  background: transparent;
+  border: none;
+  border-radius: 12px;
+  color: var(--text-muted);
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  transition: all 0.2s ease;
+  gap: 4px;
+}
+
+.rail-btn.active {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text-main);
+}
+
+.btn-indicator {
+  position: absolute;
+  left: -12px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3px;
+  height: 0;
+  background: var(--accent-blue);
+  border-radius: 0 4px 4px 0;
+  transition: height 0.3s ease;
+}
+
+.rail-btn.active .btn-indicator { height: 20px; }
+.rail-label { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; opacity: 0.6; }
+
+/* === Contextual Content Area (Dynamic) === */
+.drawer-content {
+  width: 0;
+  height: 100%;
+  background: #111114;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: relative;
+  z-index: 1;
+  transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.side-drawer-container.open .drawer-content {
+  width: 320px;
+  border-right: 1px solid var(--border-subtle);
+}
+
+/* ★ Immersive Storyboard Mode (Wide!) ★ */
+.side-drawer-container.open.expanded .drawer-content {
+  width: 960px; /* 대본(400) + 그림(560) 정도의 넉넉한 너비 */
+}
+
+.content-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 24px;
+  border-bottom: 1px solid var(--border-subtle);
+  min-width: 320px;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.title-area {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.title-area h3 { font-size: 15px; font-weight: 700; margin: 0; color: #fff; }
+
+.immersive-badge {
+  background: var(--accent-blue);
+  color: white;
+  font-size: 10px;
+  font-weight: 800;
+  padding: 2px 8px;
+  border-radius: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.header-actions { display: flex; gap: 8px; }
+
+.action-btn {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.action-btn:hover { background: rgba(255, 255, 255, 0.08); color: var(--text-main); }
+.action-btn.active { background: var(--accent-blue); color: #fff; border-color: var(--accent-blue); }
+
+.content-body {
+  flex: 1;
+  overflow-y: auto;
+  min-width: 320px;
+}
+
+/* StoryboardView inside SideDrawer 조정 */
+.drawer-content .storyboard-view {
+  background: transparent;
+  padding: 0;
+}
+
+.drawer-content .sb-item {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+  padding: 24px;
+  display: grid;
+  grid-template-columns: 1fr 1.2fr; /* 대본과 이미지 비율 */
+  gap: 32px;
+}

@@ -1,13 +1,8 @@
-# Frontend (managed in separate repo)
-src/
-public/
+# Frontend build artifacts
 node_modules/
 dist/
-package.json
-package-lock.json
-eslint.config.js
-vite.config.js
-index.html
+dist-ssr/
+*.local
 
 # Environment
 .env
@@ -29,11 +24,6 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
-
-node_modules
-dist
-dist-ssr
-*.local
 
 # Editor directories and files
 .vscode/*

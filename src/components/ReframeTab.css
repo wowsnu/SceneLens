@@ -1,0 +1,175 @@
+.reframe-tab {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 10px;
+}
+
+.reframe-section {
+  background: #141414;
+  border: 1px solid #2d2d2d;
+  border-radius: 10px;
+  padding: 12px;
+}
+
+.reframe-section h3 {
+  margin: 0 0 6px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #f2f2f2;
+}
+
+.reframe-desc {
+  margin: 0 0 10px;
+  font-size: 12px;
+  color: #b8b8b8;
+}
+
+.reframe-fields {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+}
+
+.reframe-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.reframe-field span {
+  font-size: 11px;
+  color: #a8a8a8;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.reframe-field select,
+.reframe-intent {
+  width: 100%;
+  border-radius: 8px;
+  border: 1px solid #383838;
+  background: #0f0f0f;
+  color: #efefef;
+  font-size: 12px;
+  padding: 8px 10px;
+}
+
+.reframe-intent {
+  min-height: 78px;
+  resize: vertical;
+  margin-top: 2px;
+}
+
+.reframe-change-list {
+  margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.reframe-change-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+}
+
+.reframe-change-item .label {
+  min-width: 108px;
+  color: #8f8f8f;
+}
+
+.reframe-change-item .from {
+  color: #d6d6d6;
+}
+
+.reframe-change-item .arrow {
+  color: #6f6f6f;
+}
+
+.reframe-change-item .to {
+  color: #f59e0b;
+  font-weight: 600;
+}
+
+.reframe-no-change {
+  margin-top: 10px;
+  font-size: 12px;
+  color: #909090;
+}
+
+.reframe-apply-btn {
+  width: 100%;
+  margin-top: 12px;
+  border: none;
+  border-radius: 9px;
+  padding: 10px 12px;
+  background: linear-gradient(135deg, #f59e0b, #ef4444);
+  color: #fff;
+  font-weight: 700;
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+}
+
+.reframe-apply-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.reframe-error {
+  margin-top: 8px;
+  color: #f87171;
+  font-size: 12px;
+}
+
+/* 분석 전 잠김 상태 */
+.reframe-section--locked {
+  opacity: 0.45;
+  pointer-events: none;
+}
+
+/* 분석 전 안내 */
+.reframe-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 24px 0 16px;
+  color: #606060;
+  text-align: center;
+}
+
+.reframe-empty p {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.6;
+  color: #707070;
+}
+
+/* 필드 헤더: 라벨 + 기준값 배지 */
+.reframe-field-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+/* 분석된 원본값 배지 */
+.reframe-base-badge {
+  font-size: 9px;
+  font-weight: 700;
+  color: #3e82f6;
+  background: rgba(62, 130, 246, 0.1);
+  border: 1px solid rgba(62, 130, 246, 0.2);
+  padding: 1px 6px;
+  border-radius: 4px;
+  letter-spacing: 0.3px;
+  white-space: nowrap;
+}
+
+/* 수정된 select */
+.reframe-select--changed {
+  border-color: #f59e0b !important;
+  color: #f59e0b !important;
+}
