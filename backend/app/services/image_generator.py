@@ -2,6 +2,7 @@ import os
 import base64
 import re
 from pathlib import Path
+from typing import Optional
 from google import genai
 from google.genai import types
 from openai import OpenAI
@@ -312,7 +313,7 @@ def _truncate_prompt_text(text: str, max_chars: int) -> str:
     return text[: max_chars - 3].rstrip() + "..."
 
 
-def _compact_cir_line(cir: dict | None) -> str:
+def _compact_cir_line(cir: Optional[dict]) -> str:
     if not cir:
         return ""
     items = []
@@ -325,7 +326,7 @@ def _compact_cir_line(cir: dict | None) -> str:
 def _build_recraft_svg_prompt(
     script_context: str,
     intent: str,
-    cir: dict | None,
+    cir: Optional[dict],
     scene_script: str,
     detail_level: int,
 ) -> str:
@@ -355,7 +356,7 @@ def _build_recraft_svg_prompt(
 def _build_recraft_svg_prompt_legacy(
     script_context: str,
     intent: str,
-    cir: dict | None,
+    cir: Optional[dict],
     scene_script: str,
     detail_level: int,
 ) -> str:
@@ -413,7 +414,7 @@ def _build_recraft_svg_layer_prompt(
     layer_name: str,
     layer_desc: str,
     intent: str,
-    cir: dict | None,
+    cir: Optional[dict],
     detail_level: int,
 ) -> str:
     profile = _get_svg_complexity_profile(detail_level)
