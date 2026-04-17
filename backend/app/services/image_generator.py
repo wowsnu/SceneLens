@@ -274,10 +274,10 @@ def _get_svg_complexity_profile(detail_level: int) -> dict:
         }
     return {
         "name": "high-detail storyboard illustration",
-        "target_elements": "50+",
-        "max_elements": 999,
-        "interior_strokes": "3+",
-        "environment_detail": "rich secondary detail allowed",
+        "target_elements": "50-80",
+        "max_elements": 96,
+        "interior_strokes": "3-5",
+        "environment_detail": "rich secondary detail allowed only when compositionally necessary",
     }
 
 
@@ -416,6 +416,7 @@ def _build_recraft_v4_rough_svg_prompt(
     scene_script: str,
     detail_level: int,
 ) -> str:
+    profile = _get_svg_complexity_profile(detail_level)
     legacy_prompt = _build_recraft_svg_prompt_legacy(
         script_context=script_context,
         intent=intent,
@@ -424,8 +425,6 @@ def _build_recraft_v4_rough_svg_prompt(
         detail_level=detail_level,
     )
     focus = _normalize_prompt_text(script_context or scene_script or "Storyboard beat")
-    stricter_max = 16 if detail_level <= 70 else 24
-    stricter_target = "8-14" if detail_level <= 70 else "12-20"
 
     return f"""{legacy_prompt}
 
@@ -433,7 +432,10 @@ ROUGH BLOCKING SKETCH MODE:
 - IMPORTANT: Do NOT create polished line art, clean illustration, pretty rendering, or finished artwork.
 - This must look like an unfinished production blocking sketch a human would edit afterward.
 - Ugly, rough, under-drawn, and incomplete is BETTER than detailed or beautiful.
-- Use as FEW visible vector elements as possible. Strong target: {stricter_target} drawable elements total. Hard preference: stay under {stricter_max}.
+- Use as FEW visible vector elements as possible for this detail level.
+- Strong target: about {profile['target_elements']} visible paths/shapes total.
+- Hard preference: stay under {profile['max_elements']} visible paths/shapes.
+- Count path, line, polyline, polygon, rect, circle, and ellipse toward this budget.
 - Use one rough contour per subject when possible. Leave contours open or incomplete if needed.
 - Keep only silhouette, pose direction, eyeline, horizon, and 1-2 anchor environment lines.
 - Omit clothing folds, facial details, fingers, hair texture, surface detail, and secondary props unless absolutely required for composition.
@@ -485,14 +487,13 @@ def _build_recraft_v4_rough_svg_layer_prompt(
     cir: Optional[dict],
     detail_level: int,
 ) -> str:
+    profile = _get_svg_complexity_profile(detail_level)
     cir_block = ""
     if cir:
         cir_line = _compact_cir_line(cir)
         if cir_line:
             cir_block = f"\nCIR reference: {cir_line}"
 
-    stricter_max = 12 if detail_level <= 70 else 18
-    stricter_target = "6-10" if detail_level <= 70 else "8-14"
     intent_line = _normalize_prompt_text(intent)
     scene = _normalize_prompt_text(script_context)
     layer_desc = _normalize_prompt_text(layer_desc)
@@ -509,7 +510,9 @@ Layer requirement:
 ROUGH BLOCKING SKETCH MODE:
 - Do NOT create polished line art or a finished illustration.
 - Keep this rough, unfinished, and easy for a human to edit afterward.
-- Strong target: {stricter_target} visible vector elements total. Hard preference: stay under {stricter_max}.
+- Strong target: about {profile['target_elements']} visible paths/shapes total.
+- Hard preference: stay under {profile['max_elements']} visible paths/shapes.
+- Count path, line, polyline, polygon, rect, circle, and ellipse toward this budget.
 - Use simple contours and only the few strokes needed to identify the layer.
 - No shading, no hatching, no texture, no tiny repeated marks, no decorative cleanup.
 - White background. No text. No filters, masks, clipPath, patterns, or embedded rasters.
@@ -517,13 +520,6 @@ ROUGH BLOCKING SKETCH MODE:
 
 
 def _get_recraft_svg_generation_config(detail_level: int) -> dict:
-    level = _clamp_detail_level(detail_level)
-    if level <= 50:
-        return {
-            "model": "recraftv3_vector",
-            "style": "Line art",
-            "prompt_mode": "compact_v3",
-        }
     return {
         "model": "recraftv4_vector",
         "style": None,
