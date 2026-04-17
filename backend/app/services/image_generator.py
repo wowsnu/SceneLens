@@ -296,6 +296,148 @@ def _build_svg_editability_constraints(detail_level: int) -> str:
 - Simplicity is more important than realism. When in doubt, leave details out."""
 
 
+RECRAFT_PROMPT_MAX_CHARS = 950
+
+
+def _normalize_prompt_text(text: str) -> str:
+    return re.sub(r"\s+", " ", (text or "").strip())
+
+
+def _truncate_prompt_text(text: str, max_chars: int) -> str:
+    text = _normalize_prompt_text(text)
+    if len(text) <= max_chars:
+        return text
+    if max_chars <= 3:
+        return text[:max_chars]
+    return text[: max_chars - 3].rstrip() + "..."
+
+
+def _compact_cir_line(cir: dict | None) -> str:
+    if not cir:
+        return ""
+    items = []
+    for key, value in cir.items():
+        if value and key not in ("motionHint", "depth"):
+            items.append(f"{key}={value}")
+    return "; ".join(items)
+
+
+def _build_recraft_svg_prompt(
+    script_context: str,
+    intent: str,
+    cir: dict | None,
+    scene_script: str,
+    detail_level: int,
+) -> str:
+    profile = _get_svg_complexity_profile(detail_level)
+    style_note = "rough doodle storyboard sketch" if detail_level <= 60 else "clean line-art storyboard sketch"
+    focus = _truncate_prompt_text(script_context or scene_script or "Storyboard beat", 280)
+    scene = _truncate_prompt_text(scene_script, 180)
+    intent_text = _truncate_prompt_text(intent or "Cinematic storyboard for this beat", 140)
+    cir_line = _truncate_prompt_text(_compact_cir_line(cir), 180)
+
+    parts = [
+        f"Single 16:9 black-and-white SVG storyboard panel. {style_note}. White background.",
+        f"Beat: {focus}",
+        f"Intent: {intent_text}",
+        f"Complexity {detail_level}/100. Keep it {profile['name']}. Target {profile['target_elements']} visible elements, under {profile['max_elements']} if possible.",
+        "Editable SVG priority: few clean strokes, one outer contour per subject, minimal interior lines, large empty areas, no text, no hatching, no texture, no masks, no clipPath, no filters.",
+    ]
+    if cir_line:
+        parts.append(f"CIR: {cir_line}")
+    if scene and scene != focus:
+        parts.append(f"Context: {scene}")
+
+    prompt = "\n".join(parts)
+    return _truncate_prompt_text(prompt, RECRAFT_PROMPT_MAX_CHARS)
+
+
+def _build_recraft_svg_prompt_legacy(
+    script_context: str,
+    intent: str,
+    cir: dict | None,
+    scene_script: str,
+    detail_level: int,
+) -> str:
+    """Preserve the original verbose storyboard SVG prompt for future tuning/debugging."""
+    focus_block = (script_context or "").strip()
+    full_scene = (scene_script or "").strip()
+    if not focus_block:
+        focus_block = full_scene or "Use the highlighted beat below to draw the storyboard."
+
+    cir_block = ""
+    if cir:
+        cir_lines = []
+        for k, v in cir.items():
+            if v and k not in ("motionHint", "depth"):
+                cir_lines.append(f"  - {k}: {v}")
+        if cir_lines:
+            cir_block = "\n[Suggested Composition (CIR)]\n" + "\n".join(cir_lines)
+
+    scene_section = ""
+    if full_scene:
+        scene_section = (
+            "[Scene Script - full scene]\n"
+            f"{full_scene}\n\n"
+        )
+
+    focus_section = (
+        "[Frame Focus - draw exactly this beat]\n"
+        "<<< Everything inside the brackets MUST be visualized. Other lines are only context. >>>\n"
+        "[[FOCUS]]\n"
+        f"{focus_block}\n"
+        "[[/FOCUS]]"
+    )
+    editability_constraints = _build_svg_editability_constraints(detail_level)
+
+    return f"""{GENERATE_PROMPT}
+
+{scene_section}{focus_section}
+
+[Director's Intent]
+{intent or 'Cinematic storyboard for this exact beat'}{cir_block}
+
+Additional constraints:
+- Render exactly ONE storyboard panel (a single 16:9 frame). Do not draw multiple frames or a sequence.
+- Black and white line drawing delivered as crisp SVG vector lines. Pure white background.
+- ABSOLUTELY NO text, speech bubbles, dialogue, captions, labels, or written words of any kind in the image.
+- Drawing complexity: {detail_level}/100. (0 = extremely simple iconic sketch with minimal bold strokes and very few paths, easy to edit. 100 = highly detailed illustration with hatching, cross-hatching, fine textures, expressive line work, and rich visual detail.) Adjust stroke count, line detail, and rendering complexity to match this level.
+- Output should feel like a rough production blocking sketch, not a polished illustration.
+
+{editability_constraints}
+"""
+
+
+def _build_recraft_svg_layer_prompt(
+    script_context: str,
+    layer_name: str,
+    layer_desc: str,
+    intent: str,
+    cir: dict | None,
+    detail_level: int,
+) -> str:
+    profile = _get_svg_complexity_profile(detail_level)
+    scene = _truncate_prompt_text(script_context, 220)
+    intent_text = _truncate_prompt_text(intent, 120)
+    cir_line = _truncate_prompt_text(_compact_cir_line(cir), 160)
+    layer_desc = _truncate_prompt_text(layer_desc, 240)
+
+    parts = [
+        f"Single 16:9 black-and-white SVG {layer_name} layer. White background. Output exactly one drawing.",
+        f"Scene: {scene}",
+        f"Layer: {layer_desc}",
+        f"Complexity {detail_level}/100. Keep it {profile['name']}. Target {profile['target_elements']} visible elements, under {profile['max_elements']} if possible.",
+        "Editable SVG priority: simple clean outlines, minimal interior lines, no text, no hatching, no texture, no masks, no clipPath, no filters.",
+    ]
+    if intent_text:
+        parts.append(f"Intent: {intent_text}")
+    if cir_line:
+        parts.append(f"CIR: {cir_line}")
+
+    prompt = "\n".join(parts)
+    return _truncate_prompt_text(prompt, RECRAFT_PROMPT_MAX_CHARS)
+
+
 def _get_recraft_svg_generation_config(detail_level: int) -> dict:
     level = _clamp_detail_level(detail_level)
     if level <= 60:
@@ -416,57 +558,26 @@ async def generate_sketch_svg(
     api_key = get_recraft_api_key()
     detail_level = _clamp_detail_level(detail_level)
     recraft_config = _get_recraft_svg_generation_config(detail_level)
-
-    focus_block = (script_context or "").strip()
-    full_scene = (scene_script or "").strip()
-    if not focus_block:
-        focus_block = full_scene or "Use the highlighted beat below to draw the storyboard."
-
-    cir_block = ""
-    if cir:
-        cir_lines = []
-        for k, v in cir.items():
-            if v and k not in ('motionHint', 'depth'):
-                cir_lines.append(f"  - {k}: {v}")
-        if cir_lines:
-            cir_block = "\n[Suggested Composition (CIR)]\n" + "\n".join(cir_lines)
-
-    scene_section = ""
-    if full_scene:
-        scene_section = (
-            "[Scene Script - full scene]\n"
-            f"{full_scene}\n\n"
-        )
-
-    focus_section = (
-        "[Frame Focus - draw exactly this beat]\n"
-        "<<< Everything inside the brackets MUST be visualized. Other lines are only context. >>>\n"
-        "[[FOCUS]]\n"
-        f"{focus_block}\n"
-        "[[/FOCUS]]"
+    legacy_prompt = _build_recraft_svg_prompt_legacy(
+        script_context=script_context,
+        intent=intent,
+        cir=cir,
+        scene_script=scene_script,
+        detail_level=detail_level,
     )
-    editability_constraints = _build_svg_editability_constraints(detail_level)
 
-    prompt = f"""{GENERATE_PROMPT}
-
-{scene_section}{focus_section}
-
-[Director's Intent]
-{intent or 'Cinematic storyboard for this exact beat'}{cir_block}
-
-Additional constraints:
-- Render exactly ONE storyboard panel (a single 16:9 frame). Do not draw multiple frames or a sequence.
-- Black and white line drawing delivered as crisp SVG vector lines. Pure white background.
-- ABSOLUTELY NO text, speech bubbles, dialogue, captions, labels, or written words of any kind in the image.
-- Drawing complexity: {detail_level}/100. (0 = extremely simple iconic sketch with minimal bold strokes and very few paths, easy to edit. 100 = highly detailed illustration with hatching, cross-hatching, fine textures, expressive line work, and rich visual detail.) Adjust stroke count, line detail, and rendering complexity to match this level.
-- Output should feel like a rough production blocking sketch, not a polished illustration.
-
-{editability_constraints}
-"""
+    prompt = _build_recraft_svg_prompt(
+        script_context=script_context,
+        intent=intent,
+        cir=cir,
+        scene_script=scene_script,
+        detail_level=detail_level,
+    )
 
     print(
         f"[recraft] Generating SVG sketch, detail_level={detail_level}, "
-        f"model={recraft_config['model']}, style={recraft_config['style']}, prompt length={len(prompt)}"
+        f"model={recraft_config['model']}, style={recraft_config['style']}, "
+        f"prompt length={len(prompt)}, legacy_prompt_length={len(legacy_prompt)}"
     )
 
     async with httpx.AsyncClient(timeout=120.0) as client:
@@ -582,29 +693,14 @@ async def generate_svg_layer(
             f"NO other elements — no background, no characters, no props unless they ARE the '{layer_name}' layer. "
             f"Pure white/transparent background. Each element should be a clear, self-contained outline."
         )
-    editability_constraints = _build_svg_editability_constraints(detail_level)
-
-    style_line = (
-        f"Style: Black and white line drawing. Pure white background. Single 16:9 illustration. "
-        f"DO NOT create multiple panels, frames, thumbnails, or a grid layout. Output exactly ONE drawing. "
-        f"ABSOLUTELY NO text, speech bubbles, dialogue, captions, labels, or written words of any kind. "
-        f"Drawing complexity: {detail_level}/100. "
-        f"(0 = minimal bold outlines only with very few paths, 100 = rich hatching and fine detail.) "
-        f"Match complexity to this level."
+    prompt = _build_recraft_svg_layer_prompt(
+        script_context=script_context,
+        layer_name=layer_name,
+        layer_desc=layer_desc,
+        intent=intent,
+        cir=cir,
+        detail_level=detail_level,
     )
-
-    prompt = f"""Generate a SINGLE illustration for the '{layer_name}' layer. Output exactly ONE image, NOT multiple panels or a grid.
-
-Scene: {script_context}
-{f"Director's intent: {intent}" if intent else ""}
-{cir_block}
-
-{layer_desc}
-
-{style_line}
-
-{editability_constraints}
-"""
 
     print(
         f"[recraft] Generating SVG layer '{layer_name}', detail_level={detail_level}, "
