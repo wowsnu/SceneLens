@@ -409,6 +409,44 @@ Additional constraints:
 """
 
 
+def _build_recraft_v4_rough_svg_prompt(
+    script_context: str,
+    intent: str,
+    cir: Optional[dict],
+    scene_script: str,
+    detail_level: int,
+) -> str:
+    legacy_prompt = _build_recraft_svg_prompt_legacy(
+        script_context=script_context,
+        intent=intent,
+        cir=cir,
+        scene_script=scene_script,
+        detail_level=detail_level,
+    )
+    focus = _normalize_prompt_text(script_context or scene_script or "Storyboard beat")
+    stricter_max = 16 if detail_level <= 70 else 24
+    stricter_target = "8-14" if detail_level <= 70 else "12-20"
+
+    return f"""{legacy_prompt}
+
+ROUGH BLOCKING SKETCH MODE:
+- IMPORTANT: Do NOT create polished line art, clean illustration, pretty rendering, or finished artwork.
+- This must look like an unfinished production blocking sketch a human would edit afterward.
+- Ugly, rough, under-drawn, and incomplete is BETTER than detailed or beautiful.
+- Use as FEW visible vector elements as possible. Strong target: {stricter_target} drawable elements total. Hard preference: stay under {stricter_max}.
+- Use one rough contour per subject when possible. Leave contours open or incomplete if needed.
+- Keep only silhouette, pose direction, eyeline, horizon, and 1-2 anchor environment lines.
+- Omit clothing folds, facial details, fingers, hair texture, surface detail, and secondary props unless absolutely required for composition.
+- NO decorative line work, NO shading, NO rendering, NO texture, NO hatch marks, NO tiny repeated strokes.
+- Do not beautify anatomy. Do not clean up proportions. Do not add expressive details just to make the image look better.
+- If unsure whether to include a detail, omit it.
+- Editable SVG simplicity is more important than realism, finish, or attractiveness.
+
+Primary beat to preserve:
+{focus}
+"""
+
+
 def _build_recraft_svg_layer_prompt(
     script_context: str,
     layer_name: str,
@@ -439,10 +477,57 @@ def _build_recraft_svg_layer_prompt(
     return _truncate_prompt_text(prompt, RECRAFT_PROMPT_MAX_CHARS)
 
 
+def _build_recraft_v4_rough_svg_layer_prompt(
+    script_context: str,
+    layer_name: str,
+    layer_desc: str,
+    intent: str,
+    cir: Optional[dict],
+    detail_level: int,
+) -> str:
+    cir_block = ""
+    if cir:
+        cir_line = _compact_cir_line(cir)
+        if cir_line:
+            cir_block = f"\nCIR reference: {cir_line}"
+
+    stricter_max = 12 if detail_level <= 70 else 18
+    stricter_target = "6-10" if detail_level <= 70 else "8-14"
+    intent_line = _normalize_prompt_text(intent)
+    scene = _normalize_prompt_text(script_context)
+    layer_desc = _normalize_prompt_text(layer_desc)
+
+    return f"""Generate exactly ONE black-and-white 16:9 SVG drawing for the '{layer_name}' layer only.
+
+Scene context:
+{scene}
+
+Layer requirement:
+{layer_desc}
+{f"Director intent: {intent_line}" if intent_line else ""}{cir_block}
+
+ROUGH BLOCKING SKETCH MODE:
+- Do NOT create polished line art or a finished illustration.
+- Keep this rough, unfinished, and easy for a human to edit afterward.
+- Strong target: {stricter_target} visible vector elements total. Hard preference: stay under {stricter_max}.
+- Use simple contours and only the few strokes needed to identify the layer.
+- No shading, no hatching, no texture, no tiny repeated marks, no decorative cleanup.
+- White background. No text. No filters, masks, clipPath, patterns, or embedded rasters.
+"""
+
+
 def _get_recraft_svg_generation_config(detail_level: int) -> dict:
+    level = _clamp_detail_level(detail_level)
+    if level <= 50:
+        return {
+            "model": "recraftv3_vector",
+            "style": "Line art",
+            "prompt_mode": "compact_v3",
+        }
     return {
-        "model": "recraftv3_vector",
-        "style": "Line art",
+        "model": "recraftv4_vector",
+        "style": None,
+        "prompt_mode": "rough_v4",
     }
 
 
@@ -560,20 +645,37 @@ async def generate_sketch_svg(
         scene_script=scene_script,
         detail_level=detail_level,
     )
-
-    prompt = _build_recraft_svg_prompt(
-        script_context=script_context,
-        intent=intent,
-        cir=cir,
-        scene_script=scene_script,
-        detail_level=detail_level,
-    )
+    if recraft_config["prompt_mode"] == "rough_v4":
+        prompt = _build_recraft_v4_rough_svg_prompt(
+            script_context=script_context,
+            intent=intent,
+            cir=cir,
+            scene_script=scene_script,
+            detail_level=detail_level,
+        )
+    else:
+        prompt = _build_recraft_svg_prompt(
+            script_context=script_context,
+            intent=intent,
+            cir=cir,
+            scene_script=scene_script,
+            detail_level=detail_level,
+        )
 
     print(
         f"[recraft] Generating SVG sketch, detail_level={detail_level}, "
-        f"model={recraft_config['model']}, style={recraft_config['style']}, "
+        f"model={recraft_config['model']}, style={recraft_config['style']}, prompt_mode={recraft_config['prompt_mode']}, "
         f"prompt length={len(prompt)}, legacy_prompt_length={len(legacy_prompt)}"
     )
+
+    request_json = {
+        "prompt": prompt,
+        "model": recraft_config["model"],
+        "size": "16:9",
+        "response_format": "b64_json",
+    }
+    if recraft_config["style"]:
+        request_json["style"] = recraft_config["style"]
 
     async with httpx.AsyncClient(timeout=120.0) as client:
         response = await client.post(
@@ -582,13 +684,7 @@ async def generate_sketch_svg(
                 "Authorization": f"Bearer {api_key}",
                 "Content-Type": "application/json",
             },
-            json={
-                "prompt": prompt,
-                "model": recraft_config["model"],
-                "style": recraft_config["style"],
-                "size": "16:9",
-                "response_format": "b64_json",
-            },
+            json=request_json,
         )
 
     if response.status_code != 200:
@@ -616,7 +712,6 @@ async def generate_svg_layer(
     detail_level: int = 50,
 ) -> str:
     """Generate a single SVG layer (e.g. 'background', 'character') using Recraft API."""
-    import asyncio
     api_key = get_recraft_api_key()
     detail_level = _clamp_detail_level(detail_level)
     recraft_config = _get_recraft_svg_generation_config(detail_level)
@@ -688,19 +783,39 @@ async def generate_svg_layer(
             f"NO other elements — no background, no characters, no props unless they ARE the '{layer_name}' layer. "
             f"Pure white/transparent background. Each element should be a clear, self-contained outline."
         )
-    prompt = _build_recraft_svg_layer_prompt(
-        script_context=script_context,
-        layer_name=layer_name,
-        layer_desc=layer_desc,
-        intent=intent,
-        cir=cir,
-        detail_level=detail_level,
-    )
+    if recraft_config["prompt_mode"] == "rough_v4":
+        prompt = _build_recraft_v4_rough_svg_layer_prompt(
+            script_context=script_context,
+            layer_name=layer_name,
+            layer_desc=layer_desc,
+            intent=intent,
+            cir=cir,
+            detail_level=detail_level,
+        )
+    else:
+        prompt = _build_recraft_svg_layer_prompt(
+            script_context=script_context,
+            layer_name=layer_name,
+            layer_desc=layer_desc,
+            intent=intent,
+            cir=cir,
+            detail_level=detail_level,
+        )
 
     print(
         f"[recraft] Generating SVG layer '{layer_name}', detail_level={detail_level}, "
-        f"model={recraft_config['model']}, style={recraft_config['style']}, prompt length={len(prompt)}"
+        f"model={recraft_config['model']}, style={recraft_config['style']}, "
+        f"prompt_mode={recraft_config['prompt_mode']}, prompt length={len(prompt)}"
     )
+
+    request_json = {
+        "prompt": prompt,
+        "model": recraft_config["model"],
+        "size": "16:9",
+        "response_format": "b64_json",
+    }
+    if recraft_config["style"]:
+        request_json["style"] = recraft_config["style"]
 
     async with httpx.AsyncClient(timeout=120.0) as client:
         response = await client.post(
@@ -709,13 +824,7 @@ async def generate_svg_layer(
                 "Authorization": f"Bearer {api_key}",
                 "Content-Type": "application/json",
             },
-            json={
-                "prompt": prompt,
-                "model": recraft_config["model"],
-                "style": recraft_config["style"],
-                "size": "16:9",
-                "response_format": "b64_json",
-            },
+            json=request_json,
         )
 
     if response.status_code != 200:
