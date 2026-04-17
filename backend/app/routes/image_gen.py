@@ -87,6 +87,7 @@ async def reframe_sketch_endpoint(request: ReframeSketchRequest):
             request.include_description if request.include_description is not None else True,
             request.model,
             request.intent or "",
+            request.strategy_context or "",
         )
         elapsed = time.time() - t0
         print(f"[reframe-sketch] DONE model={request.model} elapsed={elapsed:.1f}s")

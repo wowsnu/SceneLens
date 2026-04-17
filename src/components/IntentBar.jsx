@@ -39,12 +39,6 @@ export default function IntentBar() {
   const comparePreview = useStore((s) => s.comparePreview)
   
   const messagesEndRef = useRef(null)
-
-  // 자동 스크롤
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [chatMessages])
-
   const setCenterTab = useStore((s) => s.setCenterTab)
   const setDetailTab = useStore((s) => s.setDetailTab)
   const currentShot = strategies[activeStrategy]?.shots?.[activeShot]
@@ -54,6 +48,11 @@ export default function IntentBar() {
       ? comparePreview.description
       : currentShot?.theory_rationale
   const descriptionMode = comparePreview?.shotKey === compareKey ? 'Preview' : 'Current'
+
+  // 자동 스크롤
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [chatMessages, activeDescription, comparePreview?.shotKey])
 
   const handleAnalyze = async () => {
     if (isAnalyzing) return
@@ -124,17 +123,17 @@ export default function IntentBar() {
               </div>
             )
           })}
-          <div ref={messagesEndRef} />
-        </div>
-      )}
 
-      {activeDescription && (
-        <div className={`intent-description ${comparePreview?.shotKey === compareKey ? 'preview' : ''}`}>
-          <div className="intent-description-header">
-            <span className="intent-description-badge">{descriptionMode}</span>
-            <span className="intent-description-title">Reframe Note</span>
-          </div>
-          <p>{activeDescription}</p>
+          {activeDescription && (
+            <div className={`chat-msg-bubble assistant chat-msg-bubble-note ${comparePreview?.shotKey === compareKey ? 'preview' : 'current'}`}>
+              <div className="chat-note-header">
+                <span className="chat-note-badge">{descriptionMode}</span>
+                <span className="chat-note-title">Reframe Note</span>
+              </div>
+              <p>{activeDescription}</p>
+            </div>
+          )}
+          <div ref={messagesEndRef} />
         </div>
       )}
 

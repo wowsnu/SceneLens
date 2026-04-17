@@ -878,6 +878,7 @@ async def reframe_sketch(
     include_description: bool = True,
     model: str = "gemini-2.5-flash-image",
     intent: str = "",
+    strategy_context: str = "",
 ) -> dict:
     """Redraw sketch with new CIR composition. Returns dict with reframed_image and description."""
     if image_base64.startswith('data:'):
@@ -911,10 +912,17 @@ async def reframe_sketch(
     print(f"[reframe-sketch] changed_section=\n{changed_section}")
 
     intent_section = f"[Director's Intent — HIGHEST PRIORITY]\n{intent}\nApply this intent above all else. It overrides default compositional choices." if intent else ""
+    strategy_section = (
+        "[Selected Strategy Guidance]\n"
+        f"{strategy_context}\n"
+        "Use this strategy guidance to keep the reframed image aligned with the recommended theory and intended effect."
+        if strategy_context else ""
+    )
 
     prompt = f"""{REFRAME_PROMPT}
 
 {intent_section}
+{strategy_section}
 
 [Scene Context]
 {script_context or 'Same scene as the input sketch'}
@@ -986,7 +994,7 @@ Now redraw the sketch applying ONLY the changes above. Keep everything else iden
             raise ValueError("Gemini did not return an image")
 
     def _gen_desc():
-        desc_prompt = f"""[Scene Context]\n{script_context or 'Same scene'}\n\n[What to change]\n{changed_section}\n\n위 변경사항(What to change)을 바탕으로, 1. 기존 구도에서 무엇이 바뀌었는지 2. 이로 인해 어떤 영화적/시각적 효과가 생기는지 한국어로 2~3문장으로 짧고 명확하게 설명해주세요. 포맷 태그 없이 오직 설명 텍스트만 출력하세요."""
+        desc_prompt = f"""[Scene Context]\n{script_context or 'Same scene'}\n\n{strategy_section}\n\n[What to change]\n{changed_section}\n\n위 변경사항(What to change)을 바탕으로, 1. 기존 구도에서 무엇이 바뀌었는지 2. 이로 인해 어떤 영화적/시각적 효과가 생기는지 한국어로 2~3문장으로 짧고 명확하게 설명해주세요. 전략 가이드가 있으면 그 방향과도 일치하게 설명하세요. 포맷 태그 없이 오직 설명 텍스트만 출력하세요."""
         res = gemini_client.models.generate_content(model='gemini-2.5-flash-lite', contents=[desc_prompt])
         return res.text.strip()
 

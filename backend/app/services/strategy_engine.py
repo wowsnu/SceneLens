@@ -130,6 +130,19 @@ INTENT_KEYWORD_MAP = {
 }
 
 
+def _build_shot_model(shot: dict) -> Shot:
+    return Shot(
+        order=shot["order"],
+        cir=CIR(**shot["cir"]),
+        theory_rationale=shot["theory_rationale"],
+        source=shot["source"],
+        recommendation_summary=shot.get("recommendation_summary", ""),
+        theory_fit_summary=shot.get("theory_fit_summary", ""),
+        current_shot_connection=shot.get("current_shot_connection", ""),
+        expected_effect_summary=shot.get("expected_effect_summary", ""),
+    )
+
+
 def _normalize_dim(dim: str) -> str:
     """Normalize a dimension string for matching."""
     return dim.lower().strip()
@@ -310,6 +323,10 @@ Format:
         {{
           "order": 1,
           "cir": {{ "shotSize": "...", "cameraAngle": "...", "cameraLevel": "...", "relation": "...", "blockingDistance": "...", "eyeline": "...", "occlusion": "...", "motionHint": "..." }},
+          "recommendation_summary": "지금 샷에서 무엇을 어떻게 바꾸는지 한 줄로 설명",
+          "theory_fit_summary": "어떤 책/이론 개념이 왜 여기 맞는지 한 줄 요약",
+          "current_shot_connection": "현재 분석된 샷과 이 추천이 어떻게 연결되는지 한 줄 설명",
+          "expected_effect_summary": "이 변화가 줄 감정적/서사적 효과를 한 줄 설명",
           "theory_rationale": "한글로 이론 근거 설명...",
           "source": "Book title"
         }}
@@ -355,12 +372,7 @@ Format:
         strategies = []
         for strat_data in data.get("strategies", []):
             shots = [
-                Shot(
-                    order=shot["order"],
-                    cir=CIR(**shot["cir"]),
-                    theory_rationale=shot["theory_rationale"],
-                    source=shot["source"]
-                )
+                _build_shot_model(shot)
                 for shot in strat_data["shots"]
             ]
             strategies.append(Strategy(
@@ -466,6 +478,11 @@ async def suggest_strategies_v2(
 2. REFERENCE specific cinematographic principles from your cached film theory library.
 3. PROPOSE 2-3 alternative REFRAMING strategies as valid JSON.
 4. Each strategy must include a clear 'theory_rationale' citing the specific book and principle used.
+5. For each shot, also generate four short Korean summaries:
+   - recommendation_summary: what to change in this shot
+   - theory_fit_summary: why the cited theory fits
+   - current_shot_connection: how this recommendation connects to the current analyzed shot
+   - expected_effect_summary: what effect the change should create
 
 CRITICAL: Each strategy has exactly 1 shot — an adjusted version of the CURRENT composition.
 Only change 2-4 CIR attributes per strategy. Keep the rest identical to the current CIR.
@@ -488,6 +505,10 @@ Format:
             "depth": "...", 
             "motionHint": "..." 
           }},
+          "recommendation_summary": "지금 샷에서 무엇을 어떻게 바꾸는지 한 줄로 설명",
+          "theory_fit_summary": "어떤 책/이론 개념이 왜 여기 맞는지 한 줄 요약",
+          "current_shot_connection": "현재 분석된 샷과 이 추천이 어떻게 연결되는지 한 줄 설명",
+          "expected_effect_summary": "이 변화가 줄 감정적/서사적 효과를 한 줄 설명",
           "theory_rationale": "한글로 이론 근거 설명 (어떤 책의 어떤 원리를 참고했는지 포함)...",
           "source": "Book title"
         }}
@@ -547,12 +568,7 @@ Format:
             # Map verticalLevel back to verticalLevel (the schema uses verticalLevel, verticalLevel, horizontalAngle, etc.)
             # Ensure CIR mapping is correct for the Pydantic model
             shots = [
-                Shot(
-                    order=shot["order"],
-                    cir=CIR(**shot["cir"]),
-                    theory_rationale=shot["theory_rationale"],
-                    source=shot["source"]
-                )
+                _build_shot_model(shot)
                 for shot in strat_data["shots"]
             ]
             strategies.append(Strategy(

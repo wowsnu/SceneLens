@@ -29,6 +29,7 @@ export default function DrawingCanvas() {
   const zenMode = useStore((s) => s.zenMode)
   const activeBeat = useStore((s) => s.activeBeat)
   const [hasDrawn, setHasDrawn] = useState(false)
+  const [isStrategyCardFlipped, setIsStrategyCardFlipped] = useState(false)
 
   // Get current shot image
   const getCurrentShotImage = () => {
@@ -256,6 +257,21 @@ export default function DrawingCanvas() {
     drawOverlays()
   }, [drawOverlays])
 
+  useEffect(() => {
+    if (!comparePreview) {
+      setIsStrategyCardFlipped(false)
+      return
+    }
+    if (!comparePreview.loading) {
+      setIsStrategyCardFlipped(false)
+      return
+    }
+    const timer = window.setTimeout(() => {
+      setIsStrategyCardFlipped(true)
+    }, 900)
+    return () => window.clearTimeout(timer)
+  }, [comparePreview?.loading, comparePreview?.createdAt, comparePreview?.shotKey])
+
   // Save history snapshot
   const saveHistory = () => {
     const canvas = canvasRef.current
@@ -461,7 +477,7 @@ export default function DrawingCanvas() {
         onTouchEnd={comparePreview ? undefined : stopDrawing}
       />
       <canvas ref={overlayRef} className="overlay-canvas" />
-      {comparePreview?.originalImage && comparePreview?.candidateImage && (
+      {comparePreview?.originalImage && (comparePreview?.candidateImage || comparePreview?.loading || comparePreview?.error) && (
         <div className="compare-preview-overlay">
           <div className="compare-preview-panel compare-preview-panel--left">
             <img src={comparePreview.originalImage} alt="Original storyboard" />
@@ -469,12 +485,106 @@ export default function DrawingCanvas() {
           </div>
           <div className="compare-preview-divider" />
           <div className="compare-preview-panel compare-preview-panel--right">
-            <img src={comparePreview.candidateImage} alt="Reframed storyboard" />
-            <div className="compare-preview-label">Reframed</div>
+            <button
+              type="button"
+              className={`strategy-compare-card strategy-compare-card-button ${isStrategyCardFlipped ? 'is-flipped' : ''}`}
+              onClick={() => setIsStrategyCardFlipped((prev) => !prev)}
+            >
+              <div className="strategy-compare-card-inner">
+                <div className="strategy-compare-card-face strategy-compare-card-face--front">
+                  {comparePreview.loading || comparePreview.error ? (
+                    <>
+                      <div className="strategy-compare-card-badge">{comparePreview.error ? '오류' : '생성 중'}</div>
+                      <div className="strategy-compare-card-title">
+                        {comparePreview.strategyName || '선택한 전략'}
+                      </div>
+                      <div className="strategy-compare-card-copy">
+                        {comparePreview.error
+                          ? '전략 기반 생성 중 문제가 발생했습니다. 카드를 뒤집어 설명을 확인하거나 다시 시도할 수 있습니다.'
+                          : '선택한 전략을 반영해 오른쪽 프레임을 다시 만드는 중입니다.'}
+                      </div>
+                      {comparePreview.error && (
+                        <div className="strategy-compare-card-summary">
+                          {comparePreview.error}
+                        </div>
+                      )}
+                      {comparePreview.recommendationLine && (
+                        <div className="strategy-compare-card-summary">
+                          {comparePreview.recommendationLine}
+                        </div>
+                      )}
+                      {!!comparePreview.changedFields?.length && (
+                        <div className="strategy-compare-card-chips">
+                          {comparePreview.changedFields.slice(0, 3).map((field) => (
+                            <span key={field.key} className="strategy-compare-card-chip">
+                              {field.label}: {field.from} → {field.to}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <>
+                      <img src={comparePreview.candidateImage} alt="Reframed storyboard" />
+                      <div className="compare-preview-label">Reframed</div>
+                      <div className="strategy-compare-flip-hint">클릭해서 전략 설명 보기</div>
+                    </>
+                  )}
+                </div>
+
+                <div className="strategy-compare-card-face strategy-compare-card-face--back">
+                  <div className="strategy-compare-card-badge">전략 설명</div>
+                  <div className="strategy-compare-card-title">
+                    {comparePreview.strategyName || '선택한 전략'}
+                  </div>
+
+                  {comparePreview.recommendationLine && (
+                    <div className="strategy-compare-card-section">
+                      <div className="strategy-compare-card-section-label">추천 한 줄</div>
+                      <div className="strategy-compare-card-section-text">{comparePreview.recommendationLine}</div>
+                    </div>
+                  )}
+
+                  {comparePreview.theoryLine && (
+                    <div className="strategy-compare-card-section">
+                      <div className="strategy-compare-card-section-label">이론적 근거</div>
+                      <div className="strategy-compare-card-section-text">{comparePreview.theoryLine}</div>
+                    </div>
+                  )}
+
+                  {comparePreview.connectionLine && (
+                    <div className="strategy-compare-card-section">
+                      <div className="strategy-compare-card-section-label">현재 샷과의 연결</div>
+                      <div className="strategy-compare-card-section-text">{comparePreview.connectionLine}</div>
+                    </div>
+                  )}
+
+                  {comparePreview.effectLine && (
+                    <div className="strategy-compare-card-section">
+                      <div className="strategy-compare-card-section-label">예상 효과</div>
+                      <div className="strategy-compare-card-section-text strategy-compare-card-section-text--strong">{comparePreview.effectLine}</div>
+                    </div>
+                  )}
+
+                  {comparePreview.fullTheoryNote && (
+                    <div className="strategy-compare-card-section">
+                      <div className="strategy-compare-card-section-label">상세 이론 설명</div>
+                      <div className="strategy-compare-card-section-text">
+                        {comparePreview.source ? `${comparePreview.source}: ` : ''}{comparePreview.fullTheoryNote}
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="strategy-compare-flip-hint strategy-compare-flip-hint--back">
+                    클릭해서 이미지로 돌아가기
+                  </div>
+                </div>
+              </div>
+            </button>
           </div>
         </div>
       )}
-      {(isAnalyzing || isGenerating || isEnhancing) && (
+      {(isAnalyzing || isGenerating || isEnhancing) && !comparePreview && (
         <div className="scanning-overlay">
           <div className="scan-line" />
         </div>

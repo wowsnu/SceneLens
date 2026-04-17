@@ -34,6 +34,10 @@ class Shot(BaseModel):
     cir: CIR
     theory_rationale: str
     source: str  # Book reference
+    recommendation_summary: str = ""
+    theory_fit_summary: str = ""
+    current_shot_connection: str = ""
+    expected_effect_summary: str = ""
 
 # Strategy (branching path)
 class Strategy(BaseModel):
@@ -98,6 +102,7 @@ class ReframeSketchRequest(BaseModel):
     original_cir: Optional[CIR] = None  # original CIR before reframe
     script_context: Optional[str] = ""
     intent: Optional[str] = ""  # director's intent — highest priority instruction
+    strategy_context: Optional[str] = ""  # theory-grounded recommendation context
     include_description: Optional[bool] = True
     model: Optional[str] = "gemini-2.5-flash-image"  # gemini-2.5-flash-image / gemini-3.1-flash-image-preview / gpt-image-1.5
 
