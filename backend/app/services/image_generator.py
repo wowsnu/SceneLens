@@ -331,7 +331,7 @@ def _build_recraft_svg_prompt(
     detail_level: int,
 ) -> str:
     profile = _get_svg_complexity_profile(detail_level)
-    style_note = "rough doodle storyboard sketch" if detail_level <= 60 else "clean line-art storyboard sketch"
+    style_note = "rough line-art storyboard sketch" if detail_level <= 60 else "clean line-art storyboard sketch"
     focus = _truncate_prompt_text(script_context or scene_script or "Storyboard beat", 280)
     scene = _truncate_prompt_text(scene_script, 180)
     intent_text = _truncate_prompt_text(intent or "Cinematic storyboard for this beat", 140)
@@ -440,14 +440,8 @@ def _build_recraft_svg_layer_prompt(
 
 
 def _get_recraft_svg_generation_config(detail_level: int) -> dict:
-    level = _clamp_detail_level(detail_level)
-    if level <= 60:
-        return {
-            "model": "recraftv2_vector",
-            "style": "Doodle Line art",
-        }
     return {
-        "model": "recraftv2_vector",
+        "model": "recraftv3_vector",
         "style": "Line art",
     }
 
