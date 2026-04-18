@@ -576,7 +576,7 @@ export default function StrategyOverlay() {
                           if (pairs.length === 0) return null
                           return (
                             <div className="strategy-card-image-pairs">
-                              {pairs.slice(0, 2).map((pair) => (
+                              {pairs.map((pair) => (
                                 <div key={pair.key} className="strategy-card-image-pair">
                                   <div className="strategy-card-image-slot">
                                     {pair.fromImg
