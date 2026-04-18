@@ -42,6 +42,7 @@ class Shot(BaseModel):
 # Strategy (branching path)
 class Strategy(BaseModel):
     name: str
+    short_title: Optional[str] = None
     shots: List[Shot]
     intention_tags: List[str]
 

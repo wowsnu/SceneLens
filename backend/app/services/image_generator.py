@@ -569,6 +569,8 @@ def _gemini_generate_image(prompt: str, input_image_bytes: bytes = None) -> byte
     raise ValueError("Gemini did not return an image")
 
 
+SKETCH_QUALITY_EXAMPLE_PATH = EXAMPLES_DIR / "sketch_target_quality.png"
+
 async def enhance_sketch(
     image_base64: str,
     script_context: str,
@@ -586,13 +588,37 @@ async def enhance_sketch(
 {script_context}
 
 [Director's Intent]
-{intent or 'Professional storyboard for this scene'}
+{intent or 'Clean up the sketch while keeping the same rough storyboard quality as the reference'}
 
-Now enhance the provided rough sketch into a professional storyboard panel. Keep the same composition and characters.
+The FIRST image attached is the TARGET QUALITY REFERENCE — match this level of finish exactly.
+The SECOND image is the director's rough sketch to enhance.
 """
 
-    result_bytes = _gemini_generate_image(prompt, image_bytes)
-    return _image_bytes_to_base64(result_bytes)
+    client = get_client()
+
+    contents = [prompt]
+
+    # Attach quality reference example first
+    if SKETCH_QUALITY_EXAMPLE_PATH.exists():
+        ref_bytes = SKETCH_QUALITY_EXAMPLE_PATH.read_bytes()
+        contents.append(types.Part.from_bytes(data=ref_bytes, mime_type='image/png'))
+
+    # Then attach the actual sketch
+    contents.append(types.Part.from_bytes(data=image_bytes, mime_type='image/png'))
+
+    response = client.models.generate_content(
+        model='gemini-2.5-flash-image',
+        contents=contents,
+        config=types.GenerateContentConfig(
+            response_modalities=['TEXT', 'IMAGE'],
+        ),
+    )
+
+    for part in response.candidates[0].content.parts:
+        if part.inline_data is not None:
+            return _image_bytes_to_base64(part.inline_data.data)
+
+    raise ValueError("Gemini did not return an image")
 
 
 async def generate_sketch(

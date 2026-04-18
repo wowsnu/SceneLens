@@ -46,10 +46,11 @@ function ContextMenu({ x, y, items, onClose }) {
 }
 
 // ── Graph View (SVG branching + full interactions) ─────────
-function GraphView() {
-  const branches = useStore((s) => s.flowBranches)
-  const activeBranch = useStore((s) => s.flowActiveBranch)
-  const activeShot = useStore((s) => s.flowActiveShot)
+export function GraphView() {
+  const scene = useStore((s) => s.scenes[s.activeScene])
+  const branches = scene?.branches || []
+  const activeBranch = scene?.activeBranch ?? 0
+  const activeShot = scene?.activeShot ?? 0
   const setActiveBranch = useStore((s) => s.setFlowActiveBranch)
   const setActiveShot = useStore((s) => s.setFlowActiveShot)
   const setView = useStore((s) => s.setFlowView)
@@ -415,10 +416,11 @@ function GraphView() {
 }
 
 // ── Card View ──────────────────────────────────────────────
-function CardView() {
-  const branches = useStore((s) => s.flowBranches)
-  const activeBranch = useStore((s) => s.flowActiveBranch)
-  const activeShot = useStore((s) => s.flowActiveShot)
+export function CardView() {
+  const scene = useStore((s) => s.scenes[s.activeScene])
+  const branches = scene?.branches || []
+  const activeBranch = scene?.activeBranch ?? 0
+  const activeShot = scene?.activeShot ?? 0
   const setActiveShot = useStore((s) => s.setFlowActiveShot)
   const setActiveBranch = useStore((s) => s.setFlowActiveBranch)
   const setInsertGap = useStore((s) => s.setFlowInsertGap)
@@ -546,7 +548,7 @@ function CardView() {
 }
 
 // ── Fill Shot Picker ───────────────────────────────────────
-function FillShotPicker() {
+export function FillShotPicker() {
   const insertGap = useStore((s) => s.flowInsertGap)
   const setInsertGap = useStore((s) => s.setFlowInsertGap)
   const insertShot = useStore((s) => s.flowInsertShot)
@@ -639,7 +641,8 @@ function FillShotPicker() {
 export default function FlowTab() {
   const flowView = useStore((s) => s.flowView)
   const setFlowView = useStore((s) => s.setFlowView)
-  const branches = useStore((s) => s.flowBranches)
+  const scene = useStore((s) => s.scenes[s.activeScene])
+  const branches = scene?.branches || []
 
   if (!branches || branches.length === 0) {
     return (

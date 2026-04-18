@@ -1,5 +1,6 @@
 import { useRef, useEffect, useCallback, useState } from 'react'
 import useStore from '../store/useStore'
+import { enhanceSketch } from '../services/api'
 import './DrawingCanvas.css'
 
 export default function DrawingCanvas() {
@@ -30,6 +31,10 @@ export default function DrawingCanvas() {
   const activeBeat = useStore((s) => s.activeBeat)
   const [hasDrawn, setHasDrawn] = useState(false)
   const [isStrategyCardFlipped, setIsStrategyCardFlipped] = useState(false)
+  const [isEnhancingLocal, setIsEnhancingLocal] = useState(false)
+  const screenplay = useStore((s) => s.screenplay)
+  const setComparePreview = useStore((s) => s.setComparePreview)
+  const clearComparePreview = useStore((s) => s.clearComparePreview)
 
   // Get current shot image
   const getCurrentShotImage = () => {
@@ -448,6 +453,58 @@ export default function DrawingCanvas() {
     setCanvasDataUrl(null)
   }
 
+  const handleEnhance = async () => {
+    if (!canvasDataUrl) return
+    setIsEnhancingLocal(true)
+    clearComparePreview()
+
+    const scriptText = screenplay.map((el) => el.text).join('\n')
+    const imageBase64 = canvasDataUrl.startsWith('data:') ? canvasDataUrl.split(',')[1] : canvasDataUrl
+    const originalImage = canvasDataUrl
+
+    setComparePreview({
+      shotKey: `enhance-${Date.now()}`,
+      originalImage,
+      candidateImage: null,
+      loading: true,
+      strategyName: 'Enhanced Sketch',
+      recommendationLine: '손그림을 같은 구도로 깔끔하게 정리합니다.',
+      isEnhancePreview: true,
+    })
+
+    try {
+      const result = await enhanceSketch(imageBase64, scriptText)
+      const resultImage = `data:image/png;base64,${result.enhanced_image}`
+      setComparePreview({
+        shotKey: `enhance-${Date.now()}`,
+        originalImage,
+        candidateImage: resultImage,
+        loading: false,
+        strategyName: 'Enhanced Sketch',
+        recommendationLine: '손그림을 같은 구도로 깔끔하게 정리합니다.',
+        isEnhancePreview: true,
+      })
+    } catch (err) {
+      setComparePreview({
+        shotKey: `enhance-error-${Date.now()}`,
+        originalImage,
+        candidateImage: null,
+        loading: false,
+        error: err.message,
+        isEnhancePreview: true,
+        strategyName: 'Enhanced Sketch',
+      })
+    } finally {
+      setIsEnhancingLocal(false)
+    }
+  }
+
+  const handleApplyEnhance = () => {
+    if (!comparePreview?.candidateImage || !comparePreview?.isEnhancePreview) return
+    setPendingCanvasImage(comparePreview.candidateImage)
+    clearComparePreview()
+  }
+
   // Expose undo/redo/clear via event listeners on buttons
   useEffect(() => {
     const undoBtn = document.getElementById('btn-undo')
@@ -465,6 +522,23 @@ export default function DrawingCanvas() {
 
   return (
     <div className="canvas-container" ref={containerRef}>
+      {/* Enhance button — top-right of canvas */}
+      {hasDrawn && !comparePreview && (
+        <div className="enhance-btn-wrap">
+          <button
+            className={`enhance-trigger-btn ${isEnhancingLocal ? 'loading' : ''}`}
+            onClick={handleEnhance}
+            disabled={isEnhancingLocal}
+            title="Enhance sketch"
+          >
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/>
+            </svg>
+            {isEnhancingLocal ? 'Enhancing…' : 'Enhance Sketch'}
+          </button>
+        </div>
+      )}
+
       <canvas
         ref={canvasRef}
         className="draw-canvas"
@@ -526,8 +600,14 @@ export default function DrawingCanvas() {
                   ) : (
                     <>
                       <img src={comparePreview.candidateImage} alt="Reframed storyboard" />
-                      <div className="compare-preview-label">Reframed</div>
-                      <div className="strategy-compare-flip-hint">클릭해서 전략 설명 보기</div>
+                      <div className="compare-preview-label">
+                        {comparePreview.isEnhancePreview
+                          ? (comparePreview.enhanceMode === 'sketch' ? 'Enhanced Sketch' : 'Photo Reference')
+                          : 'Reframed'}
+                      </div>
+                      {!comparePreview.isEnhancePreview && (
+                        <div className="strategy-compare-flip-hint">클릭해서 전략 설명 보기</div>
+                      )}
                     </>
                   )}
                 </div>
@@ -584,7 +664,15 @@ export default function DrawingCanvas() {
           </div>
         </div>
       )}
-      {(isAnalyzing || isGenerating || isEnhancing) && !comparePreview && (
+      {/* Apply / Dismiss for enhance preview */}
+      {comparePreview?.isEnhancePreview && !comparePreview?.loading && comparePreview?.candidateImage && (
+        <div className="enhance-action-bar">
+          <button className="enhance-action-dismiss" onClick={clearComparePreview}>Dismiss</button>
+          <button className="enhance-action-apply" onClick={handleApplyEnhance}>Apply to Canvas</button>
+        </div>
+      )}
+
+      {(isAnalyzing || isGenerating || isEnhancing || isEnhancingLocal) && !comparePreview && (
         <div className="scanning-overlay">
           <div className="scan-line" />
         </div>

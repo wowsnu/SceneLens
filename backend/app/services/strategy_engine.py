@@ -319,6 +319,7 @@ Format:
   "strategies": [
     {{
       "name": "감정을 담은 짧은 한글 이름 (예: 숨막히는 거리감, 시선의 압박)",
+      "short_title": "구체적인 구도 변화 한 줄, 15자 이내 (예: 클로즈업으로 전환, 로우 앵글 강조)",
       "shots": [
         {{
           "order": 1,
@@ -377,6 +378,7 @@ Format:
             ]
             strategies.append(Strategy(
                 name=strat_data["name"],
+                short_title=strat_data.get("short_title"),
                 shots=shots,
                 intention_tags=strat_data.get("intention_tags", [])
             ))

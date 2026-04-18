@@ -59,58 +59,60 @@ const FIELD_CONFIG = [
 const OPTION_VISUALS = {
   shotSize: {
     'Extreme Close-Up': {
-      image: '/img/extreme_closeup.png',
+      image: '/img/new_ecu.png',
       eyebrow: 'Detail',
       description: '얼굴의 일부만 꽉 차게',
     },
     'Close-Up': {
-      image: '/img/ref_closeup.png',
+      image: '/img/new_cu.png',
       eyebrow: 'Emotion',
       description: '표정과 감정을 전면으로',
     },
     'Medium Close-Up': {
-      image: '/img/closeup_woman.png',
+      image: '/img/new_mcu.png',
       eyebrow: 'Dialogue',
       description: '상반신 중심의 대화 샷',
     },
     'Medium Shot': {
-      image: '/img/closeup_man.png',
+      image: '/img/new_ms.png',
       eyebrow: 'Gesture',
       description: '몸짓과 관계가 읽히는 거리',
     },
     'Medium Long Shot': {
+      image: '/img/new_mls.png',
       eyebrow: 'Body',
       description: '무릎 아래까지 읽히는 거리',
       accent: 'linear-gradient(135deg, rgba(222, 184, 135, 0.25), rgba(245, 158, 11, 0.18))',
     },
     'Long Shot': {
-      image: '/img/ref_diner.png',
+      image: '/img/new_ls.png',
       eyebrow: 'Space',
       description: '환경과 인물의 균형',
     },
     'Extreme Wide Shot': {
-      image: '/img/wide_establishing.png',
+      image: '/img/new_ews.png',
       eyebrow: 'Scale',
       description: '공간이 압도하는 구도',
     },
   },
   horizontalAngle: {
     Frontal: {
-      image: '/img/ref_interrogation.png',
+      image: '/img/new_frontal.png',
       eyebrow: 'Confront',
       description: '정면에서 힘 대결을 강조',
     },
     'Three-Quarter': {
-      image: '/img/closeup_woman.png',
+      image: '/img/new_three_quarter.png',
       eyebrow: 'Natural',
       description: '가장 자연스러운 입체감',
     },
     Profile: {
-      image: '/img/closeup_man.png',
+      image: '/img/new_profile.png',
       eyebrow: 'Graphic',
       description: '실루엣이 강한 옆모습',
     },
     Rear: {
+      image: '/img/rear_angle.png',
       eyebrow: 'Mystery',
       description: '등 뒤에서 심리적 거리감',
       accent: 'linear-gradient(135deg, rgba(107, 114, 128, 0.32), rgba(31, 41, 55, 0.28))',
@@ -123,21 +125,23 @@ const OPTION_VISUALS = {
       description: '위에서 내려보며 작게',
     },
     Eye: {
-      image: '/img/ref_interrogation.png',
+      image: '/img/new_eye.png',
       eyebrow: 'Neutral',
       description: '눈높이의 기본 구도',
     },
     Low: {
-      image: '/img/low_angle.png',
+      image: '/img/new_low.png',
       eyebrow: 'Power',
       description: '올려다보며 위압감',
     },
     'Top-Down': {
+      image: '/img/top_down.png',
       eyebrow: 'Planar',
       description: '완전히 내려찍는 오버헤드',
       accent: 'linear-gradient(135deg, rgba(56, 189, 248, 0.22), rgba(14, 165, 233, 0.14))',
     },
     Ground: {
+      image: '/img/ground_level.png',
       eyebrow: 'Floor',
       description: '바닥 가까이에서 올려봄',
       accent: 'linear-gradient(135deg, rgba(120, 113, 108, 0.3), rgba(63, 63, 70, 0.24))',
@@ -155,6 +159,7 @@ const OPTION_VISUALS = {
       description: '어깨 너머로 관계를 강조',
     },
     POV: {
+      image: '/img/pov_shot.png',
       eyebrow: 'Subjective',
       description: '인물의 눈으로 직접 보기',
       accent: 'linear-gradient(135deg, rgba(16, 185, 129, 0.24), rgba(6, 182, 212, 0.16))',
@@ -172,6 +177,7 @@ const OPTION_VISUALS = {
       description: '전경 일부로 깊이 추가',
     },
     Heavy: {
+      image: '/img/heavy_occlusion.png',
       eyebrow: 'Conceal',
       description: '좁은 틈으로 훔쳐보는 느낌',
       accent: 'linear-gradient(135deg, rgba(239, 68, 68, 0.24), rgba(120, 53, 15, 0.24))',
@@ -184,11 +190,13 @@ const OPTION_VISUALS = {
       accent: 'linear-gradient(135deg, rgba(148, 163, 184, 0.22), rgba(71, 85, 105, 0.16))',
     },
     Shallow: {
+      image: '/img/new_shallow.png',
       eyebrow: 'Focus',
       description: '주인공만 또렷하게 분리',
       accent: 'linear-gradient(135deg, rgba(59, 130, 246, 0.22), rgba(99, 102, 241, 0.18))',
     },
     Deep: {
+      image: '/img/new_deep.png',
       eyebrow: 'Space',
       description: '전경부터 배경까지 선명하게',
       accent: 'linear-gradient(135deg, rgba(245, 158, 11, 0.22), rgba(249, 115, 22, 0.16))',
@@ -196,11 +204,12 @@ const OPTION_VISUALS = {
   },
   motionHint: {
     Static: {
-      image: '/img/ref_interrogation.png',
+      image: '/img/new_static.png',
       eyebrow: 'Locked',
       description: '정지된 구도로 긴장 유지',
     },
     Pan: {
+      image: '/img/new_pan.png',
       eyebrow: 'Sweep',
       description: '좌우로 훑는 움직임',
       accent: 'linear-gradient(135deg, rgba(34, 197, 94, 0.2), rgba(16, 185, 129, 0.14))',
@@ -211,6 +220,7 @@ const OPTION_VISUALS = {
       description: '상하로 쓸어 올리는 감각',
     },
     Track: {
+      image: '/img/track_motion.png',
       eyebrow: 'Follow',
       description: '대상과 함께 따라 움직임',
       accent: 'linear-gradient(135deg, rgba(244, 114, 182, 0.2), rgba(236, 72, 153, 0.14))',

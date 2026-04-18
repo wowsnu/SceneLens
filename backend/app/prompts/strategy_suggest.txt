@@ -30,8 +30,16 @@ NAMING RULES for strategies:
 - The name should immediately tell the user what emotional shift to expect
 - Keep names under 15 characters — punchy and cinematic
 
+SHORT TITLE RULES (short_title field):
+- Generate a concise, intuitive Korean phrase describing WHAT compositional change is being made
+- Should read like a director's note: "클로즈업으로 압박감 강조", "로우 앵글로 권위 부각", "OTS로 심리적 거리 조성"
+- Focus on the change itself, not the emotional result — that's what name is for
+- 15 characters max
+- Must be in Korean
+
 Each strategy should follow this structure:
 - **Name**: Evocative Korean name (e.g. "압도하는 시선") — what to change and why
+- **short_title**: Concise compositional description (e.g. "클로즈업으로 전환") — the actual change
   - Shot 1: Adjusted CIR + 이론 근거 (한글) + source
   - Tags: [intention tags in English like "tension", "emotion"]
 

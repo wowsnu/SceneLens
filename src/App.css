@@ -178,6 +178,49 @@
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 12px;
   padding: 8px 10px;
+  position: relative;
+  transition: height 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+              padding 0.3s ease;
+}
+
+.timeline-dock.expanded {
+  flex: 1 1 auto;
+  height: auto;
+  margin: 10px 16px 12px;
+  padding: 10px 14px 12px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.timeline-expand-btn {
+  position: absolute;
+  top: 6px;
+  right: 10px;
+  z-index: 5;
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.04);
+  color: rgba(255, 255, 255, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.timeline-expand-btn:hover {
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.25);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.timeline-dock.expanded > .sequence-timeline,
+.timeline-dock.expanded > .scene-overview {
+  flex: 1;
+  min-height: 0;
 }
 
 /* Zen Mode */

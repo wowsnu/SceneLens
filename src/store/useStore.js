@@ -331,11 +331,236 @@ const useStore = create((set, get) => ({
     delete nextHistory[key]
     return { reframeHistory: nextHistory }
   }),
-  flowBranches: [{ id: 'branch-main', label: 'Main', shots: [], isMain: true }],
-  flowActiveBranch: 0,
-  flowActiveShot: 0,
-  setFlowActiveShot: (idx) => set({ flowActiveShot: idx }),
-  setFlowActiveBranch: (idx) => set({ flowActiveBranch: idx }),
+  // ── Scenes hierarchy ────────────────────────────────────
+  scenes: [
+    {
+      id: 'scene-1',
+      label: 'Gas Station',
+      activeBranch: 0,
+      activeShot: 0,
+      branches: [
+        {
+          id: 'branch-main',
+          label: 'Slow Burn Tension',
+          isMain: true,
+          branchPoint: 0,
+          rationale: '',
+          shots: DEMO_STRATEGIES[0].shots.map((s, i) => ({
+            id: `shot-s1-main-${i}`,
+            image: s.image,
+            cir: s.cir,
+            label: s.intent || `Shot ${i + 1}`,
+            scriptBeat: i,
+            isAIGenerated: false,
+            source: 'canvas',
+          })),
+        },
+      ],
+    },
+    {
+      id: 'scene-2',
+      label: 'Desert Motel',
+      activeBranch: 0,
+      activeShot: 0,
+      branches: [
+        {
+          id: 'branch-main-s2',
+          label: 'Main',
+          isMain: true,
+          branchPoint: 0,
+          rationale: '',
+          shots: [
+            { id: 'shot-s2-0', image: null, cir: { shotSize: 'Wide', relation: 'Single' }, label: 'Arrival', scriptBeat: 0, isAIGenerated: false, source: 'canvas' },
+            { id: 'shot-s2-1', image: null, cir: { shotSize: 'Medium', relation: 'Single' }, label: 'Entering Room', scriptBeat: 1, isAIGenerated: false, source: 'canvas' },
+            { id: 'shot-s2-2', image: null, cir: { shotSize: 'Close-Up', relation: 'Single' }, label: 'Suspicion', scriptBeat: 2, isAIGenerated: false, source: 'canvas' },
+          ],
+        },
+      ],
+    },
+  ],
+  activeScene: 0,
+  overviewMode: 'scene', // 'film' | 'scene'
+  flowView: 'grid',
+
+  // Derived selectors (stable across render unless source changes)
+  getActiveSceneData: () => {
+    const state = get()
+    return state.scenes[state.activeScene]
+  },
+  flowInsertGap: null,
+  flowFillSuggestions: [],
+
+  setActiveScene: (idx) => set({ activeScene: idx }),
+  setOverviewMode: (m) => set({ overviewMode: m }),
+  setFlowView: (v) => set({ flowView: v }),
+  setFlowInsertGap: (g) => set({ flowInsertGap: g }),
+
+  addScene: (label) => set((state) => {
+    const id = `scene-${Date.now()}`
+    const newScene = {
+      id,
+      label: label || `Scene ${state.scenes.length + 1}`,
+      activeBranch: 0,
+      activeShot: 0,
+      branches: [
+        {
+          id: `branch-main-${id}`,
+          label: 'Main',
+          isMain: true,
+          branchPoint: 0,
+          rationale: '',
+          shots: [
+            { id: `shot-${id}-0`, image: null, cir: { shotSize: 'Medium', relation: 'Single' }, label: 'Shot 1', scriptBeat: 0, isAIGenerated: false, source: 'canvas' },
+          ],
+        },
+      ],
+    }
+    return { scenes: [...state.scenes, newScene], activeScene: state.scenes.length }
+  }),
+
+  renameScene: (sceneIdx, label) => set((state) => ({
+    scenes: state.scenes.map((s, i) => i === sceneIdx ? { ...s, label } : s),
+  })),
+
+  removeScene: (sceneIdx) => set((state) => {
+    if (state.scenes.length <= 1) return state
+    const scenes = state.scenes.filter((_, i) => i !== sceneIdx)
+    const activeScene = Math.max(0, Math.min(state.activeScene, scenes.length - 1))
+    return { scenes, activeScene }
+  }),
+
+  // ── Helpers: map "flow*" API onto active scene ──────────
+  setFlowActiveShot: (idx) => set((state) => ({
+    scenes: state.scenes.map((s, i) =>
+      i === state.activeScene ? { ...s, activeShot: idx } : s
+    ),
+  })),
+  setFlowActiveBranch: (idx) => set((state) => ({
+    scenes: state.scenes.map((s, i) =>
+      i === state.activeScene ? { ...s, activeBranch: idx, activeShot: 0 } : s
+    ),
+  })),
+
+  flowReorderShot: (branchIdx, fromIdx, toIdx) => set((state) => {
+    const scenes = state.scenes.map((s, si) => {
+      if (si !== state.activeScene) return s
+      const branches = s.branches.map((b, bi) => {
+        if (bi !== branchIdx) return b
+        const shots = [...b.shots]
+        const [moved] = shots.splice(fromIdx, 1)
+        shots.splice(toIdx, 0, moved)
+        return { ...b, shots }
+      })
+      return { ...s, branches, activeShot: toIdx }
+    })
+    return { scenes }
+  }),
+
+  flowRemoveShot: (branchIdx, shotIdx) => set((state) => {
+    const scenes = state.scenes.map((s, si) => {
+      if (si !== state.activeScene) return s
+      const branches = s.branches.map((b, bi) => {
+        if (bi !== branchIdx) return b
+        if (b.shots.length <= 1) return b
+        return { ...b, shots: b.shots.filter((_, idx) => idx !== shotIdx) }
+      })
+      const activeShot = s.activeBranch === branchIdx
+        ? Math.max(0, Math.min(s.activeShot, branches[branchIdx].shots.length - 1))
+        : s.activeShot
+      return { ...s, branches, activeShot }
+    })
+    return { scenes }
+  }),
+
+  flowInsertShot: (branchIdx, afterShotIdx, shot) => set((state) => {
+    const scenes = state.scenes.map((s, si) => {
+      if (si !== state.activeScene) return s
+      const branches = s.branches.map((b, bi) => {
+        if (bi !== branchIdx) return b
+        const shots = [...b.shots]
+        const newShot = {
+          id: shot.id || `shot-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+          image: shot.image || null,
+          cir: shot.cir || {},
+          label: shot.label || 'New Shot',
+          scriptBeat: shot.scriptBeat ?? 0,
+          isAIGenerated: shot.isAIGenerated || false,
+          source: shot.source || 'canvas',
+        }
+        shots.splice(afterShotIdx + 1, 0, newShot)
+        return { ...b, shots }
+      })
+      return { ...s, branches }
+    })
+    return { scenes }
+  }),
+
+  flowSplitBranch: (branchIdx, atShotIdx) => set((state) => {
+    const scenes = state.scenes.map((s, si) => {
+      if (si !== state.activeScene) return s
+      const src = s.branches[branchIdx]
+      if (!src || atShotIdx === 0) return s
+      const newBranch = {
+        id: `branch-${Date.now()}`,
+        label: `Alt ${s.branches.length}`,
+        isMain: false,
+        branchPoint: atShotIdx - 1,
+        rationale: '',
+        shots: src.shots.slice(atShotIdx).map((sh, i) => ({ ...sh, id: `${sh.id}-alt-${i}` })),
+      }
+      return { ...s, branches: [...s.branches, newBranch] }
+    })
+    return { scenes }
+  }),
+
+  flowDeleteBranch: (branchIdx) => set((state) => {
+    const scenes = state.scenes.map((s, si) => {
+      if (si !== state.activeScene) return s
+      if (s.branches.length <= 1) return s
+      const branches = s.branches.filter((_, i) => i !== branchIdx)
+      if (!branches.some((b) => b.isMain) && branches.length > 0) {
+        branches[0] = { ...branches[0], isMain: true }
+      }
+      return {
+        ...s,
+        branches,
+        activeBranch: Math.max(0, Math.min(s.activeBranch, branches.length - 1)),
+      }
+    })
+    return { scenes }
+  }),
+
+  flowPromoteBranch: (branchIdx) => set((state) => {
+    const scenes = state.scenes.map((s, si) => {
+      if (si !== state.activeScene) return s
+      const branches = s.branches.map((b, bi) => ({ ...b, isMain: bi === branchIdx }))
+      return { ...s, branches }
+    })
+    return { scenes }
+  }),
+
+  flowDisconnectEdge: (branchIdx, afterShotIdx) => set((state) => {
+    const scenes = state.scenes.map((s, si) => {
+      if (si !== state.activeScene) return s
+      const src = s.branches[branchIdx]
+      if (!src || afterShotIdx >= src.shots.length - 1) return s
+      const keepShots = src.shots.slice(0, afterShotIdx + 1)
+      const splitShots = src.shots.slice(afterShotIdx + 1)
+      const branches = s.branches.map((b, bi) =>
+        bi === branchIdx ? { ...b, shots: keepShots } : b
+      )
+      branches.push({
+        id: `branch-${Date.now()}`,
+        label: `Alt ${s.branches.length}`,
+        isMain: false,
+        branchPoint: afterShotIdx,
+        rationale: '',
+        shots: splitShots.map((sh, i) => ({ ...sh, id: `${sh.id}-split-${i}` })),
+      })
+      return { ...s, branches }
+    })
+    return { scenes }
+  }),
 
   // --- New Layout System States ---
   layoutMode: 'unified', // 'unified' | 'maximized'
@@ -356,6 +581,9 @@ const useStore = create((set, get) => ({
 
   bottomPanelVisible: true,
   setBottomPanelVisible: (val) => set({ bottomPanelVisible: val }),
+
+  timelineExpanded: false,
+  setTimelineExpanded: (val) => set({ timelineExpanded: val }),
 }))
 
 export default useStore

@@ -7,60 +7,27 @@ import './StrategyOverlay.css'
 const LABELS = ['A', 'B', 'C']
 const COLORS = ['#10b981', '#8b5cf6', '#ef4444']
 
-// CIR 값 → 레퍼런스 이미지 매핑
-const CIR_IMAGE_MAP = {
-  shotSize: {
-    'Extreme Close-Up': '/img/extreme_closeup.png',
-    'Close-Up': '/img/closeup_woman.png',
-    'Medium Close-Up': '/img/closeup_man.png',
-    'Medium Shot': '/img/medium_twoshot.png',
-    'Long Shot': '/img/wide_establishing.png',
-    'Extreme Wide Shot': '/img/wide_establishing.png',
-  },
-  verticalLevel: {
-    'High': '/img/high_angle.png',
-    'Top-Down': '/img/high_angle.png',
-    'Low': '/img/low_angle.png',
-  },
-  viewpointFraming: {
-    'OTS': '/img/ots_shot.png',
-    'POV': '/img/ref_diner.png',
-    'Objective': '/img/ref_closeup.png',
-  },
-  motionHint: {
-    'Handheld': '/img/alt_handheld.png',
-    'Zoom': '/img/alt_pushin.png',
-  },
-}
-
-// 한 CIR 속성의 값에 해당하는 이미지 반환
-function getImageForValue(key, value) {
-  return CIR_IMAGE_MAP[key]?.[value] || null
-}
-
-// 바뀌는 CIR 속성들의 before/after 이미지 쌍 반환
-function getChangedImagePairs(currentCir, nextCir) {
-  if (!currentCir || !nextCir) return []
-  const pairs = []
-  for (const key of ['shotSize', 'verticalLevel', 'viewpointFraming', 'motionHint']) {
-    const from = currentCir[key]
-    const to = nextCir[key]
-    if (!from || !to || from === to) continue
-    const fromImg = getImageForValue(key, from)
-    const toImg = getImageForValue(key, to)
-    if (fromImg || toImg) {
-      pairs.push({ key, label: FIELD_LABELS[key] || key, from, to, fromImg, toImg })
-    }
-  }
-  return pairs
-}
-
-const KEY_FIELDS = [
-  { key: 'shotSize', label: 'Shot' },
-  { key: 'horizontalAngle', label: 'Angle' },
-  { key: 'verticalLevel', label: 'Level' },
-  { key: 'viewpointFraming', label: 'Viewpoint' },
+// 영화 레퍼런스 mock 데이터
+const FILM_REFS = [
+  { title: 'No Country for Old Men', scene: 'Gas Station — Chigurh confronts proprietor', src: '/img/ref_interrogation.png' },
+  { title: 'The Godfather', scene: 'Office scene — Don Corleone OTS', src: '/img/ots_shot.png' },
+  { title: 'There Will Be Blood', scene: 'Low angle — Plainview dominance', src: '/img/low_angle.png' },
+  { title: 'Mulholland Drive', scene: 'Close-up — emotional pressure', src: '/img/closeup_woman.png' },
+  { title: 'Citizen Kane', scene: 'Deep focus — Kane at window', src: '/img/wide_establishing.png' },
+  { title: 'Parasite', scene: 'High angle — underground staircase', src: '/img/high_angle.png' },
+  { title: '2001: A Space Odyssey', scene: 'Top-down — symmetrical composition', src: '/img/top_down.png' },
+  { title: 'Oldboy', scene: 'Corridor tracking shot', src: '/img/track_motion.png' },
+  { title: 'The Shining', scene: 'Handheld — Danny hallway', src: '/img/alt_handheld.png' },
 ]
+
+function pickFilmRefs(proposalIdx) {
+  const offset = proposalIdx * 3
+  return [
+    FILM_REFS[offset % FILM_REFS.length],
+    FILM_REFS[(offset + 1) % FILM_REFS.length],
+    FILM_REFS[(offset + 2) % FILM_REFS.length],
+  ]
+}
 
 const FIELD_LABELS = {
   shotSize: 'Shot Size',
@@ -567,56 +534,21 @@ export default function StrategyOverlay() {
                           <div className="strategy-card-badge" style={{ background: color }}>
                             {LABELS[idx]}
                           </div>
-                          <div className="strategy-card-name">{proposal.name}</div>
-                        </div>
-
-                        {/* Before/After 이미지 쌍 */}
-                        {(() => {
-                          const pairs = getChangedImagePairs(currentCir, proposalCir)
-                          if (pairs.length === 0) return null
-                          return (
-                            <div className="strategy-card-image-pairs">
-                              {pairs.map((pair) => (
-                                <div key={pair.key} className="strategy-card-image-pair">
-                                  <div className="strategy-card-image-slot">
-                                    {pair.fromImg
-                                      ? <img src={pair.fromImg} alt={pair.from} />
-                                      : <div className="strategy-card-image-placeholder">{pair.from}</div>
-                                    }
-                                    <span className="strategy-card-image-label from">{pair.from}</span>
-                                  </div>
-                                  <div className="strategy-card-image-arrow">→</div>
-                                  <div className="strategy-card-image-slot">
-                                    {pair.toImg
-                                      ? <img src={pair.toImg} alt={pair.to} />
-                                      : <div className="strategy-card-image-placeholder">{pair.to}</div>
-                                    }
-                                    <span className="strategy-card-image-label to" style={{ color }}>
-                                      {pair.to}
-                                    </span>
-                                  </div>
-                                </div>
-                              ))}
+                          <div className="strategy-card-title-group">
+                            <div className="strategy-card-name">
+                              {proposal.short_title || proposal.name}
                             </div>
-                          )
-                        })()}
+                            {shot?.source && (
+                              <div className="strategy-card-source">{shot.source}</div>
+                            )}
+                          </div>
+                        </div>
 
                         {proposal.intention_tags?.length > 0 && (
                           <div className="strategy-card-tags">
                             {proposal.intention_tags.slice(0, 3).map((tag, i) => (
                               <span key={i} className="strategy-card-tag">{translateTag(tag)}</span>
                             ))}
-                          </div>
-                        )}
-
-                        {proposalCir && (
-                          <div className="strategy-card-cir">
-                            {KEY_FIELDS.map(({ key, label }) => proposalCir[key] ? (
-                              <div key={key} className="strategy-card-cir-row">
-                                <span className="cir-row-label">{label}</span>
-                                <span className="cir-row-value">{proposalCir[key]}</span>
-                              </div>
-                            ) : null)}
                           </div>
                         )}
 
@@ -634,6 +566,24 @@ export default function StrategyOverlay() {
                           <div className="strategy-card-section">
                             <div className="strategy-card-section-label">예상 효과</div>
                             <div className="strategy-card-section-text strategy-card-effect">{effectLine}</div>
+                          </div>
+                        </div>
+
+                        {/* 영화 레퍼런스 */}
+                        <div className="strategy-card-film-refs">
+                          <div className="strategy-card-section-label">영화 레퍼런스</div>
+                          <div className="strategy-card-film-refs-row">
+                            {pickFilmRefs(idx).map((ref, ri) => (
+                              <div key={ri} className="strategy-card-film-ref">
+                                <div className="strategy-card-film-ref-img-wrap">
+                                  <img src={ref.src} alt={ref.title} onError={(e) => { e.target.style.display = 'none' }} />
+                                </div>
+                                <div className="strategy-card-film-ref-info">
+                                  <div className="strategy-card-film-ref-title">{ref.title}</div>
+                                  <div className="strategy-card-film-ref-scene">{ref.scene}</div>
+                                </div>
+                              </div>
+                            ))}
                           </div>
                         </div>
 

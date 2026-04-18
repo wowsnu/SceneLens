@@ -3,6 +3,7 @@ import StoryboardView from './components/StoryboardView'
 import CenterPanel from './components/CenterPanel'
 import ShotPanel from './components/ShotPanel'
 import SequenceTimeline from './components/SequenceTimeline'
+import SceneOverview from './components/SceneOverview'
 import useStore from './store/useStore'
 import './App.css'
 
@@ -18,6 +19,8 @@ function App() {
   const setCenterTab = useStore((s) => s.setCenterTab)
   const zenMode = useStore((s) => s.zenMode)
   const setZenMode = useStore((s) => s.setZenMode)
+  const timelineExpanded = useStore((s) => s.timelineExpanded)
+  const setTimelineExpanded = useStore((s) => s.setTimelineExpanded)
 
   const isLabMode = centerTab === 'guidance'
 
@@ -131,11 +134,24 @@ function App() {
           </div>
           <div className="panel-content">
             {bottomPanelVisible && (
-              <div className="timeline-dock">
-                <SequenceTimeline />
+              <div className={`timeline-dock ${timelineExpanded ? 'expanded' : ''}`}>
+                <button
+                  className="timeline-expand-btn"
+                  onClick={() => setTimelineExpanded(!timelineExpanded)}
+                  title={timelineExpanded ? 'Collapse timeline' : 'Expand to scene overview'}
+                >
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                    {timelineExpanded ? (
+                      <path d="M7 14l5-5 5 5" />
+                    ) : (
+                      <path d="M7 10l5 5 5-5" />
+                    )}
+                  </svg>
+                </button>
+                {timelineExpanded ? <SceneOverview /> : <SequenceTimeline />}
               </div>
             )}
-            <CenterPanel />
+            {!timelineExpanded && <CenterPanel />}
           </div>
         </section>
 

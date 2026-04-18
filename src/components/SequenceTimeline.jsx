@@ -4,41 +4,30 @@ import './SequenceTimeline.css'
 
 
 export default function SequenceTimeline() {
-  const strategies = useStore((s) => s.strategies)
-  const activeStrategy = useStore((s) => s.activeStrategy)
-  const activeShot = useStore((s) => s.activeShot)
-  const setActiveShot = useStore((s) => s.setActiveShot)
+  const scenes = useStore((s) => s.scenes)
+  const activeScene = useStore((s) => s.activeScene)
+  const scene = scenes[activeScene]
+  const activeBranch = scene?.activeBranch ?? 0
+  const branch = scene?.branches[activeBranch]
+  const shots = branch?.shots || []
+  const activeShot = scene?.activeShot ?? 0
+  const setActiveShot = useStore((s) => s.setFlowActiveShot)
+  const removeShot = useStore((s) => s.flowRemoveShot)
+  const insertShot = useStore((s) => s.flowInsertShot)
   const shotSketches = useStore((s) => s.shotSketches)
-
-  const setStrategies = useStore((s) => s.setStrategies)
-  const shots = strategies[activeStrategy]?.shots || []
 
   const handleDeleteShot = useCallback(() => {
     if (shots.length <= 1) return
-    const updated = strategies.map((strat, si) => {
-      if (si !== activeStrategy) return strat
-      const newShots = strat.shots.filter((_, i) => i !== activeShot)
-      newShots.forEach((s, i) => { s.order = i + 1 })
-      return { ...strat, shots: newShots }
-    })
-    setStrategies(updated)
+    removeShot(activeBranch, activeShot)
     setActiveShot(Math.max(0, activeShot - 1))
-  }, [strategies, activeStrategy, activeShot, setStrategies, setActiveShot, shots.length])
+  }, [shots.length, removeShot, activeBranch, activeShot, setActiveShot])
 
   const handleAddShot = () => {
-    const updated = strategies.map((strat, si) => {
-      if (si !== activeStrategy) return strat
-      const newShot = {
-        order: strat.shots.length + 1,
-        image: null,
-        intent: 'NEW SHOT',
-        cir: { shotSize: 'Medium', cameraAngle: '', cameraLevel: '', relation: 'Single', blockingDistance: '', eyeline: '', occlusion: '', motionHint: '' },
-        theory_rationale: '', source: '',
-      }
-      return { ...strat, shots: [...strat.shots, newShot] }
+    insertShot(activeBranch, shots.length - 1, {
+      label: 'New Shot',
+      cir: { shotSize: 'Medium', relation: 'Single' },
     })
-    setStrategies(updated)
-    setActiveShot(shots.length) // 새 샷으로 이동
+    setActiveShot(shots.length)
   }
 
   useEffect(() => {
@@ -80,7 +69,7 @@ export default function SequenceTimeline() {
   return (
     <div className="sequence-timeline" ref={timelineRef}>
       {shots.map((shot, i) => {
-        const sketchUrl = shotSketches[`${activeStrategy}-${i}`]
+        const sketchUrl = shotSketches[`${activeScene}-${activeBranch}-${i}`]
         const displayImg = sketchUrl || shot.image
 
         return (
