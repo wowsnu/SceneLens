@@ -7,6 +7,54 @@ import './StrategyOverlay.css'
 const LABELS = ['A', 'B', 'C']
 const COLORS = ['#10b981', '#8b5cf6', '#ef4444']
 
+// CIR 값 → 레퍼런스 이미지 매핑
+const CIR_IMAGE_MAP = {
+  shotSize: {
+    'Extreme Close-Up': '/img/extreme_closeup.png',
+    'Close-Up': '/img/closeup_woman.png',
+    'Medium Close-Up': '/img/closeup_man.png',
+    'Medium Shot': '/img/medium_twoshot.png',
+    'Long Shot': '/img/wide_establishing.png',
+    'Extreme Wide Shot': '/img/wide_establishing.png',
+  },
+  verticalLevel: {
+    'High': '/img/high_angle.png',
+    'Top-Down': '/img/high_angle.png',
+    'Low': '/img/low_angle.png',
+  },
+  viewpointFraming: {
+    'OTS': '/img/ots_shot.png',
+    'POV': '/img/ref_diner.png',
+    'Objective': '/img/ref_closeup.png',
+  },
+  motionHint: {
+    'Handheld': '/img/alt_handheld.png',
+    'Zoom': '/img/alt_pushin.png',
+  },
+}
+
+// 한 CIR 속성의 값에 해당하는 이미지 반환
+function getImageForValue(key, value) {
+  return CIR_IMAGE_MAP[key]?.[value] || null
+}
+
+// 바뀌는 CIR 속성들의 before/after 이미지 쌍 반환
+function getChangedImagePairs(currentCir, nextCir) {
+  if (!currentCir || !nextCir) return []
+  const pairs = []
+  for (const key of ['shotSize', 'verticalLevel', 'viewpointFraming', 'motionHint']) {
+    const from = currentCir[key]
+    const to = nextCir[key]
+    if (!from || !to || from === to) continue
+    const fromImg = getImageForValue(key, from)
+    const toImg = getImageForValue(key, to)
+    if (fromImg || toImg) {
+      pairs.push({ key, label: FIELD_LABELS[key] || key, from, to, fromImg, toImg })
+    }
+  }
+  return pairs
+}
+
 const KEY_FIELDS = [
   { key: 'shotSize', label: 'Shot' },
   { key: 'horizontalAngle', label: 'Angle' },
@@ -515,11 +563,43 @@ export default function StrategyOverlay() {
                       </div>
                     ) : (
                       <>
-                        <div className="strategy-card-badge" style={{ background: color }}>
-                          {LABELS[idx]}
+                        <div className="strategy-card-header-row">
+                          <div className="strategy-card-badge" style={{ background: color }}>
+                            {LABELS[idx]}
+                          </div>
+                          <div className="strategy-card-name">{proposal.name}</div>
                         </div>
 
-                        <div className="strategy-card-name">{proposal.name}</div>
+                        {/* Before/After 이미지 쌍 */}
+                        {(() => {
+                          const pairs = getChangedImagePairs(currentCir, proposalCir)
+                          if (pairs.length === 0) return null
+                          return (
+                            <div className="strategy-card-image-pairs">
+                              {pairs.slice(0, 2).map((pair) => (
+                                <div key={pair.key} className="strategy-card-image-pair">
+                                  <div className="strategy-card-image-slot">
+                                    {pair.fromImg
+                                      ? <img src={pair.fromImg} alt={pair.from} />
+                                      : <div className="strategy-card-image-placeholder">{pair.from}</div>
+                                    }
+                                    <span className="strategy-card-image-label from">{pair.from}</span>
+                                  </div>
+                                  <div className="strategy-card-image-arrow">→</div>
+                                  <div className="strategy-card-image-slot">
+                                    {pair.toImg
+                                      ? <img src={pair.toImg} alt={pair.to} />
+                                      : <div className="strategy-card-image-placeholder">{pair.to}</div>
+                                    }
+                                    <span className="strategy-card-image-label to" style={{ color }}>
+                                      {pair.to}
+                                    </span>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )
+                        })()}
 
                         {proposal.intention_tags?.length > 0 && (
                           <div className="strategy-card-tags">
