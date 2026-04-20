@@ -272,22 +272,19 @@ def filter_theories_by_cir_and_intent(
 async def suggest_strategies_v1(
     cir: CIR,
     intent: str,
-    script_context: str = ""
+    script_context: str = "",
+    preferred_theories: list = None,
 ) -> SuggestStrategiesResponse:
     """
     [Method 1] Keyword-matching based strategy suggestion.
     Uses CIR-dimension + intent-tag filtering from theory_db.json.
-
-    Args:
-        cir: Current cinematic intermediate representation
-        intent: Director's intention/goal
-        script_context: Scene context
-
-    Returns:
-        SuggestStrategiesResponse with 2-3 strategy alternatives
+    If preferred_theories provided (from theory_answer), uses those directly.
     """
-    # Filter relevant theories using CIR + intent matching
-    relevant_theories = filter_theories_by_cir_and_intent(cir, intent)
+    # Use preferred theories if provided, otherwise filter from DB
+    if preferred_theories:
+        relevant_theories = preferred_theories
+    else:
+        relevant_theories = filter_theories_by_cir_and_intent(cir, intent)
 
     print(f"[Strategy] Matched {len(relevant_theories)} theories for intent='{intent}'")
     for t in relevant_theories[:5]:
@@ -388,6 +385,40 @@ Format:
     except (json.JSONDecodeError, KeyError) as e:
         print(f"Failed to parse strategy response: {response.text}")
         return SuggestStrategiesResponse(strategies=[])
+
+
+async def theory_answer(
+    cir: CIR,
+    intent: str,
+    script_context: str = ""
+) -> dict:
+    """
+    캐시된 영화 이론 책을 바탕으로 감독의 의도에 맞는 답변 생성.
+    v2와 동일한 소스(Context Cache)를 사용해 일관성 확보.
+    반환: { answer: str }
+    """
+    cache_name = warmup_theory_cache()
+
+    prompt = f"""당신은 영화 촬영 이론에 정통한 전문가입니다.
+캐시된 영화 이론 서적들을 참고하여 아래 질문에 답하세요.
+
+감독의 의도: {intent}
+현재 구도 (CIR): {cir.model_dump_json()}
+씬 맥락: {script_context or '없음'}
+
+위 상황에서 감독의 의도를 어떻게 구현할 수 있는지 2-3문장으로 간결하게 한국어로 설명해주세요.
+참고한 이론과 출처(책 제목)를 자연스럽게 언급하고, 실제 촬영에 바로 적용할 수 있는 조언으로 마무리하세요.
+마크다운 없이 평문으로만 답하세요."""
+
+    client = get_client()
+    response = client.models.generate_content(
+        model='gemini-2.5-flash',
+        contents=[prompt],
+        config=types.GenerateContentConfig(
+            cached_content=cache_name
+        ) if cache_name else None
+    )
+    return {"answer": response.text.strip()}
 
 
 # ── Context Cache Lifecycle ───────────────────────────────────────────
@@ -592,12 +623,12 @@ async def suggest_strategies(
     cir: CIR,
     intent: str,
     script_context: str = "",
-    image_base64: str = None
+    image_base64: str = None,
+    preferred_theories: list = None,
 ) -> SuggestStrategiesResponse:
-    # Always prefer v2 (now with caching and multimodal support)
     if THEORY_TEXTS_PATH.exists():
         print("[Strategy] Using method 2 (Context Caching + Multimodal)")
         return await suggest_strategies_v2(cir, intent, script_context, image_base64)
     else:
         print("[Strategy] Using method 1 (Keyword matching fallback)")
-        return await suggest_strategies_v1(cir, intent, script_context)
+        return await suggest_strategies_v1(cir, intent, script_context, preferred_theories)

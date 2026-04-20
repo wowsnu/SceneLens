@@ -387,13 +387,96 @@ const useStore = create((set, get) => ({
     const state = get()
     return state.scenes[state.activeScene]
   },
-  flowInsertGap: null,
-  flowFillSuggestions: [],
+  flowInsertGap: null,         // { branchIdx, afterShotIdx }
+  flowFillSuggestions: [],     // legacy — kept for compat
+
+  // Gap fill state
+  gapFill: null,               // { branchIdx, afterShotIdx, userPrompt, status, candidates }
+  //   status: 'idle' | 'loading' | 'ready' | 'error'
+
+  // Auto-fill range state
+  autoFill: null,              // { branchIdx, fromIdx, toIdx, userPrompt, status, versions, previewVersion }
+  //   status: 'idle' | 'loading' | 'ready' | 'error'
 
   setActiveScene: (idx) => set({ activeScene: idx }),
   setOverviewMode: (m) => set({ overviewMode: m }),
   setFlowView: (v) => set({ flowView: v }),
   setFlowInsertGap: (g) => set({ flowInsertGap: g }),
+
+  // Gap fill actions
+  openGapFill: (branchIdx, afterShotIdx) => set({
+    gapFill: { branchIdx, afterShotIdx, userPrompt: '', status: 'idle', candidates: [] }
+  }),
+  closeGapFill: () => set({ gapFill: null }),
+  setGapFillPrompt: (prompt) => set((state) => ({
+    gapFill: state.gapFill ? { ...state.gapFill, userPrompt: prompt } : null
+  })),
+  setGapFillStatus: (status, candidates = null) => set((state) => ({
+    gapFill: state.gapFill ? {
+      ...state.gapFill,
+      status,
+      ...(candidates !== null ? { candidates } : {}),
+    } : null
+  })),
+
+  // Auto-fill range actions
+  openAutoFill: (branchIdx, fromIdx, toIdx) => set({
+    autoFill: { branchIdx, fromIdx, toIdx, userPrompt: '', status: 'idle', versions: [], previewVersion: 0 }
+  }),
+  closeAutoFill: () => set({ autoFill: null }),
+  setAutoFillPrompt: (prompt) => set((state) => ({
+    autoFill: state.autoFill ? { ...state.autoFill, userPrompt: prompt } : null
+  })),
+  setAutoFillStatus: (status, versions = null) => set((state) => ({
+    autoFill: state.autoFill ? {
+      ...state.autoFill,
+      status,
+      ...(versions !== null ? { versions } : {}),
+    } : null
+  })),
+  setAutoFillPreviewVersion: (idx) => set((state) => ({
+    autoFill: state.autoFill ? { ...state.autoFill, previewVersion: idx } : null
+  })),
+
+  // Accept auto-fill version — insert all its shots into the branch
+  acceptAutoFillVersion: (versionIdx) => set((state) => {
+    const af = state.autoFill
+    if (!af || !af.versions[versionIdx]) return state
+    const version = af.versions[versionIdx]
+
+    // Build shot_id → current array index map for insertion
+    const scenes = state.scenes.map((s, si) => {
+      if (si !== state.activeScene) return s
+      const branches = s.branches.map((b, bi) => {
+        if (bi !== af.branchIdx) return b
+        let shots = [...b.shots]
+        // Insert from back to front so indices don't shift
+        const sorted = [...version.insertions].sort((a, b) => {
+          const ai = shots.findIndex(sh => sh.id === a.after_shot_id)
+          const bi2 = shots.findIndex(sh => sh.id === b.after_shot_id)
+          return bi2 - ai
+        })
+        for (const ins of sorted) {
+          const afterIdx = shots.findIndex(sh => sh.id === ins.after_shot_id)
+          if (afterIdx === -1) continue
+          const c = ins.candidate
+          const newShot = {
+            id: c.id || `shot-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+            label: c.label,
+            cir: c.cir,
+            image: c.image || null,
+            scriptBeat: 0,
+            isAIGenerated: true,
+            source: 'ai_fill',
+          }
+          shots.splice(afterIdx + 1, 0, newShot)
+        }
+        return { ...b, shots }
+      })
+      return { ...s, branches }
+    })
+    return { scenes, autoFill: null }
+  }),
 
   addScene: (label) => set((state) => {
     const id = `scene-${Date.now()}`

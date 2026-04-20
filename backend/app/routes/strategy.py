@@ -1,7 +1,7 @@
 import traceback
 from fastapi import APIRouter, HTTPException
-from app.models.schemas import SuggestStrategiesRequest, SuggestStrategiesResponse
-from app.services.strategy_engine import suggest_strategies
+from app.models.schemas import SuggestStrategiesRequest, SuggestStrategiesResponse, TheoryAnswerRequest, TheoryAnswerResponse
+from app.services.strategy_engine import suggest_strategies, theory_answer
 from app.services.sketch_analyzer import analyze_sketch
 
 router = APIRouter()
@@ -30,10 +30,25 @@ async def suggest_strategies_endpoint(request: SuggestStrategiesRequest):
             cir=cir,
             intent=request.intent,
             script_context=request.script,
-            image_base64=request.image
+            image_base64=request.image,
         )
         return result
     except Exception as e:
         print(f"[suggest-strategies] ERROR: {e}")
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/theory-answer", response_model=TheoryAnswerResponse)
+async def theory_answer_endpoint(request: TheoryAnswerRequest):
+    try:
+        result = await theory_answer(
+            cir=request.cir,
+            intent=request.intent,
+            script_context=request.script_context or ""
+        )
+        return TheoryAnswerResponse(answer=result["answer"])
+    except Exception as e:
+        print(f"[theory-answer] ERROR: {e}")
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))

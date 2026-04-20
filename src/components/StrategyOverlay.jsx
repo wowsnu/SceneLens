@@ -29,6 +29,52 @@ function pickFilmRefs(proposalIdx) {
   ]
 }
 
+// CIR 값 → 레퍼런스 이미지 매핑
+const CIR_IMAGE_MAP = {
+  shotSize: {
+    'Extreme Close-Up': '/img/extreme_closeup.png',
+    'Close-Up': '/img/closeup_woman.png',
+    'Medium Close-Up': '/img/closeup_man.png',
+    'Medium Shot': '/img/medium_twoshot.png',
+    'Long Shot': '/img/wide_establishing.png',
+    'Extreme Wide Shot': '/img/wide_establishing.png',
+  },
+  verticalLevel: {
+    'High': '/img/high_angle.png',
+    'Top-Down': '/img/high_angle.png',
+    'Low': '/img/low_angle.png',
+  },
+  viewpointFraming: {
+    'OTS': '/img/ots_shot.png',
+    'POV': '/img/ref_diner.png',
+    'Objective': '/img/ref_closeup.png',
+  },
+  motionHint: {
+    'Handheld': '/img/alt_handheld.png',
+    'Zoom': '/img/alt_pushin.png',
+  },
+}
+
+function getImageForValue(key, value) {
+  return CIR_IMAGE_MAP[key]?.[value] || null
+}
+
+function getChangedImagePairs(currentCir, nextCir) {
+  if (!currentCir || !nextCir) return []
+  const pairs = []
+  for (const key of ['shotSize', 'verticalLevel', 'viewpointFraming', 'motionHint']) {
+    const from = currentCir[key]
+    const to = nextCir[key]
+    if (!from || !to || from === to) continue
+    const fromImg = getImageForValue(key, from)
+    const toImg = getImageForValue(key, to)
+    if (fromImg || toImg) {
+      pairs.push({ key, label: FIELD_LABELS[key] || key, from, to, fromImg, toImg })
+    }
+  }
+  return pairs
+}
+
 const FIELD_LABELS = {
   shotSize: 'Shot Size',
   horizontalAngle: 'Horizontal Angle',
@@ -229,6 +275,7 @@ function buildStrategyContext({
 
 export default function StrategyOverlay() {
   const proposals = useStore((s) => s.proposals)
+  const setProposals = useStore((s) => s.setProposals)
   const showStrategyOverlay = useStore((s) => s.showStrategyOverlay)
   const setShowStrategyOverlay = useStore((s) => s.setShowStrategyOverlay)
   const setStrategies = useStore((s) => s.setStrategies)
@@ -322,20 +369,12 @@ export default function StrategyOverlay() {
       })),
     }))
 
-    setStrategyError('')
-    setLoadingStrategyIdx(idx)
-    setIsGenerating(true)
-    clearComparePreview()
-    setCenterTab('canvas')
-    setComparePreview({
+    const cached = proposal.cachedReframe
+    const compareBase = {
       shotKey: `${idx}-0`,
       originalImage: canvasDataUrl,
-      candidateImage: null,
       candidateCir: targetCir,
       changedFields,
-      description: '',
-      createdAt: new Date().toISOString(),
-      loading: true,
       strategyName: proposal.name,
       recommendationLine,
       theoryLine,
@@ -343,8 +382,38 @@ export default function StrategyOverlay() {
       effectLine,
       fullTheoryNote: shot?.theory_rationale || '',
       source: shot?.source || '',
-    })
+      filmRefs: pickFilmRefs(idx),
+    }
+
+    setStrategyError('')
+    setCenterTab('canvas')
+    clearComparePreview()
     setShowStrategyOverlay(false)
+
+    // 캐시된 결과가 있으면 바로 표시
+    if (cached) {
+      setStrategies(nextStrategies)
+      setActiveStrategy(idx)
+      setActiveShot(0)
+      setComparePreview({
+        ...compareBase,
+        candidateImage: cached.reframedDataUrl,
+        description: cached.description,
+        createdAt: cached.createdAt,
+        loading: false,
+      })
+      return
+    }
+
+    setLoadingStrategyIdx(idx)
+    setIsGenerating(true)
+    setComparePreview({
+      ...compareBase,
+      candidateImage: null,
+      description: '',
+      createdAt: new Date().toISOString(),
+      loading: true,
+    })
 
     try {
       addReframeHistoryEntry(idx, 0, {
@@ -367,12 +436,20 @@ export default function StrategyOverlay() {
       )
 
       const reframedDataUrl = `data:image/png;base64,${result.reframed_image}`
+      const description = result.description || shot?.theory_rationale || ''
+      const createdAt = new Date().toISOString()
+
+      // 캐시에 저장
+      const updatedProposals = proposals.map((p, i) =>
+        i === idx ? { ...p, cachedReframe: { reframedDataUrl, description, createdAt } } : p
+      )
+      setProposals(updatedProposals)
 
       addReframeHistoryEntry(idx, 0, {
         image: reframedDataUrl,
         cir: targetCir,
         changedFields,
-        description: result.description || shot?.theory_rationale || '',
+        description,
         label: 'Strategy Preview',
         source: 'reframe',
       })
@@ -381,21 +458,11 @@ export default function StrategyOverlay() {
       setActiveStrategy(idx)
       setActiveShot(0)
       setComparePreview({
-        shotKey: `${idx}-0`,
-        originalImage: canvasDataUrl,
+        ...compareBase,
         candidateImage: reframedDataUrl,
-        candidateCir: targetCir,
-        changedFields,
-        description: result.description || shot?.theory_rationale || '',
-        createdAt: new Date().toISOString(),
+        description,
+        createdAt,
         loading: false,
-        strategyName: proposal.name,
-        recommendationLine,
-        theoryLine,
-        connectionLine,
-        effectLine,
-        fullTheoryNote: shot?.theory_rationale || '',
-        source: shot?.source || '',
       })
     } catch (err) {
       const message = err.message || '전략 기반 이미지 생성 중 오류가 발생했습니다.'
@@ -543,6 +610,37 @@ export default function StrategyOverlay() {
                             )}
                           </div>
                         </div>
+
+                        {/* Before/After 이미지 쌍 */}
+                        {(() => {
+                          const pairs = getChangedImagePairs(currentCir, proposalCir)
+                          if (pairs.length === 0) return null
+                          return (
+                            <div className="strategy-card-image-pairs">
+                              {pairs.map((pair) => (
+                                <div key={pair.key} className="strategy-card-image-pair">
+                                  <div className="strategy-card-image-slot">
+                                    {pair.fromImg
+                                      ? <img src={pair.fromImg} alt={pair.from} />
+                                      : <div className="strategy-card-image-placeholder">{pair.from}</div>
+                                    }
+                                    <span className="strategy-card-image-label from">{pair.from}</span>
+                                  </div>
+                                  <div className="strategy-card-image-arrow">→</div>
+                                  <div className="strategy-card-image-slot">
+                                    {pair.toImg
+                                      ? <img src={pair.toImg} alt={pair.to} />
+                                      : <div className="strategy-card-image-placeholder">{pair.to}</div>
+                                    }
+                                    <span className="strategy-card-image-label to" style={{ color }}>
+                                      {pair.to}
+                                    </span>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )
+                        })()}
 
                         {proposal.intention_tags?.length > 0 && (
                           <div className="strategy-card-tags">

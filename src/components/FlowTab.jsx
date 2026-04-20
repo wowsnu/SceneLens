@@ -423,12 +423,18 @@ export function CardView() {
   const activeShot = scene?.activeShot ?? 0
   const setActiveShot = useStore((s) => s.setFlowActiveShot)
   const setActiveBranch = useStore((s) => s.setFlowActiveBranch)
-  const setInsertGap = useStore((s) => s.setFlowInsertGap)
+  const openGapFill = useStore((s) => s.openGapFill)
+  const openAutoFill = useStore((s) => s.openAutoFill)
   const removeShot = useStore((s) => s.flowRemoveShot)
+
+  // Range selection for auto-fill (indices within current branch)
+  const [rangeAnchor, setRangeAnchor] = useState(null)  // null | number
+  const [rangeMode, setRangeMode] = useState(false)
 
   const branch = branches[activeBranch]
   if (!branch) return null
   const shots = branch.shots
+
   const current = shots[activeShot] || shots[0]
   const prev = activeShot > 0 ? shots[activeShot - 1] : null
   const next = activeShot < shots.length - 1 ? shots[activeShot + 1] : null
@@ -443,32 +449,108 @@ export function CardView() {
 
   useEffect(() => {
     const handler = (e) => {
+      if (rangeMode) return  // suppress nav in range mode
       if (e.key === 'ArrowLeft') goPrev()
       else if (e.key === 'ArrowRight') goNext()
+      else if (e.key === 'Escape') setRangeMode(false)
       else if (e.key === 'Delete' || e.key === 'Backspace') {
+        const tag = document.activeElement?.tagName
+        if (tag === 'INPUT' || tag === 'TEXTAREA') return
         if (shots.length > 1) removeShot(activeBranch, activeShot)
       }
     }
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
-  }, [goPrev, goNext, removeShot, activeBranch, activeShot, shots.length])
+  }, [goPrev, goNext, removeShot, activeBranch, activeShot, shots.length, rangeMode])
+
+  const handleGapFill = (afterShotIdx) => {
+    openGapFill(activeBranch, afterShotIdx)
+  }
+
+  const handleRangeToggle = () => {
+    if (rangeMode) {
+      setRangeMode(false)
+      setRangeAnchor(null)
+    } else {
+      setRangeMode(true)
+      setRangeAnchor(activeShot)
+    }
+  }
+
+  const handleShotClickInRange = (idx) => {
+    if (!rangeMode) { setActiveShot(idx); return }
+    if (rangeAnchor === null) { setRangeAnchor(idx); return }
+    const from = Math.min(rangeAnchor, idx)
+    const to = Math.max(rangeAnchor, idx)
+    if (from === to) { setRangeAnchor(idx); return }
+    openAutoFill(activeBranch, from, to)
+    setRangeMode(false)
+    setRangeAnchor(null)
+  }
+
+  // Compute range selection bounds for highlight
+  const rangeFrom = rangeAnchor !== null ? Math.min(rangeAnchor, activeShot) : null
+  const rangeTo   = rangeAnchor !== null ? Math.max(rangeAnchor, activeShot) : null
 
   return (
     <div className="flow-card">
-      {/* Branch selector */}
-      <div className="flow-card-branch-bar">
-        {branches.map((b, i) => (
-          <button
-            key={b.id}
-            className={`flow-card-branch-btn ${i === activeBranch ? 'active' : ''}`}
-            onClick={() => { setActiveBranch(i); setActiveShot(0) }}
-          >
-            {b.isMain ? 'Main' : b.label}
-          </button>
-        ))}
+      {/* Branch selector + toolbar */}
+      <div className="flow-card-topbar">
+        <div className="flow-card-branch-bar">
+          {branches.map((b, i) => (
+            <button
+              key={b.id}
+              className={`flow-card-branch-btn ${i === activeBranch ? 'active' : ''}`}
+              onClick={() => { setActiveBranch(i); setActiveShot(0); setRangeMode(false); setRangeAnchor(null) }}
+            >
+              {b.isMain ? 'Main' : b.label}
+            </button>
+          ))}
+        </div>
+
+        <button
+          className={`flow-card-range-btn ${rangeMode ? 'active' : ''}`}
+          onClick={handleRangeToggle}
+          title={rangeMode ? 'Range 모드 종료 (Esc)' : 'Auto-fill range 선택'}
+        >
+          {rangeMode ? '✕ 범위 취소' : '✦ Auto-fill Range'}
+        </button>
       </div>
 
-      {/* Carousel */}
+      {rangeMode && (
+        <div className="flow-card-range-hint">
+          {rangeAnchor === null
+            ? '시작 샷을 클릭하세요'
+            : `S${rangeAnchor + 1}에서 시작 — 끝 샷을 클릭하면 Auto-fill이 시작됩니다`
+          }
+        </div>
+      )}
+
+      {/* Strip thumbnails */}
+      <div className="flow-card-strip">
+        {shots.map((s, i) => {
+          const isActive = i === activeShot
+          const inRange = rangeFrom !== null && i >= rangeFrom && i <= rangeTo
+          const isAnchor = i === rangeAnchor
+          return (
+            <div
+              key={s.id}
+              className={`flow-card-strip-item ${isActive ? 'active' : ''} ${inRange ? 'in-range' : ''} ${isAnchor ? 'range-anchor' : ''}`}
+              onClick={() => handleShotClickInRange(i)}
+            >
+              <div className="flow-card-strip-frame">
+                {s.image
+                  ? <img src={s.image} alt="" />
+                  : <span className="flow-card-strip-num">{i + 1}</span>
+                }
+              </div>
+              <span className="flow-card-strip-label">S{i + 1}</span>
+            </div>
+          )
+        })}
+      </div>
+
+      {/* Main carousel */}
       <div className="flow-card-carousel">
         <div className={`flow-card-side ${prev ? '' : 'empty'}`} onClick={goPrev}>
           {prev && (
@@ -480,9 +562,12 @@ export function CardView() {
           )}
         </div>
 
+        {/* Gap fill button — left */}
         <button
-          className="flow-card-insert-btn"
-          onClick={() => setInsertGap({ branchIdx: activeBranch, afterShotIdx: activeShot - 1 })}
+          className="flow-card-insert-btn ai"
+          onClick={() => handleGapFill(activeShot - 1)}
+          disabled={activeShot === 0}
+          title="이 gap에 fill shot 추가"
         >+</button>
 
         <div className="flow-card-center">
@@ -503,15 +588,16 @@ export function CardView() {
               {current.cir?.shotSize && <span className="flow-chip">{current.cir.shotSize}</span>}
               {current.cir?.horizontalAngle && <span className="flow-chip">{current.cir.horizontalAngle}</span>}
               {current.cir?.verticalLevel && <span className="flow-chip">{current.cir.verticalLevel}</span>}
-              {current.cir?.subjectConfig && <span className="flow-chip">{current.cir.subjectConfig}</span>}
               {current.cir?.viewpointFraming && current.cir.viewpointFraming !== 'Objective' && (
                 <span className="flow-chip accent">{current.cir.viewpointFraming}</span>
               )}
+              {current.cir?.motionHint && current.cir.motionHint !== 'Static' && (
+                <span className="flow-chip">{current.cir.motionHint}</span>
+              )}
             </div>
-            <div className="flow-card-beat">Beat {current.scriptBeat}</div>
+            <div className="flow-card-beat">Beat {current.scriptBeat ?? '—'}</div>
           </div>
 
-          {/* Delete button */}
           {shots.length > 1 && (
             <button
               className="flow-card-delete"
@@ -519,14 +605,17 @@ export function CardView() {
                 removeShot(activeBranch, activeShot)
                 if (activeShot >= shots.length - 1) setActiveShot(Math.max(0, activeShot - 1))
               }}
-              title="Delete shot (Del)"
+              title="Delete shot"
             >Delete Shot</button>
           )}
         </div>
 
+        {/* Gap fill button — right */}
         <button
-          className="flow-card-insert-btn"
-          onClick={() => setInsertGap({ branchIdx: activeBranch, afterShotIdx: activeShot })}
+          className="flow-card-insert-btn ai"
+          onClick={() => handleGapFill(activeShot)}
+          disabled={activeShot >= shots.length - 1}
+          title="이 gap에 fill shot 추가"
         >+</button>
 
         <div className={`flow-card-side ${next ? '' : 'empty'}`} onClick={goNext}>

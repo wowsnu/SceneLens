@@ -4,7 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 from contextlib import asynccontextmanager
 
-from app.routes import sketch, strategy, overlay, image_gen
+from app.routes import sketch, strategy, overlay, image_gen, fill_shot
 from app.services.strategy_engine import warmup_theory_cache
 
 load_dotenv()
@@ -49,6 +49,7 @@ app.include_router(sketch.router, prefix="/api")
 app.include_router(strategy.router, prefix="/api")
 app.include_router(overlay.router, prefix="/api")
 app.include_router(image_gen.router, prefix="/api")
+app.include_router(fill_shot.router, prefix="/api")
 
 if __name__ == "__main__":
     import uvicorn

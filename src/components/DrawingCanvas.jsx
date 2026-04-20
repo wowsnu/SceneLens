@@ -31,6 +31,7 @@ export default function DrawingCanvas() {
   const activeBeat = useStore((s) => s.activeBeat)
   const [hasDrawn, setHasDrawn] = useState(false)
   const [isStrategyCardFlipped, setIsStrategyCardFlipped] = useState(false)
+  const [refSlideIdx, setRefSlideIdx] = useState(0)
   const [isEnhancingLocal, setIsEnhancingLocal] = useState(false)
   const screenplay = useStore((s) => s.screenplay)
   const setComparePreview = useStore((s) => s.setComparePreview)
@@ -565,35 +566,29 @@ export default function DrawingCanvas() {
               onClick={() => setIsStrategyCardFlipped((prev) => !prev)}
             >
               <div className="strategy-compare-card-inner">
-                <div className="strategy-compare-card-face strategy-compare-card-face--front">
+                <div className={`strategy-compare-card-face strategy-compare-card-face--front${comparePreview.loading ? ' strategy-compare-card-face--loading' : ''}`}>
                   {comparePreview.loading || comparePreview.error ? (
                     <>
-                      <div className="strategy-compare-card-badge">{comparePreview.error ? '오류' : '생성 중'}</div>
-                      <div className="strategy-compare-card-title">
-                        {comparePreview.strategyName || '선택한 전략'}
-                      </div>
-                      <div className="strategy-compare-card-copy">
-                        {comparePreview.error
-                          ? '전략 기반 생성 중 문제가 발생했습니다. 카드를 뒤집어 설명을 확인하거나 다시 시도할 수 있습니다.'
-                          : '선택한 전략을 반영해 오른쪽 프레임을 다시 만드는 중입니다.'}
-                      </div>
-                      {comparePreview.error && (
-                        <div className="strategy-compare-card-summary">
-                          {comparePreview.error}
-                        </div>
-                      )}
-                      {comparePreview.recommendationLine && (
-                        <div className="strategy-compare-card-summary">
-                          {comparePreview.recommendationLine}
-                        </div>
-                      )}
-                      {!!comparePreview.changedFields?.length && (
-                        <div className="strategy-compare-card-chips">
-                          {comparePreview.changedFields.slice(0, 3).map((field) => (
-                            <span key={field.key} className="strategy-compare-card-chip">
-                              {field.label}: {field.from} → {field.to}
-                            </span>
-                          ))}
+                      {comparePreview.filmRefs?.length > 0 && (
+                        <div className="compare-loading-refs">
+                          {(() => {
+                            const ref = comparePreview.filmRefs[refSlideIdx]
+                            const total = comparePreview.filmRefs.length
+                            return (
+                              <>
+                                <img src={ref.src} alt={ref.title} onError={(e) => { e.target.style.display = 'none' }} />
+                                <div className="compare-loading-nav">
+                                  <button className="compare-loading-nav-btn" onClick={(e) => { e.stopPropagation(); setRefSlideIdx((prev) => (prev - 1 + total) % total) }}>‹</button>
+                                  <div className="compare-loading-dots">
+                                    {comparePreview.filmRefs.map((_, i) => (
+                                      <div key={i} className={`compare-loading-dot ${i === refSlideIdx ? 'is-active' : ''}`} />
+                                    ))}
+                                  </div>
+                                  <button className="compare-loading-nav-btn" onClick={(e) => { e.stopPropagation(); setRefSlideIdx((prev) => (prev + 1) % total) }}>›</button>
+                                </div>
+                              </>
+                            )
+                          })()}
                         </div>
                       )}
                     </>
@@ -655,6 +650,15 @@ export default function DrawingCanvas() {
                     </div>
                   )}
 
+                  {!!comparePreview.changedFields?.length && (
+                    <div className="strategy-compare-card-chips" style={{ marginTop: 'auto' }}>
+                      {comparePreview.changedFields.slice(0, 3).map((field) => (
+                        <span key={field.key} className="strategy-compare-card-chip">
+                          {field.label}: {field.from} → {field.to}
+                        </span>
+                      ))}
+                    </div>
+                  )}
                   <div className="strategy-compare-flip-hint strategy-compare-flip-hint--back">
                     클릭해서 이미지로 돌아가기
                   </div>

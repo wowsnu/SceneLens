@@ -39,6 +39,14 @@ export async function suggestStrategies(imageBase64, script, intent, cir = null)
   }, 60000)
 }
 
+export async function theoryAnswer(cir, intent, scriptContext = '') {
+  return fetchWithTimeout(`${API_BASE}/theory-answer`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ cir, intent, script_context: scriptContext }),
+  }, 30000)
+}
+
 export async function enhanceSketch(imageBase64, scriptContext, intent = '') {
   return fetchWithTimeout(`${API_BASE}/enhance-sketch`, {
     method: 'POST',
@@ -101,4 +109,36 @@ export async function generateOverlay(imageBase64, strategyName, cir, theoryRati
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ image: imageBase64, strategy_name: strategyName, cir, theory_rationale: theoryRationale, intent }),
   }, 120000)
+}
+
+// image generation takes ~20-40s per shot; 3 parallel × 3 = allow 3 min
+const FILL_TIMEOUT = 180000
+
+export async function requestGapFill({ leftShot, rightShot, scriptContext, intent, userPrompt = '', candidateCount = 3 }) {
+  return fetchWithTimeout(`${API_BASE}/gap-fill`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      left_shot: leftShot,
+      right_shot: rightShot,
+      script_context: scriptContext,
+      intent,
+      user_prompt: userPrompt,
+      candidate_count: candidateCount,
+    }),
+  }, FILL_TIMEOUT)
+}
+
+export async function requestAutoFillRange({ shots, scriptContext, intent, userPrompt = '', versionCount = 3 }) {
+  return fetchWithTimeout(`${API_BASE}/auto-fill-range`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      shots,
+      script_context: scriptContext,
+      intent,
+      user_prompt: userPrompt,
+      version_count: versionCount,
+    }),
+  }, FILL_TIMEOUT)
 }

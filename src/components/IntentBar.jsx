@@ -1,6 +1,6 @@
 import { useRef, useEffect } from 'react'
 import useStore from '../store/useStore'
-import { analyzeSketch, suggestStrategies } from '../services/api'
+import { analyzeSketch, suggestStrategies, theoryAnswer } from '../services/api'
 import './IntentBar.css'
 
 function StrategyReadyBubble() {
@@ -28,6 +28,7 @@ export default function IntentBar() {
   const canvasDataUrl = useStore((s) => s.canvasDataUrl)
   const screenplay = useStore((s) => s.screenplay)
   const setIsAnalyzing = useStore((s) => s.setIsAnalyzing)
+  const analysisResult = useStore((s) => s.analysisResult)
   const setAnalysisResult = useStore((s) => s.setAnalysisResult)
   const setProposals = useStore((s) => s.setProposals)
   const isAnalyzing = useStore((s) => s.isAnalyzing)
@@ -39,6 +40,7 @@ export default function IntentBar() {
   const comparePreview = useStore((s) => s.comparePreview)
   
   const messagesEndRef = useRef(null)
+  const analyzedCanvasRef = useRef(null) // 마지막으로 분석한 canvasDataUrl 기억
   const setCenterTab = useStore((s) => s.setCenterTab)
   const setDetailTab = useStore((s) => s.setDetailTab)
   const currentShot = strategies[activeStrategy]?.shots?.[activeShot]
@@ -71,17 +73,31 @@ export default function IntentBar() {
       const scriptText = screenplay.map((el) => el.text).join('\n')
       const intentText = intent || 'Emotional scene'
 
-      // 스케치가 있으면 실제 API 호출, 없으면 임시 가이드 메시지만 출력
       if (base64) {
-        const analysis = await analyzeSketch(base64, scriptText)
-        setAnalysisResult(analysis)
-        
-        addChatMessage({
-          role: 'assistant',
-          text: analysis.alignment || '분석이 완료되었습니다.'
-        })
+        // 캔버스가 바뀌지 않았으면 기존 분석 결과 재사용
+        const isSameCanvas = analyzedCanvasRef.current === canvasDataUrl
+        let analysis
+        if (isSameCanvas && analysisResult?.cir) {
+          analysis = analysisResult
+          addChatMessage({ role: 'assistant', text: analysis.alignment || '이전 분석 결과를 재사용합니다.' })
+        } else {
+          analysis = await analyzeSketch(base64, scriptText)
+          setAnalysisResult(analysis)
+          analyzedCanvasRef.current = canvasDataUrl
+          addChatMessage({ role: 'assistant', text: analysis.alignment || '분석이 완료되었습니다.' })
+        }
 
         if (analysis?.cir) {
+          // 이론 답변 먼저, 완료되면 고정 메시지 추가 후 전략 버튼 대기
+          theoryAnswer(analysis.cir, intentText, scriptText)
+            .then((res) => {
+              if (res?.answer) {
+                useStore.getState().addChatMessage({ role: 'assistant', text: res.answer })
+              }
+              useStore.getState().addChatMessage({ role: 'assistant', text: '구체적인 전략을 구성하고 있습니다. 잠시만 기다려주세요.' })
+            })
+            .catch((err) => console.error('[theoryAnswer]', err))
+
           suggestStrategies(base64, scriptText, intentText, analysis.cir)
             .then((result) => {
               if (result?.strategies?.length) {
