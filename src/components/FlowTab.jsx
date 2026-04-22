@@ -562,15 +562,31 @@ export function CardView() {
           )}
         </div>
 
-        {/* Gap fill button — left */}
-        <button
-          className="flow-card-insert-btn ai"
-          onClick={() => handleGapFill(activeShot - 1)}
-          disabled={activeShot === 0}
-          title="이 gap에 fill shot 추가"
-        >+</button>
-
         <div className="flow-card-center">
+          {/* Gap fill overlays — sit on left/right edge of the frame */}
+          {activeShot > 0 && (
+            <button
+              className="flow-card-gap-overlay left"
+              onClick={() => handleGapFill(activeShot - 1)}
+              title="이 gap에 fill shot 추가"
+            >
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round">
+                <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+              </svg>
+            </button>
+          )}
+          {activeShot < shots.length - 1 && (
+            <button
+              className="flow-card-gap-overlay right"
+              onClick={() => handleGapFill(activeShot)}
+              title="이 gap에 fill shot 추가"
+            >
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round">
+                <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+              </svg>
+            </button>
+          )}
+
           <div className="flow-card-frame">
             {current.image ? (
               <img src={current.image} alt="" />
@@ -609,14 +625,6 @@ export function CardView() {
             >Delete Shot</button>
           )}
         </div>
-
-        {/* Gap fill button — right */}
-        <button
-          className="flow-card-insert-btn ai"
-          onClick={() => handleGapFill(activeShot)}
-          disabled={activeShot >= shots.length - 1}
-          title="이 gap에 fill shot 추가"
-        >+</button>
 
         <div className={`flow-card-side ${next ? '' : 'empty'}`} onClick={goNext}>
           {next && (

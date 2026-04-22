@@ -31,11 +31,19 @@ export async function analyzeSketch(imageBase64, scriptContext = '') {
   }, 120000)
 }
 
-export async function suggestStrategies(imageBase64, script, intent, cir = null) {
+export async function suggestStrategies(
+  imageBase64, script, intent, cir = null,
+  axes = ['reframe'], theoryPreference = null, miseOptions = null
+) {
   return fetchWithTimeout(`${API_BASE}/suggest-strategies`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ image: imageBase64, script, intent, cir }),
+    body: JSON.stringify({
+      image: imageBase64, script, intent, cir,
+      axes,
+      theory_preference: theoryPreference,
+      mise_options: miseOptions,
+    }),
   }, 60000)
 }
 

@@ -234,6 +234,54 @@ export default function GuidanceTab() {
                     </div>
                   )}
 
+                  {/* Mise-en-scène */}
+                  {shot?.mise && (
+                    <div className="proposal-axis-block" data-axis="mise">
+                      <div className="proposal-axis-head">
+                        <span className="proposal-axis-tag">Mise-en-scène</span>
+                      </div>
+                      {shot.mise.blocking && (
+                        <div className="proposal-axis-row"><span>블로킹</span><p>{shot.mise.blocking}</p></div>
+                      )}
+                      {shot.mise.props?.length > 0 && (
+                        <div className="proposal-axis-row"><span>소품</span>
+                          <div className="proposal-axis-chips">
+                            {shot.mise.props.map((p, i) => <em key={i}>{p}</em>)}
+                          </div>
+                        </div>
+                      )}
+                      {shot.mise.set_dressing && (
+                        <div className="proposal-axis-row"><span>배경</span><p>{shot.mise.set_dressing}</p></div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Lighting */}
+                  {shot?.lighting && (
+                    <div className="proposal-axis-block" data-axis="lighting">
+                      <div className="proposal-axis-head">
+                        <span className="proposal-axis-tag">Lighting</span>
+                        {shot.lighting.mood && <span className="proposal-axis-pill">{shot.lighting.mood}</span>}
+                      </div>
+                      {shot.lighting.key && (
+                        <div className="proposal-axis-row"><span>주광</span><p>{shot.lighting.key}</p></div>
+                      )}
+                      {shot.lighting.fill && (
+                        <div className="proposal-axis-row"><span>보조광</span><p>{shot.lighting.fill}</p></div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Freeform */}
+                  {shot?.freeform && (
+                    <div className="proposal-axis-block" data-axis="freeform">
+                      <div className="proposal-axis-head">
+                        <span className="proposal-axis-tag">Freeform</span>
+                      </div>
+                      <p className="proposal-axis-freetext">{shot.freeform}</p>
+                    </div>
+                  )}
+
                   {/* Theory rationale */}
                   {shot?.theory_rationale && (
                     <div className="proposal-theory">

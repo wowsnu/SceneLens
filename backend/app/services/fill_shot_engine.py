@@ -353,10 +353,21 @@ async def auto_fill_range(req: AutoFillRangeRequest) -> AutoFillRangeResponse:
                     "after_shot_id": ins.get("after_shot_id"),
                     "candidate": candidate.model_dump(),
                 })
+        # Validate editorial_techniques (Pydantic will drop invalid entries via Literal)
+        raw_techniques = vplan.get("editorial_techniques", []) or []
+        valid_techniques = []
+        for t in raw_techniques:
+            try:
+                from app.models.schemas import EditorialTechnique
+                valid_techniques.append(EditorialTechnique(**t))
+            except Exception as e:
+                logger.debug(f"[AutoFill] Skipping invalid technique: {e}")
+
         versions.append(AutoFillVersion(
             version_label=vplan.get("version_label", f"Version {chr(65+v_idx)}"),
             rationale=vplan.get("rationale", ""),
             theory_basis=vplan.get("theory_basis", ""),
+            editorial_techniques=valid_techniques,
             insertions=insertions_out,
         ))
 

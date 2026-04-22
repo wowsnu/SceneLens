@@ -1,0 +1,450 @@
+/* Axis chip row — sits above the chat input inside IntentBar */
+.axis-chip-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px 10px;
+  flex-wrap: wrap;
+}
+
+.axis-chip-row-label {
+  font-size: 9px;
+  letter-spacing: 0.18em;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.4);
+  text-transform: uppercase;
+  padding-right: 2px;
+}
+
+.axis-chip-list {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  flex: 1;
+  position: relative;
+}
+
+.axis-chip-wrap {
+  position: relative;
+}
+
+.axis-chip {
+  --chip-accent: rgba(255, 255, 255, 0.2);
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 46px;
+  padding: 7px 12px 7px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.65);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.075), rgba(255, 255, 255, 0.03));
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  cursor: pointer;
+  transition:
+    background 0.18s ease,
+    border-color 0.18s ease,
+    color 0.18s ease,
+    transform 0.12s ease,
+    box-shadow 0.18s ease,
+    filter 0.18s ease;
+  backdrop-filter: blur(14px) saturate(140%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 8px 20px rgba(0, 0, 0, 0.18);
+  overflow: hidden;
+}
+
+.axis-chip::before {
+  content: '';
+  position: absolute;
+  inset: 1px;
+  border-radius: inherit;
+  background:
+    radial-gradient(circle at top left, color-mix(in srgb, var(--chip-accent) 30%, transparent), transparent 46%),
+    linear-gradient(135deg, rgba(255, 255, 255, 0.045), transparent 56%);
+  opacity: 0.9;
+  pointer-events: none;
+}
+
+.axis-chip:hover {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.04));
+  border-color: color-mix(in srgb, var(--chip-accent) 44%, rgba(255, 255, 255, 0.16));
+  color: rgba(255, 255, 255, 0.96);
+  transform: translateY(-1px) scale(1.01);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 14px 28px rgba(0, 0, 0, 0.26);
+}
+
+.axis-chip:active {
+  transform: translateY(0);
+}
+
+.axis-chip.active {
+  color: rgba(255, 255, 255, 0.95);
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--chip-accent) 28%, rgba(255, 255, 255, 0.08)), rgba(255, 255, 255, 0.08));
+  border-color: color-mix(in srgb, var(--chip-accent) 55%, rgba(255, 255, 255, 0.28));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.09),
+    0 12px 26px color-mix(in srgb, var(--chip-accent) 18%, rgba(0, 0, 0, 0.22));
+}
+
+.axis-chip.active:hover {
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--chip-accent) 34%, rgba(255, 255, 255, 0.1)), rgba(255, 255, 255, 0.08));
+  border-color: color-mix(in srgb, var(--chip-accent) 68%, rgba(255, 255, 255, 0.34));
+}
+
+.axis-chip.expanded {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.09),
+    0 16px 36px color-mix(in srgb, var(--chip-accent) 18%, rgba(0, 0, 0, 0.26));
+}
+
+.axis-chip-reframe {
+  --chip-accent: rgba(103, 198, 255, 0.85);
+}
+
+.axis-chip-mise {
+  --chip-accent: rgba(255, 185, 96, 0.88);
+}
+
+.axis-chip-freeform {
+  --chip-accent: rgba(171, 137, 255, 0.86);
+}
+
+.axis-chip-lead,
+.axis-chip-copy,
+.axis-chip-count,
+.axis-chip-dot {
+  position: relative;
+  z-index: 1;
+}
+
+.axis-chip-lead {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  flex: 0 0 auto;
+  font-size: 14px;
+  font-weight: 800;
+  color: rgba(255, 255, 255, 0.88);
+  background:
+    radial-gradient(circle at top, rgba(255, 255, 255, 0.2), transparent 70%),
+    color-mix(in srgb, var(--chip-accent) 24%, rgba(255, 255, 255, 0.06));
+  border: 1px solid color-mix(in srgb, var(--chip-accent) 34%, rgba(255, 255, 255, 0.12));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.12),
+    0 6px 16px rgba(0, 0, 0, 0.18);
+}
+
+.axis-chip:not(.active) .axis-chip-lead {
+  color: color-mix(in srgb, var(--chip-accent) 82%, #ffffff);
+}
+
+.axis-chip-copy {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  min-width: 0;
+}
+
+.axis-chip-eyebrow {
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--chip-accent) 56%, rgba(255, 255, 255, 0.56));
+  line-height: 1;
+}
+
+.axis-chip-label {
+  line-height: 1.05;
+  font-size: 12.5px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.axis-chip-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  height: 22px;
+  margin-left: 2px;
+  padding: 0 7px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 800;
+  color: rgba(8, 12, 18, 0.92);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(234, 240, 247, 0.94));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.6),
+    0 5px 14px rgba(0, 0, 0, 0.18);
+}
+
+.axis-chip-dot {
+  width: 9px;
+  height: 9px;
+  margin-left: 2px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--chip-accent) 82%, #ffffff);
+  box-shadow:
+    0 0 0 3px color-mix(in srgb, var(--chip-accent) 16%, transparent),
+    0 0 18px color-mix(in srgb, var(--chip-accent) 35%, transparent);
+  opacity: 0.92;
+}
+
+.axis-subpanel {
+  position: absolute;
+  left: 0;
+  bottom: calc(100% + 10px);
+  z-index: 20;
+  width: 248px;
+  padding: 10px;
+  border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background:
+    linear-gradient(180deg, rgba(37, 40, 48, 0.97), rgba(16, 18, 23, 0.96));
+  box-shadow:
+    0 28px 70px rgba(0, 0, 0, 0.38),
+    inset 0 1px 0 rgba(255, 255, 255, 0.07);
+  backdrop-filter: blur(20px) saturate(135%);
+  animation: axis-subpanel-rise 180ms ease;
+}
+
+.axis-subpanel::after {
+  content: '';
+  position: absolute;
+  left: 22px;
+  top: 100%;
+  width: 10px;
+  height: 10px;
+  background: rgba(17, 19, 24, 0.94);
+  border-right: 1px solid rgba(255, 255, 255, 0.12);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+  transform: translateY(-5px) rotate(45deg);
+}
+
+.axis-subpanel-title {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(255, 203, 153, 0.92);
+  margin-bottom: 8px;
+}
+
+.axis-subpanel-options {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.axis-subpanel-option {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  gap: 5px;
+  min-height: 58px;
+  min-width: 0;
+  padding: 8px 6px;
+  border-radius: 13px;
+  cursor: pointer;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.025));
+  transition:
+    transform 0.14s ease,
+    border-color 0.18s ease,
+    background 0.18s ease,
+    box-shadow 0.18s ease;
+}
+
+.axis-subpanel-option:hover {
+  transform: translateY(-1px);
+  border-color: rgba(255, 210, 158, 0.22);
+  background:
+    linear-gradient(180deg, rgba(255, 219, 181, 0.1), rgba(255, 255, 255, 0.04));
+  box-shadow: 0 10px 18px rgba(0, 0, 0, 0.16);
+}
+
+.axis-subpanel-option.checked {
+  border-color: rgba(255, 192, 118, 0.36);
+  background:
+    linear-gradient(180deg, rgba(255, 186, 107, 0.18), rgba(255, 255, 255, 0.05));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 12px 22px rgba(0, 0, 0, 0.18);
+}
+
+.axis-subpanel-option::after {
+  content: attr(data-hint);
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 8px);
+  transform: translateX(-50%) translateY(4px);
+  width: max-content;
+  max-width: 140px;
+  padding: 6px 8px;
+  border-radius: 10px;
+  background: rgba(10, 12, 16, 0.96);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 14px 32px rgba(0, 0, 0, 0.3);
+  color: rgba(255, 247, 237, 0.92);
+  font-size: 10px;
+  line-height: 1.35;
+  text-align: center;
+  letter-spacing: -0.01em;
+  white-space: normal;
+  pointer-events: none;
+  opacity: 0;
+  transition:
+    opacity 0.16s ease,
+    transform 0.16s ease;
+}
+
+.axis-subpanel-option:hover::after {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+.axis-subpanel-option input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.axis-sub-box {
+  position: relative;
+  width: 16px;
+  height: 16px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  background: rgba(255, 255, 255, 0.06);
+  flex: 0 0 auto;
+}
+
+.axis-subpanel-option.checked .axis-sub-box {
+  border-color: rgba(255, 220, 176, 0.9);
+  background: rgba(255, 205, 146, 0.28);
+}
+
+.axis-subpanel-option.checked .axis-sub-box::after {
+  content: '';
+  position: absolute;
+  left: 5px;
+  top: 2px;
+  width: 4px;
+  height: 7px;
+  border-right: 2px solid rgba(255, 255, 255, 0.92);
+  border-bottom: 2px solid rgba(255, 255, 255, 0.92);
+  transform: rotate(45deg);
+}
+
+.axis-sub-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  align-items: center;
+  text-align: center;
+}
+
+.axis-sub-label {
+  font-size: 10.5px;
+  font-weight: 700;
+  color: rgba(255, 248, 241, 0.96);
+  line-height: 1.1;
+  overflow-wrap: anywhere;
+}
+
+.axis-sub-hint {
+  display: none;
+}
+
+/* Freeform theory preference inline input */
+.axis-theory-pref {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  margin-top: 4px;
+  padding: 6px 10px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px dashed rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+}
+
+.axis-theory-pref-tag {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(201, 203, 255, 0.9);
+  background: rgba(201, 203, 255, 0.1);
+  padding: 3px 7px;
+  border-radius: 6px;
+}
+
+.axis-theory-pref-input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 12px;
+  padding: 2px 4px;
+  letter-spacing: -0.01em;
+}
+
+.axis-theory-pref-input::placeholder {
+  color: rgba(255, 255, 255, 0.3);
+}
+
+@keyframes axis-subpanel-rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.975);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@media (max-width: 720px) {
+  .axis-chip-list {
+    gap: 7px;
+  }
+
+  .axis-chip {
+    min-height: 42px;
+    padding-right: 11px;
+  }
+
+  .axis-chip-eyebrow {
+    font-size: 8px;
+  }
+
+  .axis-chip-label {
+    font-size: 12px;
+  }
+
+  .axis-subpanel {
+    width: min(248px, calc(100vw - 56px));
+  }
+
+}

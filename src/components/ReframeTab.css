@@ -102,19 +102,39 @@
 .reframe-apply-btn {
   width: 100%;
   margin-top: 12px;
-  border: none;
-  border-radius: 9px;
+  border: 1px solid rgba(255, 192, 118, 0.34);
+  border-radius: 12px;
   padding: 10px 12px;
-  background: linear-gradient(135deg, #f59e0b, #ef4444);
-  color: #fff;
+  background:
+    linear-gradient(180deg, rgba(255, 186, 107, 0.18), rgba(255, 255, 255, 0.05));
+  color: rgba(255, 247, 237, 0.96);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 12px 22px rgba(0, 0, 0, 0.18);
+  backdrop-filter: blur(14px) saturate(135%);
   font-weight: 700;
   font-size: 12px;
   letter-spacing: 0.04em;
   cursor: pointer;
+  transition:
+    transform 140ms ease,
+    border-color 140ms ease,
+    background 140ms ease,
+    box-shadow 140ms ease;
+}
+
+.reframe-apply-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  border-color: rgba(255, 203, 153, 0.48);
+  background:
+    linear-gradient(180deg, rgba(255, 196, 128, 0.24), rgba(255, 255, 255, 0.06));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.1),
+    0 16px 28px rgba(0, 0, 0, 0.2);
 }
 
 .reframe-apply-btn:disabled {
-  opacity: 0.7;
+  opacity: 0.6;
   cursor: not-allowed;
 }
 
@@ -338,26 +358,47 @@
 
 .reframe-compare-btn {
   flex: 1;
-  border: 1px solid #3a3a3a;
-  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
   padding: 10px 12px;
-  background: #171717;
-  color: #f1f1f1;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.055), rgba(255, 255, 255, 0.025));
+  color: rgba(255, 255, 255, 0.88);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    0 10px 20px rgba(0, 0, 0, 0.16);
   font-size: 12px;
   font-weight: 700;
   cursor: pointer;
-  transition: border-color 140ms ease, background 140ms ease, transform 140ms ease;
+  transition:
+    border-color 140ms ease,
+    background 140ms ease,
+    transform 140ms ease,
+    box-shadow 140ms ease;
 }
 
 .reframe-compare-btn:hover {
   transform: translateY(-1px);
-  border-color: #5a5a5a;
+  border-color: rgba(255, 255, 255, 0.16);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.035));
 }
 
 .reframe-compare-btn.primary {
-  border-color: rgba(245, 158, 11, 0.4);
-  background: linear-gradient(135deg, #f59e0b, #ef4444);
-  color: #fff;
+  border-color: rgba(255, 192, 118, 0.34);
+  background:
+    linear-gradient(180deg, rgba(255, 186, 107, 0.18), rgba(255, 255, 255, 0.05));
+  color: rgba(255, 247, 237, 0.96);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 12px 22px rgba(0, 0, 0, 0.18);
+}
+
+.reframe-compare-btn.primary:hover {
+  border-color: rgba(255, 203, 153, 0.48);
+  background:
+    linear-gradient(180deg, rgba(255, 196, 128, 0.24), rgba(255, 255, 255, 0.06));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.1),
+    0 16px 28px rgba(0, 0, 0, 0.2);
 }
 
 /* 분석 전 잠김 상태 */

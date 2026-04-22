@@ -16,12 +16,30 @@ Produce exactly {version_count} versions. Each version is a COMPLETE, COHERENT a
 - Not every gap needs a fill — a version may leave some gaps empty if that serves the pacing
 - Each inserted shot must have a full CIR and a clear visual label (used for image generation)
 
+EDITORIAL TECHNIQUES (RELATIONAL):
+Beyond single-shot composition, identify RELATIONAL editing techniques that emerge between adjacent shots in this version. These are techniques that CANNOT be expressed by one frame alone — they only exist in the CUT between two shots.
+
+Allowed types (use the exact string):
+- match_cut        — shape/motion/color match between two shots
+- j_cut            — next shot's audio starts before its image
+- l_cut            — previous shot's audio extends over next shot's image
+- eyeline          — eyeline match / gaze connection between shots
+- rhythm           — cut-length pattern creating pacing (fast/slow/staccato)
+- temporal_ellipsis — time compression across a cut (often via cutaway)
+- line_crossing    — intentional 180° rule violation for disorientation
+
+For each technique, specify which TWO specific shots it connects (shot_pair: ["S3", "S4"]) — use the position labels from the range. Cite the exact book/principle from the theory library in theory_source.
+
+Only include techniques you can GROUND in the theory library. If unsure, OMIT — never invent.
+Typically 2-4 techniques per version. Zero is allowed if truly none apply.
+
 CRITICAL RULES:
 - Every version must cite specific film theory (book + principle) as its editorial basis
 - Rationale must be written at a director-pitch level — clear, evocative, actionable
 - Shot labels must be specific and visual (they become image generation prompts)
 - Write all Korean fields in natural, director-facing language
 - after_shot_id must match one of the shot IDs provided in the range
+- editorial_techniques.shot_pair must reference shots that actually become adjacent after insertions
 
 Output valid JSON only. No markdown fences.
 
@@ -31,6 +49,14 @@ Output valid JSON only. No markdown fences.
       "version_label": "Version A — <short evocative Korean title>",
       "rationale": "한글 — 이 버전의 전체 편집 의도와 리듬을 1~2문장으로.",
       "theory_basis": "Book title — specific principle that grounds this version's approach",
+      "editorial_techniques": [
+        {
+          "type": "match_cut",
+          "shot_pair": ["S3", "S4"],
+          "mechanism": "한글 — 앞 샷 손동작이 새 인서트의 문손잡이로 형태 매치되며 공간 전환을 부드럽게.",
+          "theory_source": "The Five C's of Cinematography — Matched Action"
+        }
+      ],
       "insertions": [
         {
           "after_shot_id": "<id of the shot this insertion follows>",

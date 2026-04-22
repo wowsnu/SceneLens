@@ -301,3 +301,91 @@ input[type="checkbox"] {
   margin-top: 12px;
   opacity: 0.8;
 }
+
+/* ── Axis blocks (mise / lighting / freeform) ─────────── */
+.proposal-axis-block {
+  margin-top: 10px;
+  padding: 10px 12px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.proposal-axis-block[data-axis="mise"]     { border-left: 2px solid #f2b5a0; }
+.proposal-axis-block[data-axis="lighting"] { border-left: 2px solid #ffd479; }
+.proposal-axis-block[data-axis="freeform"] { border-left: 2px solid #c9cbff; }
+
+.proposal-axis-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 2px;
+}
+
+.proposal-axis-tag {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.75);
+  background: rgba(255, 255, 255, 0.08);
+  padding: 3px 8px;
+  border-radius: 999px;
+}
+
+.proposal-axis-pill {
+  font-size: 10px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.05);
+  color: rgba(255, 255, 255, 0.7);
+  letter-spacing: 0.02em;
+}
+
+.proposal-axis-row {
+  display: grid;
+  grid-template-columns: 56px 1fr;
+  gap: 8px;
+  align-items: start;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.proposal-axis-row > span {
+  color: rgba(255, 255, 255, 0.45);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding-top: 2px;
+}
+
+.proposal-axis-row > p {
+  color: rgba(255, 255, 255, 0.85);
+  margin: 0;
+}
+
+.proposal-axis-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.proposal-axis-chips em {
+  font-style: normal;
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.proposal-axis-freetext {
+  font-size: 12px;
+  line-height: 1.55;
+  color: rgba(255, 255, 255, 0.85);
+  margin: 0;
+}

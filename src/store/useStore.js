@@ -280,6 +280,45 @@ const useStore = create((set, get) => ({
   setIsEnhancing: (val) => set({ isEnhancing: val }),
   intent: '',
   setIntent: (val) => set({ intent: val }),
+  // 선택된 연출 축들 (칩으로 on/off). 기본 reframe만.
+  activeAxes: ['reframe'],
+  setActiveAxes: (axes) => set({ activeAxes: axes }),
+  toggleAxis: (axis) => set((state) => {
+    const isActive = state.activeAxes.includes(axis)
+
+    if (isActive) {
+      return {
+        activeAxes: state.activeAxes.filter(a => a !== axis)
+      }
+    }
+
+    if (axis === 'mise' && state.miseOptions.length === 0) {
+      return {
+        activeAxes: [...state.activeAxes, axis],
+        miseOptions: ['blocking', 'props', 'set_dressing'],
+      }
+    }
+
+    return {
+      activeAxes: [...state.activeAxes, axis]
+    }
+  }),
+  // Mise-en-scène 하위 옵션 (복수 선택). 기본: 셋 다.
+  miseOptions: ['blocking', 'props', 'set_dressing'],
+  setMiseOptions: (options) => set({ miseOptions: options }),
+  toggleMiseOption: (opt) => set((state) => {
+    const nextOpts = state.miseOptions.includes(opt)
+      ? state.miseOptions.filter(o => o !== opt)
+      : [...state.miseOptions, opt]
+    // 하나도 안 남으면 mise 축 자동 해제
+    const nextAxes = nextOpts.length === 0
+      ? state.activeAxes.filter(a => a !== 'mise')
+      : state.activeAxes
+    return { miseOptions: nextOpts, activeAxes: nextAxes }
+  }),
+  // freeform 축 전용: 특정 이론/책을 우선 사용
+  theoryPreference: null,
+  setTheoryPreference: (val) => set({ theoryPreference: val }),
   chatMessages: [],
   addChatMessage: (msg) => set((state) => ({
     chatMessages: [...state.chatMessages, { ...msg, id: Date.now(), timestamp: new Date() }]
@@ -390,9 +429,11 @@ const useStore = create((set, get) => ({
   flowInsertGap: null,         // { branchIdx, afterShotIdx }
   flowFillSuggestions: [],     // legacy — kept for compat
 
-  // Gap fill state
-  gapFill: null,               // { branchIdx, afterShotIdx, userPrompt, status, candidates }
-  //   status: 'idle' | 'loading' | 'ready' | 'error'
+  // Gap fill state — keyed by "branchIdx-afterShotIdx", multiple ghosts can coexist
+  // Each entry: { branchIdx, afterShotIdx, userPrompt, status, candidates }
+  // status: 'ghost' | 'loading' | 'ready' | 'error'
+  gapFills: {},
+  gapFillPicker: null,  // { key } — which ghost's candidates are shown in the picker
 
   // Auto-fill range state
   autoFill: null,              // { branchIdx, fromIdx, toIdx, userPrompt, status, versions, previewVersion }
@@ -404,20 +445,27 @@ const useStore = create((set, get) => ({
   setFlowInsertGap: (g) => set({ flowInsertGap: g }),
 
   // Gap fill actions
-  openGapFill: (branchIdx, afterShotIdx) => set({
-    gapFill: { branchIdx, afterShotIdx, userPrompt: '', status: 'idle', candidates: [] }
+  openGapFill: (branchIdx, afterShotIdx) => set((state) => {
+    const key = `${branchIdx}-${afterShotIdx}`
+    if (state.gapFills[key]) return state  // already open
+    return { gapFills: { ...state.gapFills, [key]: { branchIdx, afterShotIdx, userPrompt: '', status: 'ghost', candidates: [] } } }
   }),
-  closeGapFill: () => set({ gapFill: null }),
-  setGapFillPrompt: (prompt) => set((state) => ({
-    gapFill: state.gapFill ? { ...state.gapFill, userPrompt: prompt } : null
+  closeGapFill: (key) => set((state) => {
+    const next = { ...state.gapFills }
+    delete next[key]
+    return { gapFills: next, gapFillPicker: state.gapFillPicker?.key === key ? null : state.gapFillPicker }
+  }),
+  setGapFillPrompt: (key, prompt) => set((state) => ({
+    gapFills: state.gapFills[key] ? { ...state.gapFills, [key]: { ...state.gapFills[key], userPrompt: prompt } } : state.gapFills
   })),
-  setGapFillStatus: (status, candidates = null) => set((state) => ({
-    gapFill: state.gapFill ? {
-      ...state.gapFill,
-      status,
-      ...(candidates !== null ? { candidates } : {}),
-    } : null
+  setGapFillStatus: (key, status, candidates = null) => set((state) => ({
+    gapFills: state.gapFills[key] ? {
+      ...state.gapFills,
+      [key]: { ...state.gapFills[key], status, ...(candidates !== null ? { candidates } : {}) }
+    } : state.gapFills
   })),
+  openGapFillPicker: (key) => set({ gapFillPicker: { key } }),
+  closeGapFillPicker: () => set({ gapFillPicker: null }),
 
   // Auto-fill range actions
   openAutoFill: (branchIdx, fromIdx, toIdx) => set({

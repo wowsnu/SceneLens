@@ -324,6 +324,46 @@
   gap: 10px;
   flex: 1;
   min-width: 0;
+  position: relative;
+}
+
+/* Gap fill overlay buttons — float on left/right edge of the center frame */
+.flow-card-gap-overlay {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(167, 139, 250, 0.5);
+  background: rgba(15, 12, 24, 0.85);
+  color: #a78bfa;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+  opacity: 0;
+  transition: opacity 0.15s, transform 0.15s, background 0.15s;
+  backdrop-filter: blur(4px);
+}
+
+.flow-card-center:hover .flow-card-gap-overlay {
+  opacity: 1;
+}
+
+.flow-card-gap-overlay:hover {
+  background: rgba(167, 139, 250, 0.25);
+  border-color: #a78bfa;
+  transform: translateY(-50%) scale(1.15);
+}
+
+.flow-card-gap-overlay.left {
+  left: -13px;
+}
+
+.flow-card-gap-overlay.right {
+  right: -13px;
 }
 
 .flow-card-frame {

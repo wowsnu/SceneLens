@@ -1,6 +1,7 @@
 import { useRef, useEffect } from 'react'
 import useStore from '../store/useStore'
 import { analyzeSketch, suggestStrategies, theoryAnswer } from '../services/api'
+import AxisChips from './AxisChips'
 import './IntentBar.css'
 
 function StrategyReadyBubble() {
@@ -98,7 +99,10 @@ export default function IntentBar() {
             })
             .catch((err) => console.error('[theoryAnswer]', err))
 
-          suggestStrategies(base64, scriptText, intentText, analysis.cir)
+          const axes = useStore.getState().activeAxes
+          const pref = useStore.getState().theoryPreference
+          const miseOptions = useStore.getState().miseOptions
+          suggestStrategies(base64, scriptText, intentText, analysis.cir, axes, pref, miseOptions)
             .then((result) => {
               if (result?.strategies?.length) {
                 useStore.getState().setProposals(result.strategies)
@@ -152,6 +156,8 @@ export default function IntentBar() {
           <div ref={messagesEndRef} />
         </div>
       )}
+
+      <AxisChips />
 
       <div className="chat-input-area">
         <div className="input-prefix">

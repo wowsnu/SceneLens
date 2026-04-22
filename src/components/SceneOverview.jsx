@@ -1,8 +1,7 @@
 import { GraphView, CardView, FillShotPicker } from './FlowTab'
 import GridView from './GridView'
 import FilmOverview from './FilmOverview'
-import GapFillPanel from './GapFillPanel'
-import AutoFillPanel from './AutoFillPanel'
+import { GapFillPicker } from './GapFillPanel'
 import useStore from '../store/useStore'
 import './SceneOverview.css'
 
@@ -122,8 +121,7 @@ export default function SceneOverview() {
         )}
       </div>
       <FillShotPicker />
-      <GapFillPanel />
-      <AutoFillPanel />
+      <GapFillPicker />
     </div>
   )
 }

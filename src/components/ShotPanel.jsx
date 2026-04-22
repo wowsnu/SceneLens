@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import useStore from '../store/useStore'
-import FlowTab from './FlowTab'
+import AutoFillPanel from './AutoFillPanel'
 import ReframePanel from './ReframePanel'
 import ReframeTab from './ReframeTab'
 import SpatialMap from './SpatialMap'
@@ -70,7 +70,7 @@ export default function ShotPanel() {
         <div className="tab-content-area">
           {detailTab === 'reframe' && <ReframePanel />}
           {detailTab === 'guidance' && <ReframeTab />}
-          {detailTab === 'flow' && <FlowTab />}
+          {detailTab === 'flow' && <AutoFillPanel />}
         </div>
       </div>}
     </aside>

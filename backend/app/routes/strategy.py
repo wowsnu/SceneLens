@@ -31,6 +31,9 @@ async def suggest_strategies_endpoint(request: SuggestStrategiesRequest):
             intent=request.intent,
             script_context=request.script,
             image_base64=request.image,
+            axes=request.axes,
+            mise_options=request.mise_options,
+            theory_preference=request.theory_preference,
         )
         return result
     except Exception as e:

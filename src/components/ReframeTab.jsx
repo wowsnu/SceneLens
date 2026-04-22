@@ -215,23 +215,23 @@ const OPTION_VISUALS = {
       accent: 'linear-gradient(135deg, rgba(34, 197, 94, 0.2), rgba(16, 185, 129, 0.14))',
     },
     Tilt: {
-      image: '/img/alt_canted.png',
+      image: '/img/new_tilt.png',
       eyebrow: 'Tilt',
       description: '상하로 쓸어 올리는 감각',
     },
     Track: {
-      image: '/img/track_motion.png',
+      image: '/img/new_track.png',
       eyebrow: 'Follow',
       description: '대상과 함께 따라 움직임',
       accent: 'linear-gradient(135deg, rgba(244, 114, 182, 0.2), rgba(236, 72, 153, 0.14))',
     },
     Zoom: {
-      image: '/img/alt_pushin.png',
+      image: '/img/new_zoom.png',
       eyebrow: 'Push',
       description: '안으로 밀고 들어가는 압박',
     },
     Handheld: {
-      image: '/img/alt_handheld.png',
+      image: '/img/new_handheld.png',
       eyebrow: 'Raw',
       description: '거친 현장감과 불안정성',
     },

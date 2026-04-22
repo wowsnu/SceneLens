@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import Optional, List, Dict
+from typing import Optional, List, Dict, Literal
 
 # CIR (Cinematic Intermediate Representation)
 class CIR(BaseModel):
@@ -27,11 +27,28 @@ class SuggestStrategiesRequest(BaseModel):
     script: str  # Original scene script/dialogue
     intent: str  # Director's intention
     cir: Optional[CIR] = None  # Optional: Pre-analyzed CIR (if already analyzed)
+    axes: List[str] = ["reframe"]  # ['reframe', 'mise', 'lighting', 'freeform']
+    mise_options: Optional[List[str]] = None  # ['blocking', 'props', 'set_dressing']
+    theory_preference: Optional[str] = None  # freeform에서만 사용: 특정 책/이론 선호
+
+# Per-axis structured output blocks
+class MiseEnScene(BaseModel):
+    blocking: Optional[str] = None       # 인물 위치/동선
+    props: Optional[List[str]] = None    # 소품
+    set_dressing: Optional[str] = None   # 배경/세트
+
+class Lighting(BaseModel):
+    key: Optional[str] = None            # 주광 방향/강도
+    fill: Optional[str] = None           # 보조광
+    mood: Optional[str] = None           # high-key / low-key / chiaroscuro
 
 # Individual shot in a strategy
 class Shot(BaseModel):
     order: int
-    cir: CIR
+    cir: Optional[CIR] = None                # reframe 축 포함 시
+    mise: Optional[MiseEnScene] = None       # mise 축 포함 시
+    lighting: Optional[Lighting] = None      # lighting 축 포함 시
+    freeform: Optional[str] = None           # freeform 축 포함 시(자유 텍스트)
     theory_rationale: str
     source: str  # Book reference
     recommendation_summary: str = ""
@@ -190,11 +207,27 @@ class GapFillResponse(BaseModel):
 
 # ── Auto-fill Range ──────────────────────────────────────────
 
+class EditorialTechnique(BaseModel):
+    """A relational editing technique that emerges between two adjacent shots."""
+    type: Literal[
+        'match_cut',         # 형태/동작/색상 매치
+        'j_cut',             # 뒷 샷 음성이 영상보다 먼저 시작
+        'l_cut',             # 앞 샷 음성이 뒷 샷 영상 위로 연장
+        'eyeline',           # 시선 매치 / 시선 연결
+        'rhythm',            # 컷 길이 패턴으로 만들어지는 리듬
+        'temporal_ellipsis', # 컷을 통한 시간 생략
+        'line_crossing',     # 180도 법칙의 의도적 위반
+    ]
+    shot_pair: List[str]     # e.g. ["S3", "S4"] — which two shots this technique connects
+    mechanism: str           # Korean — concrete description of how it works in this specific pair
+    theory_source: str       # Book / principle cited from the theory library
+
 class AutoFillVersion(BaseModel):
     """One complete version of the filled range."""
     version_label: str            # e.g. "Version A — 긴장 고조"
     rationale: str                # Korean — overall editing intent for this version
     theory_basis: str             # Key theory / book cited
+    editorial_techniques: List[EditorialTechnique] = []  # Optional — relational editing techniques used
     insertions: List[dict]        # [{ after_shot_id, candidate: FillShotCandidate }]
 
 class AutoFillRangeRequest(BaseModel):

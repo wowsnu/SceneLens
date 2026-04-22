@@ -6,13 +6,99 @@
   overflow: hidden;
 }
 
-.grid-view-branch-bar {
+.grid-view-topbar {
   flex-shrink: 0;
   display: flex;
-  gap: 6px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
   padding: 8px 12px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.grid-view-branch-bar {
+  display: flex;
+  gap: 6px;
   overflow-x: auto;
+  flex: 1;
+}
+
+.grid-view-shift-hint {
+  flex-shrink: 0;
+  font-size: 9px;
+  color: rgba(255, 255, 255, 0.2);
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.grid-view-range-toolbar {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.grid-view-range-label {
+  font-size: 10px;
+  font-weight: 600;
+  color: #34d399;
+}
+
+.grid-view-autofill-start-btn {
+  padding: 4px 12px;
+  background: transparent;
+  border: 1px solid rgba(52, 211, 153, 0.3);
+  border-radius: 20px;
+  color: rgba(52, 211, 153, 0.7);
+  font-size: 10px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+
+.grid-view-autofill-start-btn:hover {
+  background: rgba(52, 211, 153, 0.1);
+  border-color: rgba(52, 211, 153, 0.5);
+  color: #6ee7b7;
+}
+
+.grid-view-autofill-btn {
+  padding: 4px 12px;
+  background: rgba(52, 211, 153, 0.12);
+  border: 1px solid rgba(52, 211, 153, 0.4);
+  border-radius: 20px;
+  color: #6ee7b7;
+  font-size: 10px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+
+.grid-view-autofill-btn:hover {
+  background: rgba(52, 211, 153, 0.22);
+  color: #fff;
+}
+
+.grid-view-range-clear {
+  width: 20px;
+  height: 20px;
+  border: none;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 4px;
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 12px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s;
+}
+
+.grid-view-range-clear:hover {
+  background: rgba(239, 68, 68, 0.2);
+  color: #fff;
 }
 
 .grid-view-branch-btn {
@@ -61,6 +147,51 @@
   align-content: start;
 }
 
+/* Wrapper is the actual grid item */
+.grid-cell-wrapper {
+  position: relative;
+}
+
+/* Gap fill button — absolute on left/right edge of the cell */
+.grid-gap-btn {
+  position: absolute;
+  z-index: 10;
+  top: 30%;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(167, 139, 250, 0.6);
+  background: rgba(15, 12, 24, 0.88);
+  color: #a78bfa;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.15s, transform 0.15s, background 0.15s;
+  backdrop-filter: blur(4px);
+}
+
+.grid-cell-wrapper.selected .grid-gap-btn {
+  opacity: 1;
+}
+
+.grid-gap-btn:hover {
+  background: rgba(167, 139, 250, 0.25);
+  border-color: #a78bfa;
+  transform: scale(1.15);
+}
+
+/* Before: floats on left edge (gap before this cell) */
+.grid-gap-btn.before {
+  left: -11px;
+}
+
+/* After: floats on right edge (gap after this cell) */
+.grid-gap-btn.after {
+  right: -11px;
+}
+
 .grid-cell {
   display: flex;
   flex-direction: column;
@@ -98,6 +229,16 @@
 .grid-cell.active .grid-cell-frame {
   border-color: var(--accent-blue, #3e82f6);
   box-shadow: 0 0 0 2px rgba(62, 130, 246, 0.25);
+}
+
+.grid-cell.in-range .grid-cell-frame {
+  border-color: rgba(52, 211, 153, 0.6);
+  box-shadow: 0 0 0 1px rgba(52, 211, 153, 0.15);
+}
+
+.grid-cell.range-anchor .grid-cell-frame {
+  border-color: #34d399;
+  box-shadow: 0 0 0 2px rgba(52, 211, 153, 0.3);
 }
 
 .grid-cell-frame img {
@@ -209,3 +350,99 @@
   color: rgba(255, 255, 255, 0.7);
   border-color: rgba(255, 255, 255, 0.4) !important;
 }
+
+/* ── AutoFill preview cell (ghost from version selection) ── */
+.autofill-preview-wrapper {
+  animation: autofill-preview-in 0.25s ease;
+}
+
+@keyframes autofill-preview-in {
+  from { opacity: 0; transform: scale(0.92); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+.autofill-preview-cell {
+  position: relative;
+}
+
+.autofill-preview-frame {
+  border-style: dashed !important;
+  border-color: #34d399 !important;
+  background: rgba(52, 211, 153, 0.05) !important;
+  box-shadow: 0 0 0 1px rgba(52, 211, 153, 0.2), 0 0 20px rgba(52, 211, 153, 0.12);
+  animation: autofill-preview-pulse 2.4s ease-in-out infinite;
+  position: relative;
+}
+
+@keyframes autofill-preview-pulse {
+  0%, 100% { box-shadow: 0 0 0 1px rgba(52, 211, 153, 0.2), 0 0 16px rgba(52, 211, 153, 0.1); }
+  50%      { box-shadow: 0 0 0 1px rgba(52, 211, 153, 0.4), 0 0 24px rgba(52, 211, 153, 0.22); }
+}
+
+.autofill-preview-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+}
+
+.autofill-preview-cat {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  color: rgba(52, 211, 153, 0.55);
+}
+
+.autofill-preview-badge {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  padding: 2px 7px;
+  border-radius: 10px;
+  background: rgba(52, 211, 153, 0.85);
+  color: #0a1a12;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.3px;
+}
+
+.autofill-preview-idx {
+  color: #34d399 !important;
+  font-weight: 800 !important;
+  font-size: 8.5px !important;
+  letter-spacing: 0.8px;
+}
+
+/* ── Relational technique marker (left edge of preview cell) ── */
+.autofill-relation-marker {
+  position: absolute;
+  left: -6px;
+  top: 4px;
+  z-index: 4;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  pointer-events: auto;
+}
+
+.autofill-relation-chip {
+  padding: 2px 7px;
+  border-radius: 10px;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.3px;
+  white-space: nowrap;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+  cursor: help;
+}
+
+/* Reuse color palette from AutoFillPanel */
+.autofill-relation-chip.tech-match_cut         { background: rgba(251, 191, 36, 0.95); color: #1a1505; border: 1px solid rgba(251, 191, 36, 1); }
+.autofill-relation-chip.tech-j_cut             { background: rgba(167, 139, 250, 0.95); color: #0f0a24; border: 1px solid rgba(167, 139, 250, 1); }
+.autofill-relation-chip.tech-l_cut             { background: rgba(167, 139, 250, 0.95); color: #0f0a24; border: 1px solid rgba(167, 139, 250, 1); }
+.autofill-relation-chip.tech-eyeline           { background: rgba(96, 165, 250, 0.95); color: #031229; border: 1px solid rgba(96, 165, 250, 1); }
+.autofill-relation-chip.tech-rhythm            { background: rgba(244, 114, 182, 0.95); color: #24061a; border: 1px solid rgba(244, 114, 182, 1); }
+.autofill-relation-chip.tech-temporal_ellipsis { background: rgba(52, 211, 153, 0.95); color: #021a10; border: 1px solid rgba(52, 211, 153, 1); }
+.autofill-relation-chip.tech-line_crossing     { background: rgba(239, 68, 68, 0.95); color: #1a0404; border: 1px solid rgba(239, 68, 68, 1); }
