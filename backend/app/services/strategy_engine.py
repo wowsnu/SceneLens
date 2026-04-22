@@ -3,7 +3,7 @@ import json
 import asyncio
 import logging
 from pathlib import Path
-from typing import List, Dict  # noqa: F401  (used in commented v1 code)
+from typing import List, Dict, Optional  # noqa: F401
 from google import genai
 from google.genai import types
 from app.models.schemas import CIR, Strategy, Shot, SuggestStrategiesResponse
