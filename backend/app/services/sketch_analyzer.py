@@ -5,6 +5,82 @@ from pathlib import Path
 from openai import AsyncOpenAI
 from app.models.schemas import AnalyzeSketchResponse, CIR
 
+# Allowed enum values — must match schemas.CIR comments
+CIR_ENUMS = {
+    "shotSize": ["Extreme Close-Up", "Close-Up", "Medium Close-Up", "Medium Shot", "Medium Long Shot", "Long Shot", "Extreme Wide Shot"],
+    "horizontalAngle": ["Frontal", "Three-Quarter", "Profile", "Rear"],
+    "verticalLevel": ["High", "Eye", "Low", "Top-Down", "Ground"],
+    "viewpointFraming": ["Objective", "OTS", "POV"],
+    "occlusion": ["None", "Partial", "Heavy"],
+    "depth": ["Shallow", "Deep"],
+    "motionHint": ["Static", "Pan", "Tilt", "Track", "Zoom", "Handheld"],
+}
+
+CIR_DEFAULTS = {
+    "shotSize": "Medium Shot",
+    "horizontalAngle": "Frontal",
+    "verticalLevel": "Eye",
+    "viewpointFraming": "Objective",
+    "occlusion": "None",
+    "motionHint": "Static",
+}
+
+# Aliases GPT commonly emits despite the enum constraint
+VALUE_ALIASES = {
+    "viewpointFraming": {"Subjective": "POV", "First-Person": "POV", "Third-Person": "Objective"},
+    "horizontalAngle": {"3/4 View": "Three-Quarter", "Three Quarter": "Three-Quarter"},
+    "verticalLevel": {"Eye Level": "Eye", "Overhead": "Top-Down", "Bird's Eye": "Top-Down"},
+}
+
+CIR_JSON_SCHEMA = {
+    "name": "sketch_cir_analysis",
+    "strict": True,
+    "schema": {
+        "type": "object",
+        "additionalProperties": False,
+        "required": ["alignment", "cir"],
+        "properties": {
+            "alignment": {"type": "string"},
+            "cir": {
+                "type": "object",
+                "additionalProperties": False,
+                "required": ["shotSize", "horizontalAngle", "verticalLevel", "viewpointFraming", "occlusion", "depth", "motionHint"],
+                "properties": {
+                    "shotSize": {"type": "string", "enum": CIR_ENUMS["shotSize"]},
+                    "horizontalAngle": {"type": "string", "enum": CIR_ENUMS["horizontalAngle"]},
+                    "verticalLevel": {"type": "string", "enum": CIR_ENUMS["verticalLevel"]},
+                    "viewpointFraming": {"type": "string", "enum": CIR_ENUMS["viewpointFraming"]},
+                    "occlusion": {"type": "string", "enum": CIR_ENUMS["occlusion"]},
+                    "depth": {"type": ["string", "null"], "enum": CIR_ENUMS["depth"] + [None]},
+                    "motionHint": {"type": "string", "enum": CIR_ENUMS["motionHint"]},
+                },
+            },
+        },
+    },
+}
+
+
+def _coerce_cir(raw: dict) -> dict:
+    """Clamp each field to its enum; fill missing required fields with defaults."""
+    out = {}
+    for field, allowed in CIR_ENUMS.items():
+        val = raw.get(field)
+        if isinstance(val, str):
+            val = VALUE_ALIASES.get(field, {}).get(val, val)
+            if field == "motionHint" and "," in val:
+                first = val.split(",")[0].strip()
+                val = first if first in allowed else None
+            elif val not in allowed:
+                val = None
+        else:
+            val = None
+
+        if val is None and field in CIR_DEFAULTS:
+            val = CIR_DEFAULTS[field]
+        if val is not None:
+            out[field] = val
+    return out
+
 # Lazy initialization
 _client = None
 
@@ -32,22 +108,8 @@ async def analyze_sketch(image_base64: str, script_context: str) -> AnalyzeSketc
 [Scene Context]
 {script_context}
 
-Analyze the provided storyboard sketch image and return your response as valid JSON only (no markdown, no code fences).
-Format:
-{{
-  "alignment": "...(Korean description)...",
-  "cir": {{
-    "shotSize": "Extreme Close-Up|Close-Up|Medium Close-Up|Medium Shot|Medium Long Shot|Long Shot|Extreme Wide Shot",
-    "horizontalAngle": "Frontal|Three-Quarter|Profile|Rear",
-    "verticalLevel": "High|Eye|Low|Top-Down|Ground",
-    "subjectConfig": "Single|Two-Shot|Group|Insert",
-    "viewpointFraming": "Objective|OTS|POV",
-    "eyeline": "Toward Subject|Averted|Off-Screen|Toward Camera",
-    "occlusion": "None|Partial|Heavy",
-    "depth": "Shallow|Deep (optional, omit if not discernible)",
-    "motionHint": "Static|Pan|Tilt|Track|Zoom|Handheld (comma-separated if multiple)"
-  }}
-}}
+Analyze the provided storyboard sketch image. Use ONLY the option names listed above — do not invent synonyms (e.g. never emit "Subjective"; use "POV" instead).
+If a field cannot be determined from the sketch, pick the closest valid option. For `depth`, use null if not discernible.
 """
 
     client = get_client()
@@ -72,37 +134,24 @@ Format:
             }
         ],
         max_tokens=1024,
+        response_format={"type": "json_schema", "json_schema": CIR_JSON_SCHEMA},
     )
 
     text = response.choices[0].message.content.strip()
 
-    # Parse JSON response
     try:
-        # Remove markdown code fences if present
-        if text.startswith('```'):
-            text = text.split('```')[1]
-            if text.startswith('json'):
-                text = text[4:]
-            text = text.strip()
-
         data = json.loads(text)
-
+        cir_raw = data.get("cir", {}) or {}
+        cir_clean = _coerce_cir(cir_raw)
+        if cir_raw.get("depth") in CIR_ENUMS["depth"]:
+            cir_clean["depth"] = cir_raw["depth"]
         return AnalyzeSketchResponse(
             alignment=data.get("alignment", ""),
-            cir=CIR(**data.get("cir", {}))
+            cir=CIR(**cir_clean),
         )
-    except (json.JSONDecodeError, KeyError) as e:
-        print(f"Failed to parse GPT response: {text}")
+    except (json.JSONDecodeError, KeyError, TypeError) as e:
+        print(f"[analyze-sketch] parse/validate failed ({e}); raw response: {text[:500]}")
         return AnalyzeSketchResponse(
-            alignment=text,
-            cir=CIR(
-                shotSize="Unknown",
-                cameraAngle="Unknown",
-                cameraLevel="Unknown",
-                relation="Unknown",
-                blockingDistance="Unknown",
-                eyeline="Unknown",
-                occlusion="Unknown",
-                motionHint="Unknown"
-            )
+            alignment=text if isinstance(text, str) else "",
+            cir=CIR(**CIR_DEFAULTS, depth=None),
         )

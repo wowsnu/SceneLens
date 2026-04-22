@@ -7,9 +7,9 @@ class CIR(BaseModel):
     horizontalAngle: str    # Frontal / Three-Quarter / Profile / Rear
     verticalLevel: str      # High / Eye / Low / Top-Down / Ground
     viewpointFraming: str   # Objective / OTS / POV
-    occlusion: str          # None / Partial / Heavy
-    depth: Optional[str]    # Shallow / Deep (optional)
-    motionHint: str         # Static / Pan / Tilt / Track / Zoom / Handheld (comma-separated if multiple)
+    occlusion: Optional[str] = None   # None / Partial / Heavy
+    depth: Optional[str] = None       # Shallow / Deep
+    motionHint: Optional[str] = None  # Static / Pan / Tilt / Track / Zoom / Handheld
 
 # Request: Analyze sketch
 class AnalyzeSketchRequest(BaseModel):
