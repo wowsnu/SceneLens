@@ -29,7 +29,7 @@ function SketchInput({ onAnalysisComplete, onStrategiesGenerated, setLoading }) 
     setLoading(true)
 
     try {
-      const response = await fetch('http://15.164.30.174:8000/api/suggest-strategies', {
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://15.164.30.174:8000'}/api/suggest-strategies`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

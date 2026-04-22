@@ -1,4 +1,4 @@
-const API_BASE = 'http://15.164.30.174:8000/api'
+const API_BASE = `${import.meta.env.VITE_API_URL || 'http://15.164.30.174:8000'}/api`
 
 async function fetchWithTimeout(url, options, timeoutMs = 30000) {
   const controller = new AbortController()
