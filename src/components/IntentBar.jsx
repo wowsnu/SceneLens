@@ -1,6 +1,6 @@
 import { useRef, useEffect } from 'react'
 import useStore from '../store/useStore'
-import { analyzeSketch, suggestStrategies, theoryAnswer } from '../services/api'
+import { analyzeSketch, suggestStrategies } from '../services/api'
 import AxisChips from './AxisChips'
 import './IntentBar.css'
 
@@ -89,15 +89,7 @@ export default function IntentBar() {
         }
 
         if (analysis?.cir) {
-          // 이론 답변 먼저, 완료되면 고정 메시지 추가 후 전략 버튼 대기
-          theoryAnswer(analysis.cir, intentText, scriptText)
-            .then((res) => {
-              if (res?.answer) {
-                useStore.getState().addChatMessage({ role: 'assistant', text: res.answer })
-              }
-              useStore.getState().addChatMessage({ role: 'assistant', text: '구체적인 전략을 구성하고 있습니다. 잠시만 기다려주세요.' })
-            })
-            .catch((err) => console.error('[theoryAnswer]', err))
+          useStore.getState().addChatMessage({ role: 'assistant', text: '구체적인 전략을 구성하고 있습니다. 잠시만 기다려주세요.' })
 
           const axes = useStore.getState().activeAxes
           const pref = useStore.getState().theoryPreference
