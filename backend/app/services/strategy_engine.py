@@ -553,7 +553,7 @@ MISE_OPTION_BLOCKS = {
 }
 
 
-def _build_mise_block(mise_options: list | None) -> tuple[str, str] | None:
+def _build_mise_block(mise_options: Optional[list]) -> Optional[tuple]:
     valid_mise_options = [
         option for option in (mise_options or list(MISE_OPTION_BLOCKS.keys()))
         if option in MISE_OPTION_BLOCKS
@@ -578,9 +578,9 @@ def _build_mise_block(mise_options: list | None) -> tuple[str, str] | None:
 
 def _build_axes_block(
     axes: list,
-    theory_preference: str | None,
-    mise_options: list | None = None,
-) -> tuple[list, str, str]:
+    theory_preference: Optional[str],
+    mise_options: Optional[list] = None,
+) -> tuple:
     """axes 리스트 → (normalized_axes, instructions_text, json_fields_text)"""
     normalized_axes = []
     instructions_by_axis = []
@@ -620,8 +620,8 @@ async def suggest_strategies_v2(
     script_context: str = "",
     image_base64: str = None,
     axes: list = None,
-    mise_options: list | None = None,
-    theory_preference: str | None = None,
+    mise_options: Optional[list] = None,
+    theory_preference: Optional[str] = None,
 ) -> SuggestStrategiesResponse:
     """
     [Method 2] Context Caching + Multimodal approach.
@@ -760,8 +760,8 @@ async def suggest_strategies(
     script_context: str = "",
     image_base64: str = None,
     axes: list = None,
-    mise_options: list | None = None,
-    theory_preference: str | None = None,
+    mise_options: Optional[list] = None,
+    theory_preference: Optional[str] = None,
 ) -> SuggestStrategiesResponse:
     return await suggest_strategies_v2(
         cir, intent, script_context, image_base64,
