@@ -172,7 +172,23 @@ function splitSentences(text = '') {
 
 function mapLegacyValue(field, value) {
   if (!value) return value
-  return LEGACY_VALUE_MAP[field]?.[value] || value
+  
+  if (LEGACY_VALUE_MAP[field]?.[value]) {
+    return LEGACY_VALUE_MAP[field][value]
+  }
+
+  const canonicals = CIR_IMAGE_MAP[field]
+  if (canonicals) {
+    const normalize = (s) => s.toLowerCase().replace(/[-\s_]/g, '')
+    const normalizedValue = normalize(value)
+    for (const canonicalKey of Object.keys(canonicals)) {
+      if (normalize(canonicalKey) === normalizedValue) {
+        return canonicalKey
+      }
+    }
+  }
+
+  return value
 }
 
 function normalizeCir(source = {}) {

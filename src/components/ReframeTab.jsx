@@ -596,7 +596,6 @@ export default function ReframeTab() {
                               )}
                               <div className="reframe-option-overlay">
                                 <span className="reframe-option-eyebrow">{visual.eyebrow}</span>
-                                {isBase && <span className="reframe-option-badge">Current</span>}
                               </div>
                             </div>
                             <div className="reframe-option-copy">
@@ -724,7 +723,6 @@ export default function ReframeTab() {
                     <img src={entry.image} alt={entry.label} />
                     <div className="reframe-history-overlay">
                       <span>{entry.label}</span>
-                      {isCurrent && <span className="reframe-history-badge">Current</span>}
                     </div>
                   </div>
                   <div className="reframe-history-copy">

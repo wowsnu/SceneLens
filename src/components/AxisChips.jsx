@@ -123,7 +123,7 @@ export default function AxisChips() {
                     <span className="axis-chip-label">{axis.label}</span>
                   </span>
                   {active && <span className="axis-chip-count">{miseOptions.length}</span>}
-                  <span className="axis-chip-dot" />
+                  {active && <span className="axis-chip-dot" />}
                 </button>
               </div>
             )
@@ -143,7 +143,7 @@ export default function AxisChips() {
                 <span className="axis-chip-eyebrow">{getChipEyebrow(axis.id, active)}</span>
                 <span className="axis-chip-label">{axis.label}</span>
               </span>
-              <span className="axis-chip-dot" />
+              {active && <span className="axis-chip-dot" />}
             </button>
           )
         })}

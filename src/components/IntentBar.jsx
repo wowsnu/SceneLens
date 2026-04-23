@@ -38,30 +38,24 @@ export default function IntentBar() {
   const strategies = useStore((s) => s.strategies)
   const activeStrategy = useStore((s) => s.activeStrategy)
   const activeShot = useStore((s) => s.activeShot)
-  const comparePreview = useStore((s) => s.comparePreview)
+  const clearComparePreview = useStore((s) => s.clearComparePreview)
   
   const messagesEndRef = useRef(null)
   const analyzedCanvasRef = useRef(null) // 마지막으로 분석한 canvasDataUrl 기억
   const setCenterTab = useStore((s) => s.setCenterTab)
   const setDetailTab = useStore((s) => s.setDetailTab)
-  const currentShot = strategies[activeStrategy]?.shots?.[activeShot]
-  const compareKey = `${activeStrategy}-${activeShot}`
-  const activeDescription =
-    comparePreview?.shotKey === compareKey
-      ? comparePreview.description
-      : currentShot?.theory_rationale
-  const descriptionMode = comparePreview?.shotKey === compareKey ? 'Preview' : 'Current'
 
   // 자동 스크롤
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [chatMessages, activeDescription, comparePreview?.shotKey])
+  }, [chatMessages])
 
   const handleAnalyze = async () => {
     if (isAnalyzing) return
 
     const userMsg = intent || '이 씬의 연출 의도를 바탕으로 가이드를 제안해줘.'
     addChatMessage({ role: 'user', text: userMsg })
+    clearComparePreview()
 
     // 분석 결과를 우측 Reframe 탭으로 자동 이동
     setDetailTab('guidance')
@@ -136,15 +130,6 @@ export default function IntentBar() {
             )
           })}
 
-          {activeDescription && (
-            <div className={`chat-msg-bubble assistant chat-msg-bubble-note ${comparePreview?.shotKey === compareKey ? 'preview' : 'current'}`}>
-              <div className="chat-note-header">
-                <span className="chat-note-badge">{descriptionMode}</span>
-                <span className="chat-note-title">Reframe Note</span>
-              </div>
-              <p>{activeDescription}</p>
-            </div>
-          )}
           <div ref={messagesEndRef} />
         </div>
       )}
