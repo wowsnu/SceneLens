@@ -1,4 +1,12 @@
-const API_BASE = `${import.meta.env.VITE_API_URL || 'http://15.164.30.174:8000'}/api`
+function normalizeApiBase(rawBase) {
+  const trimmed = rawBase?.replace(/\/$/, '')
+  if (!trimmed) return '/api'
+  return trimmed.endsWith('/api') ? trimmed : `${trimmed}/api`
+}
+
+const API_BASE = import.meta.env.DEV
+  ? normalizeApiBase(import.meta.env.VITE_API_URL || 'https://scenelens.duckdns.org')
+  : normalizeApiBase(import.meta.env.VITE_API_URL || '')
 
 async function fetchWithTimeout(url, options, timeoutMs = 30000) {
   const controller = new AbortController()

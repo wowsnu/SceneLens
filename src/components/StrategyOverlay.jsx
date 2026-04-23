@@ -9,15 +9,15 @@ const COLORS = ['#10b981', '#8b5cf6', '#ef4444']
 
 // 영화 레퍼런스 mock 데이터
 const FILM_REFS = [
-  { title: 'No Country for Old Men', scene: 'Gas Station — Chigurh confronts proprietor', src: '/img/ref_interrogation.png' },
+  { title: 'No Country for Old Men', scene: 'Gas Station — Chigurh confronts proprietor', src: '/img/new_frontal.png' },
   { title: 'The Godfather', scene: 'Office scene — Don Corleone OTS', src: '/img/ots_shot.png' },
-  { title: 'There Will Be Blood', scene: 'Low angle — Plainview dominance', src: '/img/low_angle.png' },
-  { title: 'Mulholland Drive', scene: 'Close-up — emotional pressure', src: '/img/closeup_woman.png' },
-  { title: 'Citizen Kane', scene: 'Deep focus — Kane at window', src: '/img/wide_establishing.png' },
+  { title: 'There Will Be Blood', scene: 'Low angle — Plainview dominance', src: '/img/new_low.png' },
+  { title: 'Mulholland Drive', scene: 'Close-up — emotional pressure', src: '/img/new_cu.png' },
+  { title: 'Citizen Kane', scene: 'Deep focus — Kane at window', src: '/img/new_deep.png' },
   { title: 'Parasite', scene: 'High angle — underground staircase', src: '/img/high_angle.png' },
   { title: '2001: A Space Odyssey', scene: 'Top-down — symmetrical composition', src: '/img/top_down.png' },
-  { title: 'Oldboy', scene: 'Corridor tracking shot', src: '/img/track_motion.png' },
-  { title: 'The Shining', scene: 'Handheld — Danny hallway', src: '/img/alt_handheld.png' },
+  { title: 'Oldboy', scene: 'Corridor tracking shot', src: '/img/new_track.png' },
+  { title: 'The Shining', scene: 'Handheld — Danny hallway', src: '/img/new_handheld.png' },
 ]
 
 function pickFilmRefs(proposalIdx) {
@@ -32,26 +32,47 @@ function pickFilmRefs(proposalIdx) {
 // CIR 값 → 레퍼런스 이미지 매핑
 const CIR_IMAGE_MAP = {
   shotSize: {
-    'Extreme Close-Up': '/img/extreme_closeup.png',
-    'Close-Up': '/img/closeup_woman.png',
-    'Medium Close-Up': '/img/closeup_man.png',
-    'Medium Shot': '/img/medium_twoshot.png',
-    'Long Shot': '/img/wide_establishing.png',
-    'Extreme Wide Shot': '/img/wide_establishing.png',
+    'Extreme Close-Up': '/img/new_ecu.png',
+    'Close-Up': '/img/new_cu.png',
+    'Medium Close-Up': '/img/new_mcu.png',
+    'Medium Shot': '/img/new_ms.png',
+    'Long Shot': '/img/new_ls.png',
+    'Extreme Wide Shot': '/img/new_ews.png',
+  },
+  horizontalAngle: {
+    'Frontal': '/img/new_frontal.png',
+    'Three-Quarter': '/img/new_three_quarter.png',
+    'Profile': '/img/new_profile.png',
+    'Rear': '/img/rear_angle.png',
   },
   verticalLevel: {
     'High': '/img/high_angle.png',
-    'Top-Down': '/img/high_angle.png',
-    'Low': '/img/low_angle.png',
+    'Top-Down': '/img/top_down.png',
+    'Eye': '/img/new_eye.png',
+    'Low': '/img/new_low.png',
+    'Ground': '/img/ground_level.png',
   },
   viewpointFraming: {
     'OTS': '/img/ots_shot.png',
-    'POV': '/img/ref_diner.png',
-    'Objective': '/img/ref_closeup.png',
+    'POV': '/img/pov_shot.png',
+    'Objective': '/img/ref_diner.png',
+  },
+  occlusion: {
+    'None': '/img/ref_diner.png',
+    'Partial': '/img/alt_canted.png',
+    'Heavy': '/img/heavy_occlusion.png',
+  },
+  depth: {
+    'Shallow': '/img/new_shallow.png',
+    'Deep': '/img/new_deep.png',
   },
   motionHint: {
-    'Handheld': '/img/alt_handheld.png',
-    'Zoom': '/img/alt_pushin.png',
+    'Static': '/img/new_static.png',
+    'Pan': '/img/new_pan.png',
+    'Tilt': '/img/new_tilt.png',
+    'Track': '/img/new_track.png',
+    'Zoom': '/img/new_zoom.png',
+    'Handheld': '/img/new_handheld.png',
   },
 }
 
@@ -62,7 +83,7 @@ function getImageForValue(key, value) {
 function getChangedImagePairs(currentCir, nextCir) {
   if (!currentCir || !nextCir) return []
   const pairs = []
-  for (const key of ['shotSize', 'verticalLevel', 'viewpointFraming', 'motionHint']) {
+  for (const key of ['shotSize', 'horizontalAngle', 'verticalLevel', 'viewpointFraming', 'occlusion', 'depth', 'motionHint']) {
     const from = currentCir[key]
     const to = nextCir[key]
     if (!from || !to || from === to) continue
