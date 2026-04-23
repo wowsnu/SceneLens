@@ -85,6 +85,8 @@ const useStore = create((set, get) => ({
   setScriptOpen: (val) => set({ isScriptOpen: val }),
   screenplay: SCREENPLAY,
   setScreenplay: (script) => set({ screenplay: script }),
+  scriptEditorRequestKey: 0,
+  requestScriptEditor: () => set((state) => ({ scriptEditorRequestKey: state.scriptEditorRequestKey + 1 })),
   
   // 비트 나누기: 특정 지점에서 대본을 자르고 그 자리에 새로운 샷 칸 삽입
   splitBeat: (elementIndex) => set((state) => {

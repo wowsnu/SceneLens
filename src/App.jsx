@@ -17,6 +17,7 @@ function App() {
   const bottomPanelVisible = useStore((s) => s.bottomPanelVisible)
   const centerTab = useStore((s) => s.centerTab)
   const setCenterTab = useStore((s) => s.setCenterTab)
+  const requestScriptEditor = useStore((s) => s.requestScriptEditor)
   const zenMode = useStore((s) => s.zenMode)
   const setZenMode = useStore((s) => s.setZenMode)
   const timelineExpanded = useStore((s) => s.timelineExpanded)
@@ -87,11 +88,21 @@ function App() {
           <section className={`panel-container left-panel ${!leftPanelVisible ? 'collapsed' : ''} ${maximizedPanel === 'left' ? 'maximized' : ''}`}>
             <div className="panel-header">
               {leftPanelVisible && <span className="panel-title">📜 NARRATIVE</span>}
+              {leftPanelVisible && (
+                <button
+                  className="panel-control-btn"
+                  onClick={() => requestScriptEditor()}
+                  style={{ marginLeft: 'auto' }}
+                  title="Edit Script"
+                >
+                  Edit Script
+                </button>
+              )}
               {maximizedPanel === 'left' ? (
                 <button
                   className="panel-control-btn"
                   onClick={() => setMaximizedPanel(null)}
-                  style={{ marginLeft: 'auto' }}
+                  style={{ marginLeft: leftPanelVisible ? 8 : 'auto' }}
                 >
                   ↙
                 </button>
@@ -100,7 +111,7 @@ function App() {
                   <button
                     className="panel-control-btn"
                     onClick={() => !leftPanelVisible ? setLeftPanelVisible(true) : setMaximizedPanel('left')}
-                    style={{ marginLeft: 'auto' }}
+                    style={{ marginLeft: leftPanelVisible ? 8 : 'auto' }}
                   >
                     ↗
                   </button>

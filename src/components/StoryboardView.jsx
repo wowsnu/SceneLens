@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import useStore from '../store/useStore'
 import './StoryboardView.css'
 
@@ -15,6 +15,7 @@ export default function StoryboardView() {
   const setZenMode = useStore((s) => s.setZenMode)
   const maximizedPanel = useStore((s) => s.maximizedPanel)
   const setCenterTab = useStore((s) => s.setCenterTab)
+  const scriptEditorRequestKey = useStore((s) => s.scriptEditorRequestKey)
 
   const [isEditingRaw, setIsEditingRaw] = useState(false)
   const [rawText, setRawText] = useState('')
@@ -26,6 +27,12 @@ export default function StoryboardView() {
     setRawText(currentText)
     setIsEditingRaw(true)
   }
+
+  useEffect(() => {
+    if (scriptEditorRequestKey > 0) {
+      handleOpenEditor()
+    }
+  }, [scriptEditorRequestKey])
 
   // Group screenplay by beats with their original global indices
   const beats = []
@@ -76,6 +83,15 @@ export default function StoryboardView() {
 
   return (
     <div className="storyboard-view">
+      <div className="storyboard-toolbar">
+        <button className="update-script-main-btn" onClick={handleOpenEditor}>
+          Edit Script
+        </button>
+        <button className="analyze-scene-btn" onClick={handleAnalyzeScene}>
+          Analyze Scene
+        </button>
+      </div>
+
       <div className="storyboard-scroll-container">
         <div className="storyboard-list-inner">
           
