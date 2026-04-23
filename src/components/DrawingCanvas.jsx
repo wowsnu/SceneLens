@@ -16,11 +16,13 @@ export default function DrawingCanvas() {
   const drawingTool = useStore((s) => s.drawingTool)
   const penType = useStore((s) => s.penType)
   const brushSize = useStore((s) => s.brushSize)
+  const canvasDataUrl = useStore((s) => s.canvasDataUrl)
   const setCanvasDataUrl = useStore((s) => s.setCanvasDataUrl)
   const overlays = useStore((s) => s.overlays)
   const isAnalyzing = useStore((s) => s.isAnalyzing)
   const isGenerating = useStore((s) => s.isGenerating)
   const isEnhancing = useStore((s) => s.isEnhancing)
+  const setIsEnhancing = useStore((s) => s.setIsEnhancing)
   const pendingCanvasImage = useStore((s) => s.pendingCanvasImage)
   const setPendingCanvasImage = useStore((s) => s.setPendingCanvasImage)
   const comparePreview = useStore((s) => s.comparePreview)
@@ -456,6 +458,7 @@ export default function DrawingCanvas() {
 
   const handleEnhance = async () => {
     if (!canvasDataUrl) return
+    setIsEnhancing(true)
     setIsEnhancingLocal(true)
     clearComparePreview()
 
@@ -496,6 +499,7 @@ export default function DrawingCanvas() {
         strategyName: 'Enhanced Sketch',
       })
     } finally {
+      setIsEnhancing(false)
       setIsEnhancingLocal(false)
     }
   }
