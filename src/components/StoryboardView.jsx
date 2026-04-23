@@ -83,15 +83,6 @@ export default function StoryboardView() {
 
   return (
     <div className="storyboard-view">
-      <div className="storyboard-toolbar">
-        <button className="update-script-main-btn" onClick={handleOpenEditor}>
-          Edit Script
-        </button>
-        <button className="analyze-scene-btn" onClick={handleAnalyzeScene}>
-          Analyze Scene
-        </button>
-      </div>
-
       <div className="storyboard-scroll-container">
         <div className="storyboard-list-inner">
           
