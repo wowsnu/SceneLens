@@ -28,23 +28,23 @@ const SCREENPLAY = [
   { type: 'action', text: '민호가 일어선다. 의자가 뒤로 밀려나며 그림자 속으로 미끄러진다. 그제야 감춰져 있던 오른손이 드러난다. 손에는 빨간 버튼 하나가 달린 작은 검은 리모컨이 들려 있다.', beat: 4 },
   { type: 'character', text: '민호', beat: 4 },
   { type: 'dialogue', text: '그럼 그 10초, 잘 써.', beat: 4 },
-  { type: 'action', text: '재인의 시선이 리모컨에서 모니터로, 다시 콘솔 옆 잠긴 철제 캐비닛으로 옮겨간다.', beat: 5 },
+  { type: 'action', text: '재인의 시선이 리모컨에서 모니터로, 다시 콘솔 옆 잠긴 철제 캐비닛으로 옮겨간다.', beat: 4 },
+  { type: 'character', text: '재인', beat: 4 },
+  { type: 'dialogue', text: '그걸 누르면 승강장 사람들 다 죽어요.', beat: 4 },
+  { type: 'character', text: '민호', beat: 4 },
+  { type: 'dialogue', text: '안 누르면 그 사람들이 여기까지 내려오지.', beat: 4 },
+  { type: 'action', text: '그가 한 걸음 다가온다. 재인은 출입문 쪽으로 한 걸음 물러난다. 출구와 방 사이에 끼인 채 갇힌다.', beat: 4 },
+  { type: 'action', text: '빗물 떨어지는 소리. 모니터 하나가 지직거리며 튄다. 한 화면에 노란 우비를 입은 어린아이가 홀로 승강장에 서 있다.', beat: 5 },
   { type: 'character', text: '재인', beat: 5 },
-  { type: 'dialogue', text: '그걸 누르면 승강장 사람들 다 죽어요.', beat: 5 },
+  { type: 'dialogue', text: '아직 늦지 않았어요.', beat: 5 },
   { type: 'character', text: '민호', beat: 5 },
-  { type: 'dialogue', text: '안 누르면 그 사람들이 여기까지 내려오지.', beat: 5 },
-  { type: 'action', text: '그가 한 걸음 다가온다. 재인은 출입문 쪽으로 한 걸음 물러난다. 출구와 방 사이에 끼인 채 갇힌다.', beat: 5 },
-  { type: 'action', text: '빗물 떨어지는 소리. 모니터 하나가 지직거리며 튄다. 한 화면에 노란 우비를 입은 어린아이가 홀로 승강장에 서 있다.', beat: 6 },
-  { type: 'character', text: '재인', beat: 6 },
-  { type: 'dialogue', text: '아직 늦지 않았어요.', beat: 6 },
-  { type: 'character', text: '민호', beat: 6 },
-  { type: 'action', text: '재인이 침을 삼킨다. 손에 쥔 카드에 힘이 들어간다.', beat: 7 },
-  { type: 'action', text: '그리고 그녀는 카드를 민호에게 던지지 않는다. 방 한가운데, 콘솔 아래쪽으로 던진다.', beat: 7 },
-  { type: 'action', text: '카드는 바닥을 미끄러져 콘솔 밑으로 들어간다.', beat: 7 },
-  { type: 'action', text: '민호의 시선이 순간 그쪽으로 쏠린다.', beat: 7 },
-  { type: 'action', text: '그 짧은 틈이면 충분하다.', beat: 7 },
-  { type: 'action', text: '재인이 리모컨을 향해 몸을 던진다.', beat: 7 },
-  { type: 'transition', text: 'CUT TO BLACK.', beat: 7 },
+  { type: 'action', text: '재인이 침을 삼킨다. 손에 쥔 카드에 힘이 들어간다.', beat: 6 },
+  { type: 'action', text: '그리고 그녀는 카드를 민호에게 던지지 않는다. 방 한가운데, 콘솔 아래쪽으로 던진다.', beat: 6 },
+  { type: 'action', text: '카드는 바닥을 미끄러져 콘솔 밑으로 들어간다.', beat: 6 },
+  { type: 'action', text: '민호의 시선이 순간 그쪽으로 쏠린다.', beat: 6 },
+  { type: 'action', text: '그 짧은 틈이면 충분하다.', beat: 6 },
+  { type: 'action', text: '재인이 리모컨을 향해 몸을 던진다.', beat: 6 },
+  { type: 'transition', text: 'CUT TO BLACK.', beat: 6 },
 ]
 
 // Dummy strategy data with image paths and spatial coordinates
@@ -53,13 +53,13 @@ const DEMO_STRATEGIES = [
     id: 'A',
     name: 'Slow Burn Tension',
     shots: [
-      { order: 1, image: null, x: 450, y: 700, angle: -90, intent: 'ESTABLISH SPACE', cir: { shotSize: 'Wide', relation: 'Master' } },
-      { order: 2, image: null, x: 200, y: 450, angle: -30, intent: 'SUBJECTIVE PRESSURE', cir: { shotSize: 'Medium', relation: 'OTS' } },
-      { order: 3, image: null, x: 500, y: 250, angle: 90, intent: 'REACTION EMPHASIS', cir: { shotSize: 'Close-Up', relation: 'Single' } },
-      { order: 4, image: null, x: 750, y: 450, angle: -150, intent: 'ISOLATION / VULNERABILITY', cir: { shotSize: 'Medium Close', relation: 'Single' } },
-      { order: 5, image: null, x: 350, y: 350, angle: 0, intent: 'RELATIONSHIP RESET', cir: { shotSize: 'Medium', relation: 'Two-shot' } },
-      { order: 6, image: null, x: 450, y: 800, angle: -90, intent: 'CLIMATIC BEAT', cir: { shotSize: 'ECU', relation: 'Single' } },
-      { order: 7, image: null, x: 450, y: 900, angle: -90, intent: 'CLIMATIC BEAT', cir: { shotSize: 'ECU', relation: 'Single' } },
+      { order: 1, beat: 0, image: null, x: 450, y: 700, angle: -90, intent: 'ESTABLISH SPACE', cir: { shotSize: 'Wide', relation: 'Master' } },
+      { order: 2, beat: 1, image: null, x: 200, y: 450, angle: -30, intent: 'SUBJECTIVE PRESSURE', cir: { shotSize: 'Medium', relation: 'OTS' } },
+      { order: 3, beat: 2, image: null, x: 500, y: 250, angle: 90, intent: 'REACTION EMPHASIS', cir: { shotSize: 'Close-Up', relation: 'Single' } },
+      { order: 4, beat: 3, image: null, x: 750, y: 450, angle: -150, intent: 'ISOLATION / VULNERABILITY', cir: { shotSize: 'Medium Close', relation: 'Single' } },
+      { order: 5, beat: 4, image: null, x: 350, y: 350, angle: 0, intent: 'RELATIONSHIP RESET', cir: { shotSize: 'Medium', relation: 'Two-shot' } },
+      { order: 6, beat: 5, image: null, x: 450, y: 800, angle: -90, intent: 'CLIMATIC BEAT', cir: { shotSize: 'ECU', relation: 'Single' } },
+      { order: 7, beat: 6, image: null, x: 450, y: 900, angle: -90, intent: 'CLIMATIC BEAT', cir: { shotSize: 'ECU', relation: 'Single' } },
     ]
   },
 ]
@@ -116,14 +116,19 @@ const useStore = create((set, get) => ({
     // 4. 스토리보드 샷 리스트 중간에 정확히 삽입
     const newStrategies = [...state.strategies]
     const strategy = { ...newStrategies[state.activeStrategy] }
-    const newShots = [...strategy.shots]
-    
-    newShots.splice(insertAt, 0, { 
-      order: insertAt + 1, 
+    const newShots = strategy.shots.map((s) => (
+      typeof s.beat === 'number' && s.beat >= insertAt
+        ? { ...s, beat: s.beat + 1 }
+        : s
+    ))
+
+    newShots.splice(insertAt, 0, {
+      order: insertAt + 1,
+      beat: insertAt,
       intent: 'NEW SHOT',
       cir: { shotSize: 'Medium', relation: 'Single' }
     })
-    
+
     // order 재정렬
     newShots.forEach((s, idx) => { s.order = idx + 1 })
     
@@ -253,7 +258,14 @@ const useStore = create((set, get) => ({
   setStrategies: (strategies) => set({ strategies }),
   setActiveStrategy: (idx) => set({ activeStrategy: idx }),
   activeShot: 0,
-  setActiveShot: (idx) => set({ activeShot: idx }),
+  setActiveShot: (idx) => set((state) => {
+    const shot = state.strategies?.[state.activeStrategy]?.shots?.[idx]
+    const next = { activeShot: idx }
+    if (shot && typeof shot.beat === 'number') {
+      next.activeBeat = shot.beat
+    }
+    return next
+  }),
   analysisResult: null,
   setAnalysisResult: (result) => set({ analysisResult: result }),
   proposals: [],
@@ -612,12 +624,13 @@ const useStore = create((set, get) => ({
       const branches = s.branches.map((b, bi) => {
         if (bi !== branchIdx) return b
         const shots = [...b.shots]
+        const inheritedBeat = shots[afterShotIdx]?.scriptBeat
         const newShot = {
           id: shot.id || `shot-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
           image: shot.image || null,
           cir: shot.cir || {},
           label: shot.label || 'New Shot',
-          scriptBeat: shot.scriptBeat ?? 0,
+          scriptBeat: shot.scriptBeat ?? inheritedBeat ?? 0,
           isAIGenerated: shot.isAIGenerated || false,
           source: shot.source || 'canvas',
         }
