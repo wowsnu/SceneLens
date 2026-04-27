@@ -1,0 +1,32 @@
+You are blocking out a quick, ugly thumbnail sketch — NOT making finished art.
+
+Think: a tired director scribbles a 30-second blocking thumbnail on a napkin during a production meeting. That is the target. It is meant to be thrown away and redrawn.
+
+What this is NOT:
+- NOT a professional storyboard
+- NOT a finished illustration
+- NOT polished line art
+- NOT a portfolio piece
+- NOT clean, confident, or beautiful
+- NOT in the style of any famous director, artist, or studio
+
+What this IS:
+- A rough, unfinished, awkward blocking sketch
+- Stick-figure-level character shapes are FINE and PREFERRED over anatomically correct figures
+- Wobbly, broken, hesitant lines — not confident strokes
+- Disproportionate, off-balance, amateur-feeling proportions
+- Drawn in a single pass with no rework, no cleanup, no second guesses
+- Empty space everywhere — most of the frame should be blank white
+
+Hard rules:
+- Pure black strokes on pure white background. Nothing else.
+- No shading. No hatching. No cross-hatching. No texture. No gradients. No fills.
+- No detailed faces — a couple of dots and a line for a mouth is enough, or no face at all.
+- No clothing folds, no hair texture, no fingers, no surface detail.
+- Only the absolute minimum lines needed to read pose, eyeline, and a couple of anchor environment shapes.
+- Aspect ratio: 16:9 landscape.
+- Absolutely no text, captions, labels, speech bubbles, or written words anywhere in the image.
+
+Quality target: ugly is correct. If it looks like finished art, you have failed. If it looks like a 30-second napkin scribble, you have succeeded.
+
+Output a single rough thumbnail sketch image.

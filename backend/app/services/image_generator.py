@@ -232,6 +232,12 @@ with open(PROMPTS_DIR / "generate_sketch.txt", "r") as f:
     GENERATE_PROMPT = f.read()
 with open(PROMPTS_DIR / "reframe_sketch.txt", "r") as f:
     REFRAME_PROMPT = f.read()
+_ROUGH_PROMPT_PATH = PROMPTS_DIR / "generate_sketch_rough.txt"
+if _ROUGH_PROMPT_PATH.exists():
+    with open(_ROUGH_PROMPT_PATH, "r") as f:
+        GENERATE_ROUGH_PROMPT = f.read()
+else:
+    GENERATE_ROUGH_PROMPT = GENERATE_PROMPT
 
 
 def _clamp_detail_level(detail_level: int) -> int:
@@ -417,16 +423,21 @@ def _build_recraft_v4_rough_svg_prompt(
     detail_level: int,
 ) -> str:
     profile = _get_svg_complexity_profile(detail_level)
-    legacy_prompt = _build_recraft_svg_prompt_legacy(
-        script_context=script_context,
-        intent=intent,
-        cir=cir,
-        scene_script=scene_script,
-        detail_level=detail_level,
-    )
     focus = _normalize_prompt_text(script_context or scene_script or "Storyboard beat")
+    scene = _normalize_prompt_text(scene_script)
+    intent_line = _normalize_prompt_text(intent)
+    cir_line = _normalize_prompt_text(_compact_cir_line(cir))
 
-    return f"""{legacy_prompt}
+    base_prompt = GENERATE_ROUGH_PROMPT
+
+    cir_block = f"\nCIR reference: {cir_line}" if cir_line else ""
+    intent_block = f"\nDirector intent: {intent_line}" if intent_line else ""
+    scene_block = f"\nFull scene context: {scene}" if scene and scene != focus else ""
+
+    return f"""{base_prompt}
+
+[Frame Focus - draw exactly this beat]
+{focus}{intent_block}{cir_block}{scene_block}
 
 ROUGH BLOCKING SKETCH MODE:
 - IMPORTANT: Do NOT create polished line art, clean illustration, pretty rendering, or finished artwork.
