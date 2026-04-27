@@ -304,6 +304,11 @@ function getOptionVisual(fieldKey, option) {
   }
 }
 
+function getFieldPreviewOptions(fieldKey, options) {
+  const visualOptions = options.filter((option) => getOptionVisual(fieldKey, option).image)
+  return visualOptions.length > 0 ? visualOptions : options
+}
+
 function formatHistoryTime(isoString) {
   if (!isoString) return ''
   const date = new Date(isoString)
@@ -335,6 +340,13 @@ export default function ReframeTab() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [vectorizingId, setVectorizingId] = useState('')
+  const [expandedFields, setExpandedFields] = useState(() => (
+    FIELD_CONFIG.reduce((acc, field) => ({ ...acc, [field.key]: false }), {})
+  ))
+  const [previewIndexes, setPreviewIndexes] = useState(() => (
+    FIELD_CONFIG.reduce((acc, field) => ({ ...acc, [field.key]: 0 }), {})
+  ))
+  const [hoveredField, setHoveredField] = useState('')
 
   const currentShot = strategies[activeStrategy]?.shots?.[activeShot]
   const shotHistoryKey = `${activeStrategy}-${activeShot}`
@@ -346,9 +358,34 @@ export default function ReframeTab() {
     return DEFAULT_CIR
   }, [analysisResult, currentShot])
 
+  const baseCirSource = analysisResult?.cir
+    ? 'Analyzed CIR'
+    : currentShot?.cir
+      ? 'Shot CIR'
+      : 'Default CIR'
+
   useEffect(() => {
     setTargetCir(baseCir)
   }, [baseCir, activeShot, activeStrategy])
+
+  useEffect(() => {
+    if (!hoveredField) return undefined
+
+    const field = FIELD_CONFIG.find(({ key }) => key === hoveredField)
+    if (!field) return undefined
+
+    const timer = window.setInterval(() => {
+      setPreviewIndexes((prev) => {
+        const previewOptions = getFieldPreviewOptions(field.key, field.options)
+        return {
+          ...prev,
+          [field.key]: ((prev[field.key] || 0) + 1) % Math.max(previewOptions.length, 1),
+        }
+      })
+    }, 2500)
+
+    return () => window.clearInterval(timer)
+  }, [hoveredField])
 
   const changedFields = useMemo(() => {
     return FIELD_CONFIG.filter(({ key }) => (targetCir[key] || '') !== (baseCir[key] || ''))
@@ -358,6 +395,30 @@ export default function ReframeTab() {
 
   const updateField = (key, value) => {
     setTargetCir((prev) => ({ ...prev, [key]: value }))
+  }
+
+  const toggleField = (key) => {
+    setExpandedFields((prev) => ({ ...prev, [key]: !prev[key] }))
+  }
+
+  const getStaticPreviewOption = (key, options) => {
+    const preferred = targetCir[key] || baseCir[key]
+    if (preferred && options.includes(preferred)) return preferred
+
+    const previewOptions = getFieldPreviewOptions(key, options)
+    return previewOptions[0] ?? options[0]
+  }
+
+  const startFieldPreview = (key, options) => {
+    const previewOptions = getFieldPreviewOptions(key, options)
+    const staticOption = getStaticPreviewOption(key, options)
+    const staticIndex = previewOptions.findIndex((option) => option === staticOption)
+
+    setHoveredField(key)
+    setPreviewIndexes((prev) => ({
+      ...prev,
+      [key]: staticIndex >= 0 ? staticIndex : 0,
+    }))
   }
 
   const applyHistoryEntry = (entry) => {
@@ -544,32 +605,85 @@ export default function ReframeTab() {
 
   return (
     <div className="reframe-tab scrollable">
-      <div className={`reframe-section ${!hasAnalysis ? 'reframe-section--locked' : ''}`}>
+      <div className="reframe-section">
         <h3>Target Reframe</h3>
 
-        {!hasAnalysis ? (
-          <div className="reframe-empty">
-            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-            <p>Analyze 버튼을 눌러<br/>현재 스케치의 구도를 분석하세요</p>
-          </div>
-        ) : (
-          <>
-            <p className="reframe-desc">분석된 구도를 기준으로 수정하고 재생성합니다.</p>
-            <div className="reframe-fields">
-              {FIELD_CONFIG.map(({ key, label, hint, options }) => {
-                const isChanged = (targetCir[key] || '') !== (baseCir[key] || '')
-                return (
-                  <section className="reframe-field reframe-field--cards" key={key}>
-                    <div className="reframe-field-header">
-                      <div className="reframe-field-heading">
-                        <span>{label}</span>
-                        <p>{hint}</p>
+        <p className="reframe-desc">
+          {hasAnalysis
+            ? '분석된 구도를 기준으로 수정하고 재생성합니다.'
+            : '분석 전에도 속성을 살펴볼 수 있습니다. 현재 샷 값 또는 기본값을 기준으로 표시합니다.'}
+        </p>
+        <div className="reframe-fields">
+          {FIELD_CONFIG.map(({ key, label, hint, options }) => {
+            const isChanged = (targetCir[key] || '') !== (baseCir[key] || '')
+            const isExpanded = !!expandedFields[key]
+            const previewOptions = getFieldPreviewOptions(key, options)
+            const staticPreviewOption = getStaticPreviewOption(key, options)
+            const previewOption = hoveredField === key
+              ? previewOptions[previewIndexes[key] % previewOptions.length] ?? staticPreviewOption
+              : staticPreviewOption
+            const previewVisual = getOptionVisual(key, previewOption)
+
+            return (
+              <section
+                className={`reframe-field reframe-field--accordion ${isExpanded ? 'is-expanded' : ''} ${isChanged ? 'is-changed' : ''}`}
+                key={key}
+              >
+                <button
+                  type="button"
+                  className="reframe-field-cover"
+                  onClick={() => toggleField(key)}
+                  onMouseEnter={() => startFieldPreview(key, options)}
+                  onMouseLeave={() => setHoveredField('')}
+                  onFocus={() => startFieldPreview(key, options)}
+                  onBlur={() => setHoveredField('')}
+                  aria-expanded={isExpanded}
+                >
+                  <div
+                    className={`reframe-cover-visual ${previewVisual.image ? 'has-image' : 'is-abstract'}`}
+                    style={previewVisual.image ? undefined : { background: previewVisual.accent }}
+                  >
+                    {previewVisual.image ? (
+                      <img src={previewVisual.image} alt={`${label} ${previewOption || 'Auto'} preview`} />
+                    ) : (
+                      <div className="reframe-option-abstract">
+                        <span>{previewVisual.eyebrow}</span>
                       </div>
-                      {baseCir[key] && (
-                        <span className="reframe-base-badge" title="Analyzed value">
-                          {baseCir[key]}
-                        </span>
-                      )}
+                    )}
+                    <div className="reframe-cover-overlay">
+                      <span>{previewVisual.eyebrow}</span>
+                      <strong>{previewOption || 'Auto'}</strong>
+                    </div>
+                  </div>
+
+                  <div className="reframe-cover-copy">
+                    <div className="reframe-cover-title-row">
+                      <span className="reframe-cover-title">{label}</span>
+                      <span className="reframe-cover-toggle" aria-hidden="true">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                          <path d={isExpanded ? 'M7 14l5-5 5 5' : 'M7 10l5 5 5-5'} />
+                        </svg>
+                      </span>
+                    </div>
+                    <p>{hint}</p>
+                    <div className="reframe-cover-meta">
+                      <span>{baseCirSource}: {baseCir[key] || 'Auto'}</span>
+                      {isChanged && <strong>Target: {targetCir[key] || 'Auto'}</strong>}
+                    </div>
+                    <div className="reframe-cover-effect">{previewVisual.description}</div>
+                  </div>
+                </button>
+
+                {isExpanded && (
+                  <div className="reframe-field-body">
+                    <div className="reframe-field-analysis">
+                      <span>{baseCirSource}</span>
+                      <strong>{baseCir[key] || 'Auto'}</strong>
+                      <p>
+                        {hasAnalysis
+                          ? 'Analyze 결과에서 읽은 현재 구도입니다.'
+                          : '아직 Analyze 전이라 저장된 샷 정보 또는 기본 구도를 기준으로 보여줍니다.'}
+                      </p>
                     </div>
                     <div className={`reframe-card-grid ${isChanged ? 'reframe-card-grid--changed' : ''}`}>
                       {options.map((opt) => {
@@ -606,26 +720,16 @@ export default function ReframeTab() {
                         )
                       })}
                     </div>
-                  </section>
-                )
-              })}
-            </div>
-          </>
-        )}
+                  </div>
+                )}
+              </section>
+            )
+          })}
+        </div>
 
-        {hasAnalysis && (
-          <label className="reframe-field" style={{ marginTop: 8 }}>
-            <span>Model</span>
-            <select value={model} onChange={(e) => setModel(e.target.value)}>
-              <option value="gemini-2.5-flash-image">gemini-2.5-flash-image</option>
-              <option value="gemini-3.1-flash-image-preview">gemini-3.1-flash-image-preview</option>
-              <option value="gpt-image-1.5">gpt-image-1.5</option>
-            </select>
-          </label>
-        )}
       </div>
 
-      <div className={`reframe-section ${!hasAnalysis ? 'reframe-section--locked' : ''}`}>
+      <div className="reframe-section">
         <h3>Director Intent</h3>
         <textarea
           className="reframe-intent"
@@ -648,6 +752,15 @@ export default function ReframeTab() {
         ) : (
           <div className="reframe-no-change">변경된 속성이 없습니다. 현재 CIR 그대로 재생성됩니다.</div>
         )}
+
+        <label className="reframe-field" style={{ marginTop: 8, marginBottom: 8 }}>
+          <span>Model</span>
+          <select value={model} onChange={(e) => setModel(e.target.value)}>
+            <option value="gemini-2.5-flash-image">gemini-2.5-flash-image</option>
+            <option value="gemini-3.1-flash-image-preview">gemini-3.1-flash-image-preview</option>
+            <option value="gpt-image-1.5">gpt-image-1.5</option>
+          </select>
+        </label>
 
         <button
           className={`reframe-apply-btn ${loading ? 'loading' : ''}`}

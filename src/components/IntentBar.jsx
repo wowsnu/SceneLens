@@ -35,14 +35,10 @@ export default function IntentBar() {
   const isAnalyzing = useStore((s) => s.isAnalyzing)
   const chatMessages = useStore((s) => s.chatMessages)
   const addChatMessage = useStore((s) => s.addChatMessage)
-  const strategies = useStore((s) => s.strategies)
-  const activeStrategy = useStore((s) => s.activeStrategy)
-  const activeShot = useStore((s) => s.activeShot)
   const clearComparePreview = useStore((s) => s.clearComparePreview)
   
   const messagesEndRef = useRef(null)
   const analyzedCanvasRef = useRef(null) // 마지막으로 분석한 canvasDataUrl 기억
-  const setCenterTab = useStore((s) => s.setCenterTab)
   const setDetailTab = useStore((s) => s.setDetailTab)
 
   // 자동 스크롤

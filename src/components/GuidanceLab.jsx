@@ -247,7 +247,6 @@ export default function GuidanceLab() {
               <div className="guide-options">
                 {cat.options.map((opt) => {
                   const isSelected = currentCir[cat.key] === opt.value
-                  const isHovered = hoveredOption?.key === cat.key && hoveredOption?.value === opt.value
                   return (
                     <div
                       key={opt.value}

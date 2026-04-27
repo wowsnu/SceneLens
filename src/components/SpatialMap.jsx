@@ -33,6 +33,7 @@ export default function SpatialMap({ compact = false }) {
   const contentRef = useRef(null)
   const panRef = useRef({ x: 150, y: 50 })
   const zoomRef = useRef(0.8)
+  const entityIdRef = useRef(0)
   
   const [activeTool, setActiveTool] = useState('select')
   const [showLabels, setShowLabels] = useState(false)
@@ -59,6 +60,7 @@ export default function SpatialMap({ compact = false }) {
   const dragState = useRef({ type: null, id: null, startX: 0, startY: 0, origX: 0, origY: 0, hasMoved: false })
   const strategy = strategies[activeStrategy]
   const shots = strategy?.shots || []
+  const shotCount = shots.length
 
   const updateTransform = useCallback(() => {
     if (contentRef.current) {
@@ -68,32 +70,35 @@ export default function SpatialMap({ compact = false }) {
 
   useEffect(() => {
     const layout = SPATIAL_LAYOUTS[activeStrategy] || SPATIAL_LAYOUTS[0]
-    setNodePositions(prev => {
-      const positions = { ...prev }
-      shots.forEach((_, i) => {
-        if (positions[i]) return // 이미 위치 있으면 유지
-        if (layout[i]) {
-          positions[i] = layout[i]
-        } else {
-          // 새 샷: 마지막 노드 기준으로 랜덤 오프셋
-          const last = positions[i - 1] || { x: 400, y: 400, angle: 0 }
-          const angle = Math.random() * 360
-          const dist = 120 + Math.random() * 80
-          positions[i] = {
-            x: last.x + Math.cos(angle * Math.PI / 180) * dist,
-            y: last.y + Math.sin(angle * Math.PI / 180) * dist,
-            angle: 0,
+    const frame = requestAnimationFrame(() => {
+      setNodePositions(prev => {
+        const positions = { ...prev }
+        Array.from({ length: shotCount }).forEach((_, i) => {
+          if (positions[i]) return // 이미 위치 있으면 유지
+          if (layout[i]) {
+            positions[i] = layout[i]
+          } else {
+            // 새 샷: 마지막 노드 기준으로 랜덤 오프셋
+            const last = positions[i - 1] || { x: 400, y: 400, angle: 0 }
+            const angle = Math.random() * 360
+            const dist = 120 + Math.random() * 80
+            positions[i] = {
+              x: last.x + Math.cos(angle * Math.PI / 180) * dist,
+              y: last.y + Math.sin(angle * Math.PI / 180) * dist,
+              angle: 0,
+            }
           }
-        }
+        })
+        // 삭제된 샷 정리
+        Object.keys(positions).forEach(k => {
+          if (parseInt(k) >= shotCount) delete positions[k]
+        })
+        return positions
       })
-      // 삭제된 샷 정리
-      Object.keys(positions).forEach(k => {
-        if (parseInt(k) >= shots.length) delete positions[k]
-      })
-      return positions
     })
     updateTransform()
-  }, [activeStrategy, shots.length, updateTransform])
+    return () => cancelAnimationFrame(frame)
+  }, [activeStrategy, shotCount, updateTransform])
 
   const playSequence = async () => {
     if (isPlaying) return
@@ -120,7 +125,8 @@ export default function SpatialMap({ compact = false }) {
   }
 
   const addEntity = (preset) => {
-    const newId = `ent-${Date.now()}`
+    entityIdRef.current += 1
+    const newId = `ent-${entityIdRef.current}`
     const centerPos = { x: (window.innerWidth/2 - panRef.current.x) / zoomRef.current, y: (window.innerHeight/2 - panRef.current.y) / zoomRef.current }
     setElements([...elements, { id: newId, type: 'marker', x: centerPos.x, y: centerPos.y, label: preset.label, color: preset.color, waypoints: [] }])
     setShowEntityMenu(false); setActiveTool('select')

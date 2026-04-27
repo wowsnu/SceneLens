@@ -274,10 +274,10 @@ export default function SvgEditor({ onSaveAndMap, showScript, onToggleScript, sc
 
     return () => {
       // Save canvas state before unmount
-      try { useStore.getState().setFabricJson(fc.toJSON()) } catch (e) { /* ignore */ }
+      try { useStore.getState().setFabricJson(fc.toJSON()) } catch { /* ignore */ }
       document.removeEventListener('keydown', handleKeyDown); ro.disconnect(); fc.dispose(); fabricRef.current = null
     }
-  }, [syncSel])
+  }, [saveHistory, syncSel])
 
   /* ── Mode switching ─────────────────────────────────── */
   useEffect(() => {

@@ -1,20 +1,13 @@
-import React from 'react'
 import useStore from '../store/useStore'
 import SpatialMap from './SpatialMap'
 import './OverviewPanel.css'
 
 export default function OverviewPanel() {
-  const viewMode = useStore((s) => s.viewMode)
-  const setViewMode = useStore((s) => s.setViewMode)
   const overviewTab = useStore((s) => s.overviewTab)
   const setOverviewTab = useStore((s) => s.setOverviewTab)
   const strategies = useStore((s) => s.strategies)
   const activeStrategy = useStore((s) => s.activeStrategy)
   const setActiveShot = useStore((s) => s.setActiveShot)
-
-  const handleBack = () => {
-    setViewMode('script')
-  }
 
   const strategy = strategies[activeStrategy]
   const shots = strategy?.shots || []

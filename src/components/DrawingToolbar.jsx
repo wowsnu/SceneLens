@@ -59,8 +59,9 @@ export default function DrawingToolbar({ children }) {
   const [saved, setSaved] = useState(false)
 
   const handleSave = () => {
-    const { canvasDataUrl, strategies, activeStrategy, activeShot, setStrategies } = useStore.getState()
+    const { canvasDataUrl, strategies, activeStrategy, activeShot, setStrategies, flowSetActiveShotImage } = useStore.getState()
     if (!canvasDataUrl) return
+    if (flowSetActiveShotImage) flowSetActiveShotImage(canvasDataUrl)
     const emptyShot = (order) => ({
       order, image: null,
       cir: { shotSize: '', cameraAngle: '', cameraLevel: '', relation: '', blockingDistance: '', eyeline: '', occlusion: '', motionHint: '' },

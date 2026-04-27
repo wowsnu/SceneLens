@@ -4,7 +4,7 @@ import './ScriptPanel.css'
 export default function ScriptPanel() {
   const screenplay = useStore((s) => s.screenplay)
   const activeBeat = useStore((s) => s.activeBeat)
-  const setActiveBeat = useStore((s) => s.setActiveBeat)
+  const selectBeat = useStore((s) => s.selectBeat)
   const viewMode = useStore((s) => s.viewMode)
 
   if (viewMode === 'script' || viewMode === 'storyboard' || viewMode === 'focus' || viewMode === 'detail') {
@@ -25,7 +25,7 @@ export default function ScriptPanel() {
             key={i}
             className={`script-element script-${el.type}${el.beat !== undefined ? ' has-beat' : ''}${el.beat === activeBeat ? ' active-beat' : ''}`}
             data-beat={el.beat}
-            onClick={() => el.beat !== undefined && setActiveBeat(el.beat)}
+            onClick={() => el.beat !== undefined && selectBeat(el.beat)}
           >
             {el.beat !== undefined && <span className="script-beat-marker" />}
             {el.text}

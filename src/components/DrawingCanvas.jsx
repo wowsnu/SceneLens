@@ -29,6 +29,7 @@ export default function DrawingCanvas() {
   const strategies = useStore((s) => s.strategies)
   const activeStrategy = useStore((s) => s.activeStrategy)
   const activeShot = useStore((s) => s.activeShot)
+  const activeSceneData = useStore((s) => s.scenes[s.activeScene])
   const zenMode = useStore((s) => s.zenMode)
   const activeBeat = useStore((s) => s.activeBeat)
   const [hasDrawn, setHasDrawn] = useState(false)
@@ -40,12 +41,15 @@ export default function DrawingCanvas() {
   const clearComparePreview = useStore((s) => s.clearComparePreview)
 
   // Get current shot image
-  const getCurrentShotImage = () => {
+  const getCurrentShotImage = useCallback(() => {
+    const activeBranch = activeSceneData?.activeBranch ?? 0
+    const flowShot = activeSceneData?.branches?.[activeBranch]?.shots?.[activeSceneData?.activeShot ?? activeShot]
+    if (flowShot?.image) return flowShot.image
     const strategy = strategies[activeStrategy]
     const shot = strategy?.shots?.[activeShot]
     if (shot?.image) return shot.image
     return null
-  }
+  }, [activeSceneData, activeShot, activeStrategy, strategies])
 
   // Load shot image onto canvas
   const loadShotImage = useCallback((imageSrc) => {
@@ -98,7 +102,7 @@ export default function DrawingCanvas() {
       setCanvasDataUrl(dataUrl)
     }
     img.src = imageSrc
-  }, [])
+  }, [setCanvasDataUrl])
 
   // When activeShot or activeStrategy changes, load the shot image
   useEffect(() => {
@@ -133,7 +137,7 @@ export default function DrawingCanvas() {
       historyRef.current = []
       historyIndex.current = -1
     }
-  }, [activeStrategy, activeShot, activeBeat, loadShotImage])
+  }, [activeStrategy, activeShot, activeBeat, getCurrentShotImage, loadShotImage])
 
   // Load AI-generated/enhanced image onto canvas
   useEffect(() => {
@@ -152,7 +156,7 @@ export default function DrawingCanvas() {
         setTimeout(() => loadShotImage(imageSrc), 80)
       }
     }
-  }, [zenMode])
+  }, [zenMode, getCurrentShotImage, loadShotImage])
 
   // Draw overlay guides
   const drawOverlays = useCallback(() => {
@@ -246,7 +250,7 @@ export default function DrawingCanvas() {
     overlayCtx.scale(dpr, dpr)
 
     drawOverlays()
-  }, [overlays, hasDrawn, drawOverlays])
+  }, [hasDrawn, drawOverlays])
 
   useEffect(() => {
     resizeCanvas()
@@ -278,17 +282,17 @@ export default function DrawingCanvas() {
       setIsStrategyCardFlipped(true)
     }, 900)
     return () => window.clearTimeout(timer)
-  }, [comparePreview?.loading, comparePreview?.createdAt, comparePreview?.shotKey])
+  }, [comparePreview])
 
   // Save history snapshot
-  const saveHistory = () => {
+  const saveHistory = useCallback(() => {
     const canvas = canvasRef.current
     if (!canvas) return
     const data = canvas.toDataURL()
     historyRef.current = historyRef.current.slice(0, historyIndex.current + 1)
     historyRef.current.push(data)
     historyIndex.current = historyRef.current.length - 1
-  }
+  }, [])
 
   // Get position from event
   const getPos = (e) => {
@@ -407,7 +411,7 @@ export default function DrawingCanvas() {
     }
   }
 
-  const restoreFromHistory = (index) => {
+  const restoreFromHistory = useCallback((index) => {
     const img = new Image()
     img.onload = () => {
       const canvas = canvasRef.current
@@ -419,26 +423,26 @@ export default function DrawingCanvas() {
       ctx.restore()
     }
     img.src = historyRef.current[index]
-  }
+  }, [])
 
   // Undo
-  const handleUndo = () => {
+  const handleUndo = useCallback(() => {
     if (historyIndex.current > 0) {
       historyIndex.current--
       restoreFromHistory(historyIndex.current)
     }
-  }
+  }, [restoreFromHistory])
 
   // Redo
-  const handleRedo = () => {
+  const handleRedo = useCallback(() => {
     if (historyIndex.current < historyRef.current.length - 1) {
       historyIndex.current++
       restoreFromHistory(historyIndex.current)
     }
-  }
+  }, [restoreFromHistory])
 
   // Clear
-  const handleClear = () => {
+  const handleClear = useCallback(() => {
     const canvas = canvasRef.current
     if (!canvas) return
     const ctx = canvas.getContext('2d')
@@ -454,7 +458,7 @@ export default function DrawingCanvas() {
     saveHistory()
     setHasDrawn(false)
     setCanvasDataUrl(null)
-  }
+  }, [saveHistory, setCanvasDataUrl])
 
   const handleEnhance = async () => {
     if (!canvasDataUrl) return
@@ -523,7 +527,7 @@ export default function DrawingCanvas() {
       if (redoBtn) redoBtn.removeEventListener('click', handleRedo)
       if (clearBtn) clearBtn.removeEventListener('click', handleClear)
     }
-  }, [])
+  }, [handleClear, handleRedo, handleUndo])
 
   return (
     <div className="canvas-container" ref={containerRef}>

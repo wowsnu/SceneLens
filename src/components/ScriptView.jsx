@@ -4,7 +4,7 @@ import './ScriptView.css'
 export default function ScriptView() {
   const screenplay = useStore((s) => s.screenplay)
   const activeBeat = useStore((s) => s.activeBeat)
-  const setActiveBeat = useStore((s) => s.setActiveBeat)
+  const selectBeat = useStore((s) => s.selectBeat)
 
   // Group elements by beat
   let currentBeat = null
@@ -24,7 +24,7 @@ export default function ScriptView() {
       <div
         key={i}
         className={`script-element script-${el.type}${el.beat === activeBeat ? ' active-beat' : ''}`}
-        onClick={() => el.beat !== undefined && setActiveBeat(el.beat)}
+        onClick={() => el.beat !== undefined && selectBeat(el.beat)}
         style={el.beat !== undefined ? { cursor: 'pointer' } : undefined}
       >
         {el.text}

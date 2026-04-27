@@ -212,11 +212,41 @@
 
 .sb-item:last-child { border-bottom: none; }
 
+.sb-item {
+  position: relative;
+}
+
+.sb-item.active-beat {
+  background: rgba(96, 165, 250, 0.06);
+  transition: background 0.15s ease;
+}
+
+.sb-item.active-beat::before {
+  content: '';
+  position: absolute;
+  left: -8px;
+  top: 8px;
+  bottom: 8px;
+  width: 3px;
+  background: #60a5fa;
+  border-radius: 2px;
+  pointer-events: none;
+}
+
 .sb-img-col { width: 440px; flex-shrink: 0; position: relative; margin-top: 30px; }
+.sb-shot-stack { display: flex; flex-direction: column; gap: 14px; }
+.sb-shot-card { border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 14px; padding: 8px; background: rgba(255, 255, 255, 0.025); transition: border-color 0.15s ease, background 0.15s ease; }
+.sb-shot-card.active-shot { border-color: rgba(96, 165, 250, 0.8); background: rgba(96, 165, 250, 0.08); box-shadow: 0 0 0 1px rgba(96, 165, 250, 0.2); }
+.sb-shot-meta { display: flex; justify-content: space-between; align-items: center; margin-top: 8px; color: #a1a1aa; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em; }
 .sb-img-wrapper { background: #000; border-radius: 12px; overflow: hidden; border: 1px solid rgba(255, 255, 255, 0.12); aspect-ratio: 16/9; cursor: pointer; position: relative; }
 .sb-img-wrapper img { width: 100%; height: 100%; object-fit: cover; }
 .sb-add-shot { aspect-ratio: 16/9; display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(255, 255, 255, 0.02); border: 1px dashed rgba(255, 255, 255, 0.2); border-radius: 12px; color: #71717a; cursor: pointer; }
 .sb-add-shot:hover { background: rgba(255, 255, 255, 0.04); color: #fff; border-color: #3b82f6; }
+.sb-add-shot.existing-empty { aspect-ratio: 16/9; gap: 4px; }
+.sb-add-shot.existing-empty span { color: #d4d4d8; font-weight: 800; }
+.sb-add-shot.existing-empty small { color: #71717a; font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; }
+.sb-add-shot-inline { align-self: flex-start; display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 10px; border-radius: 999px; border: 1px dashed rgba(255, 255, 255, 0.22); background: rgba(255, 255, 255, 0.025); color: #a1a1aa; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em; cursor: pointer; }
+.sb-add-shot-inline:hover { border-color: #60a5fa; color: #fff; background: rgba(96, 165, 250, 0.08); }
 .beat-indicator { position: absolute; top: -16px; right: 0; font-size: 11px; font-weight: 800; color: #3b82f6; text-transform: uppercase; }
 .script-element-wrapper { position: relative; padding: 4px 0; }
 .split-beat-btn { position: absolute; bottom: -12px; left: 0; background: #3b82f6; color: #fff; border: none; font-size: 10px; padding: 4px 10px; border-radius: 4px; opacity: 0; cursor: pointer; z-index: 10; transition: all 0.2s; }

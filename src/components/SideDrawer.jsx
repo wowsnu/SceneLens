@@ -13,7 +13,6 @@ const TABS = [
 
 export default function SideDrawer() {
   const viewMode = useStore((s) => s.viewMode)
-  const setViewMode = useStore((s) => s.setViewMode)
   const isScriptOpen = useStore((s) => s.isScriptOpen)
   const setScriptOpen = useStore((s) => s.setScriptOpen)
   const isDrawerExpanded = useStore((s) => s.isDrawerExpanded)

@@ -18,6 +18,7 @@ export default function GridView() {
   const branches = scene?.branches || []
   const activeBranch = scene?.activeBranch ?? 0
   const activeShot = scene?.activeShot ?? 0
+  const activeBeat = useStore((s) => s.activeBeat)
   const setActiveBranch = useStore((s) => s.setFlowActiveBranch)
   const setActiveShot = useStore((s) => s.setFlowActiveShot)
   const setFlowView = useStore((s) => s.setFlowView)
@@ -102,7 +103,7 @@ export default function GridView() {
   const handleAdd = () => {
     insertShot(activeBranch, shots.length - 1, {
       label: `Shot ${shots.length + 1}`,
-      scriptBeat: 0,
+      scriptBeat: shots[activeShot]?.scriptBeat ?? activeBeat,
     })
   }
 

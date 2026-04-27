@@ -114,6 +114,18 @@
   --chip-accent: rgba(255, 185, 96, 0.88);
 }
 
+.axis-chip-mise-blocking {
+  --chip-accent: rgba(255, 185, 96, 0.9);
+}
+
+.axis-chip-mise-props {
+  --chip-accent: rgba(88, 214, 141, 0.88);
+}
+
+.axis-chip-mise-set_dressing {
+  --chip-accent: rgba(244, 114, 182, 0.88);
+}
+
 .axis-chip-freeform {
   --chip-accent: rgba(171, 137, 255, 0.86);
 }

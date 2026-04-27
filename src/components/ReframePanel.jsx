@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import useStore from '../store/useStore'
-import { generateSketch, generateSvgLayers, analyzeSketchCIR } from '../services/api'
+import { generateSketch, generateSvgLayers } from '../services/api'
 import './ReframePanel.css'
 
 const GEN_MODES = [
@@ -11,7 +11,6 @@ const GEN_MODES = [
 const DEFAULT_LAYERS = ['background', 'character', 'props']
 
 export default function ReframePanel() {
-  const canvasDataUrl = useStore((s) => s.canvasDataUrl)
   const setCanvasDataUrl = useStore((s) => s.setCanvasDataUrl)
   const setPendingCanvasImage = useStore((s) => s.setPendingCanvasImage)
   const screenplay = useStore((s) => s.screenplay)

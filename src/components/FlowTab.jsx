@@ -432,8 +432,7 @@ export function CardView() {
   const [rangeMode, setRangeMode] = useState(false)
 
   const branch = branches[activeBranch]
-  if (!branch) return null
-  const shots = branch.shots
+  const shots = branch?.shots || []
 
   const current = shots[activeShot] || shots[0]
   const prev = activeShot > 0 ? shots[activeShot - 1] : null
@@ -466,6 +465,8 @@ export function CardView() {
   const handleGapFill = (afterShotIdx) => {
     openGapFill(activeBranch, afterShotIdx)
   }
+
+  if (!branch) return null
 
   const handleRangeToggle = () => {
     if (rangeMode) {

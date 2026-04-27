@@ -59,8 +59,11 @@ export default function SequenceTimeline() {
     if (!el) return
     const ro = new ResizeObserver(() => setDockWidth(el.getBoundingClientRect().width))
     ro.observe(el)
-    setDockWidth(el.getBoundingClientRect().width)
-    return () => ro.disconnect()
+    const frame = requestAnimationFrame(() => setDockWidth(el.getBoundingClientRect().width))
+    return () => {
+      cancelAnimationFrame(frame)
+      ro.disconnect()
+    }
   }, [])
 
   const count = shots.length || 1

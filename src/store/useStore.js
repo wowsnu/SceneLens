@@ -72,6 +72,114 @@ const STRATEGY_COLORS = [
 
 const getShotKey = (strategyIdx, shotIdx) => `${strategyIdx}-${shotIdx}`
 
+const DEFAULT_SHOT_CIR = { shotSize: 'Medium', relation: 'Single' }
+
+const createShotId = () => `shot-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+
+const createFlowShot = ({ index = 0, scriptBeat = 0, label, image = null, cir = DEFAULT_SHOT_CIR, source = 'canvas', isAIGenerated = false } = {}) => ({
+  id: createShotId(),
+  image,
+  cir,
+  label: label || `Shot ${index + 1}`,
+  scriptBeat,
+  isAIGenerated,
+  source,
+})
+
+const toStrategyShot = (shot, idx) => ({
+  ...shot,
+  order: idx + 1,
+  beat: shot.scriptBeat ?? shot.beat ?? 0,
+  intent: shot.intent || shot.label || `Shot ${idx + 1}`,
+})
+
+const branchToStrategy = (branch, fallbackName = 'Storyboard') => ({
+  id: branch?.id || 'branch-main',
+  name: branch?.label || fallbackName,
+  intention_tags: [],
+  shots: (branch?.shots || []).map(toStrategyShot),
+})
+
+const syncStrategiesFromScenes = (state, scenes = state.scenes) => {
+  const scene = scenes[state.activeScene]
+  const branch = scene?.branches?.[scene.activeBranch ?? 0]
+  if (!branch) return state.strategies
+
+  const strategies = state.strategies?.length ? [...state.strategies] : []
+  strategies[state.activeStrategy ?? 0] = branchToStrategy(branch)
+  return strategies
+}
+
+const syncScenesFromStrategies = (state, strategies) => {
+  const strategy = strategies?.[state.activeStrategy ?? 0]
+  if (!strategy?.shots) return state.scenes
+
+  return state.scenes.map((scene, sceneIdx) => {
+    if (sceneIdx !== state.activeScene) return scene
+
+    const activeBranch = scene.activeBranch ?? 0
+    const branches = scene.branches.map((branch, branchIdx) => {
+      if (branchIdx !== activeBranch) return branch
+
+      const shots = strategy.shots.map((shot, idx) => ({
+        ...(branch.shots[idx] || {}),
+        ...shot,
+        id: shot.id || branch.shots[idx]?.id || createShotId(),
+        label: shot.label || shot.intent || branch.shots[idx]?.label || `Shot ${idx + 1}`,
+        scriptBeat: shot.scriptBeat ?? shot.beat ?? branch.shots[idx]?.scriptBeat ?? 0,
+        image: shot.image ?? branch.shots[idx]?.image ?? null,
+        cir: shot.cir || branch.shots[idx]?.cir || DEFAULT_SHOT_CIR,
+        isAIGenerated: shot.isAIGenerated ?? branch.shots[idx]?.isAIGenerated ?? false,
+        source: shot.source || branch.shots[idx]?.source || 'canvas',
+      }))
+
+      return { ...branch, label: strategy.name || branch.label, shots }
+    })
+
+    return {
+      ...scene,
+      branches,
+      activeShot: Math.max(0, Math.min(scene.activeShot ?? 0, (branches[activeBranch]?.shots.length || 1) - 1)),
+    }
+  })
+}
+
+const updateActiveBranchShots = (state, updater) => {
+  let nextActiveShot = state.activeShot ?? 0
+  let nextActiveBeat = state.activeBeat ?? 0
+
+  const scenes = state.scenes.map((scene, sceneIdx) => {
+    if (sceneIdx !== state.activeScene) return scene
+
+    const activeBranch = scene.activeBranch ?? 0
+    const branches = scene.branches.map((branch, branchIdx) => {
+      if (branchIdx !== activeBranch) return branch
+
+      const result = updater(branch.shots, branch, scene)
+      const shots = Array.isArray(result) ? result : result.shots
+      if (!Array.isArray(result)) {
+        nextActiveShot = result.activeShot ?? nextActiveShot
+        nextActiveBeat = result.activeBeat ?? nextActiveBeat
+      }
+
+      return { ...branch, shots: shots.map((shot, idx) => ({ ...shot, label: shot.label || `Shot ${idx + 1}` })) }
+    })
+
+    const branchShots = branches[activeBranch]?.shots || []
+    nextActiveShot = Math.max(0, Math.min(nextActiveShot, Math.max(0, branchShots.length - 1)))
+    nextActiveBeat = branchShots[nextActiveShot]?.scriptBeat ?? nextActiveBeat
+
+    return { ...scene, branches, activeShot: nextActiveShot }
+  })
+
+  return {
+    scenes,
+    strategies: syncStrategiesFromScenes(state, scenes),
+    activeShot: nextActiveShot,
+    activeBeat: nextActiveBeat,
+  }
+}
+
 const useStore = create((set, get) => ({
   viewMode: 'script',
   setViewMode: (mode) => set({ viewMode: mode }),
@@ -85,13 +193,29 @@ const useStore = create((set, get) => ({
   toggleScript: () => set((state) => ({ isScriptOpen: !state.isScriptOpen })),
   setScriptOpen: (val) => set({ isScriptOpen: val }),
   screenplay: SCREENPLAY,
-  setScreenplay: (script) => set({ screenplay: script }),
+  setScreenplay: (script) => set((state) => {
+    const maxBeat = Math.max(0, ...script.map((line) => line.beat ?? 0))
+    const next = updateActiveBranchShots(state, (shots, _branch, scene) => {
+      const activeShot = scene.activeShot ?? state.activeShot ?? 0
+      const remapped = shots.map((shot) => ({
+        ...shot,
+        scriptBeat: Math.max(0, Math.min(shot.scriptBeat ?? 0, maxBeat)),
+      }))
+      return {
+        shots: remapped,
+        activeShot,
+        activeBeat: Math.max(0, Math.min(state.activeBeat ?? 0, maxBeat)),
+      }
+    })
+    return { ...next, screenplay: script }
+  }),
   scriptEditorRequestKey: 0,
   requestScriptEditor: () => set((state) => ({ scriptEditorRequestKey: state.scriptEditorRequestKey + 1 })),
   
-  // 비트 나누기: 특정 지점에서 대본을 자르고 그 자리에 새로운 샷 칸 삽입
+  // 비트 나누기: 특정 지점에서 대본을 자르고 새 beat에 기본 shot을 하나 만든다.
   splitBeat: (elementIndex) => set((state) => {
     const newScreenplay = [...state.screenplay]
+    if (elementIndex <= 0 || elementIndex >= newScreenplay.length) return state
     
     // 1. 해당 지점부터 끝까지 일단 비트 번호 증가
     for (let i = elementIndex; i < newScreenplay.length; i++) {
@@ -113,65 +237,35 @@ const useStore = create((set, get) => ({
     // 3. 삽입될 샷의 인덱스 계산 (방금 생성된 비트 번호가 삽입 위치)
     const insertAt = newScreenplay[elementIndex].beat
 
-    // 4. 스토리보드 샷 리스트 중간에 정확히 삽입
-    const newStrategies = [...state.strategies]
-    const strategy = { ...newStrategies[state.activeStrategy] }
-    const newShots = strategy.shots.map((s) => (
-      typeof s.beat === 'number' && s.beat >= insertAt
-        ? { ...s, beat: s.beat + 1 }
-        : s
-    ))
-
-    newShots.splice(insertAt, 0, {
-      order: insertAt + 1,
-      beat: insertAt,
-      intent: 'NEW SHOT',
-      cir: { shotSize: 'Medium', relation: 'Single' }
-    })
-
-    // order 재정렬
-    newShots.forEach((s, idx) => { s.order = idx + 1 })
-    
-    strategy.shots = newShots
-    newStrategies[state.activeStrategy] = strategy
-
-    // 5. 스케치 데이터(Draw) 밀어주기
-    const newShotSketches = { ...state.shotSketches }
-    const strategyPrefix = `${state.activeStrategy}-`
-    const keys = Object.keys(newShotSketches)
-      .filter(k => k.startsWith(strategyPrefix))
-      .map(k => parseInt(k.split('-')[1]))
-      .sort((a, b) => b - a)
-
-    keys.forEach(idx => {
-      if (idx >= insertAt) {
-        newShotSketches[`${strategyPrefix}${idx + 1}`] = newShotSketches[`${strategyPrefix}${idx}`]
-        delete newShotSketches[`${strategyPrefix}${idx}`]
-      }
-    })
-
-    const newReframeHistory = { ...state.reframeHistory }
-    const historyKeys = Object.keys(newReframeHistory)
-      .filter(k => k.startsWith(strategyPrefix))
-      .map(k => parseInt(k.split('-')[1]))
-      .sort((a, b) => b - a)
-
-    historyKeys.forEach(idx => {
-      if (idx >= insertAt) {
-        newReframeHistory[getShotKey(state.activeStrategy, idx + 1)] = newReframeHistory[getShotKey(state.activeStrategy, idx)]
-        delete newReframeHistory[getShotKey(state.activeStrategy, idx)]
+    const next = updateActiveBranchShots(state, (shots) => {
+      const shifted = shots.map((shot) => (
+        typeof shot.scriptBeat === 'number' && shot.scriptBeat >= insertAt
+          ? { ...shot, scriptBeat: shot.scriptBeat + 1 }
+          : shot
+      ))
+      const insertShotAt = shifted.reduce((lastIdx, shot, idx) => (
+        (shot.scriptBeat ?? 0) < insertAt ? idx : lastIdx
+      ), -1) + 1
+      const newShot = createFlowShot({
+        index: insertShotAt,
+        scriptBeat: insertAt,
+        label: `Beat ${insertAt + 1} Shot 1`,
+      })
+      shifted.splice(insertShotAt, 0, newShot)
+      return {
+        shots: shifted,
+        activeShot: insertShotAt,
+        activeBeat: insertAt,
       }
     })
 
     return {
+      ...next,
       screenplay: newScreenplay,
-      strategies: newStrategies,
-      shotSketches: newShotSketches,
-      reframeHistory: newReframeHistory,
     }
   }),
 
-  // 비트 합치기: 현재 비트를 이전 비트와 병합하고 해당 샷 삭제
+  // 비트 합치기: 현재 비트를 이전 비트와 병합한다. Shot은 삭제하지 않고 target beat로 귀속시킨다.
   mergeBeat: (elementIndex) => set((state) => {
     if (elementIndex === 0) return state
     const newScreenplay = [...state.screenplay]
@@ -200,69 +294,63 @@ const useStore = create((set, get) => ({
       newScreenplay[i].beat = currentNewBeat
     }
 
-    // 4. 스토리보드 샷 삭제
-    const newStrategies = [...state.strategies]
-    const strategy = { ...newStrategies[state.activeStrategy] }
-    const newShots = [...strategy.shots]
-    
-    newShots.splice(deleteIdx, 1)
-    newShots.forEach((s, idx) => { s.order = idx + 1 })
-
-    strategy.shots = newShots
-    newStrategies[state.activeStrategy] = strategy
-
-    // 5. 스케치 데이터 당기기
-    const newShotSketches = { ...state.shotSketches }
-    const strategyPrefix = `${state.activeStrategy}-`
-    delete newShotSketches[`${strategyPrefix}${deleteIdx}`]
-    
-    const keys = Object.keys(newShotSketches)
-      .filter(k => k.startsWith(strategyPrefix))
-      .map(k => parseInt(k.split('-')[1]))
-      .sort((a, b) => a - b)
-
-    keys.forEach(idx => {
-      if (idx > deleteIdx) {
-        newShotSketches[`${strategyPrefix}${idx - 1}`] = newShotSketches[`${strategyPrefix}${idx}`]
-        delete newShotSketches[`${strategyPrefix}${idx}`]
-      }
-    })
-
-    const newReframeHistory = { ...state.reframeHistory }
-    delete newReframeHistory[getShotKey(state.activeStrategy, deleteIdx)]
-
-    const historyKeys = Object.keys(newReframeHistory)
-      .filter(k => k.startsWith(strategyPrefix))
-      .map(k => parseInt(k.split('-')[1]))
-      .sort((a, b) => a - b)
-
-    historyKeys.forEach(idx => {
-      if (idx > deleteIdx) {
-        newReframeHistory[getShotKey(state.activeStrategy, idx - 1)] = newReframeHistory[getShotKey(state.activeStrategy, idx)]
-        delete newReframeHistory[getShotKey(state.activeStrategy, idx)]
+    const next = updateActiveBranchShots(state, (shots) => {
+      const remapped = shots.map((shot) => {
+        const beat = shot.scriptBeat ?? 0
+        if (beat === deleteIdx) return { ...shot, scriptBeat: targetBeat }
+        if (beat > deleteIdx) return { ...shot, scriptBeat: beat - 1 }
+        return shot
+      })
+      const activeShot = Math.max(0, remapped.findIndex((shot) => shot.scriptBeat === targetBeat))
+      return {
+        shots: remapped,
+        activeShot,
+        activeBeat: targetBeat,
       }
     })
 
     return {
+      ...next,
       screenplay: newScreenplay,
-      strategies: newStrategies,
-      shotSketches: newShotSketches,
-      reframeHistory: newReframeHistory,
     }
   }),
 
   activeBeat: 0,
   setActiveBeat: (beat) => set({ activeBeat: beat }),
+  selectBeat: (beat) => set((state) => {
+    const scene = state.scenes[state.activeScene]
+    const branch = scene?.branches?.[scene.activeBranch ?? 0]
+    const shotIdx = branch?.shots?.findIndex((shot) => shot.scriptBeat === beat) ?? -1
+    if (shotIdx < 0) return { activeBeat: beat }
+    return {
+      activeBeat: beat,
+      activeShot: shotIdx,
+      scenes: state.scenes.map((s, i) =>
+        i === state.activeScene ? { ...s, activeShot: shotIdx } : s
+      ),
+    }
+  }),
   strategies: DEMO_STRATEGIES,
   activeStrategy: 0,
-  setStrategies: (strategies) => set({ strategies }),
+  setStrategies: (strategies) => set((state) => {
+    const scenes = syncScenesFromStrategies(state, strategies)
+    return { strategies, scenes }
+  }),
   setActiveStrategy: (idx) => set({ activeStrategy: idx }),
   activeShot: 0,
   setActiveShot: (idx) => set((state) => {
-    const shot = state.strategies?.[state.activeStrategy]?.shots?.[idx]
-    const next = { activeShot: idx }
-    if (shot && typeof shot.beat === 'number') {
-      next.activeBeat = shot.beat
+    const scene = state.scenes[state.activeScene]
+    const branch = scene?.branches?.[scene.activeBranch ?? 0]
+    const shot = branch?.shots?.[idx] || state.strategies?.[state.activeStrategy]?.shots?.[idx]
+    const next = {
+      activeShot: idx,
+      scenes: state.scenes.map((s, i) =>
+        i === state.activeScene ? { ...s, activeShot: idx } : s
+      ),
+    }
+    const beat = shot?.scriptBeat ?? shot?.beat
+    if (typeof beat === 'number') {
+      next.activeBeat = beat
     }
     return next
   }),
@@ -523,12 +611,13 @@ const useStore = create((set, get) => ({
           const afterIdx = shots.findIndex(sh => sh.id === ins.after_shot_id)
           if (afterIdx === -1) continue
           const c = ins.candidate
+          const inheritedBeat = shots[afterIdx]?.scriptBeat ?? state.activeBeat ?? 0
           const newShot = {
             id: c.id || `shot-${Date.now()}-${Math.random().toString(36).slice(2)}`,
             label: c.label,
             cir: c.cir,
             image: c.image || null,
-            scriptBeat: 0,
+            scriptBeat: c.scriptBeat ?? inheritedBeat,
             isAIGenerated: true,
             source: 'ai_fill',
           }
@@ -538,7 +627,7 @@ const useStore = create((set, get) => ({
       })
       return { ...s, branches }
     })
-    return { scenes, autoFill: null }
+    return { scenes, strategies: syncStrategiesFromScenes(state, scenes), autoFill: null }
   }),
 
   addScene: (label) => set((state) => {
@@ -561,7 +650,14 @@ const useStore = create((set, get) => ({
         },
       ],
     }
-    return { scenes: [...state.scenes, newScene], activeScene: state.scenes.length }
+    const scenes = [...state.scenes, newScene]
+    return {
+      scenes,
+      activeScene: state.scenes.length,
+      activeShot: 0,
+      activeBeat: 0,
+      strategies: syncStrategiesFromScenes({ ...state, activeScene: state.scenes.length }, scenes),
+    }
   }),
 
   renameScene: (sceneIdx, label) => set((state) => ({
@@ -572,20 +668,121 @@ const useStore = create((set, get) => ({
     if (state.scenes.length <= 1) return state
     const scenes = state.scenes.filter((_, i) => i !== sceneIdx)
     const activeScene = Math.max(0, Math.min(state.activeScene, scenes.length - 1))
-    return { scenes, activeScene }
+    return {
+      scenes,
+      activeScene,
+      activeShot: scenes[activeScene]?.activeShot ?? 0,
+      activeBeat: scenes[activeScene]?.branches?.[scenes[activeScene]?.activeBranch ?? 0]?.shots?.[scenes[activeScene]?.activeShot ?? 0]?.scriptBeat ?? 0,
+      strategies: syncStrategiesFromScenes({ ...state, activeScene }, scenes),
+    }
   }),
 
   // ── Helpers: map "flow*" API onto active scene ──────────
-  setFlowActiveShot: (idx) => set((state) => ({
-    scenes: state.scenes.map((s, i) =>
-      i === state.activeScene ? { ...s, activeShot: idx } : s
-    ),
-  })),
-  setFlowActiveBranch: (idx) => set((state) => ({
-    scenes: state.scenes.map((s, i) =>
-      i === state.activeScene ? { ...s, activeBranch: idx, activeShot: 0 } : s
-    ),
-  })),
+  setFlowActiveShot: (idx) => set((state) => {
+    const scene = state.scenes[state.activeScene]
+    const branch = scene?.branches?.[scene.activeBranch]
+    const shot = branch?.shots?.[idx]
+    const next = {
+      activeShot: idx,
+      scenes: state.scenes.map((s, i) =>
+        i === state.activeScene ? { ...s, activeShot: idx } : s
+      ),
+    }
+    if (shot && typeof shot.scriptBeat === 'number') {
+      next.activeBeat = shot.scriptBeat
+    }
+    return next
+  }),
+  setFlowActiveBranch: (idx) => set((state) => {
+    const scene = state.scenes[state.activeScene]
+    const newBranch = scene?.branches?.[idx]
+    const firstShot = newBranch?.shots?.[0]
+    const next = {
+      activeShot: 0,
+      scenes: state.scenes.map((s, i) =>
+        i === state.activeScene ? { ...s, activeBranch: idx, activeShot: 0 } : s
+      ),
+      strategies: syncStrategiesFromScenes(state, state.scenes.map((s, i) =>
+        i === state.activeScene ? { ...s, activeBranch: idx, activeShot: 0 } : s
+      )),
+    }
+    if (firstShot && typeof firstShot.scriptBeat === 'number') {
+      next.activeBeat = firstShot.scriptBeat
+    }
+    return next
+  }),
+
+  getActiveFlowShot: () => {
+    const state = get()
+    const scene = state.scenes[state.activeScene]
+    const branch = scene?.branches?.[scene.activeBranch ?? 0]
+    return branch?.shots?.[scene.activeShot ?? state.activeShot ?? 0] || null
+  },
+
+  getShotsForBeat: (beat) => {
+    const state = get()
+    const scene = state.scenes[state.activeScene]
+    const branch = scene?.branches?.[scene.activeBranch ?? 0]
+    return (branch?.shots || [])
+      .map((shot, shotIdx) => ({ shot, shotIdx }))
+      .filter(({ shot }) => shot.scriptBeat === beat)
+  },
+
+  addShotToBeat: (beat, afterShotIdx = null) => set((state) => {
+    return updateActiveBranchShots(state, (shots) => {
+      const sameBeatIndices = shots
+        .map((shot, idx) => ({ shot, idx }))
+        .filter(({ shot }) => shot.scriptBeat === beat)
+        .map(({ idx }) => idx)
+
+      const insertAt = afterShotIdx !== null
+        ? afterShotIdx + 1
+        : sameBeatIndices.length > 0
+          ? Math.max(...sameBeatIndices) + 1
+          : shots.findIndex((shot) => (shot.scriptBeat ?? 0) > beat)
+
+      const targetIdx = insertAt < 0 ? shots.length : insertAt
+      const newShot = createFlowShot({
+        index: targetIdx,
+        scriptBeat: beat,
+        label: `Beat ${beat + 1} Shot ${sameBeatIndices.length + 1}`,
+      })
+      const nextShots = [...shots]
+      nextShots.splice(targetIdx, 0, newShot)
+      return {
+        shots: nextShots,
+        activeShot: targetIdx,
+        activeBeat: beat,
+      }
+    })
+  }),
+
+  updateActiveFlowShot: (patch) => set((state) => {
+    return updateActiveBranchShots(state, (shots, _branch, scene) => {
+      const activeShot = scene.activeShot ?? state.activeShot ?? 0
+      return {
+        shots: shots.map((shot, idx) =>
+          idx === activeShot
+            ? { ...shot, ...(typeof patch === 'function' ? patch(shot) : patch) }
+            : shot
+        ),
+        activeShot,
+        activeBeat: shots[activeShot]?.scriptBeat ?? state.activeBeat,
+      }
+    })
+  }),
+
+  flowSetActiveShotImage: (image) => set((state) => {
+    return updateActiveBranchShots(state, (shots, _branch, scene) => {
+      const activeShot = scene.activeShot ?? state.activeShot ?? 0
+      return {
+        shots: shots.map((shot, idx) =>
+          idx === activeShot ? { ...shot, image } : shot
+        ),
+        activeShot,
+      }
+    })
+  }),
 
   flowReorderShot: (branchIdx, fromIdx, toIdx) => set((state) => {
     const scenes = state.scenes.map((s, si) => {
@@ -599,7 +796,12 @@ const useStore = create((set, get) => ({
       })
       return { ...s, branches, activeShot: toIdx }
     })
-    return { scenes }
+    return {
+      scenes,
+      strategies: syncStrategiesFromScenes(state, scenes),
+      activeShot: toIdx,
+      activeBeat: scenes[state.activeScene]?.branches?.[branchIdx]?.shots?.[toIdx]?.scriptBeat ?? state.activeBeat,
+    }
   }),
 
   flowRemoveShot: (branchIdx, shotIdx) => set((state) => {
@@ -615,31 +817,45 @@ const useStore = create((set, get) => ({
         : s.activeShot
       return { ...s, branches, activeShot }
     })
-    return { scenes }
+    return {
+      scenes,
+      strategies: syncStrategiesFromScenes(state, scenes),
+      activeShot: scenes[state.activeScene]?.activeShot ?? state.activeShot,
+      activeBeat: scenes[state.activeScene]?.branches?.[branchIdx]?.shots?.[scenes[state.activeScene]?.activeShot ?? 0]?.scriptBeat ?? state.activeBeat,
+    }
   }),
 
   flowInsertShot: (branchIdx, afterShotIdx, shot) => set((state) => {
+    let insertedIdx = afterShotIdx + 1
+    let insertedBeat = state.activeBeat ?? 0
     const scenes = state.scenes.map((s, si) => {
       if (si !== state.activeScene) return s
       const branches = s.branches.map((b, bi) => {
         if (bi !== branchIdx) return b
         const shots = [...b.shots]
         const inheritedBeat = shots[afterShotIdx]?.scriptBeat
+        insertedBeat = shot.scriptBeat ?? inheritedBeat ?? 0
         const newShot = {
           id: shot.id || `shot-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
           image: shot.image || null,
           cir: shot.cir || {},
           label: shot.label || 'New Shot',
-          scriptBeat: shot.scriptBeat ?? inheritedBeat ?? 0,
+          scriptBeat: insertedBeat,
           isAIGenerated: shot.isAIGenerated || false,
           source: shot.source || 'canvas',
         }
-        shots.splice(afterShotIdx + 1, 0, newShot)
+        insertedIdx = Math.max(0, Math.min(afterShotIdx + 1, shots.length))
+        shots.splice(insertedIdx, 0, newShot)
         return { ...b, shots }
       })
-      return { ...s, branches }
+      return { ...s, branches, activeShot: insertedIdx }
     })
-    return { scenes }
+    return {
+      scenes,
+      strategies: syncStrategiesFromScenes(state, scenes),
+      activeShot: insertedIdx,
+      activeBeat: insertedBeat,
+    }
   }),
 
   flowSplitBranch: (branchIdx, atShotIdx) => set((state) => {
@@ -657,7 +873,7 @@ const useStore = create((set, get) => ({
       }
       return { ...s, branches: [...s.branches, newBranch] }
     })
-    return { scenes }
+    return { scenes, strategies: syncStrategiesFromScenes(state, scenes) }
   }),
 
   flowDeleteBranch: (branchIdx) => set((state) => {
@@ -674,7 +890,7 @@ const useStore = create((set, get) => ({
         activeBranch: Math.max(0, Math.min(s.activeBranch, branches.length - 1)),
       }
     })
-    return { scenes }
+    return { scenes, strategies: syncStrategiesFromScenes(state, scenes) }
   }),
 
   flowPromoteBranch: (branchIdx) => set((state) => {
@@ -683,7 +899,7 @@ const useStore = create((set, get) => ({
       const branches = s.branches.map((b, bi) => ({ ...b, isMain: bi === branchIdx }))
       return { ...s, branches }
     })
-    return { scenes }
+    return { scenes, strategies: syncStrategiesFromScenes(state, scenes) }
   }),
 
   flowDisconnectEdge: (branchIdx, afterShotIdx) => set((state) => {
@@ -706,7 +922,7 @@ const useStore = create((set, get) => ({
       })
       return { ...s, branches }
     })
-    return { scenes }
+    return { scenes, strategies: syncStrategiesFromScenes(state, scenes) }
   }),
 
   // --- New Layout System States ---
