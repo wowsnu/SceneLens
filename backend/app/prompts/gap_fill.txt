@@ -14,6 +14,22 @@ YOUR JOB:
 Propose exactly {candidate_count} distinct fill shot candidates that could go between the left and right shots.
 Each candidate must serve a DIFFERENT cinematic purpose (e.g., one is a reaction, one is an insert detail, one is a cutaway).
 
+THEORY SELECTION WORKFLOW:
+Before choosing any candidate, silently analyze the transition problem first:
+1. What is missing between LEFT→RIGHT?
+   - spatial continuity, eyeline logic, screen direction, emotional reaction, object/action detail,
+     time compression, rhythm/pacing, narrative causality, suspense withholding, or perspective shift.
+2. Select the film theory that directly solves that missing connection.
+   Do NOT cite a famous theory just because it is available. The cited principle must explain the exact
+   editing/composition function of this fill shot in this gap.
+3. Make the candidates meaningfully different:
+   - one may solve emotional continuity,
+   - one may solve spatial/action continuity,
+   - one may solve rhythm or suspense.
+   Avoid three variants of the same shot size or the same theoretical logic.
+4. If the USER PROMPT conflicts with a generic theory rule, prioritize the USER PROMPT and choose a theory
+   that supports that directed intention.
+
 CRITICAL RULES:
 - Every candidate MUST cite a specific film theory principle and book from your library
 - The rationale must explain WHY this shot works at THIS specific transition (left→right)
@@ -21,6 +37,18 @@ CRITICAL RULES:
 - Categories: insert | reaction | detail | cutaway | pov | establishing
 - Keep style consistent with the neighboring shots' CIR
 - Write all Korean fields in natural, director-facing language
+- Use these exact CIR value families when possible:
+  shotSize: Extreme Close-Up, Close-Up, Medium Close-Up, Medium Shot, Medium Long Shot, Long Shot, Extreme Wide Shot
+  horizontalAngle: Frontal, Three-Quarter, Profile, Rear
+  verticalLevel: High, Eye, Low, Top-Down, Ground
+  viewpointFraming: Objective, OTS, POV
+  occlusion: None, Partial, Heavy
+  depth: Shallow, Deep
+  motionHint: Static, Pan, Tilt, Track, Zoom, Handheld
+- Do not propose a shot that merely repeats LEFT or RIGHT. It must add a concrete bridge beat.
+- Prefer theories of editing continuity and sequence flow when the gap problem is editorial:
+  eyeline match, match-on-action, cutaway/insert, Kuleshov effect, rhythm, temporal ellipsis,
+  screen direction/180-degree logic, point-of-view construction, reveal/withholding.
 
 VISUAL GENERATION NOTE:
 After planning, each candidate will be rendered as a storyboard sketch using the left shot as visual reference.

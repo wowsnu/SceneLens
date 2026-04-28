@@ -1,6 +1,49 @@
 import { useState } from 'react'
 import useStore from '../store/useStore'
+import { requestGapFill } from '../services/api'
 import './GapFillPanel.css'
+
+function stripDataUrl(image) {
+  if (!image || typeof image !== 'string') return null
+  if (!image.startsWith('data:')) return null
+  if (!image.startsWith('data:image/png') && !image.startsWith('data:image/jpeg') && !image.startsWith('data:image/webp')) {
+    return null
+  }
+  return image.split(',', 2)[1] || null
+}
+
+function toApiShot(shot, fallbackLabel) {
+  return {
+    id: shot?.id || fallbackLabel,
+    label: shot?.label || fallbackLabel,
+    cir: shot?.cir || null,
+    image: stripDataUrl(shot?.image),
+    scriptBeat: shot?.scriptBeat ?? shot?.beat ?? 0,
+  }
+}
+
+function toImageSrc(image) {
+  if (!image) return null
+  if (image.startsWith('data:') || image.startsWith('/')) return image
+  return `data:image/png;base64,${image}`
+}
+
+function pickGapScript(screenplay, leftBeat, rightBeat) {
+  const fullScript = screenplay.map((line) => line.text).join('\n')
+  const beats = [leftBeat, rightBeat].filter((beat) => typeof beat === 'number')
+  if (beats.length === 0) return fullScript
+
+  const from = Math.min(...beats)
+  const to = Math.max(...beats)
+  const beatText = screenplay
+    .filter((line) => typeof line.beat === 'number' && line.beat >= from && line.beat <= to)
+    .map((line) => line.text)
+    .join('\n')
+
+  if (!beatText) return fullScript
+
+  return `[Focused gap beats ${from}-${to}]\n${beatText}\n\n[Full scene]\n${fullScript}`
+}
 
 // ── Ghost Cell — rendered inline in Grid/Card between shots ──────────────
 export function GapGhostCell({ gapKey }) {
@@ -9,31 +52,48 @@ export function GapGhostCell({ gapKey }) {
   const setGapFillStatus = useStore((s) => s.setGapFillStatus)
   const closeGapFill = useStore((s) => s.closeGapFill)
   const openGapFillPicker = useStore((s) => s.openGapFillPicker)
+  const scenes = useStore((s) => s.scenes)
+  const activeScene = useStore((s) => s.activeScene)
+  const screenplay = useStore((s) => s.screenplay)
+  const intent = useStore((s) => s.intent)
 
   const gap = gapFills[gapKey]
   if (!gap) return null
 
   const handleGenerate = async () => {
     setGapFillStatus(gapKey, 'loading')
-    // MOCK
-    await new Promise(r => setTimeout(r, 1200))
-    setGapFillStatus(gapKey, 'ready', MOCK_CANDIDATES())
-    // TODO: replace with real API
-    // import { requestGapFill } from '../services/api'
-    // const [branchIdxStr, afterIdxStr] = gapKey.split('-')
-    // const scene = useStore.getState().scenes[useStore.getState().activeScene]
-    // const branch = scene?.branches[+branchIdxStr]
-    // const shots = branch?.shots || []
-    // try {
-    //   const res = await requestGapFill({
-    //     leftShot: shots[+afterIdxStr], rightShot: shots[+afterIdxStr + 1],
-    //     scriptContext: scene?.scriptContext || '', intent: scene?.intent || '',
-    //     userPrompt: gap.userPrompt, candidateCount: 3,
-    //   })
-    //   setGapFillStatus(gapKey, 'ready', res.candidates)
-    // } catch (e) {
-    //   setGapFillStatus(gapKey, 'error')
-    // }
+
+    const scene = scenes[activeScene]
+    const branch = scene?.branches?.[gap.branchIdx]
+    const shots = branch?.shots || []
+    const leftShot = shots[gap.afterShotIdx]
+    const rightShot = shots[gap.afterShotIdx + 1]
+
+    if (!leftShot || !rightShot) {
+      setGapFillStatus(gapKey, 'error')
+      return
+    }
+
+    try {
+      const scriptContext = pickGapScript(
+        screenplay,
+        leftShot.scriptBeat ?? leftShot.beat,
+        rightShot.scriptBeat ?? rightShot.beat,
+      )
+      const res = await requestGapFill({
+        leftShot: toApiShot(leftShot, `Shot ${gap.afterShotIdx + 1}`),
+        rightShot: toApiShot(rightShot, `Shot ${gap.afterShotIdx + 2}`),
+        scriptContext,
+        intent: intent || '앞뒤 샷 사이의 편집 흐름을 자연스럽게 연결',
+        userPrompt: gap.userPrompt,
+        candidateCount: 3,
+      })
+      const candidates = res.candidates || []
+      setGapFillStatus(gapKey, candidates.length > 0 ? 'ready' : 'error', candidates)
+    } catch (e) {
+      console.error('[GapFill]', e)
+      setGapFillStatus(gapKey, 'error')
+    }
   }
 
   const handleCellClick = () => {
@@ -114,12 +174,13 @@ export function GapFillPicker() {
   const handleAccept = () => {
     if (selected === null) return
     const c = gap.candidates[selected]
+    const imageSrc = toImageSrc(c.image)
     insertShot(gap.branchIdx, gap.afterShotIdx, {
       id: c.id,
       label: c.label,
       cir: c.cir,
-      image: c.image || null,
-      scriptBeat: 0,
+      image: imageSrc,
+      scriptBeat: c.scriptBeat,
       isAIGenerated: true,
       source: 'ai_fill',
     })
@@ -152,7 +213,7 @@ export function GapFillPicker() {
             >
               <div className="gap-picker-frame">
                 {c.image
-                  ? <img src={`data:image/png;base64,${c.image}`} alt={c.label} />
+                  ? <img src={toImageSrc(c.image)} alt={c.label} />
                   : <div className="gap-picker-placeholder"><span>{CATEGORY_LABELS[c.category] || c.category}</span></div>
                 }
                 <span className="gap-picker-cat">{CATEGORY_LABELS[c.category] || c.category}</span>
@@ -189,40 +250,4 @@ export function GapFillPicker() {
       </div>
     </div>
   )
-}
-
-// ── Mock data ─────────────────────────────────────────────────────────────
-function MOCK_CANDIDATES() {
-  return [
-    {
-      id: `mock-${Date.now()}-1`,
-      label: 'Insert — 소품 디테일 클로즈업',
-      category: 'insert',
-      cir: { shotSize: 'Extreme Close-Up', horizontalAngle: 'Frontal', verticalLevel: 'Eye', viewpointFraming: 'Objective', occlusion: 'None', depth: 'Shallow', motionHint: 'Static' },
-      image: null,
-      rationale: '앞 샷의 공간을 구체화하는 소품 인서트. 관객의 시선을 한 점에 집중시키고 다음 샷의 감정 전환을 준비합니다. 컷의 리듬을 잠시 늦추는 효과가 있습니다.',
-      theory_source: "The Five C's of Cinematography — Insert shot technique",
-      flow_connection: '앞 샷의 공간감을 디테일로 구체화하고, 뒷 샷의 감정 전환을 위한 심리적 여백을 만듭니다.',
-    },
-    {
-      id: `mock-${Date.now()}-2`,
-      label: 'Reaction — 인물 반응 미디엄 클로즈업',
-      category: 'reaction',
-      cir: { shotSize: 'Medium Close-Up', horizontalAngle: 'Three-Quarter', verticalLevel: 'Eye', viewpointFraming: 'Objective', occlusion: 'None', depth: 'Shallow', motionHint: 'Static' },
-      image: null,
-      rationale: 'Kuleshov 효과를 활용해 앞 샷 자극에 대한 인물의 반응을 삽입합니다. 관객이 인물의 심리를 읽게 만들고 다음 행동에 동기를 부여합니다.',
-      theory_source: 'Kuleshov Effect — Montage and emotional juxtaposition',
-      flow_connection: '앞 샷의 사건을 인물이 어떻게 받아들이는지 보여주고 뒷 샷으로의 감정적 논리를 완성합니다.',
-    },
-    {
-      id: `mock-${Date.now()}-3`,
-      label: 'Cutaway — 외부 공간 와이드',
-      category: 'cutaway',
-      cir: { shotSize: 'Wide', horizontalAngle: 'Frontal', verticalLevel: 'Eye', viewpointFraming: 'Objective', occlusion: 'None', depth: 'Deep', motionHint: 'Static' },
-      image: null,
-      rationale: '씬 외부 공간을 잠깐 보여주며 시간 압축과 공간적 맥락을 제공합니다. 두 샷 사이의 리듬을 조절하고 긴장감을 환기시킵니다.',
-      theory_source: 'In the Blink of an Eye — Rhythm and temporal ellipsis',
-      flow_connection: '앞 샷의 시간적 연속성을 의도적으로 끊고 뒷 샷을 새로운 맥락 위에 놓는 효과를 만듭니다.',
-    },
-  ]
 }

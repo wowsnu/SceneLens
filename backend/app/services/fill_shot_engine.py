@@ -142,11 +142,15 @@ async def _render_candidate(
 
     if ref_image:
         try:
+            original_cir = reference_shot.cir.model_dump() if reference_shot.cir else None
+            if original_cir and cir.model_dump() == original_cir:
+                original_cir = None
+
             result = await reframe_sketch(
                 image_base64=ref_image,
                 cir=cir.model_dump(),
                 script_context=script_context,
-                original_cir=reference_shot.cir.model_dump() if reference_shot.cir else None,
+                original_cir=original_cir,
                 include_description=False,
                 model="gpt-image-1.5",
                 intent=render_intent,
