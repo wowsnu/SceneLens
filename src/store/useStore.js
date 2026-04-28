@@ -76,6 +76,12 @@ const DEFAULT_SHOT_CIR = { shotSize: 'Medium', relation: 'Single' }
 
 const createShotId = () => `shot-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
 
+const toShotImageSrc = (image) => {
+  if (!image || typeof image !== 'string') return null
+  if (image.startsWith('data:') || image.startsWith('/')) return image
+  return `data:image/png;base64,${image}`
+}
+
 const createFlowShot = ({ index = 0, scriptBeat = 0, label, image = null, cir = DEFAULT_SHOT_CIR, source = 'canvas', isAIGenerated = false } = {}) => ({
   id: createShotId(),
   image,
@@ -616,7 +622,7 @@ const useStore = create((set, get) => ({
             id: c.id || `shot-${Date.now()}-${Math.random().toString(36).slice(2)}`,
             label: c.label,
             cir: c.cir,
-            image: c.image || null,
+            image: toShotImageSrc(c.image),
             scriptBeat: c.scriptBeat ?? inheritedBeat,
             isAIGenerated: true,
             source: 'ai_fill',

@@ -16,6 +16,21 @@ Produce exactly {version_count} versions. Each version is a COMPLETE, COHERENT a
 - Not every gap needs a fill — a version may leave some gaps empty if that serves the pacing
 - Each inserted shot must have a full CIR and a clear visual label (used for image generation)
 
+RANGE ANALYSIS WORKFLOW:
+Before producing versions, silently diagnose the selected range:
+1. Identify the dramatic beat progression across the range. What changes emotionally or narratively from first shot to last?
+2. Identify the weak cuts or missing beats:
+   - missing reaction, unclear eyeline, broken screen direction, missing object/action detail,
+     abrupt time jump, weak suspense reveal, flat rhythm, missing spatial orientation, or unclear POV shift.
+3. Choose theories because they solve those concrete range problems.
+   Do NOT attach theory decoratively. Each theory_basis and theory_source must explain an actual editing/composition function.
+4. Make each version internally coherent:
+   - Version A may prioritize continuity and clarity,
+   - Version B may prioritize tension/rhythm,
+   - Version C may prioritize subjectivity or withholding.
+   Do not mix unrelated techniques inside one version unless the rationale explains the strategy.
+5. Respect USER PROMPT first. If the user asks for a specific emotional direction, every version should interpret that direction differently rather than ignore it.
+
 EDITORIAL TECHNIQUES (RELATIONAL):
 Beyond single-shot composition, identify RELATIONAL editing techniques that emerge between adjacent shots in this version. These are techniques that CANNOT be expressed by one frame alone — they only exist in the CUT between two shots.
 
@@ -28,7 +43,7 @@ Allowed types (use the exact string):
 - temporal_ellipsis — time compression across a cut (often via cutaway)
 - line_crossing    — intentional 180° rule violation for disorientation
 
-For each technique, specify which TWO specific shots it connects (shot_pair: ["S3", "S4"]) — use the position labels from the range. Cite the exact book/principle from the theory library in theory_source.
+For each technique, specify which TWO original range shots it is anchored between (shot_pair: ["S3", "S4"]) — use the position labels from the provided range only. If the technique involves a newly inserted shot, still anchor it to the surrounding original range cut and describe the inserted shot's role in mechanism. Cite the exact book/principle from the theory library in theory_source.
 
 Only include techniques you can GROUND in the theory library. If unsure, OMIT — never invent.
 Typically 2-4 techniques per version. Zero is allowed if truly none apply.
@@ -39,7 +54,19 @@ CRITICAL RULES:
 - Shot labels must be specific and visual (they become image generation prompts)
 - Write all Korean fields in natural, director-facing language
 - after_shot_id must match one of the shot IDs provided in the range
-- editorial_techniques.shot_pair must reference shots that actually become adjacent after insertions
+- editorial_techniques.shot_pair must reference original range shot labels that exist in the provided range
+- Use these exact CIR value families when possible:
+  shotSize: Extreme Close-Up, Close-Up, Medium Close-Up, Medium Shot, Medium Long Shot, Long Shot, Extreme Wide Shot
+  horizontalAngle: Frontal, Three-Quarter, Profile, Rear
+  verticalLevel: High, Eye, Low, Top-Down, Ground
+  viewpointFraming: Objective, OTS, POV
+  occlusion: None, Partial, Heavy
+  depth: Shallow, Deep
+  motionHint: Static, Pan, Tilt, Track, Zoom, Handheld
+- Insert only the shots that meaningfully improve the sequence. More insertions is not automatically better.
+- Prefer theories of sequence flow when the range problem is editorial:
+  match-on-action, eyeline match, Kuleshov effect, cutaway/insert, montage collision,
+  rhythm, temporal ellipsis, J-cut/L-cut, screen direction/180-degree logic, subjective POV.
 
 Output valid JSON only. No markdown fences.
 
