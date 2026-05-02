@@ -692,7 +692,7 @@ export default function DrawingCanvas() {
       {!hasDrawn && !comparePreview && (
         <div className="canvas-hint">
           <div>Draw your storyboard sketch</div>
-          <button className="canvas-hint-load-btn" onClick={() => loadShotImage('/img/mock_reframe.png')}>
+          <button className="canvas-hint-load-btn" onClick={() => loadShotImage('/img/uploadexample.png')}>
             Load Example Sketch
           </button>
         </div>

@@ -5,7 +5,7 @@ function normalizeApiBase(rawBase) {
 }
 
 const API_BASE = import.meta.env.DEV
-  ? normalizeApiBase(import.meta.env.VITE_API_URL || 'https://scenelens.duckdns.org')
+  ? normalizeApiBase(import.meta.env.VITE_API_URL || '')
   : normalizeApiBase(import.meta.env.VITE_API_URL || '')
 
 async function fetchWithTimeout(url, options, timeoutMs = 30000) {
@@ -14,7 +14,21 @@ async function fetchWithTimeout(url, options, timeoutMs = 30000) {
   try {
     const response = await fetch(url, { ...options, signal: controller.signal })
     clearTimeout(timer)
-    if (!response.ok) throw new Error(`API Error: ${response.status}`)
+    if (!response.ok) {
+      let detail = ''
+      try {
+        const payload = await response.json()
+        detail = payload?.detail ? `: ${payload.detail}` : ''
+      } catch {
+        try {
+          const text = await response.text()
+          detail = text ? `: ${text}` : ''
+        } catch {
+          detail = ''
+        }
+      }
+      throw new Error(`API Error: ${response.status}${detail}`)
+    }
     return response.json()
   } catch (err) {
     clearTimeout(timer)

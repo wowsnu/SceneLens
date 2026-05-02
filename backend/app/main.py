@@ -1,10 +1,11 @@
 import asyncio
+import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 from contextlib import asynccontextmanager
 
-from app.routes import sketch, strategy, overlay, image_gen, fill_shot
+from app.routes import sketch, strategy, overlay, image_gen, fill_shot, segment
 from app.services.strategy_engine import warmup_theory_cache
 
 load_dotenv()
@@ -13,9 +14,17 @@ load_dotenv()
 async def lifespan(app: FastAPI):
     # Startup: Warmup the theory cache
     print("[Main] Starting up... Warming up theory cache.")
-    # Run warmup in a separate thread if it's blocking, 
+    # Run warmup in a separate thread if it's blocking,
     # but here we can just call it since it's initial setup.
     warmup_theory_cache()
+
+    if os.getenv("SEGMENT_WARMUP", "1") != "0":
+        try:
+            from app.services.segmenter import Segmenter
+            Segmenter.get()
+        except Exception as e:
+            print(f"[Main] Segmenter warmup failed (will lazy-load on first request): {e}")
+
     yield
     # Shutdown: Clean up if needed
     print("[Main] Shutting down...")
@@ -34,8 +43,12 @@ app.add_middleware(
         "http://localhost:5173",
         "http://localhost:5174",
         "http://localhost:5175",
+        "http://127.0.0.1:5173",
+        "http://127.0.0.1:5174",
+        "http://127.0.0.1:5175",
+        *[origin.strip() for origin in os.getenv("CORS_ORIGINS", "").split(",") if origin.strip()],
     ],
-    allow_origin_regex=r"https://.*\.vercel\.app",
+    allow_origin_regex=r"https://.*\.vercel\.app|http://.*:517[3-5]",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -55,6 +68,7 @@ app.include_router(strategy.router, prefix="/api")
 app.include_router(overlay.router, prefix="/api")
 app.include_router(image_gen.router, prefix="/api")
 app.include_router(fill_shot.router, prefix="/api")
+app.include_router(segment.router, prefix="/api")
 
 if __name__ == "__main__":
     import uvicorn

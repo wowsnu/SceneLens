@@ -5,3 +5,12 @@ python-dotenv
 pillow
 openai
 httpx
+
+# Segmentation (MobileSAM)
+# NOTE: torch / torchvision must be installed separately with the right CUDA build:
+#   pip install torch torchvision --index-url https://download.pytorch.org/whl/cu121
+numpy
+opencv-python
+timm
+cairosvg
+mobile_sam @ git+https://github.com/ChaoningZhang/MobileSAM.git

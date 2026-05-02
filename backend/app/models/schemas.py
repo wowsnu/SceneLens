@@ -171,6 +171,28 @@ class VectorizeResponse(BaseModel):
     svg: str  # SVG string
 
 
+# ── Segmentation (MobileSAM) ──────────────────────────────────
+
+class SegmentRequest(BaseModel):
+    image: str                              # base64 (PNG bytes, or raw SVG bytes)
+    type: Literal["png", "svg"] = "png"
+    min_area: Optional[int] = 0             # filter out masks smaller than this (px²)
+    max_count: Optional[int] = None         # cap number of masks (largest first)
+    target_width: Optional[int] = 1024      # only used when type == "svg"
+
+class SegmentMask(BaseModel):
+    id: str                                 # "obj_0", "obj_1", ...
+    bbox: List[int]                         # [x, y, w, h]
+    area: int                               # pixel count
+    score: Optional[float] = None           # SAM stability/iou score if present
+    mask_png: str                           # base64-encoded 1-bit PNG, same size as image
+
+class SegmentResponse(BaseModel):
+    image_size: List[int]                   # [width, height]
+    masks: List[SegmentMask]
+    elapsed_ms: int
+
+
 # ── Fill Shot (Gap Fill & Auto-fill Range) ────────────────────
 
 class SequenceShot(BaseModel):
