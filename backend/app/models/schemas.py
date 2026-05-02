@@ -187,12 +187,17 @@ class SegmentPointRequest(BaseModel):
     session_id: str
     x: int
     y: int
+    max_area_ratio: Optional[float] = 0.5   # drop masks larger than this fraction of the frame
+    use_corner_negatives: Optional[bool] = True
 
-class SegmentPointResponse(BaseModel):
+class SegmentCandidate(BaseModel):
     bbox: List[int]                         # [x, y, w, h]
     area: int
     score: float
-    mask_png: str                           # base64-encoded 1-bit PNG, same size as prepared image
+    mask_png: str                           # 1-bit PNG, same size as prepared image (base64)
+
+class SegmentPointResponse(BaseModel):
+    candidates: List[SegmentCandidate]      # ordered by score desc, up to 3
     elapsed_ms: int
 
 

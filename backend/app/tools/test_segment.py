@@ -79,19 +79,23 @@ def main() -> int:
         t0 = time.time()
         result = seg.point_segment(sid, x, y)
         elapsed = time.time() - t0
-        mask = result["segmentation"]
-        score = result["score"]
-        bbox = bbox_xywh(mask)
-        area = int(mask.sum())
-        print(f"[test] click {i} ({x},{y}) → score={score:.3f} bbox={bbox} area={area} elapsed={elapsed:.2f}s")
+        cands = result["candidates"]
+        scores_str = ",".join(f"{c['score']:.3f}" for c in cands)
+        print(f"[test] click {i} ({x},{y}) → n={len(cands)} scores=[{scores_str}] elapsed={elapsed:.2f}s")
 
-        Image.fromarray(overlay_mask(image, mask, click_xy=(x, y))).save(
-            out_dir / f"click_{i:02d}_{x}_{y}.png"
-        )
-        Image.fromarray((mask.astype(np.uint8) * 255), mode="L").save(
-            out_dir / f"mask_{i:02d}_{x}_{y}.png"
-        )
-        lines.append(f"click_{i} ({x},{y})  bbox={bbox}  area={area}  score={score:.3f}  elapsed={elapsed:.2f}s")
+        for j, c in enumerate(cands):
+            mask = c["segmentation"]
+            bbox = bbox_xywh(mask)
+            area = c["area"]
+            score = c["score"]
+            Image.fromarray(overlay_mask(image, mask, click_xy=(x, y))).save(
+                out_dir / f"click_{i:02d}_{x}_{y}_cand{j}.png"
+            )
+            Image.fromarray((mask.astype(np.uint8) * 255), mode="L").save(
+                out_dir / f"mask_{i:02d}_{x}_{y}_cand{j}.png"
+            )
+            lines.append(f"click_{i} cand{j} ({x},{y})  bbox={bbox}  area={area}  score={score:.3f}")
+        lines.append("")
 
     (out_dir / "summary.txt").write_text("\n".join(lines))
     print(f"[test] wrote results to {out_dir.resolve()}")

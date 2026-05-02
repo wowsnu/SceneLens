@@ -128,25 +128,59 @@ class Segmenter:
 
     # ── Click segmentation ───────────────────────────────────────
 
-    def point_segment(self, session_id: str, x: int, y: int) -> dict:
-        """Segment the object at (x, y) for a previously-prepared session."""
+    def point_segment(self, session_id: str, x: int, y: int,
+                      max_area_ratio: float = 0.5,
+                      use_corner_negatives: bool = True) -> dict:
+        """Segment the object at (x, y) for a previously-prepared session.
+
+        Returns up to 3 candidate masks (largest-score-first) after filtering out
+        "background-like" masks that cover more than max_area_ratio of the frame.
+
+        - use_corner_negatives: feed image corners as negative points so SAM is
+          discouraged from returning the whole-frame background mask.
+        """
         sess = self._touch(session_id)
 
-        # Embed image only when session changes (heavy step ~0.3-0.5s on TITAN RTX)
         if self._current_sid != session_id:
             self.predictor.set_image(sess.image)
             self._current_sid = session_id
 
+        H, W = sess.image.shape[:2]
+        total = H * W
+
+        coords = [[x, y]]
+        labels = [1]
+        if use_corner_negatives:
+            inset = 8
+            coords += [[inset, inset], [W - inset - 1, inset],
+                       [inset, H - inset - 1], [W - inset - 1, H - inset - 1]]
+            labels += [0, 0, 0, 0]
+
         masks, scores, _ = self.predictor.predict(
-            point_coords=np.array([[x, y]]),
-            point_labels=np.array([1]),
+            point_coords=np.array(coords),
+            point_labels=np.array(labels),
             multimask_output=True,
         )
-        best = int(np.argmax(scores))
-        return {
-            "segmentation": masks[best].astype(bool),
-            "score": float(scores[best]),
-        }
+
+        candidates = []
+        for m, s in zip(masks, scores):
+            seg = m.astype(bool)
+            area = int(seg.sum())
+            if area == 0:
+                continue
+            if area / total > max_area_ratio:
+                continue
+            candidates.append({"segmentation": seg, "score": float(s), "area": area})
+
+        # Fallback: if filtering removed everything, return the smallest of the raw 3.
+        if not candidates:
+            best_i = int(np.argmin([m.sum() for m in masks]))
+            seg = masks[best_i].astype(bool)
+            candidates = [{"segmentation": seg, "score": float(scores[best_i]),
+                           "area": int(seg.sum())}]
+
+        candidates.sort(key=lambda c: c["score"], reverse=True)
+        return {"candidates": candidates}
 
 
 # ── Mask encoding ────────────────────────────────────────────────
