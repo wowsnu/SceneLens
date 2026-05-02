@@ -171,25 +171,28 @@ class VectorizeResponse(BaseModel):
     svg: str  # SVG string
 
 
-# ── Segmentation (MobileSAM) ──────────────────────────────────
+# ── Segmentation (MobileSAM, click-based) ─────────────────────
 
-class SegmentRequest(BaseModel):
+class SegmentPrepareRequest(BaseModel):
     image: str                              # base64 (PNG bytes, or raw SVG bytes)
     type: Literal["png", "svg"] = "png"
-    min_area: Optional[int] = 0             # filter out masks smaller than this (px²)
-    max_count: Optional[int] = None         # cap number of masks (largest first)
-    target_width: Optional[int] = 1024      # only used when type == "svg"
+    target_width: Optional[int] = 1024      # used only when type == "svg"
 
-class SegmentMask(BaseModel):
-    id: str                                 # "obj_0", "obj_1", ...
-    bbox: List[int]                         # [x, y, w, h]
-    area: int                               # pixel count
-    score: Optional[float] = None           # SAM stability/iou score if present
-    mask_png: str                           # base64-encoded 1-bit PNG, same size as image
-
-class SegmentResponse(BaseModel):
+class SegmentPrepareResponse(BaseModel):
+    session_id: str
     image_size: List[int]                   # [width, height]
-    masks: List[SegmentMask]
+    elapsed_ms: int
+
+class SegmentPointRequest(BaseModel):
+    session_id: str
+    x: int
+    y: int
+
+class SegmentPointResponse(BaseModel):
+    bbox: List[int]                         # [x, y, w, h]
+    area: int
+    score: float
+    mask_png: str                           # base64-encoded 1-bit PNG, same size as prepared image
     elapsed_ms: int
 
 

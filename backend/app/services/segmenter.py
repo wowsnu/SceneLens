@@ -1,6 +1,10 @@
-"""MobileSAM-based segmentation service.
+"""MobileSAM-based click segmentation service.
 
-Loads the model once on GPU at startup and exposes auto / point segmentation.
+Loads the model once on GPU at startup and exposes a session-based click API:
+  - prepare(image)         → embeds the image, returns session_id
+  - point_segment(sid,x,y) → runs the predictor with the cached embedding
+
+Session cache: LRU + TTL (max 5 entries, 30 min idle expiry).
 Mask outputs are encoded as 1-bit PNGs (base64) for compact transport.
 """
 
@@ -9,6 +13,8 @@ import io
 import os
 import threading
 import time
+import uuid
+from collections import OrderedDict
 from typing import Literal, Optional
 
 import numpy as np
@@ -20,6 +26,18 @@ _DEFAULT_CKPT = os.path.join(
     "mobile_sam.pt",
 )
 
+_MAX_SESSIONS = 5
+_SESSION_TTL_SEC = 30 * 60
+
+
+class _Session:
+    __slots__ = ("image", "size", "last_used")
+
+    def __init__(self, image: np.ndarray):
+        self.image = image
+        self.size = (image.shape[1], image.shape[0])  # (w, h)
+        self.last_used = time.time()
+
 
 class Segmenter:
     _instance: Optional["Segmenter"] = None
@@ -27,7 +45,7 @@ class Segmenter:
 
     def __init__(self, checkpoint: str = _DEFAULT_CKPT, device: str = "cuda"):
         import torch
-        from mobile_sam import SamAutomaticMaskGenerator, SamPredictor, sam_model_registry
+        from mobile_sam import SamPredictor, sam_model_registry
 
         if device == "cuda" and not torch.cuda.is_available():
             print("[Segmenter] CUDA not available, falling back to CPU (will be slow)")
@@ -42,7 +60,9 @@ class Segmenter:
         self.device = device
         self.sam = sam
         self.predictor = SamPredictor(sam)
-        self.auto_generator = SamAutomaticMaskGenerator(sam)
+        self._sessions: "OrderedDict[str, _Session]" = OrderedDict()
+        self._sessions_lock = threading.Lock()
+        self._current_sid: Optional[str] = None  # which session's embedding lives in predictor
         print(f"[Segmenter] Ready in {time.time() - t0:.2f}s")
 
     @classmethod
@@ -68,22 +88,55 @@ class Segmenter:
             img = Image.open(io.BytesIO(raw)).convert("RGB")
         return np.array(img)
 
-    # ── Segmentation ─────────────────────────────────────────────
+    # ── Sessions ─────────────────────────────────────────────────
 
-    def auto_segment(self, image: np.ndarray, min_area: int = 0,
-                     max_count: Optional[int] = None) -> list[dict]:
-        """Run automatic mask generation. Returns SAM-style mask dicts (segmentation + bbox + area)."""
-        masks = self.auto_generator.generate(image)
-        if min_area > 0:
-            masks = [m for m in masks if m["area"] >= min_area]
-        masks.sort(key=lambda m: m["area"], reverse=True)
-        if max_count is not None:
-            masks = masks[:max_count]
-        return masks
+    def _gc_expired(self) -> None:
+        now = time.time()
+        expired = [sid for sid, s in self._sessions.items()
+                   if now - s.last_used > _SESSION_TTL_SEC]
+        for sid in expired:
+            self._sessions.pop(sid, None)
+            if self._current_sid == sid:
+                self._current_sid = None
 
-    def point_segment(self, image: np.ndarray, x: int, y: int) -> dict:
-        """Segment the object at (x, y). Returns the highest-scoring mask."""
-        self.predictor.set_image(image)
+    def prepare(self, image: np.ndarray) -> tuple[str, tuple[int, int]]:
+        """Register an image and return (session_id, (width, height)).
+
+        The actual embedding (predictor.set_image) is deferred to the first
+        point_segment call so that a prepare without follow-up doesn't waste GPU.
+        """
+        sid = uuid.uuid4().hex
+        with self._sessions_lock:
+            self._gc_expired()
+            self._sessions[sid] = _Session(image)
+            self._sessions.move_to_end(sid)
+            while len(self._sessions) > _MAX_SESSIONS:
+                evicted_sid, _ = self._sessions.popitem(last=False)
+                if self._current_sid == evicted_sid:
+                    self._current_sid = None
+        return sid, (image.shape[1], image.shape[0])
+
+    def _touch(self, sid: str) -> _Session:
+        with self._sessions_lock:
+            self._gc_expired()
+            sess = self._sessions.get(sid)
+            if sess is None:
+                raise KeyError(f"unknown or expired session_id: {sid}")
+            sess.last_used = time.time()
+            self._sessions.move_to_end(sid)
+            return sess
+
+    # ── Click segmentation ───────────────────────────────────────
+
+    def point_segment(self, session_id: str, x: int, y: int) -> dict:
+        """Segment the object at (x, y) for a previously-prepared session."""
+        sess = self._touch(session_id)
+
+        # Embed image only when session changes (heavy step ~0.3-0.5s on TITAN RTX)
+        if self._current_sid != session_id:
+            self.predictor.set_image(sess.image)
+            self._current_sid = session_id
+
         masks, scores, _ = self.predictor.predict(
             point_coords=np.array([[x, y]]),
             point_labels=np.array([1]),
