@@ -46,6 +46,14 @@ const IconClear = () => (
     <path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/>
   </svg>
 )
+const IconSegment = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="3" y="3" width="7" height="7"/>
+    <rect x="14" y="3" width="7" height="7"/>
+    <rect x="14" y="14" width="7" height="7"/>
+    <rect x="3" y="14" width="7" height="7"/>
+  </svg>
+)
 
 const ICONS = { pencil: IconPencil, marker: IconMarker, charcoal: IconCharcoal }
 
@@ -112,6 +120,14 @@ export default function DrawingToolbar({ children }) {
         >
           <IconErase />
           <span>Erase</span>
+        </button>
+        <button
+          className={`drawing-tool-btn ${drawingTool === 'segment' ? 'active' : ''}`}
+          onClick={() => setDrawingTool('segment')}
+          title="Drag a box around an object to lift it off the canvas"
+        >
+          <IconSegment />
+          <span>Segment</span>
         </button>
       </div>
 

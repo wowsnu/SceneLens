@@ -1,0 +1,52 @@
+.segment-cutout {
+  position: absolute;
+  cursor: move;
+  outline: 2px dashed rgba(59, 130, 246, 0.85);
+  outline-offset: 1px;
+  user-select: none;
+  touch-action: none;
+  z-index: 30;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.18);
+}
+
+.segment-cutout-handle {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  background: #fff;
+  border: 2px solid rgba(59, 130, 246, 0.95);
+  border-radius: 2px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
+}
+.segment-cutout-handle--nw { top: -7px; left: -7px; cursor: nwse-resize; }
+.segment-cutout-handle--ne { top: -7px; right: -7px; cursor: nesw-resize; }
+.segment-cutout-handle--sw { bottom: -7px; left: -7px; cursor: nesw-resize; }
+.segment-cutout-handle--se { bottom: -7px; right: -7px; cursor: nwse-resize; }
+
+.segment-cutout-actions {
+  position: absolute;
+  top: -38px;
+  right: 0;
+  display: flex;
+  gap: 6px;
+  z-index: 31;
+}
+
+.segment-cutout-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 700;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+}
+.segment-cutout-btn--confirm { background: #16a34a; }
+.segment-cutout-btn--confirm:hover { background: #15803d; }
+.segment-cutout-btn--cancel { background: #dc2626; }
+.segment-cutout-btn--cancel:hover { background: #b91c1c; }

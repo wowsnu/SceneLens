@@ -172,3 +172,21 @@ export async function requestAutoFillRange({ shots, scriptContext, intent, userP
     }),
   }, FILL_TIMEOUT)
 }
+
+// ── Segmentation (MobileSAM, click-based) ────────────────────
+
+export async function segmentPrepare(imageBase64, type = 'png') {
+  return fetchWithTimeout(`${API_BASE}/segment/prepare`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ image: imageBase64, type }),
+  }, 30000)
+}
+
+export async function segmentBox(sessionId, x1, y1, x2, y2, multimask = false) {
+  return fetchWithTimeout(`${API_BASE}/segment/box`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ session_id: sessionId, x1, y1, x2, y2, multimask }),
+  }, 15000)
+}

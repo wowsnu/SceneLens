@@ -3,6 +3,8 @@ import time
 from fastapi import APIRouter, HTTPException
 
 from app.models.schemas import (
+    SegmentBoxRequest,
+    SegmentBoxResponse,
     SegmentCandidate,
     SegmentPointRequest,
     SegmentPointResponse,
@@ -65,4 +67,39 @@ async def segment_point(request: SegmentPointRequest):
     except Exception as e:
         elapsed_ms = int((time.time() - t0) * 1000)
         print(f"[segment/point] ERROR elapsed={elapsed_ms}ms error={e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/segment/box", response_model=SegmentBoxResponse)
+async def segment_box(request: SegmentBoxRequest):
+    t0 = time.time()
+    try:
+        segmenter = Segmenter.get()
+        result = segmenter.box_segment(
+            request.session_id,
+            request.x1, request.y1, request.x2, request.y2,
+            multimask=bool(request.multimask),
+        )
+
+        candidates_out = [
+            SegmentCandidate(
+                bbox=bbox_xywh(c["segmentation"]),
+                area=c["area"],
+                score=c["score"],
+                mask_png=encode_mask_png_b64(c["segmentation"]),
+            )
+            for c in result["candidates"]
+        ]
+
+        elapsed_ms = int((time.time() - t0) * 1000)
+        scores_str = ",".join(f"{c.score:.2f}" for c in candidates_out)
+        print(f"[segment/box] sid={request.session_id[:8]} "
+              f"box=({request.x1},{request.y1},{request.x2},{request.y2}) "
+              f"n={len(candidates_out)} scores=[{scores_str}] elapsed={elapsed_ms}ms")
+        return SegmentBoxResponse(candidates=candidates_out, elapsed_ms=elapsed_ms)
+    except KeyError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        elapsed_ms = int((time.time() - t0) * 1000)
+        print(f"[segment/box] ERROR elapsed={elapsed_ms}ms error={e}")
         raise HTTPException(status_code=500, detail=str(e))

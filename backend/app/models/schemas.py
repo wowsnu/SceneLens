@@ -200,6 +200,18 @@ class SegmentPointResponse(BaseModel):
     candidates: List[SegmentCandidate]      # ordered by score desc, up to 3
     elapsed_ms: int
 
+class SegmentBoxRequest(BaseModel):
+    session_id: str
+    x1: int
+    y1: int
+    x2: int
+    y2: int
+    multimask: Optional[bool] = False       # True → up to 3 candidates, False → 1
+
+class SegmentBoxResponse(BaseModel):
+    candidates: List[SegmentCandidate]
+    elapsed_ms: int
+
 
 # ── Fill Shot (Gap Fill & Auto-fill Range) ────────────────────
 

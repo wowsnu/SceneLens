@@ -182,6 +182,39 @@ class Segmenter:
         candidates.sort(key=lambda c: c["score"], reverse=True)
         return {"candidates": candidates}
 
+    def box_segment(self, session_id: str, x1: int, y1: int, x2: int, y2: int,
+                    multimask: bool = False) -> dict:
+        """Segment using a bounding box prompt. Returns up to 3 candidates if multimask else 1."""
+        sess = self._touch(session_id)
+
+        if self._current_sid != session_id:
+            self.predictor.set_image(sess.image)
+            self._current_sid = session_id
+
+        H, W = sess.image.shape[:2]
+        x1c, x2c = sorted((max(0, min(W - 1, x1)), max(0, min(W - 1, x2))))
+        y1c, y2c = sorted((max(0, min(H - 1, y1)), max(0, min(H - 1, y2))))
+
+        masks, scores, _ = self.predictor.predict(
+            box=np.array([x1c, y1c, x2c, y2c]),
+            multimask_output=multimask,
+        )
+
+        candidates = []
+        for m, s in zip(masks, scores):
+            seg = m.astype(bool)
+            area = int(seg.sum())
+            if area == 0:
+                continue
+            candidates.append({"segmentation": seg, "score": float(s), "area": area})
+
+        if not candidates:
+            seg = masks[0].astype(bool)
+            candidates = [{"segmentation": seg, "score": float(scores[0]), "area": int(seg.sum())}]
+
+        candidates.sort(key=lambda c: c["score"], reverse=True)
+        return {"candidates": candidates}
+
 
 # ── Mask encoding ────────────────────────────────────────────────
 

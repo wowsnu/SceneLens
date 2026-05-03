@@ -1,7 +1,17 @@
 import { useRef, useEffect, useCallback, useState } from 'react'
 import useStore from '../store/useStore'
-import { enhanceSketch } from '../services/api'
+import { enhanceSketch, segmentBox, segmentPrepare } from '../services/api'
+import SegmentCutout from './SegmentCutout'
 import './DrawingCanvas.css'
+
+function loadImage(src) {
+  return new Promise((resolve, reject) => {
+    const img = new Image()
+    img.onload = () => resolve(img)
+    img.onerror = reject
+    img.src = src
+  })
+}
 
 export default function DrawingCanvas() {
   const canvasRef = useRef(null)
@@ -39,6 +49,18 @@ export default function DrawingCanvas() {
   const screenplay = useStore((s) => s.screenplay)
   const setComparePreview = useStore((s) => s.setComparePreview)
   const clearComparePreview = useStore((s) => s.clearComparePreview)
+
+  // ── Segmentation state ─────────────────────────────────────
+  const segmentSession = useStore((s) => s.segmentSession)
+  const setSegmentSession = useStore((s) => s.setSegmentSession)
+  const segmentStatus = useStore((s) => s.segmentStatus)
+  const setSegmentStatus = useStore((s) => s.setSegmentStatus)
+  const activeCutout = useStore((s) => s.activeCutout)
+  const setActiveCutout = useStore((s) => s.setActiveCutout)
+  const clearSegmentSession = useStore((s) => s.clearSegmentSession)
+  // Live box currently being dragged on the overlay
+  const segmentBoxRef = useRef(null) // { sx, sy, ex, ey } in css px
+  const isBoxDragging = useRef(false)
 
   // Get current shot image
   const getCurrentShotImage = useCallback(() => {
@@ -306,7 +328,291 @@ export default function DrawingCanvas() {
     }
   }
 
+  // ── Segmentation helpers ──────────────────────────────────
+
+  // Re-prepare a server-side session for the current canvas image.
+  // Lazy: called when entering segment mode or after the canvas changes.
+  const ensureSegmentSession = useCallback(async () => {
+    const canvas = canvasRef.current
+    if (!canvas) return null
+    const dataUrl = canvas.toDataURL('image/png')
+    if (segmentSession && segmentSession.sourceDataUrl === dataUrl) {
+      return segmentSession
+    }
+    setSegmentStatus('preparing')
+    try {
+      const b64 = dataUrl.split(',')[1]
+      const res = await segmentPrepare(b64, 'png')
+      const sess = {
+        id: res.session_id,
+        imageWidth: res.image_size[0],
+        imageHeight: res.image_size[1],
+        sourceDataUrl: dataUrl,
+      }
+      setSegmentSession(sess)
+      setSegmentStatus('ready')
+      return sess
+    } catch (err) {
+      console.error('[segment] prepare failed', err)
+      setSegmentStatus('error')
+      return null
+    }
+  }, [segmentSession, setSegmentSession, setSegmentStatus])
+
+  // Auto-prepare when entering segment mode
+  useEffect(() => {
+    if (drawingTool !== 'segment') return
+    if (segmentStatus === 'preparing' || activeCutout) return
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const dataUrl = canvas.toDataURL('image/png')
+    if (segmentSession && segmentSession.sourceDataUrl === dataUrl) return
+    ensureSegmentSession()
+  }, [drawingTool, segmentSession, segmentStatus, activeCutout, ensureSegmentSession])
+
+  // Drop the cached server session if we leave segment mode without an active cutout
+  useEffect(() => {
+    if (drawingTool !== 'segment' && !activeCutout && segmentSession) {
+      // keep session alive briefly; cheap to drop, but server has a 30min TTL anyway
+    }
+  }, [drawingTool, activeCutout, segmentSession])
+
+  // Draw the live box prompt on the overlay canvas
+  const drawSegmentBox = useCallback(() => {
+    const overlay = overlayRef.current
+    if (!overlay) return
+    const ctx = overlay.getContext('2d')
+    const dpr = window.devicePixelRatio || 1
+    const w = overlay.width / dpr
+    const h = overlay.height / dpr
+
+    // Repaint guides first (drawOverlays handles thirds/eyeline) then box on top
+    ctx.clearRect(0, 0, w, h)
+    drawOverlays()
+
+    const b = segmentBoxRef.current
+    if (!b) return
+    const x = Math.min(b.sx, b.ex)
+    const y = Math.min(b.sy, b.ey)
+    const bw = Math.abs(b.ex - b.sx)
+    const bh = Math.abs(b.ey - b.sy)
+    ctx.save()
+    ctx.fillStyle = 'rgba(59, 130, 246, 0.12)'
+    ctx.fillRect(x, y, bw, bh)
+    ctx.strokeStyle = 'rgba(37, 99, 235, 0.95)'
+    ctx.lineWidth = 1.5
+    ctx.setLineDash([6, 4])
+    ctx.strokeRect(x, y, bw, bh)
+    ctx.setLineDash([])
+    ctx.restore()
+  }, [drawOverlays])
+
+  // Convert mask PNG (any size) + canvas content into a cutout RGBA dataURL
+  // and the original-patch dataURL (for restore on cancel). Also clears the
+  // canvas under the mask so the cutout looks lifted off.
+  const performBoxSegment = useCallback(async (cssBox) => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const dpr = window.devicePixelRatio || 1
+    const cssW = canvas.width / dpr
+    const cssH = canvas.height / dpr
+
+    const sess = await ensureSegmentSession()
+    if (!sess) return
+
+    // CSS -> server image coordinates
+    const sxRatio = sess.imageWidth / cssW
+    const syRatio = sess.imageHeight / cssH
+
+    const x1c = Math.max(0, Math.min(cssBox.sx, cssBox.ex))
+    const y1c = Math.max(0, Math.min(cssBox.sy, cssBox.ey))
+    const x2c = Math.min(cssW, Math.max(cssBox.sx, cssBox.ex))
+    const y2c = Math.min(cssH, Math.max(cssBox.sy, cssBox.ey))
+
+    if (x2c - x1c < 5 || y2c - y1c < 5) return
+
+    const x1s = Math.round(x1c * sxRatio)
+    const y1s = Math.round(y1c * syRatio)
+    const x2s = Math.round(x2c * sxRatio)
+    const y2s = Math.round(y2c * syRatio)
+
+    setSegmentStatus('segmenting')
+    let res
+    try {
+      res = await segmentBox(sess.id, x1s, y1s, x2s, y2s, false)
+    } catch (err) {
+      console.error('[segment] box failed', err)
+      setSegmentStatus('ready')
+      return
+    }
+    if (!res?.candidates?.length) {
+      setSegmentStatus('ready')
+      return
+    }
+    const top = res.candidates[0]
+
+    // Decode the mask PNG (server-image coordinates)
+    const maskImg = await loadImage(`data:image/png;base64,${top.mask_png}`)
+
+    // Build a tight-bbox RGBA cutout in canvas (device px) space
+    const bb = top.bbox // [x, y, w, h] in server image coords
+    const sxRatioInv = cssW / sess.imageWidth
+    const syRatioInv = cssH / sess.imageHeight
+
+    const cssBoxX = bb[0] * sxRatioInv
+    const cssBoxY = bb[1] * sxRatioInv  // square-ish image, but use individual ratios
+    const cssBoxW = bb[2] * sxRatioInv
+    const cssBoxH = bb[3] * syRatioInv
+
+    // Use precise per-axis css
+    const cutCssX = bb[0] * (cssW / sess.imageWidth)
+    const cutCssY = bb[1] * (cssH / sess.imageHeight)
+    const cutCssW = bb[2] * (cssW / sess.imageWidth)
+    const cutCssH = bb[3] * (cssH / sess.imageHeight)
+
+    // Render at device pixel resolution for crispness
+    const cutDevW = Math.max(1, Math.round(cutCssW * dpr))
+    const cutDevH = Math.max(1, Math.round(cutCssH * dpr))
+
+    // 1) Build an RGBA cutout (canvas patch * mask alpha)
+    const cutoutCanvas = document.createElement('canvas')
+    cutoutCanvas.width = cutDevW
+    cutoutCanvas.height = cutDevH
+    const cctx = cutoutCanvas.getContext('2d')
+
+    // Source patch from main canvas (in device px)
+    const srcDevX = Math.round(cutCssX * dpr)
+    const srcDevY = Math.round(cutCssY * dpr)
+    cctx.drawImage(
+      canvas,
+      srcDevX, srcDevY, cutDevW, cutDevH,
+      0, 0, cutDevW, cutDevH
+    )
+
+    // Mask: scale up from server-image coords to device px of the cutout
+    // The mask PNG is full-image-sized; we crop it to bbox, then scale to cutout size.
+    const maskCrop = document.createElement('canvas')
+    maskCrop.width = cutDevW
+    maskCrop.height = cutDevH
+    const mctx = maskCrop.getContext('2d')
+    mctx.imageSmoothingEnabled = false
+    mctx.drawImage(
+      maskImg,
+      bb[0], bb[1], bb[2], bb[3],
+      0, 0, cutDevW, cutDevH
+    )
+
+    // Apply mask as alpha (destination-in)
+    cctx.globalCompositeOperation = 'destination-in'
+    cctx.drawImage(maskCrop, 0, 0)
+    cctx.globalCompositeOperation = 'source-over'
+
+    const cutoutDataUrl = cutoutCanvas.toDataURL('image/png')
+
+    // 2) Snapshot the original patch (full rectangle of bbox) for cancel-restore
+    const patchCanvas = document.createElement('canvas')
+    patchCanvas.width = cutDevW
+    patchCanvas.height = cutDevH
+    patchCanvas.getContext('2d').drawImage(
+      canvas,
+      srcDevX, srcDevY, cutDevW, cutDevH,
+      0, 0, cutDevW, cutDevH
+    )
+    const patchDataUrl = patchCanvas.toDataURL('image/png')
+
+    // 3) Erase the masked area on the main canvas (so cutout looks lifted)
+    const ctx = canvas.getContext('2d')
+    ctx.save()
+    ctx.setTransform(1, 0, 0, 1, 0, 0)
+    // Build an inverted alpha (the mask region) to erase
+    ctx.globalCompositeOperation = 'destination-out'
+    ctx.drawImage(maskCrop, srcDevX, srcDevY, cutDevW, cutDevH)
+    ctx.globalCompositeOperation = 'source-over'
+    // Fill the erased area with white so the canvas stays opaque
+    ctx.fillStyle = '#ffffff'
+    // Use the same mask shape: paint white only where alpha was just removed.
+    // Trick: draw mask into a temp white-on-mask canvas and blit normally.
+    const whiteFill = document.createElement('canvas')
+    whiteFill.width = cutDevW
+    whiteFill.height = cutDevH
+    const wctx = whiteFill.getContext('2d')
+    wctx.fillStyle = '#ffffff'
+    wctx.fillRect(0, 0, cutDevW, cutDevH)
+    wctx.globalCompositeOperation = 'destination-in'
+    wctx.drawImage(maskCrop, 0, 0)
+    ctx.drawImage(whiteFill, srcDevX, srcDevY)
+    ctx.restore()
+
+    setCanvasDataUrl(canvas.toDataURL('image/png'))
+
+    setActiveCutout({
+      dataUrl: cutoutDataUrl,
+      bbox: { x: cutCssX, y: cutCssY, w: cutCssW, h: cutCssH },
+      originalPatchDataUrl: patchDataUrl,
+      originalCanvasRect: { x: srcDevX, y: srcDevY, w: cutDevW, h: cutDevH },
+    })
+    setSegmentStatus('ready')
+  }, [ensureSegmentSession, setActiveCutout, setCanvasDataUrl, setSegmentStatus])
+
+  // Confirm: draw the cutout onto the main canvas at its current position/size
+  const confirmCutout = useCallback((cssX, cssY, cssW, cssH) => {
+    const canvas = canvasRef.current
+    if (!canvas || !activeCutout) return
+    const dpr = window.devicePixelRatio || 1
+    const img = new Image()
+    img.onload = () => {
+      const ctx = canvas.getContext('2d')
+      ctx.save()
+      ctx.setTransform(1, 0, 0, 1, 0, 0)
+      ctx.drawImage(
+        img,
+        Math.round(cssX * dpr), Math.round(cssY * dpr),
+        Math.max(1, Math.round(cssW * dpr)), Math.max(1, Math.round(cssH * dpr))
+      )
+      ctx.restore()
+      saveHistory()
+      setCanvasDataUrl(canvas.toDataURL('image/png'))
+      setActiveCutout(null)
+      // The canvas has changed → invalidate the prepared session so
+      // the next segment uses the current pixels.
+      setSegmentSession(null)
+      setSegmentStatus('idle')
+    }
+    img.src = activeCutout.dataUrl
+  }, [activeCutout, saveHistory, setActiveCutout, setCanvasDataUrl, setSegmentSession, setSegmentStatus])
+
+  // Cancel: restore the original patch and discard the cutout
+  const cancelCutout = useCallback(() => {
+    const canvas = canvasRef.current
+    if (!canvas || !activeCutout) return
+    const { originalPatchDataUrl, originalCanvasRect } = activeCutout
+    const img = new Image()
+    img.onload = () => {
+      const ctx = canvas.getContext('2d')
+      ctx.save()
+      ctx.setTransform(1, 0, 0, 1, 0, 0)
+      ctx.drawImage(
+        img,
+        originalCanvasRect.x, originalCanvasRect.y,
+        originalCanvasRect.w, originalCanvasRect.h
+      )
+      ctx.restore()
+      setCanvasDataUrl(canvas.toDataURL('image/png'))
+      setActiveCutout(null)
+    }
+    img.src = originalPatchDataUrl
+  }, [activeCutout, setActiveCutout, setCanvasDataUrl])
+
   const startDrawing = (e) => {
+    if (drawingTool === 'segment') {
+      if (activeCutout) return // cutout active → don't start a new box
+      e.preventDefault()
+      isBoxDragging.current = true
+      const { x, y } = getPos(e)
+      segmentBoxRef.current = { sx: x, sy: y, ex: x, ey: y }
+      drawSegmentBox()
+      return
+    }
     e.preventDefault()
     isDrawing.current = true
     lastPoint.current = getPos(e)
@@ -314,6 +620,15 @@ export default function DrawingCanvas() {
   }
 
   const draw = (e) => {
+    if (drawingTool === 'segment') {
+      if (!isBoxDragging.current) return
+      e.preventDefault()
+      const { x, y } = getPos(e)
+      segmentBoxRef.current.ex = x
+      segmentBoxRef.current.ey = y
+      drawSegmentBox()
+      return
+    }
     if (!isDrawing.current) return
     e.preventDefault()
     const canvas = canvasRef.current
@@ -400,6 +715,16 @@ export default function DrawingCanvas() {
   }
 
   const stopDrawing = () => {
+    if (isBoxDragging.current) {
+      isBoxDragging.current = false
+      const box = segmentBoxRef.current
+      segmentBoxRef.current = null
+      drawSegmentBox()
+      if (box && Math.abs(box.ex - box.sx) > 5 && Math.abs(box.ey - box.sy) > 5) {
+        performBoxSegment(box)
+      }
+      return
+    }
     if (isDrawing.current) {
       isDrawing.current = false
       lastPoint.current = null
@@ -560,6 +885,23 @@ export default function DrawingCanvas() {
         onTouchEnd={comparePreview ? undefined : stopDrawing}
       />
       <canvas ref={overlayRef} className="overlay-canvas" />
+
+      {activeCutout && (
+        <SegmentCutout
+          cutout={activeCutout}
+          onConfirm={confirmCutout}
+          onCancel={cancelCutout}
+        />
+      )}
+
+      {drawingTool === 'segment' && segmentStatus !== 'idle' && (
+        <div className="segment-status-pill">
+          {segmentStatus === 'preparing' && 'Preparing image…'}
+          {segmentStatus === 'segmenting' && 'Segmenting…'}
+          {segmentStatus === 'error' && 'Segmentation error'}
+          {segmentStatus === 'ready' && !activeCutout && 'Drag a box around an object'}
+        </div>
+      )}
       {comparePreview?.originalImage && (comparePreview?.candidateImage || comparePreview?.loading || comparePreview?.error) && (
         <div className="compare-preview-overlay">
           <div className="compare-preview-panel compare-preview-panel--left">

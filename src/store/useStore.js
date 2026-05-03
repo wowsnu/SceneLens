@@ -379,6 +379,19 @@ const useStore = create((set, get) => ({
   clearComparePreview: () => set({ comparePreview: null }),
   drawingTool: 'pen',
   setDrawingTool: (tool) => set({ drawingTool: tool }),
+
+  // ── Segmentation (MobileSAM box prompt) ──────────────────
+  // Server session for the currently-prepared canvas image
+  segmentSession: null,           // { id, imageWidth, imageHeight, sourceDataUrl }
+  setSegmentSession: (sess) => set({ segmentSession: sess }),
+  // Lifecycle status for the segmentation pipeline
+  segmentStatus: 'idle',          // 'idle' | 'preparing' | 'ready' | 'segmenting' | 'error'
+  setSegmentStatus: (status) => set({ segmentStatus: status }),
+  // Currently active cutout floating above the canvas
+  // { dataUrl, bbox: {x,y,w,h} (in css px), originalPatchDataUrl, originalBboxCanvas: {x,y,w,h} (in canvas px) }
+  activeCutout: null,
+  setActiveCutout: (cutout) => set({ activeCutout: cutout }),
+  clearSegmentSession: () => set({ segmentSession: null, segmentStatus: 'idle', activeCutout: null }),
   penType: 'ink',
   setPenType: (type) => set({ penType: type }),
   brushSize: 3,
