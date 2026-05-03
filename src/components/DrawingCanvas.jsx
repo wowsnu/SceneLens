@@ -1,6 +1,6 @@
 import { useRef, useEffect, useCallback, useState } from 'react'
 import useStore from '../store/useStore'
-import { enhanceSketch, segmentBox, segmentPrepare } from '../services/api'
+import { enhanceSketch, segmentLasso, segmentPrepare } from '../services/api'
 import SegmentCutout from './SegmentCutout'
 import './DrawingCanvas.css'
 
@@ -58,9 +58,9 @@ export default function DrawingCanvas() {
   const activeCutout = useStore((s) => s.activeCutout)
   const setActiveCutout = useStore((s) => s.setActiveCutout)
   const clearSegmentSession = useStore((s) => s.clearSegmentSession)
-  // Live box currently being dragged on the overlay
-  const segmentBoxRef = useRef(null) // { sx, sy, ex, ey } in css px
-  const isBoxDragging = useRef(false)
+  // Live lasso polygon currently being drawn on the overlay
+  const lassoPointsRef = useRef([])  // array of {x, y} in css px
+  const isLassoDragging = useRef(false)
 
   // Get current shot image
   const getCurrentShotImage = useCallback(() => {
@@ -377,8 +377,8 @@ export default function DrawingCanvas() {
     }
   }, [drawingTool, activeCutout, segmentSession])
 
-  // Draw the live box prompt on the overlay canvas
-  const drawSegmentBox = useCallback(() => {
+  // Draw the live lasso polygon on the overlay canvas
+  const drawLasso = useCallback(() => {
     const overlay = overlayRef.current
     if (!overlay) return
     const ctx = overlay.getContext('2d')
@@ -386,23 +386,23 @@ export default function DrawingCanvas() {
     const w = overlay.width / dpr
     const h = overlay.height / dpr
 
-    // Repaint guides first (drawOverlays handles thirds/eyeline) then box on top
+    // Repaint guides first then lasso on top
     ctx.clearRect(0, 0, w, h)
     drawOverlays()
 
-    const b = segmentBoxRef.current
-    if (!b) return
-    const x = Math.min(b.sx, b.ex)
-    const y = Math.min(b.sy, b.ey)
-    const bw = Math.abs(b.ex - b.sx)
-    const bh = Math.abs(b.ey - b.sy)
+    const pts = lassoPointsRef.current
+    if (!pts || pts.length < 2) return
     ctx.save()
-    ctx.fillStyle = 'rgba(59, 130, 246, 0.12)'
-    ctx.fillRect(x, y, bw, bh)
+    ctx.beginPath()
+    ctx.moveTo(pts[0].x, pts[0].y)
+    for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y)
+    if (!isLassoDragging.current) ctx.closePath()
+    ctx.fillStyle = 'rgba(59, 130, 246, 0.10)'
+    if (!isLassoDragging.current) ctx.fill()
     ctx.strokeStyle = 'rgba(37, 99, 235, 0.95)'
     ctx.lineWidth = 1.5
     ctx.setLineDash([6, 4])
-    ctx.strokeRect(x, y, bw, bh)
+    ctx.stroke()
     ctx.setLineDash([])
     ctx.restore()
   }, [drawOverlays])
@@ -410,9 +410,9 @@ export default function DrawingCanvas() {
   // Convert mask PNG (any size) + canvas content into a cutout RGBA dataURL
   // and the original-patch dataURL (for restore on cancel). Also clears the
   // canvas under the mask so the cutout looks lifted off.
-  const performBoxSegment = useCallback(async (cssBox) => {
+  const performLassoSegment = useCallback(async (cssPoints) => {
     const canvas = canvasRef.current
-    if (!canvas) return
+    if (!canvas || !cssPoints || cssPoints.length < 3) return
     const dpr = window.devicePixelRatio || 1
     const cssW = canvas.width / dpr
     const cssH = canvas.height / dpr
@@ -424,24 +424,24 @@ export default function DrawingCanvas() {
     const sxRatio = sess.imageWidth / cssW
     const syRatio = sess.imageHeight / cssH
 
-    const x1c = Math.max(0, Math.min(cssBox.sx, cssBox.ex))
-    const y1c = Math.max(0, Math.min(cssBox.sy, cssBox.ey))
-    const x2c = Math.min(cssW, Math.max(cssBox.sx, cssBox.ex))
-    const y2c = Math.min(cssH, Math.max(cssBox.sy, cssBox.ey))
-
-    if (x2c - x1c < 5 || y2c - y1c < 5) return
-
-    const x1s = Math.round(x1c * sxRatio)
-    const y1s = Math.round(y1c * syRatio)
-    const x2s = Math.round(x2c * sxRatio)
-    const y2s = Math.round(y2c * syRatio)
+    // Downsample to keep payload small (every Nth point), then map to image px
+    const stride = Math.max(1, Math.floor(cssPoints.length / 200))
+    const polygon = []
+    for (let i = 0; i < cssPoints.length; i += stride) {
+      const p = cssPoints[i]
+      polygon.push([
+        Math.round(Math.max(0, Math.min(cssW, p.x)) * sxRatio),
+        Math.round(Math.max(0, Math.min(cssH, p.y)) * syRatio),
+      ])
+    }
+    if (polygon.length < 3) return
 
     setSegmentStatus('segmenting')
     let res
     try {
-      res = await segmentBox(sess.id, x1s, y1s, x2s, y2s, false)
+      res = await segmentLasso(sess.id, polygon, false)
     } catch (err) {
-      console.error('[segment] box failed', err)
+      console.error('[segment] lasso failed', err)
       setSegmentStatus('ready')
       return
     }
@@ -456,13 +456,6 @@ export default function DrawingCanvas() {
 
     // Build a tight-bbox RGBA cutout in canvas (device px) space
     const bb = top.bbox // [x, y, w, h] in server image coords
-    const sxRatioInv = cssW / sess.imageWidth
-    const syRatioInv = cssH / sess.imageHeight
-
-    const cssBoxX = bb[0] * sxRatioInv
-    const cssBoxY = bb[1] * sxRatioInv  // square-ish image, but use individual ratios
-    const cssBoxW = bb[2] * sxRatioInv
-    const cssBoxH = bb[3] * syRatioInv
 
     // Use precise per-axis css
     const cutCssX = bb[0] * (cssW / sess.imageWidth)
@@ -605,12 +598,12 @@ export default function DrawingCanvas() {
 
   const startDrawing = (e) => {
     if (drawingTool === 'segment') {
-      if (activeCutout) return // cutout active → don't start a new box
+      if (activeCutout) return // cutout active → don't start a new lasso
       e.preventDefault()
-      isBoxDragging.current = true
+      isLassoDragging.current = true
       const { x, y } = getPos(e)
-      segmentBoxRef.current = { sx: x, sy: y, ex: x, ey: y }
-      drawSegmentBox()
+      lassoPointsRef.current = [{ x, y }]
+      drawLasso()
       return
     }
     e.preventDefault()
@@ -621,12 +614,16 @@ export default function DrawingCanvas() {
 
   const draw = (e) => {
     if (drawingTool === 'segment') {
-      if (!isBoxDragging.current) return
+      if (!isLassoDragging.current) return
       e.preventDefault()
       const { x, y } = getPos(e)
-      segmentBoxRef.current.ex = x
-      segmentBoxRef.current.ey = y
-      drawSegmentBox()
+      const pts = lassoPointsRef.current
+      const last = pts[pts.length - 1]
+      // Skip near-duplicate points to keep the polygon manageable
+      if (!last || Math.abs(last.x - x) + Math.abs(last.y - y) > 1.5) {
+        pts.push({ x, y })
+        drawLasso()
+      }
       return
     }
     if (!isDrawing.current) return
@@ -715,13 +712,21 @@ export default function DrawingCanvas() {
   }
 
   const stopDrawing = () => {
-    if (isBoxDragging.current) {
-      isBoxDragging.current = false
-      const box = segmentBoxRef.current
-      segmentBoxRef.current = null
-      drawSegmentBox()
-      if (box && Math.abs(box.ex - box.sx) > 5 && Math.abs(box.ey - box.sy) > 5) {
-        performBoxSegment(box)
+    if (isLassoDragging.current) {
+      isLassoDragging.current = false
+      const pts = lassoPointsRef.current
+      lassoPointsRef.current = []
+      drawLasso()
+      // Need at least 3 points and a non-degenerate area to segment
+      if (pts && pts.length >= 3) {
+        let minX = pts[0].x, maxX = pts[0].x, minY = pts[0].y, maxY = pts[0].y
+        for (const p of pts) {
+          if (p.x < minX) minX = p.x; if (p.x > maxX) maxX = p.x
+          if (p.y < minY) minY = p.y; if (p.y > maxY) maxY = p.y
+        }
+        if (maxX - minX > 5 && maxY - minY > 5) {
+          performLassoSegment(pts)
+        }
       }
       return
     }
@@ -899,7 +904,7 @@ export default function DrawingCanvas() {
           {segmentStatus === 'preparing' && 'Preparing image…'}
           {segmentStatus === 'segmenting' && 'Segmenting…'}
           {segmentStatus === 'error' && 'Segmentation error'}
-          {segmentStatus === 'ready' && !activeCutout && 'Drag a box around an object'}
+          {segmentStatus === 'ready' && !activeCutout && 'Trace around an object (lasso)'}
         </div>
       )}
       {comparePreview?.originalImage && (comparePreview?.candidateImage || comparePreview?.loading || comparePreview?.error) && (

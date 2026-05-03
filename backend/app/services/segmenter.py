@@ -182,9 +182,19 @@ class Segmenter:
         candidates.sort(key=lambda c: c["score"], reverse=True)
         return {"candidates": candidates}
 
-    def box_segment(self, session_id: str, x1: int, y1: int, x2: int, y2: int,
-                    multimask: bool = False) -> dict:
-        """Segment using a bounding box prompt. Returns up to 3 candidates if multimask else 1."""
+    def lasso_segment(self, session_id: str, polygon: list[tuple[int, int]],
+                      multimask: bool = False) -> dict:
+        """Segment using a freehand polygon as a mask hint.
+
+        The polygon (in image-pixel coordinates) is rasterised into both:
+          - a tight bounding box (box prompt)
+          - a 256x256 logit-style mask (mask prompt) that biases SAM toward the
+            user-drawn shape.
+
+        Returns up to 3 candidates if multimask else 1.
+        """
+        import cv2
+
         sess = self._touch(session_id)
 
         if self._current_sid != session_id:
@@ -192,11 +202,35 @@ class Segmenter:
             self._current_sid = session_id
 
         H, W = sess.image.shape[:2]
-        x1c, x2c = sorted((max(0, min(W - 1, x1)), max(0, min(W - 1, x2))))
-        y1c, y2c = sorted((max(0, min(H - 1, y1)), max(0, min(H - 1, y2))))
+        if len(polygon) < 3:
+            raise ValueError("polygon must have at least 3 points")
+
+        pts = np.array(
+            [[max(0, min(W - 1, int(x))), max(0, min(H - 1, int(y)))] for x, y in polygon],
+            dtype=np.int32,
+        )
+
+        # Tight box around the polygon
+        x1 = int(pts[:, 0].min()); x2 = int(pts[:, 0].max())
+        y1 = int(pts[:, 1].min()); y2 = int(pts[:, 1].max())
+        if x2 <= x1 or y2 <= y1:
+            raise ValueError("polygon is degenerate (zero area)")
+
+        # Full-resolution polygon mask (binary, image-sized)
+        full_mask = np.zeros((H, W), dtype=np.uint8)
+        cv2.fillPoly(full_mask, [pts], 1)
+
+        # SAM expects a low-res "logit" mask: 256x256, with values around -10..+10
+        # (positive ⇒ inside, negative ⇒ outside). We fill with ±10 from the polygon.
+        low = cv2.resize(full_mask, (256, 256), interpolation=cv2.INTER_LINEAR).astype(np.float32)
+        # Smooth a touch so SAM gets a soft hint instead of hard edges
+        low = cv2.GaussianBlur(low, (5, 5), 0)
+        logit = (low * 20.0) - 10.0  # 0 ⇒ -10, 1 ⇒ +10
+        mask_input = logit[None, :, :]  # (1, 256, 256)
 
         masks, scores, _ = self.predictor.predict(
-            box=np.array([x1c, y1c, x2c, y2c]),
+            box=np.array([x1, y1, x2, y2]),
+            mask_input=mask_input,
             multimask_output=multimask,
         )
 

@@ -200,15 +200,12 @@ class SegmentPointResponse(BaseModel):
     candidates: List[SegmentCandidate]      # ordered by score desc, up to 3
     elapsed_ms: int
 
-class SegmentBoxRequest(BaseModel):
+class SegmentLassoRequest(BaseModel):
     session_id: str
-    x1: int
-    y1: int
-    x2: int
-    y2: int
+    polygon: List[List[int]]                # [[x, y], [x, y], ...] in prepared-image px
     multimask: Optional[bool] = False       # True → up to 3 candidates, False → 1
 
-class SegmentBoxResponse(BaseModel):
+class SegmentLassoResponse(BaseModel):
     candidates: List[SegmentCandidate]
     elapsed_ms: int
 

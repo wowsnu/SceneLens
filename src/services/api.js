@@ -183,10 +183,10 @@ export async function segmentPrepare(imageBase64, type = 'png') {
   }, 30000)
 }
 
-export async function segmentBox(sessionId, x1, y1, x2, y2, multimask = false) {
-  return fetchWithTimeout(`${API_BASE}/segment/box`, {
+export async function segmentLasso(sessionId, polygon, multimask = false) {
+  return fetchWithTimeout(`${API_BASE}/segment/lasso`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ session_id: sessionId, x1, y1, x2, y2, multimask }),
+    body: JSON.stringify({ session_id: sessionId, polygon, multimask }),
   }, 15000)
 }
