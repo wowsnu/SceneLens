@@ -265,6 +265,15 @@ class Segmenter:
             }]
 
         ranked.sort(key=lambda c: c["iou"], reverse=True)
+
+        # Debug: emit all candidates' (iou, score, area) for tuning
+        poly_area = int(poly_mask.sum())
+        debug_str = ", ".join(
+            f"iou={c['iou']:.2f} score={c['score']:.2f} area={c['area']}/{poly_area}"
+            for c in ranked
+        )
+        print(f"[lasso/debug] poly_pts={len(polygon)} candidates: {debug_str}")
+
         if multimask:
             return {"candidates": ranked}
         return {"candidates": [ranked[0]]}
