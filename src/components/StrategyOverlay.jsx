@@ -137,7 +137,7 @@ const LEGACY_VALUE_MAP = {
   },
 }
 
-const AUTO_REFRAME_MODEL = 'gpt-image-1.5'
+const AUTO_REFRAME_MODEL = 'gpt-image-2'
 
 const FRIENDLY_FIELD_LABELS = {
   shotSize: '샷 크기',

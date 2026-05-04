@@ -117,7 +117,7 @@ export async function generateSvgLayers(scriptContext, intent = '', cir = null, 
   }, 120000)
 }
 
-export async function reframeSketch(imageBase64, cir, scriptContext = '', originalCir = null, model = 'gemini-2.5-flash-image', intent = '', strategyContext = '') {
+export async function reframeSketch(imageBase64, cir, scriptContext = '', originalCir = null, model = 'gpt-image-2', intent = '', strategyContext = '') {
   return fetchWithTimeout(`${API_BASE}/reframe-sketch`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },

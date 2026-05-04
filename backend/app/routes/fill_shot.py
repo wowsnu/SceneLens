@@ -13,7 +13,7 @@ async def gap_fill_endpoint(request: GapFillRequest):
     """
     Given two adjacent shots and the full scene script, return 3 candidate fill shots
     that could go between them. Each candidate is theory-grounded and rendered as a
-    storyboard sketch by gpt-image-1.5.
+    storyboard sketch by gpt-image-2.
     """
     t0 = time.time()
     logger.info(f"[gap-fill] START left='{request.left_shot.label}' right='{request.right_shot.label}' count={request.candidate_count}")

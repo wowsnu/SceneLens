@@ -4,7 +4,7 @@ fill_shot_engine.py
 Two-stage pipeline for AI-assisted fill shot generation:
   Stage 1 — Planning (gemini-2.5-flash + Film Theory Library cache)
              Analyzes context and proposes shot candidates with theory-grounded rationale.
-  Stage 2 — Rendering (gpt-image-1.5 via image_generator.reframe_sketch)
+  Stage 2 — Rendering (gpt-image-2 via image_generator.reframe_sketch)
              Renders each candidate as a storyboard sketch, using the left shot as visual reference.
 """
 
@@ -121,7 +121,7 @@ async def _render_candidate(
 ) -> FillShotCandidate:
     """
     Stage 2: render a planned candidate as a storyboard sketch.
-    Uses reframe_sketch with gpt-image-1.5, referencing the left shot image.
+    Uses reframe_sketch with gpt-image-2, referencing the left shot image.
     If no reference image exists, falls back to a placeholder base64.
     """
     cir = _parse_cir(candidate_plan.get("cir", {}))
@@ -152,7 +152,7 @@ async def _render_candidate(
                 script_context=script_context,
                 original_cir=original_cir,
                 include_description=False,
-                model="gpt-image-1.5",
+                model="gpt-image-2",
                 intent=render_intent,
                 strategy_context=strategy_context,
             )
@@ -219,7 +219,7 @@ async def gap_fill(req: GapFillRequest) -> GapFillResponse:
     """
     Suggest {candidate_count} fill shot candidates for the gap between left_shot and right_shot.
     Stage 1: Gemini plans candidates (theory-grounded).
-    Stage 2: gpt-image-1.5 renders each candidate in parallel.
+    Stage 2: gpt-image-2 renders each candidate in parallel.
     """
     prompt = GAP_FILL_PROMPT_TEMPLATE.replace("{candidate_count}", str(req.candidate_count))
 

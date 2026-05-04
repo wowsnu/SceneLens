@@ -913,7 +913,7 @@ async def reframe_sketch(
     script_context: str = "",
     original_cir: dict = None,
     include_description: bool = True,
-    model: str = "gemini-2.5-flash-image",
+    model: str = "gpt-image-2",
     intent: str = "",
     strategy_context: str = "",
 ) -> dict:
@@ -980,14 +980,14 @@ Now redraw the sketch applying ONLY the changes above. Keep everything else iden
     gemini_client = get_client()
 
     def _gen_img():
-        if model == 'gpt-image-1.5':
+        if model in {'gpt-image-2', 'gpt-image-1.5'}:
             import time
             oai = get_openai_client()
             last_err = None
             for attempt in range(3):
                 try:
                     response = oai.images.edit(
-                        model='gpt-image-1.5',
+                        model=model,
                         image=("sketch.png", image_bytes, "image/png"),
                         prompt=prompt,
                         n=1,

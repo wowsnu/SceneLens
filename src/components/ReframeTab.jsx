@@ -336,7 +336,7 @@ export default function ReframeTab() {
   const clearComparePreview = useStore((s) => s.clearComparePreview)
 
   const [targetCir, setTargetCir] = useState(DEFAULT_CIR)
-  const [model, setModel] = useState('gemini-2.5-flash-image')
+  const [model, setModel] = useState('gpt-image-2')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [vectorizingId, setVectorizingId] = useState('')
@@ -756,9 +756,10 @@ export default function ReframeTab() {
         <label className="reframe-field" style={{ marginTop: 8, marginBottom: 8 }}>
           <span>Model</span>
           <select value={model} onChange={(e) => setModel(e.target.value)}>
+            <option value="gpt-image-2">gpt-image-2</option>
+            <option value="gpt-image-1.5">gpt-image-1.5</option>
             <option value="gemini-2.5-flash-image">gemini-2.5-flash-image</option>
             <option value="gemini-3.1-flash-image-preview">gemini-3.1-flash-image-preview</option>
-            <option value="gpt-image-1.5">gpt-image-1.5</option>
           </select>
         </label>
 
