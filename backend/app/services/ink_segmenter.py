@@ -52,10 +52,10 @@ def segment_with_lasso(
     image: np.ndarray,
     polygon: list[tuple[int, int]],
     *,
-    close_kernel: int = 9,
-    close_iters: int = 2,
+    close_kernel: int = 5,
+    close_iters: int = 1,
     min_component_area: int = 60,
-    overlap_threshold: float = 0.25,
+    overlap_threshold: float = 0.4,
     final_dilate: int = 2,
 ) -> np.ndarray | None:
     """Pick the ink components that overlap the user's lasso, return a binary mask.
