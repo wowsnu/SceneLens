@@ -228,26 +228,46 @@ class Segmenter:
         logit = (low * 20.0) - 10.0  # 0 ⇒ -10, 1 ⇒ +10
         mask_input = logit[None, :, :]  # (1, 256, 256)
 
+        # Always run multimask internally so we can pick the candidate that best
+        # matches the user-drawn polygon (SAM sometimes returns the whole bbox
+        # when the prompt is ambiguous; that gets filtered by IoU below).
         masks, scores, _ = self.predictor.predict(
             box=np.array([x1, y1, x2, y2]),
             mask_input=mask_input,
-            multimask_output=multimask,
+            multimask_output=True,
         )
 
-        candidates = []
+        # Score each candidate by IoU with the user polygon, not raw SAM score.
+        poly_mask = full_mask.astype(bool)
+        ranked = []
         for m, s in zip(masks, scores):
             seg = m.astype(bool)
             area = int(seg.sum())
             if area == 0:
                 continue
-            candidates.append({"segmentation": seg, "score": float(s), "area": area})
+            inter = int(np.logical_and(seg, poly_mask).sum())
+            union = int(np.logical_or(seg, poly_mask).sum())
+            iou = inter / union if union > 0 else 0.0
+            ranked.append({
+                "segmentation": seg,
+                "score": float(s),
+                "iou": float(iou),
+                "area": area,
+            })
 
-        if not candidates:
+        if not ranked:
             seg = masks[0].astype(bool)
-            candidates = [{"segmentation": seg, "score": float(scores[0]), "area": int(seg.sum())}]
+            ranked = [{
+                "segmentation": seg,
+                "score": float(scores[0]),
+                "iou": 0.0,
+                "area": int(seg.sum()),
+            }]
 
-        candidates.sort(key=lambda c: c["score"], reverse=True)
-        return {"candidates": candidates}
+        ranked.sort(key=lambda c: c["iou"], reverse=True)
+        if multimask:
+            return {"candidates": ranked}
+        return {"candidates": [ranked[0]]}
 
 
 # ── Mask encoding ────────────────────────────────────────────────

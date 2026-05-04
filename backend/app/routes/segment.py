@@ -94,8 +94,9 @@ async def segment_lasso(request: SegmentLassoRequest):
 
         elapsed_ms = int((time.time() - t0) * 1000)
         scores_str = ",".join(f"{c.score:.2f}" for c in candidates_out)
+        ious_str = ",".join(f"{c.get('iou', 0):.2f}" for c in result["candidates"])
         print(f"[segment/lasso] sid={request.session_id[:8]} pts={len(polygon)} "
-              f"n={len(candidates_out)} scores=[{scores_str}] elapsed={elapsed_ms}ms")
+              f"n={len(candidates_out)} scores=[{scores_str}] ious=[{ious_str}] elapsed={elapsed_ms}ms")
         return SegmentLassoResponse(candidates=candidates_out, elapsed_ms=elapsed_ms)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
