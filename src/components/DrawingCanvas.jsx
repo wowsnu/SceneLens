@@ -482,8 +482,9 @@ export default function DrawingCanvas() {
       0, 0, cutDevW, cutDevH
     )
 
-    // Mask: scale up from server-image coords to device px of the cutout
-    // The mask PNG is full-image-sized; we crop it to bbox, then scale to cutout size.
+    // Mask: scale up from server-image coords to device px of the cutout.
+    // The mask PNG is 1-bit (black/white) — we need to turn white pixels into
+    // opaque alpha and black pixels into transparent so destination-in works.
     const maskCrop = document.createElement('canvas')
     maskCrop.width = cutDevW
     maskCrop.height = cutDevH
@@ -494,6 +495,12 @@ export default function DrawingCanvas() {
       bb[0], bb[1], bb[2], bb[3],
       0, 0, cutDevW, cutDevH
     )
+    // Convert luminance → alpha so the mask actually masks
+    const md = mctx.getImageData(0, 0, cutDevW, cutDevH)
+    for (let i = 0; i < md.data.length; i += 4) {
+      md.data[i + 3] = md.data[i]   // alpha = R (luminance for 1-bit PNG)
+    }
+    mctx.putImageData(md, 0, 0)
 
     // Apply mask as alpha (destination-in)
     cctx.globalCompositeOperation = 'destination-in'
