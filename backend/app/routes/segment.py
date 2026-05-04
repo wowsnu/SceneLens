@@ -11,6 +11,7 @@ from app.models.schemas import (
     SegmentPrepareRequest,
     SegmentPrepareResponse,
 )
+from app.services.ink_segmenter import segment_with_lasso as ink_lasso_segment
 from app.services.segmenter import Segmenter, bbox_xywh, encode_mask_png_b64
 
 router = APIRouter()
@@ -72,32 +73,31 @@ async def segment_point(request: SegmentPointRequest):
 
 @router.post("/segment/lasso", response_model=SegmentLassoResponse)
 async def segment_lasso(request: SegmentLassoRequest):
+    """Sketch lasso: ink-based component grouping (no SAM)."""
     t0 = time.time()
     try:
         segmenter = Segmenter.get()
+        sess = segmenter._touch(request.session_id)  # type: ignore[attr-defined]
         polygon = [(int(p[0]), int(p[1])) for p in request.polygon]
-        result = segmenter.lasso_segment(
-            request.session_id,
-            polygon,
-            multimask=bool(request.multimask),
+
+        mask = ink_lasso_segment(sess.image, polygon)
+        if mask is None or not mask.any():
+            elapsed_ms = int((time.time() - t0) * 1000)
+            print(f"[segment/lasso] sid={request.session_id[:8]} pts={len(polygon)} "
+                  f"no ink found elapsed={elapsed_ms}ms")
+            return SegmentLassoResponse(candidates=[], elapsed_ms=elapsed_ms)
+
+        candidate = SegmentCandidate(
+            bbox=bbox_xywh(mask),
+            area=int(mask.sum()),
+            score=1.0,
+            mask_png=encode_mask_png_b64(mask),
         )
 
-        candidates_out = [
-            SegmentCandidate(
-                bbox=bbox_xywh(c["segmentation"]),
-                area=c["area"],
-                score=c["score"],
-                mask_png=encode_mask_png_b64(c["segmentation"]),
-            )
-            for c in result["candidates"]
-        ]
-
         elapsed_ms = int((time.time() - t0) * 1000)
-        scores_str = ",".join(f"{c.score:.2f}" for c in candidates_out)
-        ious_str = ",".join(f"{c.get('iou', 0):.2f}" for c in result["candidates"])
         print(f"[segment/lasso] sid={request.session_id[:8]} pts={len(polygon)} "
-              f"n={len(candidates_out)} scores=[{scores_str}] ious=[{ious_str}] elapsed={elapsed_ms}ms")
-        return SegmentLassoResponse(candidates=candidates_out, elapsed_ms=elapsed_ms)
+              f"area={candidate.area} bbox={candidate.bbox} elapsed={elapsed_ms}ms")
+        return SegmentLassoResponse(candidates=[candidate], elapsed_ms=elapsed_ms)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except KeyError as e:
