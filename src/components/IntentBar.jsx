@@ -86,12 +86,24 @@ export default function IntentBar() {
           const miseOptions = useStore.getState().miseOptions
           suggestStrategies(base64, scriptText, intentText, analysis.cir, axes, pref, miseOptions)
             .then((result) => {
+              console.log('[suggestStrategies] result =', result)
               if (result?.strategies?.length) {
                 useStore.getState().setProposals(result.strategies)
                 useStore.getState().addChatMessage({ role: 'action', text: 'strategies_ready' })
+              } else {
+                useStore.getState().addChatMessage({
+                  role: 'assistant',
+                  text: '전략을 생성하지 못했습니다. 다른 의도로 다시 시도해주세요.',
+                })
               }
             })
-            .catch((err) => console.error('[suggestStrategies]', err))
+            .catch((err) => {
+              console.error('[suggestStrategies]', err)
+              useStore.getState().addChatMessage({
+                role: 'system',
+                text: `전략 생성 실패: ${err?.message || err}`,
+              })
+            })
         }
       } else {
         // 스케치가 없는 경우 가짜 딜레이 후 안내 메시지
