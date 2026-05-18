@@ -561,37 +561,40 @@ export default function SvgEditor({ onSaveAndMap, showScript, onToggleScript, sc
       }
     }
 
-    // Scale only newly added groups to fit canvas
+    // 각 layer는 독립된 그림 — 합치지 않고 캔버스에 격자로 펼친다.
+    // 사용자가 각각 잡아서 자유롭게 배치/리사이즈 가능하도록.
     if (newGroups.length > 0) {
-      let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity
-      newGroups.forEach((g) => {
-        const br = g.getBoundingRect()
-        minX = Math.min(minX, br.left); minY = Math.min(minY, br.top)
-        maxX = Math.max(maxX, br.left + br.width); maxY = Math.max(maxY, br.top + br.height)
-      })
-      const bw = maxX - minX, bh = maxY - minY
-      if (bw > 0 && bh > 0) {
-        const scale = Math.min(fc.width / bw, fc.height / bh)
-        const offsetX = (fc.width - bw * scale) / 2
-        const offsetY = (fc.height - bh * scale) / 2
-        newGroups.forEach((g) => {
-          g.set({
-            left: (g.left - minX) * scale + offsetX, top: (g.top - minY) * scale + offsetY,
-            scaleX: (g.scaleX || 1) * scale, scaleY: (g.scaleY || 1) * scale,
-          })
-          g.setCoords()
-        })
-      }
-    }
+      const N = newGroups.length
+      const cols = N <= 1 ? 1 : Math.ceil(Math.sqrt(N))
+      const rows = Math.ceil(N / cols)
+      const cellW = fc.width / cols
+      const cellH = fc.height / rows
+      const cellPad = 0.85  // 셀의 85%만 사용 — 약간 여백
 
-    // 겹침 방지 — 각 그룹을 살짝씩 어긋나게 배치해서 클릭/드래그 가능하도록.
-    // (fit 후엔 모든 그룹이 같은 영역을 차지하므로 위에 있는 1개만 보이는 것처럼 느껴진다.)
-    if (newGroups.length > 1) {
-      const stepX = Math.max(8, fc.width * 0.012)
-      const stepY = Math.max(8, fc.height * 0.012)
       newGroups.forEach((g, i) => {
-        const off = i - (newGroups.length - 1) / 2
-        g.set({ left: g.left + off * stepX, top: g.top + off * stepY })
+        const col = i % cols
+        const row = Math.floor(i / cols)
+        const br = g.getBoundingRect()
+        if (br.width <= 0 || br.height <= 0) return
+
+        const scale = Math.min((cellW * cellPad) / br.width, (cellH * cellPad) / br.height)
+        const newW = br.width * scale
+        const newH = br.height * scale
+        const cellCx = cellW * col + cellW / 2
+        const cellCy = cellH * row + cellH / 2
+
+        g.set({
+          left: g.left + (cellCx - (br.left + br.width / 2)) * 1 + (g.left - br.left) * (scale - 1),
+          top: g.top + (cellCy - (br.top + br.height / 2)) * 1 + (g.top - br.top) * (scale - 1),
+          scaleX: (g.scaleX || 1) * scale,
+          scaleY: (g.scaleY || 1) * scale,
+        })
+        // 좀 더 정확하게: scale 적용 후 실제 bounding box를 측정해서 cell 중앙으로 보정.
+        g.setCoords()
+        const br2 = g.getBoundingRect()
+        const dx = cellCx - (br2.left + br2.width / 2)
+        const dy = cellCy - (br2.top + br2.height / 2)
+        g.set({ left: g.left + dx, top: g.top + dy })
         g.setCoords()
       })
     }

@@ -531,11 +531,10 @@ ROUGH BLOCKING SKETCH MODE:
 
 
 def _get_recraft_svg_generation_config(detail_level: int) -> dict:
-    # detail_level과 무관하게 항상 "단순 콘티" 톤으로 생성.
     return {
         "model": "recraftv4_vector",
         "style": None,
-        "prompt_mode": "simple_conti",
+        "prompt_mode": "rough_v4",
     }
 
 

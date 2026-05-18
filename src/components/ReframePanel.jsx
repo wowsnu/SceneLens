@@ -13,6 +13,7 @@ const DEFAULT_LAYERS = ['background', 'character', 'props']
 export default function ReframePanel() {
   const setCanvasDataUrl = useStore((s) => s.setCanvasDataUrl)
   const setPendingCanvasImage = useStore((s) => s.setPendingCanvasImage)
+  const setPendingCanvasLayers = useStore((s) => s.setPendingCanvasLayers)
   const screenplay = useStore((s) => s.screenplay)
   const intent = useStore((s) => s.intent)
   const setIntent = useStore((s) => s.setIntent)
@@ -35,12 +36,18 @@ export default function ReframePanel() {
       
       if (genMode === 'layers') {
         const result = await generateSvgLayers(scriptContext, userIntent, null, layerNames, detailLevel)
-        // 레이어 생성 시에는 첫 번째 레이어 혹은 통합된 결과를 캔버스에 보냄 (여기서는 첫 레이어 예시)
-        const firstLayer = Object.values(result.layers)[0]
-        if (firstLayer) {
-          const dataUrl = `data:image/svg+xml;utf8,${encodeURIComponent(firstLayer)}`
-          setPendingCanvasImage(dataUrl)
-          setCanvasDataUrl(dataUrl)
+        // 각 layer를 별도의 dataURL로 만들어 store에 배열로 저장.
+        // DrawingCanvas가 이걸 받아서 각각 독립적인 객체로 캔버스에 올린다.
+        const layers = Object.entries(result.layers)
+          .filter(([, svg]) => !!svg)
+          .map(([name, svg]) => ({
+            name,
+            dataUrl: `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`,
+          }))
+        if (layers.length > 0) {
+          setPendingCanvasLayers(layers)
+          // 호환: 첫 layer는 canvasDataUrl에도 채워둠 (다른 컴포넌트가 단일 이미지로 참조하는 경우 대비)
+          setCanvasDataUrl(layers[0].dataUrl)
         }
       } else {
         const result = await generateSketch(scriptContext, userIntent, null, 'svg', detailLevel)
