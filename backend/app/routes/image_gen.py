@@ -75,9 +75,12 @@ async def reframe_sketch_endpoint(request: ReframeSketchRequest):
     original_cir_dict = request.original_cir.model_dump() if request.original_cir else None
     print(f"[reframe-sketch] START model={request.model} cir={cir_dict}")
     print(f"[reframe-sketch] original_cir={original_cir_dict}")
+    print(f"[reframe-sketch] intent={(request.intent or '').strip()[:120]!r} strategy_context_len={len((request.strategy_context or '').strip())}")
     try:
-        if original_cir_dict and cir_dict == original_cir_dict:
-            raise HTTPException(status_code=400, detail="No CIR changes requested. Change at least one attribute before reframing.")
+        # CIR이 동일하더라도 intent / strategy_context가 있으면 mise-only reframe으로 허용.
+        has_mise_directive = bool((request.intent or "").strip()) or bool((request.strategy_context or "").strip())
+        if original_cir_dict and cir_dict == original_cir_dict and not has_mise_directive:
+            raise HTTPException(status_code=400, detail="No CIR changes requested. Change at least one attribute, or provide an intent/strategy context, before reframing.")
 
         result = await reframe_sketch(
             request.image,
