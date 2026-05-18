@@ -2,10 +2,18 @@
 .axis-chip-row {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 12px 12px;
   padding: 8px 12px 10px;
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
   min-width: 0;
+}
+
+.axis-chip-row > .axis-chip-list {
+  flex-wrap: nowrap;
+}
+
+.axis-chip-row > .axis-theory-pref {
+  flex-basis: 100%;
 }
 
 .axis-chip-row-label {
@@ -113,6 +121,10 @@
 
 .axis-chip-reframe {
   --chip-accent: rgba(103, 198, 255, 0.85);
+}
+
+.axis-chip-lighting {
+  --chip-accent: rgba(255, 215, 102, 0.88);
 }
 
 .axis-chip-mise {

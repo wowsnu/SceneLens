@@ -1,5 +1,5 @@
 import useStore from '../store/useStore'
-import { requestAutoFillRange } from '../services/api'
+// import { requestAutoFillRange } from '../services/api'  // 실제 API (프로토타입 데모용으로 mock 사용 중)
 import './AutoFillPanel.css'
 
 const TECHNIQUE_LABELS = {
@@ -29,6 +29,91 @@ function toApiShot(shot, index) {
     image: stripDataUrl(shot?.image),
     scriptBeat: shot?.scriptBeat ?? shot?.beat ?? 0,
   }
+}
+
+// ── Mock auto-fill 응답 생성 (프로토타입 데모용) ─────────────────
+// 실제 백엔드가 없어도 동작하도록, 각 샷 사이에 1개씩 새 샷을 끼워넣는
+// 3개 버전(A/B/C)을 만들어서 반환한다.
+function buildMockAutoFillResponse(rangeShots) {
+  if (!rangeShots || rangeShots.length < 2) return { versions: [] }
+
+  const pairs = []
+  for (let i = 0; i < rangeShots.length - 1; i++) {
+    pairs.push({ after: rangeShots[i], before: rangeShots[i + 1], gapIdx: i })
+  }
+
+  const makeInsertion = (afterShot, beforeShot, tag) => {
+    const idBase = `mock-${tag}-${afterShot.id}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`
+    return {
+      after_shot_id: afterShot.id,
+      candidate: {
+        id: idBase,
+        label: `${tag} · ${afterShot.label || ''} → ${beforeShot.label || ''}`,
+        category: tag,
+        cir: afterShot.cir || null,
+        image: afterShot.image || null,
+        scriptBeat: afterShot.scriptBeat ?? afterShot.beat ?? 0,
+      },
+    }
+  }
+
+  // 전략별로 "어느 gap"에 끼울지 다르게 — 모든 샷에 넣지 않는다.
+  // 짝수/홀수, 처음/끝, 가운데만 등으로 분기해서 버전마다 위치를 차별화.
+  const N = pairs.length
+  const pickEveryOther = pairs.filter((_, i) => i % 2 === 0)            // 0, 2, 4... — 리듬: 균등하게 절반
+  const pickEnds = N >= 2 ? [pairs[0], pairs[N - 1]] : [pairs[0]]        // 시선: 도입/마무리 연결만
+  const pickMiddle = N >= 3                                              // 시간 생략: 중간 구간만 압축
+    ? pairs.slice(Math.floor(N / 3), Math.ceil((N * 2) / 3) || 1)
+    : [pairs[Math.floor(N / 2)] || pairs[0]]
+
+  const buildTechniques = (picks, type, mechanism, source) =>
+    picks.slice(0, 3).map(({ after, before }) => ({
+      type,
+      shot_pair: [after.label, before.label],
+      mechanism,
+      theory_source: source,
+    }))
+
+  const versions = [
+    {
+      version_label: 'Version A — 리듬 강조',
+      rationale: `샷 사이 ${pickEveryOther.length}곳에 짧은 인서트를 균등 배치해 편집 리듬을 빠르게 가져갑니다.`,
+      theory_basis: '몽타주 이론 — 충돌과 리듬을 통한 의미 생성',
+      editorial_techniques: buildTechniques(
+        pickEveryOther,
+        'rhythm',
+        '짧은 인서트로 호흡을 끊고 다음 컷의 임팩트를 강화',
+        'Eisenstein, Film Form',
+      ),
+      insertions: pickEveryOther.map(({ after, before }) => makeInsertion(after, before, 'rhythm')),
+    },
+    {
+      version_label: 'Version B — 시선 연결',
+      rationale: `도입부와 마무리 ${pickEnds.length}곳에만 아이라인 매치 컷을 넣어 공간 연속성을 보강합니다.`,
+      theory_basis: '연속편집 — 시선 매치로 공간 인지를 유지',
+      editorial_techniques: buildTechniques(
+        pickEnds,
+        'eyeline',
+        '시선 방향이 다음 샷의 피사체로 자연스럽게 이어지도록 배치',
+        'Bordwell, Film Art',
+      ),
+      insertions: pickEnds.map(({ after, before }) => makeInsertion(after, before, 'eyeline')),
+    },
+    {
+      version_label: 'Version C — 시간 생략',
+      rationale: `중간 구간 ${pickMiddle.length}곳에 엘립시스 컷을 끼워 불필요한 동작을 생략하고 템포를 압축합니다.`,
+      theory_basis: '시간 압축 편집 — 생략을 통한 서사 가속',
+      editorial_techniques: buildTechniques(
+        pickMiddle,
+        'temporal_ellipsis',
+        '두 샷 사이 시간 간격을 점프해 정보 밀도를 높임',
+        'Murch, In the Blink of an Eye',
+      ),
+      insertions: pickMiddle.map(({ after, before }) => makeInsertion(after, before, 'ellipsis')),
+    },
+  ]
+
+  return { versions }
 }
 
 function pickRangeScript(screenplay, rangeShots) {
@@ -94,21 +179,29 @@ export default function AutoFillPanel() {
     if (rangeShots.length < 2) return
     setAutoFillStatus('loading')
 
-    try {
-      const res = await requestAutoFillRange({
-        shots: rangeShots.map(toApiShot),
-        scriptContext: pickRangeScript(screenplay, rangeShots),
-        intent: intent || '선택한 샷 범위의 편집 흐름을 더 설득력 있게 구성',
-        userPrompt: autoFill.userPrompt,
-        versionCount: 3,
-      })
-      const versions = res.versions || []
-      setAutoFillStatus(versions.length > 0 ? 'ready' : 'error', versions)
-      setAutoFillPreviewVersion(0)
-    } catch (e) {
-      console.error('[AutoFill]', e)
-      setAutoFillStatus('error')
-    }
+    // ── 실제 API 호출 (프로토타입 데모용으로 비활성화) ──────────────
+    // try {
+    //   const res = await requestAutoFillRange({
+    //     shots: rangeShots.map(toApiShot),
+    //     scriptContext: pickRangeScript(screenplay, rangeShots),
+    //     intent: intent || '선택한 샷 범위의 편집 흐름을 더 설득력 있게 구성',
+    //     userPrompt: autoFill.userPrompt,
+    //     versionCount: 3,
+    //   })
+    //   const versions = res.versions || []
+    //   setAutoFillStatus(versions.length > 0 ? 'ready' : 'error', versions)
+    //   setAutoFillPreviewVersion(0)
+    // } catch (e) {
+    //   console.error('[AutoFill]', e)
+    //   setAutoFillStatus('error')
+    // }
+
+    // ── Mock 응답 (분석하는 듯한 짧은 딜레이 후 가짜 버전 반환) ───
+    await new Promise((r) => setTimeout(r, 800))
+    const res = buildMockAutoFillResponse(rangeShots)
+    const versions = res.versions || []
+    setAutoFillStatus(versions.length > 0 ? 'ready' : 'error', versions)
+    setAutoFillPreviewVersion(0)
   }
 
   const handleAccept = () => {

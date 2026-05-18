@@ -584,6 +584,21 @@ export default function SvgEditor({ onSaveAndMap, showScript, onToggleScript, sc
       }
     }
 
+    // 겹침 방지 — 각 그룹을 살짝씩 어긋나게 배치해서 클릭/드래그 가능하도록.
+    // (fit 후엔 모든 그룹이 같은 영역을 차지하므로 위에 있는 1개만 보이는 것처럼 느껴진다.)
+    if (newGroups.length > 1) {
+      const stepX = Math.max(8, fc.width * 0.012)
+      const stepY = Math.max(8, fc.height * 0.012)
+      newGroups.forEach((g, i) => {
+        const off = i - (newGroups.length - 1) / 2
+        g.set({ left: g.left + off * stepX, top: g.top + off * stepY })
+        g.setCoords()
+      })
+    }
+
+    // 레이어 생성 직후엔 자동으로 Select 모드로 — 곧바로 잡아서 움직일 수 있게.
+    setMode(MODES.SELECT)
+
     fc.renderAll()
     rebuildLayers()
     setSelectedLayer(null)

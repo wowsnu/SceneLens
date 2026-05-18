@@ -3,6 +3,7 @@ import './AxisChips.css'
 
 const AXES = [
   { id: 'reframe', label: 'Reframe', desc: '구도/프레이밍' },
+  { id: 'lighting', label: 'Lighting', desc: '조명·무드' },
 ]
 
 const FREEFORM_AXIS = { id: 'freeform', label: 'Freeform', desc: '자유 연출' }

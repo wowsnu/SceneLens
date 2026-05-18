@@ -289,6 +289,43 @@ function buildChangedFieldPayload(currentCir, nextCir) {
   }))
 }
 
+const MISE_LABELS = {
+  blocking: 'Blocking',
+  props: 'Props',
+  set_dressing: 'Set',
+}
+
+function buildMiseChips(mise) {
+  if (!mise || typeof mise !== 'object') return []
+  const chips = []
+  for (const key of ['blocking', 'props', 'set_dressing']) {
+    const value = mise[key]
+    if (!value) continue
+    const text = Array.isArray(value) ? value.filter(Boolean).join(', ') : String(value)
+    if (!text.trim()) continue
+    chips.push({ key, label: MISE_LABELS[key] || key, text })
+  }
+  return chips
+}
+
+function buildLightingChips(lighting) {
+  if (!lighting || typeof lighting !== 'object') return []
+  const chips = []
+  for (const [key, label] of [['key', 'Key'], ['fill', 'Fill'], ['mood', 'Mood']]) {
+    const value = lighting[key]
+    if (!value || !String(value).trim()) continue
+    chips.push({ key, label, text: String(value) })
+  }
+  return chips
+}
+
+function buildFreeformChip(freeform) {
+  if (!freeform) return null
+  const text = String(freeform).trim()
+  if (!text) return null
+  return { key: 'freeform', label: 'Freeform', text }
+}
+
 function buildStrategyContext({
   proposal,
   shot,
@@ -365,12 +402,13 @@ export default function StrategyOverlay() {
     const proposal = proposals[idx]
     const shot = proposal?.shots?.[0]
 
-    if (!canvasDataUrl || !shot?.cir) {
+    if (!canvasDataUrl || !shot) {
       setStrategyError('현재 스케치와 추천 샷 정보가 필요합니다.')
       return
     }
 
-    const targetCir = normalizeCir(shot.cir)
+    // CIR이 없으면(Reframe axis 비활성 등) 현재 구도 그대로 두고 mise만 적용.
+    const targetCir = shot.cir ? normalizeCir(shot.cir) : normalizeCir(currentCir)
     const recommendationLine = pickText(
       shot?.recommendation_summary,
       buildRecommendationLine(currentCir, targetCir, proposal.name)
@@ -675,6 +713,54 @@ export default function StrategyOverlay() {
                                   </div>
                                 </div>
                               ))}
+                            </div>
+                          )
+                        })()}
+
+                        {/* Non-CIR axis chips: mise / lighting / freeform */}
+                        {(() => {
+                          const miseChips = buildMiseChips(shot?.mise)
+                          const lightingChips = buildLightingChips(shot?.lighting)
+                          const freeformChip = buildFreeformChip(shot?.freeform)
+                          if (miseChips.length === 0 && lightingChips.length === 0 && !freeformChip) return null
+                          return (
+                            <div className="strategy-card-axis-changes">
+                              {miseChips.length > 0 && (
+                                <div className="strategy-card-axis-group">
+                                  <div className="strategy-card-axis-label">미쟝센</div>
+                                  <div className="strategy-card-axis-chips">
+                                    {miseChips.map((chip) => (
+                                      <span key={chip.key} className="strategy-card-axis-chip">
+                                        <span className="strategy-card-axis-chip-key">{chip.label}</span>
+                                        <span className="strategy-card-axis-chip-val">{chip.text}</span>
+                                      </span>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                              {lightingChips.length > 0 && (
+                                <div className="strategy-card-axis-group">
+                                  <div className="strategy-card-axis-label">조명</div>
+                                  <div className="strategy-card-axis-chips">
+                                    {lightingChips.map((chip) => (
+                                      <span key={chip.key} className="strategy-card-axis-chip">
+                                        <span className="strategy-card-axis-chip-key">{chip.label}</span>
+                                        <span className="strategy-card-axis-chip-val">{chip.text}</span>
+                                      </span>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                              {freeformChip && (
+                                <div className="strategy-card-axis-group">
+                                  <div className="strategy-card-axis-label">프리폼</div>
+                                  <div className="strategy-card-axis-chips">
+                                    <span className="strategy-card-axis-chip">
+                                      <span className="strategy-card-axis-chip-val">{freeformChip.text}</span>
+                                    </span>
+                                  </div>
+                                </div>
+                              )}
                             </div>
                           )
                         })()}

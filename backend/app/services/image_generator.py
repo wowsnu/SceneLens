@@ -531,11 +531,85 @@ ROUGH BLOCKING SKETCH MODE:
 
 
 def _get_recraft_svg_generation_config(detail_level: int) -> dict:
+    # detail_level과 무관하게 항상 "단순 콘티" 톤으로 생성.
     return {
         "model": "recraftv4_vector",
         "style": None,
-        "prompt_mode": "rough_v4",
+        "prompt_mode": "simple_conti",
     }
+
+
+def _build_recraft_simple_conti_svg_prompt(
+    script_context: str,
+    intent: str,
+    cir: Optional[dict],
+    scene_script: str,
+    detail_level: int,
+) -> str:
+    """detail_level과 무관하게 항상 단순 콘티(storyboard thumbnail) 수준으로 그리도록 지시."""
+    focus = _normalize_prompt_text(script_context or scene_script or "Storyboard beat")
+    scene = _normalize_prompt_text(scene_script)
+    intent_line = _normalize_prompt_text(intent)
+    cir_line = _normalize_prompt_text(_compact_cir_line(cir))
+
+    cir_block = f"\nCIR reference: {cir_line}" if cir_line else ""
+    intent_block = f"\nDirector intent: {intent_line}" if intent_line else ""
+    scene_block = f"\nFull scene context: {scene}" if scene and scene != focus else ""
+
+    return f"""Single 16:9 black-and-white SVG storyboard thumbnail (conti). White background. Output exactly one drawing.
+
+[Frame Focus - draw exactly this beat]
+{focus}{intent_block}{cir_block}{scene_block}
+
+SIMPLE CONTI MODE (always, regardless of any other setting):
+- This is a director's thumbnail conti — NOT a finished illustration.
+- Draw at the level of a quick storyboard sketch: clear silhouette, pose, and framing only.
+- Use simple, confident black strokes. One clean outer contour per subject. 0-2 interior lines per subject.
+- Characters can be simple stick-figure-like blockings with a basic head/body/limbs. No facial detail beyond eyes/mouth dots if needed.
+- Environment: only the 1-3 anchor shapes needed to read the space (horizon, wall, key prop). Leave most of the frame empty.
+- NO shading, NO hatching, NO cross-hatching, NO texture, NO fine detail, NO decorative lines, NO rendering.
+- NO text, NO labels, NO captions, NO speech bubbles.
+- Do NOT polish, do NOT beautify, do NOT add expressive detail to make it look nicer.
+- Readability over realism. The goal is "a director can immediately read the shot," not "a viewer admires the art."
+
+Primary beat to preserve:
+{focus}
+"""
+
+
+def _build_recraft_simple_conti_svg_layer_prompt(
+    script_context: str,
+    layer_name: str,
+    layer_desc: str,
+    intent: str,
+    cir: Optional[dict],
+    detail_level: int,
+) -> str:
+    """단순 콘티 톤의 layer 버전 — 항상 동일한 미니멀 스타일."""
+    scene = _normalize_prompt_text(script_context)
+    intent_line = _normalize_prompt_text(intent)
+    layer_desc = _normalize_prompt_text(layer_desc)
+    cir_line = _normalize_prompt_text(_compact_cir_line(cir))
+
+    return f"""Single 16:9 black-and-white SVG '{layer_name}' layer drawn at storyboard-thumbnail (conti) level. White background. Output exactly ONE drawing.
+
+Scene context:
+{scene}
+
+Layer requirement:
+{layer_desc}
+{f"Director intent: {intent_line}" if intent_line else ""}
+{f"CIR reference: {cir_line}" if cir_line else ""}
+
+SIMPLE CONTI MODE (always):
+- Director's thumbnail level — not a finished illustration.
+- Simple, confident black strokes. One clean outer contour per subject, 0-2 interior lines.
+- Characters: simple block/stick-figure-like silhouette. No facial/clothing detail.
+- Environment: only the few anchor shapes needed to read the space. Leave most of the frame empty.
+- NO shading, hatching, texture, fine detail, decoration, or rendering.
+- NO text, labels, captions.
+- Do not polish or beautify. Readability over realism.
+"""
 
 
 def _count_svg_drawable_elements(svg_str: str) -> dict:
@@ -678,7 +752,15 @@ async def generate_sketch_svg(
         scene_script=scene_script,
         detail_level=detail_level,
     )
-    if recraft_config["prompt_mode"] == "rough_v4":
+    if recraft_config["prompt_mode"] == "simple_conti":
+        prompt = _build_recraft_simple_conti_svg_prompt(
+            script_context=script_context,
+            intent=intent,
+            cir=cir,
+            scene_script=scene_script,
+            detail_level=detail_level,
+        )
+    elif recraft_config["prompt_mode"] == "rough_v4":
         prompt = _build_recraft_v4_rough_svg_prompt(
             script_context=script_context,
             intent=intent,
@@ -816,7 +898,16 @@ async def generate_svg_layer(
             f"NO other elements — no background, no characters, no props unless they ARE the '{layer_name}' layer. "
             f"Pure white/transparent background. Each element should be a clear, self-contained outline."
         )
-    if recraft_config["prompt_mode"] == "rough_v4":
+    if recraft_config["prompt_mode"] == "simple_conti":
+        prompt = _build_recraft_simple_conti_svg_layer_prompt(
+            script_context=script_context,
+            layer_name=layer_name,
+            layer_desc=layer_desc,
+            intent=intent,
+            cir=cir,
+            detail_level=detail_level,
+        )
+    elif recraft_config["prompt_mode"] == "rough_v4":
         prompt = _build_recraft_v4_rough_svg_layer_prompt(
             script_context=script_context,
             layer_name=layer_name,
@@ -942,6 +1033,15 @@ async def reframe_sketch(
             from_str = f" (was: {from_val})" if from_val else ""
             lines.append(f"  - {k}: {v}{from_str}\n    → {desc}")
         changed_section = "[What to change]\n" + "\n".join(lines)
+    elif (intent and intent.strip()) or (strategy_context and strategy_context.strip()):
+        # Mise-only mode: no CIR change, just apply intent / strategy guidance to existing composition.
+        changed_section = (
+            "[What to change]\n"
+            "  - Keep the existing camera composition (shot size, angle, framing) unchanged.\n"
+            "  - Apply only the mise-en-scène / staging adjustments described in the Director's Intent\n"
+            "    and the Selected Strategy Guidance below (e.g. blocking, props, set dressing, lighting).\n"
+            "  - Do NOT alter the underlying framing geometry. Modify only the in-frame staging."
+        )
     else:
         raise ValueError("No CIR changes requested. Change at least one attribute before reframing.")
 
