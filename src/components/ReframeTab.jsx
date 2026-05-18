@@ -120,7 +120,7 @@ const OPTION_VISUALS = {
   },
   verticalLevel: {
     High: {
-      image: '/img/high_angle.png',
+      image: '/img/new_high.png',
       eyebrow: 'Observe',
       description: '위에서 내려보며 작게',
     },
@@ -172,7 +172,7 @@ const OPTION_VISUALS = {
       description: '가림 없이 정면 노출',
     },
     Partial: {
-      image: '/img/alt_canted.png',
+      image: '/img/new_partial.png',
       eyebrow: 'Layered',
       description: '전경 일부로 깊이 추가',
     },

@@ -14,7 +14,7 @@ const FILM_REFS = [
   { title: 'There Will Be Blood', scene: 'Low angle — Plainview dominance', src: '/img/new_low.png' },
   { title: 'Mulholland Drive', scene: 'Close-up — emotional pressure', src: '/img/new_cu.png' },
   { title: 'Citizen Kane', scene: 'Deep focus — Kane at window', src: '/img/new_deep.png' },
-  { title: 'Parasite', scene: 'High angle — underground staircase', src: '/img/high_angle.png' },
+  { title: 'Parasite', scene: 'High angle — underground staircase', src: '/img/new_high.png' },
   { title: '2001: A Space Odyssey', scene: 'Top-down — symmetrical composition', src: '/img/top_down.png' },
   { title: 'Oldboy', scene: 'Corridor tracking shot', src: '/img/new_track.png' },
   { title: 'The Shining', scene: 'Handheld — Danny hallway', src: '/img/new_handheld.png' },
@@ -46,7 +46,7 @@ const CIR_IMAGE_MAP = {
     'Rear': '/img/rear_angle.png',
   },
   verticalLevel: {
-    'High': '/img/high_angle.png',
+    'High': '/img/new_high.png',
     'Top-Down': '/img/top_down.png',
     'Eye': '/img/new_eye.png',
     'Low': '/img/new_low.png',
@@ -59,7 +59,7 @@ const CIR_IMAGE_MAP = {
   },
   occlusion: {
     'None': '/img/ref_diner.png',
-    'Partial': '/img/alt_canted.png',
+    'Partial': '/img/new_partial.png',
     'Heavy': '/img/heavy_occlusion.png',
   },
   depth: {
