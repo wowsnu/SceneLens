@@ -374,10 +374,6 @@ const useStore = create((set, get) => ({
   setCanvasDataUrl: (url) => set({ canvasDataUrl: url }),
   pendingCanvasImage: null,
   setPendingCanvasImage: (url) => set({ pendingCanvasImage: url }),
-  // Layered SVG 생성 결과 — 각 layer의 dataURL을 따로 들고 있어서
-  // DrawingCanvas가 각각 fabric Group으로 추가하고 독립적으로 조작할 수 있게 한다.
-  pendingCanvasLayers: null,
-  setPendingCanvasLayers: (layers) => set({ pendingCanvasLayers: layers }),
   comparePreview: null,
   setComparePreview: (preview) => set({ comparePreview: preview }),
   clearComparePreview: () => set({ comparePreview: null }),

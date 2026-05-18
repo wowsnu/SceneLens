@@ -445,8 +445,15 @@ def warmup_theory_cache():
     """
     global _THEORY_CACHE_NAME
     if _THEORY_CACHE_NAME:
-        logger.info(f"[TheoryEngine] Cache already warmed up: {_THEORY_CACHE_NAME}")
-        return _THEORY_CACHE_NAME
+        # TTL 만료 등으로 서버에서 캐시가 사라질 수 있어서 살아있는지 확인.
+        try:
+            client = get_client()
+            client.caches.get(name=_THEORY_CACHE_NAME)
+            logger.info(f"[TheoryEngine] Cache already warmed up: {_THEORY_CACHE_NAME}")
+            return _THEORY_CACHE_NAME
+        except Exception as e:
+            logger.warning(f"[TheoryEngine] Cached name {_THEORY_CACHE_NAME} no longer valid ({e}). Recreating.")
+            _THEORY_CACHE_NAME = None
 
     logger.info("[TheoryEngine] Warming up context cache with film theory books...")
     try:
@@ -695,6 +702,7 @@ Format:
         ))
 
     client = get_client()
+    global _THEORY_CACHE_NAME
     response = None
     for attempt in range(3):
         try:
@@ -709,6 +717,12 @@ Format:
             break
         except Exception as e:
             err_str = str(e)
+            if ('403' in err_str or 'PERMISSION_DENIED' in err_str or 'CachedContent not found' in err_str) and cache_name:
+                # 캐시가 만료/삭제됨 — 무효화하고 다시 warmup해서 재시도.
+                print(f"[Strategy v2] Cache invalidated ({err_str[:120]}). Rewarming and retrying.")
+                _THEORY_CACHE_NAME = None
+                cache_name = warmup_theory_cache()
+                continue
             if '503' in err_str or 'UNAVAILABLE' in err_str or 'overloaded' in err_str.lower():
                 wait = (attempt + 1) * 3
                 print(f"[Strategy v2] Gemini 503, retry {attempt+1}/3 in {wait}s...")
