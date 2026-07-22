@@ -10,7 +10,7 @@ export default function ShotPanel() {
   const detailTab = useStore((s) => s.detailTab)
   const setDetailTab = useStore((s) => s.setDetailTab)
   const [mapExpanded, setMapExpanded] = useState(false)
-  const [mapCollapsed, setMapCollapsed] = useState(false)
+  const [mapCollapsed, setMapCollapsed] = useState(true)
 
   return (
     <aside className="shot-panel panel">
@@ -26,9 +26,14 @@ export default function ShotPanel() {
       )}
 
       <div className={`mini-map-section ${mapCollapsed ? 'collapsed' : ''}`}>
-        <div className="section-header">
+        <div
+          className="section-header"
+          onClick={() => setMapCollapsed((prev) => !prev)}
+          style={{ cursor: 'pointer' }}
+          title={mapCollapsed ? '펼치기' : '접기'}
+        >
           <span className="section-label">📍 SPATIAL CONTEXT</span>
-          <div className="map-header-actions">
+          <div className="map-header-actions" onClick={(e) => e.stopPropagation()}>
             <button
               className="map-expand-btn"
               title={mapCollapsed ? '펼치기' : '접기'}

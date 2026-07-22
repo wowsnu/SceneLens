@@ -8,7 +8,7 @@ const API_BASE = import.meta.env.DEV
   ? normalizeApiBase(import.meta.env.VITE_API_URL || '')
   : normalizeApiBase(import.meta.env.VITE_API_URL || '')
 
-async function fetchWithTimeout(url, options, timeoutMs = 30000) {
+async function fetchWithTimeout(url, options, timeoutMs = 120000) {
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), timeoutMs)
   try {
@@ -32,7 +32,7 @@ async function fetchWithTimeout(url, options, timeoutMs = 30000) {
     return response.json()
   } catch (err) {
     clearTimeout(timer)
-    if (err.name === 'AbortError') throw new Error('Request timed out (30s). Please try again.')
+    if (err.name === 'AbortError') throw new Error(`Request timed out (${Math.round(timeoutMs/1000)}s). Please try again.`)
     throw err
   }
 }
@@ -66,7 +66,7 @@ export async function suggestStrategies(
       theory_preference: theoryPreference,
       mise_options: miseOptions,
     }),
-  }, 60000)
+  }, 180000)
 }
 
 export async function theoryAnswer(cir, intent, scriptContext = '') {

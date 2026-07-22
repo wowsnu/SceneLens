@@ -46,6 +46,10 @@ export default function DrawingCanvas() {
   const [isStrategyCardFlipped, setIsStrategyCardFlipped] = useState(false)
   const [refSlideIdx, setRefSlideIdx] = useState(0)
   const [isEnhancingLocal, setIsEnhancingLocal] = useState(false)
+  // 비교 오버레이를 뒤 캔버스와 정렬하되, 높이는 원본 스케치 비율에 맞춰 줄인다
+  const [canvasBox, setCanvasBox] = useState(null) // { left, top, width, height } (컨테이너 기준)
+  const [compareImgAspect, setCompareImgAspect] = useState(null) // 원본 이미지 w/h
+  const [zoomedImage, setZoomedImage] = useState(null) // { src, label } — 확대(라이트박스)로 볼 이미지
   const screenplay = useStore((s) => s.screenplay)
   const setComparePreview = useStore((s) => s.setComparePreview)
   const clearComparePreview = useStore((s) => s.clearComparePreview)
@@ -290,6 +294,62 @@ export default function DrawingCanvas() {
   useEffect(() => {
     drawOverlays()
   }, [drawOverlays])
+
+  // 뒤 캔버스의 위치·크기(컨테이너 기준)를 측정 → 비교 오버레이를 같은 자리에 겹친다
+  const measureCanvasBox = useCallback(() => {
+    const canvas = canvasRef.current
+    const container = containerRef.current
+    if (!canvas || !container) return
+    const c = canvas.getBoundingClientRect()
+    const p = container.getBoundingClientRect()
+    if (c.width === 0 || c.height === 0) return
+    setCanvasBox({
+      left: c.left - p.left,
+      top: c.top - p.top,
+      width: c.width,
+      height: c.height,
+    })
+  }, [])
+
+  // 비교 모드 진입/리사이즈 시 캔버스 박스를 다시 측정
+  useEffect(() => {
+    if (!comparePreview) return
+    measureCanvasBox()
+    // 레이아웃이 안정화된 다음 프레임에 한 번 더 측정(진입 직후 위치 어긋남 방지)
+    const raf = requestAnimationFrame(measureCanvasBox)
+    window.addEventListener('resize', measureCanvasBox)
+    const canvas = canvasRef.current
+    const ro = canvas ? new ResizeObserver(measureCanvasBox) : null
+    if (canvas && ro) ro.observe(canvas)
+    return () => {
+      cancelAnimationFrame(raf)
+      window.removeEventListener('resize', measureCanvasBox)
+      ro?.disconnect()
+    }
+  }, [comparePreview, measureCanvasBox])
+
+  // 확대 보기: Esc로 닫기
+  useEffect(() => {
+    if (!zoomedImage) return
+    const onKey = (e) => { if (e.key === 'Escape') setZoomedImage(null) }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [zoomedImage])
+
+  // 원본 이미지의 실제 비율 측정 → 오버레이 높이를 스케치에 딱 맞게 줄인다
+  useEffect(() => {
+    const src = comparePreview?.originalImage
+    if (!src) { setCompareImgAspect(null); return }
+    let cancelled = false
+    const img = new Image()
+    img.onload = () => {
+      if (!cancelled && img.naturalWidth && img.naturalHeight) {
+        setCompareImgAspect(img.naturalWidth / img.naturalHeight)
+      }
+    }
+    img.src = src
+    return () => { cancelled = true }
+  }, [comparePreview?.originalImage])
 
   useEffect(() => {
     if (!comparePreview) {
@@ -915,10 +975,43 @@ export default function DrawingCanvas() {
         </div>
       )}
       {comparePreview?.originalImage && (comparePreview?.candidateImage || comparePreview?.loading || comparePreview?.error) && (
-        <div className="compare-preview-overlay">
+        <div
+          className="compare-preview-overlay"
+          style={canvasBox ? (() => {
+            // 패널 폭 = (전체폭 - divider 2px) / 2. 높이는 원본 이미지 비율에 맞춤.
+            const panelW = (canvasBox.width - 2) / 2
+            const aspect = compareImgAspect || (16 / 9)
+            let boxH = panelW / aspect
+            if (boxH > canvasBox.height) boxH = canvasBox.height // 캔버스보다 커지지 않게
+            // 캔버스 영역 상단에 붙여 정렬 → 줄어든 높이만큼 하단이 비어 IntentBar에 안 가림
+            const top = canvasBox.top
+            return {
+              left: canvasBox.left,
+              top,
+              width: canvasBox.width,
+              height: boxH,
+              right: 'auto',
+              bottom: 'auto',
+              margin: 0,
+              aspectRatio: 'auto',
+              maxWidth: 'none',
+              maxHeight: 'none',
+            }
+          })() : undefined}
+        >
           <div className="compare-preview-panel compare-preview-panel--left">
             <img src={comparePreview.originalImage} alt="Original storyboard" />
             <div className="compare-preview-label">Original</div>
+            <button
+              type="button"
+              className="compare-zoom-btn"
+              title="확대해서 보기"
+              onClick={(e) => { e.stopPropagation(); setZoomedImage({ src: comparePreview.originalImage, label: 'Original' }) }}
+            >
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="11" cy="11" r="7" /><path d="M21 21l-4.3-4.3" /><path d="M11 8v6M8 11h6" />
+              </svg>
+            </button>
           </div>
           <div className="compare-preview-divider" />
           <div className="compare-preview-panel compare-preview-panel--right">
@@ -962,6 +1055,24 @@ export default function DrawingCanvas() {
                           ? (comparePreview.enhanceMode === 'sketch' ? 'Enhanced Sketch' : 'Photo Reference')
                           : 'Reframed'}
                       </div>
+                      <span
+                        role="button"
+                        tabIndex={0}
+                        className="compare-zoom-btn"
+                        title="확대해서 보기"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          const label = comparePreview.isEnhancePreview
+                            ? (comparePreview.enhanceMode === 'sketch' ? 'Enhanced Sketch' : 'Photo Reference')
+                            : 'Reframed'
+                          setZoomedImage({ src: comparePreview.candidateImage, label })
+                        }}
+                        onKeyDown={(e) => { if (e.key === 'Enter') { e.stopPropagation(); setZoomedImage({ src: comparePreview.candidateImage, label: 'Reframed' }) } }}
+                      >
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <circle cx="11" cy="11" r="7" /><path d="M21 21l-4.3-4.3" /><path d="M11 8v6M8 11h6" />
+                        </svg>
+                      </span>
                       {!comparePreview.isEnhancePreview && (
                         <div className="strategy-compare-flip-hint">클릭해서 전략 설명 보기</div>
                       )}
@@ -1030,6 +1141,26 @@ export default function DrawingCanvas() {
           </div>
         </div>
       )}
+      {/* 확대 보기(라이트박스) — 배경/X/Esc로 닫기 */}
+      {zoomedImage && (
+        <div className="compare-zoom-lightbox" onClick={() => setZoomedImage(null)}>
+          <button
+            type="button"
+            className="compare-zoom-close"
+            title="닫기 (Esc)"
+            onClick={(e) => { e.stopPropagation(); setZoomedImage(null) }}
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+              <path d="M18 6 6 18M6 6l12 12" />
+            </svg>
+          </button>
+          <div className="compare-zoom-stage" onClick={(e) => e.stopPropagation()}>
+            <img src={zoomedImage.src} alt={zoomedImage.label} />
+            <div className="compare-zoom-label">{zoomedImage.label}</div>
+          </div>
+        </div>
+      )}
+
       {/* Apply / Dismiss for enhance preview */}
       {comparePreview?.isEnhancePreview && !comparePreview?.loading && comparePreview?.candidateImage && (
         <div className="enhance-action-bar">

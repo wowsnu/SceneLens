@@ -1,4 +1,4 @@
-import { useRef, useEffect } from 'react'
+import { useRef, useEffect, useState } from 'react'
 import useStore from '../store/useStore'
 import { analyzeSketch, suggestStrategies } from '../services/api'
 import AxisChips from './AxisChips'
@@ -41,10 +41,18 @@ export default function IntentBar() {
   const analyzedCanvasRef = useRef(null) // 마지막으로 분석한 canvasDataUrl 기억
   const setDetailTab = useStore((s) => s.setDetailTab)
 
+  // 채팅 영역 접기/펼치기 (기본: 펼침). 캔버스를 가리지 않도록 접을 수 있다.
+  const [chatCollapsed, setChatCollapsed] = useState(false)
+
+  // 새 메시지가 오면 자동으로 펼쳐서 보여준다
+  useEffect(() => {
+    if (chatMessages.length > 0) setChatCollapsed(false)
+  }, [chatMessages.length])
+
   // 자동 스크롤
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [chatMessages])
+    if (!chatCollapsed) messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [chatMessages, chatCollapsed])
 
   const handleAnalyze = async () => {
     if (isAnalyzing) return
@@ -125,21 +133,36 @@ export default function IntentBar() {
   return (
     <div className="intent-bar chat-mode">
       {chatMessages.length > 0 && (
-        <div className="chat-messages">
-          {chatMessages.map((msg, i) => {
-            if (msg.role === 'action' && msg.text === 'strategies_ready') {
-              return <StrategyReadyBubble key={i} />
-            }
-            return (
-              <div key={i} className={`chat-msg-bubble ${msg.role}`}>
-                <span className="msg-role">{msg.role === 'user' ? 'Director' : 'AI'}</span>
-                <p>{msg.text}</p>
-              </div>
-            )
-          })}
+        <>
+          <button
+            className="chat-collapse-toggle"
+            onClick={() => setChatCollapsed((c) => !c)}
+            title={chatCollapsed ? '대화 펼치기' : '대화 접기'}
+          >
+            <span>{chatCollapsed ? `대화 펼치기 (${chatMessages.length})` : '대화 접기'}</span>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"
+              style={{ transform: chatCollapsed ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}>
+              <path d="M6 9l6 6 6-6" />
+            </svg>
+          </button>
+          {!chatCollapsed && (
+            <div className="chat-messages">
+              {chatMessages.map((msg, i) => {
+                if (msg.role === 'action' && msg.text === 'strategies_ready') {
+                  return <StrategyReadyBubble key={i} />
+                }
+                return (
+                  <div key={i} className={`chat-msg-bubble ${msg.role}`}>
+                    <span className="msg-role">{msg.role === 'user' ? 'Director' : 'AI'}</span>
+                    <p>{msg.text}</p>
+                  </div>
+                )
+              })}
 
-          <div ref={messagesEndRef} />
-        </div>
+              <div ref={messagesEndRef} />
+            </div>
+          )}
+        </>
       )}
 
       <AxisChips />

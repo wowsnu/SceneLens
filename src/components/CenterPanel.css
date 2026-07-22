@@ -25,6 +25,7 @@
   flex: 1;
   min-width: 0;
   overflow: hidden;
+  position: relative; /* 떠 있는 IntentBar의 기준점 */
 }
 
 .canvas-side .canvas-container {
