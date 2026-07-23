@@ -42,6 +42,10 @@ export default function DrawingCanvas() {
   const activeSceneData = useStore((s) => s.scenes[s.activeScene])
   const zenMode = useStore((s) => s.zenMode)
   const activeBeat = useStore((s) => s.activeBeat)
+  const activeFlowBranchIndex = activeSceneData?.activeBranch ?? 0
+  const activeFlowBranch = activeSceneData?.branches?.[activeFlowBranchIndex]
+  const activeFlowShot = activeFlowBranch?.shots?.[activeSceneData?.activeShot ?? activeShot]
+  const activeFlowShotKey = `${activeSceneData?.id || 'scene'}-${activeFlowBranch?.id || activeStrategy}-${activeFlowShot?.id || activeShot}`
   const [hasDrawn, setHasDrawn] = useState(false)
   const [isStrategyCardFlipped, setIsStrategyCardFlipped] = useState(false)
   const [refSlideIdx, setRefSlideIdx] = useState(0)
@@ -61,21 +65,18 @@ export default function DrawingCanvas() {
   const setSegmentStatus = useStore((s) => s.setSegmentStatus)
   const activeCutout = useStore((s) => s.activeCutout)
   const setActiveCutout = useStore((s) => s.setActiveCutout)
-  const clearSegmentSession = useStore((s) => s.clearSegmentSession)
   // Live lasso polygon currently being drawn on the overlay
   const lassoPointsRef = useRef([])  // array of {x, y} in css px
   const isLassoDragging = useRef(false)
 
   // Get current shot image
   const getCurrentShotImage = useCallback(() => {
-    const activeBranch = activeSceneData?.activeBranch ?? 0
-    const flowShot = activeSceneData?.branches?.[activeBranch]?.shots?.[activeSceneData?.activeShot ?? activeShot]
-    if (flowShot?.image) return flowShot.image
+    if (activeFlowShot?.image) return activeFlowShot.image
     const strategy = strategies[activeStrategy]
     const shot = strategy?.shots?.[activeShot]
     if (shot?.image) return shot.image
     return null
-  }, [activeSceneData, activeShot, activeStrategy, strategies])
+  }, [activeFlowShot, activeShot, activeStrategy, strategies])
 
   // Load shot image onto canvas
   const loadShotImage = useCallback((imageSrc) => {
@@ -132,20 +133,19 @@ export default function DrawingCanvas() {
 
   // When activeShot or activeStrategy changes, load the shot image
   useEffect(() => {
-    const shotKey = `${activeStrategy}-${activeShot}`
-    if (shotKey === loadedShotKey.current) return
+    if (activeFlowShotKey === loadedShotKey.current) return
 
     const imageSrc = getCurrentShotImage()
     if (imageSrc) {
       // Small delay to ensure canvas is sized after mount/resize
       const timer = setTimeout(() => {
         loadShotImage(imageSrc)
-        loadedShotKey.current = shotKey
+        loadedShotKey.current = activeFlowShotKey
       }, 50)
       return () => clearTimeout(timer)
     } else {
       // No image — clear to white
-      loadedShotKey.current = shotKey
+      loadedShotKey.current = activeFlowShotKey
       const canvas = canvasRef.current
       if (canvas) {
         const ctx = canvas.getContext('2d')
@@ -163,7 +163,7 @@ export default function DrawingCanvas() {
       historyRef.current = []
       historyIndex.current = -1
     }
-  }, [activeStrategy, activeShot, activeBeat, getCurrentShotImage, loadShotImage])
+  }, [activeFlowShotKey, activeShot, activeBeat, getCurrentShotImage, loadShotImage])
 
   // Load AI-generated/enhanced image onto canvas
   useEffect(() => {

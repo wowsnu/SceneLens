@@ -2,6 +2,49 @@ import { useEffect, useRef, useState } from 'react'
 import useStore from '../store/useStore'
 import './StoryboardView.css'
 
+const MOCK_PANEL_PALETTES = [
+  ['#172033', '#334b75', '#d8e3ff'],
+  ['#251b2f', '#6c3f68', '#f2d5ef'],
+  ['#182923', '#356653', '#d4f2e6'],
+  ['#2c2118', '#735139', '#f4dfca'],
+]
+
+function createMockPanelImage(shotIdx, version = 1) {
+  const [background, midtone, line] = MOCK_PANEL_PALETTES[shotIdx % MOCK_PANEL_PALETTES.length]
+  const variant = (shotIdx + version) % 3
+  const compositions = [
+    `
+      <rect x="68" y="62" width="250" height="190" rx="8" fill="${midtone}" opacity=".54"/>
+      <circle cx="420" cy="150" r="58" fill="${line}" opacity=".18"/>
+      <path d="M380 258c18-63 48-93 89-93 36 0 65 31 83 93" fill="${midtone}" stroke="${line}" stroke-width="6"/>
+      <path d="M102 105h146M102 140h112M102 175h165" stroke="${line}" stroke-width="5" opacity=".72"/>
+    `,
+    `
+      <path d="M42 282 214 92h212l172 190" fill="${midtone}" opacity=".46"/>
+      <path d="M214 92v190M426 92v190" stroke="${line}" stroke-width="5" opacity=".58"/>
+      <circle cx="276" cy="166" r="34" fill="${line}" opacity=".22"/>
+      <circle cx="384" cy="166" r="34" fill="${line}" opacity=".22"/>
+      <path d="M238 262c8-54 24-81 48-81s40 27 48 81M346 262c8-54 24-81 48-81s40 27 48 81" fill="none" stroke="${line}" stroke-width="6"/>
+    `,
+    `
+      <rect x="45" y="45" width="550" height="230" rx="14" fill="${midtone}" opacity=".35"/>
+      <path d="M45 204 180 126l106 56 116-92 193 114v71H45Z" fill="${midtone}" opacity=".8"/>
+      <circle cx="180" cy="126" r="38" fill="${line}" opacity=".2"/>
+      <path d="M79 238h482" stroke="${line}" stroke-width="5" opacity=".72"/>
+    `,
+  ]
+  const svg = `
+    <svg xmlns="http://www.w3.org/2000/svg" width="640" height="360" viewBox="0 0 640 360">
+      <rect width="640" height="360" fill="${background}"/>
+      <rect x="22" y="22" width="596" height="316" rx="18" fill="none" stroke="${line}" stroke-width="3" opacity=".32"/>
+      ${compositions[variant]}
+      <rect x="38" y="298" width="124" height="25" rx="12.5" fill="#050507" opacity=".72"/>
+      <text x="100" y="315" text-anchor="middle" fill="${line}" font-family="Arial, sans-serif" font-size="11" font-weight="700" letter-spacing="1.8">AI DRAFT · V${version}</text>
+    </svg>
+  `
+  return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`
+}
+
 function NarrativeSuggestionCard({ suggestion, onAccept, onDismiss }) {
   const canAccept = suggestion.type !== 'keep-structure'
 
@@ -69,16 +112,25 @@ export default function StoryboardView() {
   const selectBeat = useStore((s) => s.selectBeat)
   const activeBeat = useStore((s) => s.activeBeat)
   const addShotToBeat = useStore((s) => s.addShotToBeat)
+  const removeShot = useStore((s) => s.flowRemoveShot)
   const maximizedPanel = useStore((s) => s.maximizedPanel)
   const setCenterTab = useStore((s) => s.setCenterTab)
   const setMaximizedPanel = useStore((s) => s.setMaximizedPanel)
+  const drawingWorkspaceOpen = useStore((s) => s.drawingWorkspaceOpen)
+  const openDrawingWorkspace = useStore((s) => s.openDrawingWorkspace)
+  const selectedShotIds = useStore((s) => s.selectedStoryboardShotIds)
+  const setSelectedShotIds = useStore((s) => s.setSelectedStoryboardShotIds)
   const scriptEditorRequestKey = useStore((s) => s.scriptEditorRequestKey)
   const narrativeSuggestions = useStore((s) => s.narrativeSuggestions)
   const dismissNarrativeSuggestion = useStore((s) => s.dismissNarrativeSuggestion)
+  const updateFlowShotById = useStore((s) => s.updateFlowShotById)
+  const setPendingCanvasImage = useStore((s) => s.setPendingCanvasImage)
 
   const [isEditingRaw, setIsEditingRaw] = useState(false)
   const [rawText, setRawText] = useState('')
   const [rawSceneIntention, setRawSceneIntention] = useState('')
+  const [generationScope, setGenerationScope] = useState('all')
+  const [panelCandidates, setPanelCandidates] = useState({})
   const handledScriptEditorRequestKey = useRef(0)
 
   const isExpanded = maximizedPanel === 'left'
@@ -124,13 +176,119 @@ export default function StoryboardView() {
     setFlowActiveShot(shotIdx)
     setActiveBeat(beatNum)
     setCenterTab('canvas')
-    if (maximizedPanel === 'left') setMaximizedPanel(null)
+    openDrawingWorkspace()
   }
 
   const handleAddShot = (beatNum) => {
     addShotToBeat(beatNum)
-    setCenterTab('canvas')
-    if (maximizedPanel === 'left') setMaximizedPanel(null)
+  }
+
+  const handleDeleteShot = (shotId, shotIdx) => {
+    if (flowShots.length <= 1) return
+    setSelectedShotIds((current) => current.filter((id) => id !== shotId))
+    dismissPanelCandidate(shotId)
+    removeShot(activeBranch, shotIdx)
+  }
+
+  const getShotVisual = (shot, shotIdx) => {
+    const flowSketchKey = `${activeScene}-${activeBranch}-${shotIdx}`
+    const legacySketchKey = `0-${shotIdx}`
+    return shot.image || shotSketches[flowSketchKey] || shotSketches[legacySketchKey] || null
+  }
+
+  const selectedShots = flowShots
+    .map((shot, shotIdx) => ({ shot, shotIdx }))
+    .filter(({ shot }) => selectedShotIds.includes(shot.id))
+  const allBlankShots = flowShots
+    .map((shot, shotIdx) => ({ shot, shotIdx }))
+    .filter(({ shot, shotIdx }) => !getShotVisual(shot, shotIdx))
+  const activeBeatShots = flowShots
+    .map((shot, shotIdx) => ({ shot, shotIdx }))
+    .filter(({ shot }) => (shot.scriptBeat ?? 0) === activeBeat)
+  const scopeShots = generationScope === 'beat'
+      ? activeBeatShots
+      : generationScope === 'selected'
+        ? selectedShots
+        : allBlankShots
+  const eligibleScopeShots = scopeShots.filter(({ shot, shotIdx }) => !getShotVisual(shot, shotIdx))
+  const currentShotIds = new Set(flowShots.map((shot) => shot.id))
+  const currentPanelCandidates = Object.values(panelCandidates)
+    .filter((candidate) => currentShotIds.has(candidate.shotId))
+  const candidateCount = currentPanelCandidates.length
+
+  const toggleShotSelection = (shotId) => {
+    setSelectedShotIds((current) => (
+      current.includes(shotId)
+        ? current.filter((id) => id !== shotId)
+        : [...current, shotId]
+    ))
+  }
+
+  const handleGeneratePanels = (targets, { includeExisting = false } = {}) => {
+    const eligibleTargets = includeExisting
+      ? targets
+      : targets.filter(({ shot, shotIdx }) => !getShotVisual(shot, shotIdx))
+    if (eligibleTargets.length === 0) return
+    if (!isExpanded) setMaximizedPanel('left')
+
+    setPanelCandidates((current) => {
+      const next = { ...current }
+      eligibleTargets.forEach(({ shot, shotIdx }) => {
+        const version = (current[shot.id]?.version || 0) + 1
+        next[shot.id] = {
+          shotId: shot.id,
+          shotIdx,
+          version,
+          image: createMockPanelImage(shotIdx, version),
+        }
+      })
+      return next
+    })
+  }
+
+  const dismissPanelCandidate = (shotId) => {
+    setPanelCandidates((current) => {
+      const next = { ...current }
+      delete next[shotId]
+      return next
+    })
+  }
+
+  const acceptPanelCandidate = (shotId) => {
+    const candidate = panelCandidates[shotId]
+    if (!candidate) return
+    updateFlowShotById(shotId, {
+      image: candidate.image,
+      source: 'ai',
+      isAIGenerated: true,
+    })
+    dismissPanelCandidate(shotId)
+  }
+
+  const acceptAllPanelCandidates = () => {
+    currentPanelCandidates.forEach((candidate) => {
+      updateFlowShotById(candidate.shotId, {
+        image: candidate.image,
+        source: 'ai',
+        isAIGenerated: true,
+      })
+    })
+    setPanelCandidates((current) => Object.fromEntries(
+      Object.entries(current).filter(([shotId]) => !currentShotIds.has(shotId)),
+    ))
+  }
+
+  const handleDrawOverCandidate = (shot, shotIdx) => {
+    const candidate = panelCandidates[shot.id]
+    if (!candidate) return
+    updateFlowShotById(shot.id, {
+      image: candidate.image,
+      source: 'ai-assisted-draw',
+      isAIGenerated: true,
+    })
+    dismissPanelCandidate(shot.id)
+    handleEditShot(shotIdx, shot.scriptBeat ?? 0)
+    setPendingCanvasImage(candidate.image)
   }
 
   const handleAcceptNarrativeSuggestion = (suggestion) => {
@@ -213,6 +371,89 @@ export default function StoryboardView() {
             </div>
           )}
 
+          {isExpanded && !drawingWorkspaceOpen && (
+            <section
+              className={`storyboard-generation-bar ${isExpanded ? 'expanded' : 'compact'}`}
+              aria-label="AI storyboard draft generation"
+              onClick={(event) => event.stopPropagation()}
+            >
+            <div className="generation-bar-copy">
+              <span>AI storyboard draft <em>Mock</em></span>
+              <strong>
+                {eligibleScopeShots.length} blank panel{eligibleScopeShots.length === 1 ? '' : 's'} in scope
+              </strong>
+              <p>Existing drawings and imported images stay untouched.</p>
+            </div>
+            <div className="generation-scope-tabs" aria-label="Generation scope">
+              <button
+                type="button"
+                className={generationScope === 'beat' ? 'active' : ''}
+                onClick={() => {
+                  setGenerationScope('beat')
+                  setSelectedShotIds([])
+                }}
+              >
+                Beat B{activeBeat + 1}
+              </button>
+              <button
+                type="button"
+                className={generationScope === 'selected' ? 'active' : ''}
+                onClick={() => {
+                  setGenerationScope('selected')
+                  if (!isExpanded) setMaximizedPanel('left')
+                }}
+              >
+                Selected {selectedShots.length}
+              </button>
+              <button
+                type="button"
+                className={generationScope === 'all' ? 'active' : ''}
+                onClick={() => {
+                  setGenerationScope('all')
+                  setSelectedShotIds([])
+                }}
+              >
+                All blanks {allBlankShots.length}
+              </button>
+            </div>
+            <div className="generation-bar-actions">
+              {selectedShots.length > 0 && (
+                <button
+                  type="button"
+                  className="generation-clear-selection"
+                  onClick={() => setSelectedShotIds([])}
+                >
+                  Clear selection
+                </button>
+              )}
+              {candidateCount > 0 && (
+                <button
+                  type="button"
+                  className="generation-accept-all"
+                  onClick={acceptAllPanelCandidates}
+                >
+                  Accept all drafts · {candidateCount}
+                </button>
+              )}
+              <button
+                type="button"
+                className="generation-run"
+                disabled={eligibleScopeShots.length === 0}
+                onClick={() => handleGeneratePanels(eligibleScopeShots)}
+              >
+                {generationScope === 'all'
+                  ? 'Generate storyboard draft'
+                  : generationScope === 'beat'
+                    ? `Generate Beat ${activeBeat + 1}`
+                    : generationScope === 'selected'
+                      ? 'Generate selected'
+                      : 'Generate storyboard draft'}
+                {eligibleScopeShots.length > 0 ? ` · ${eligibleScopeShots.length}` : ''}
+              </button>
+            </div>
+            </section>
+          )}
+
           {beats.map((beatGroup, i) => {
             const beatShots = getBeatShots(beatGroup.beat)
             const beatSuggestions = narrativeSuggestions.filter((suggestion) => suggestion.beat === beatGroup.beat)
@@ -286,23 +527,72 @@ export default function StoryboardView() {
 
                 {isExpanded && (
                   <div className="sb-img-col">
-                    <div className="beat-indicator">
-                      B{beatGroup.beat + 1} · {beatShots.length} shot{beatShots.length === 1 ? '' : 's'}
-                    </div>
                     <div className="sb-shot-stack">
                       {beatShots.map(({ shot, shotIdx }, localIdx) => {
                         const beatShotLabel = `B${beatGroup.beat + 1}-S${localIdx + 1}`
-                        const flowSketchKey = `${activeScene}-${activeBranch}-${shotIdx}`
-                        const legacySketchKey = `0-${shotIdx}`
-                        const sketchUrl = shotSketches[flowSketchKey] || shotSketches[legacySketchKey]
-                        const displayImage = shot.image || sketchUrl
+                        const committedImage = getShotVisual(shot, shotIdx)
+                        const candidate = panelCandidates[shot.id]
+                        const displayImage = candidate?.image || committedImage
+                        const isSelected = selectedShotIds.includes(shot.id)
 
                         return (
                           <div
                             key={shot.id || shotIdx}
-                            className={`sb-shot-card ${shotIdx === activeShot ? 'active-shot' : ''}`}
+                            className={`sb-shot-card ${shotIdx === activeShot ? 'active-shot' : ''} ${isSelected ? 'selected-for-generation' : ''} ${candidate ? 'has-ai-candidate' : ''}`}
                           >
-                            {displayImage ? (
+                            <button
+                              type="button"
+                              className={`sb-shot-select ${isSelected ? 'selected' : ''}`}
+                              aria-pressed={isSelected}
+                              aria-label={`${isSelected ? 'Remove' : 'Add'} ${beatShotLabel} ${isSelected ? 'from' : 'to'} generation selection`}
+                              onClick={(event) => {
+                                event.stopPropagation()
+                                toggleShotSelection(shot.id)
+                                setGenerationScope('selected')
+                              }}
+                            >
+                              {isSelected ? '✓' : '+'}
+                            </button>
+                            <button
+                              type="button"
+                              className="sb-shot-delete"
+                              disabled={flowShots.length <= 1}
+                              title={flowShots.length <= 1 ? 'Keep at least one shot in the scene' : `Delete ${beatShotLabel}`}
+                              aria-label={`Delete ${beatShotLabel}`}
+                              onClick={(event) => {
+                                event.stopPropagation()
+                                handleDeleteShot(shot.id, shotIdx)
+                              }}
+                            >
+                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6M10 10v6M14 10v6" />
+                              </svg>
+                            </button>
+                            {candidate ? (
+                              <div className="sb-panel-candidate">
+                                <div className="sb-img-wrapper">
+                                  <img src={displayImage} alt={`${beatShotLabel} AI draft`} />
+                                  <span className="sb-candidate-badge">AI candidate · V{candidate.version}</span>
+                                </div>
+                                <div className="sb-candidate-actions">
+                                  <button type="button" onClick={() => dismissPanelCandidate(shot.id)}>Dismiss</button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleGeneratePanels([{ shot, shotIdx }], { includeExisting: true })}
+                                  >
+                                    Again
+                                  </button>
+                                  <button type="button" onClick={() => handleDrawOverCandidate(shot, shotIdx)}>Draw over</button>
+                                  <button
+                                    type="button"
+                                    className="accept"
+                                    onClick={() => acceptPanelCandidate(shot.id)}
+                                  >
+                                    Accept
+                                  </button>
+                                </div>
+                              </div>
+                            ) : committedImage ? (
                               <div className="sb-img-wrapper">
                                 <img src={displayImage} alt={beatShotLabel} />
                                 <div className="sb-hover-actions">
@@ -315,23 +605,52 @@ export default function StoryboardView() {
                                   >
                                     Draw
                                   </button>
+                                  <button
+                                    className="sb-action-btn secondary"
+                                    onClick={(event) => {
+                                      event.stopPropagation()
+                                      handleGeneratePanels([{ shot, shotIdx }], { includeExisting: true })
+                                    }}
+                                  >
+                                    AI variant
+                                  </button>
                                 </div>
                               </div>
                             ) : (
-                              <div
-                                className="sb-add-shot existing-empty"
-                                onClick={(e) => {
-                                  e.stopPropagation()
-                                  handleEditShot(shotIdx, beatGroup.beat)
-                                }}
-                              >
+                              <div className="sb-add-shot existing-empty">
                                 <span>{beatShotLabel}</span>
-                                <small>Draw</small>
+                                <small>Choose how to start</small>
+                                <div className="sb-empty-panel-actions">
+                                  <button
+                                    type="button"
+                                    onClick={(event) => {
+                                      event.stopPropagation()
+                                      handleEditShot(shotIdx, beatGroup.beat)
+                                    }}
+                                  >
+                                    Draw
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={(event) => {
+                                      event.stopPropagation()
+                                      handleGeneratePanels([{ shot, shotIdx }])
+                                    }}
+                                  >
+                                    Generate
+                                  </button>
+                                </div>
                               </div>
                             )}
                             <div className="sb-shot-meta">
                               <span>{beatShotLabel}</span>
-                              <span>{shot.cir?.shotSize || 'Medium'}</span>
+                              <span className="sb-shot-source">
+                                {candidate
+                                  ? 'Candidate'
+                                  : committedImage
+                                    ? shot.isAIGenerated ? 'AI' : 'Drawn'
+                                    : 'Blank'}
+                              </span>
                             </div>
                           </div>
                         )

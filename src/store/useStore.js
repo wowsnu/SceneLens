@@ -82,7 +82,7 @@ const toShotImageSrc = (image) => {
   return `data:image/png;base64,${image}`
 }
 
-const createFlowShot = ({ index = 0, scriptBeat = 0, label, image = null, cir = DEFAULT_SHOT_CIR, source = 'canvas', isAIGenerated = false } = {}) => ({
+const createFlowShot = ({ index = 0, scriptBeat = 0, label, image = null, cir = {}, source = 'canvas', isAIGenerated = false } = {}) => ({
   id: createShotId(),
   image,
   cir,
@@ -657,7 +657,7 @@ const useStore = create((set, get) => ({
           shots: DEMO_STRATEGIES[0].shots.map((s, i) => ({
             id: `shot-s1-main-${i}`,
             image: s.image,
-            cir: s.cir,
+            cir: {},
             label: s.intent || `Shot ${i + 1}`,
             scriptBeat: i,
             isAIGenerated: false,
@@ -679,9 +679,9 @@ const useStore = create((set, get) => ({
           branchPoint: 0,
           rationale: '',
           shots: [
-            { id: 'shot-s2-0', image: null, cir: { shotSize: 'Wide', relation: 'Single' }, label: 'Arrival', scriptBeat: 0, isAIGenerated: false, source: 'canvas' },
-            { id: 'shot-s2-1', image: null, cir: { shotSize: 'Medium', relation: 'Single' }, label: 'Entering Room', scriptBeat: 1, isAIGenerated: false, source: 'canvas' },
-            { id: 'shot-s2-2', image: null, cir: { shotSize: 'Close-Up', relation: 'Single' }, label: 'Suspicion', scriptBeat: 2, isAIGenerated: false, source: 'canvas' },
+            { id: 'shot-s2-0', image: null, cir: {}, label: 'Arrival', scriptBeat: 0, isAIGenerated: false, source: 'canvas' },
+            { id: 'shot-s2-1', image: null, cir: {}, label: 'Entering Room', scriptBeat: 1, isAIGenerated: false, source: 'canvas' },
+            { id: 'shot-s2-2', image: null, cir: {}, label: 'Suspicion', scriptBeat: 2, isAIGenerated: false, source: 'canvas' },
           ],
         },
       ],
@@ -812,7 +812,7 @@ const useStore = create((set, get) => ({
           branchPoint: 0,
           rationale: '',
           shots: [
-            { id: `shot-${id}-0`, image: null, cir: { shotSize: 'Medium', relation: 'Single' }, label: 'Shot 1', scriptBeat: 0, isAIGenerated: false, source: 'canvas' },
+            { id: `shot-${id}-0`, image: null, cir: {}, label: 'Shot 1', scriptBeat: 0, isAIGenerated: false, source: 'canvas' },
           ],
         },
       ],
@@ -933,6 +933,21 @@ const useStore = create((set, get) => ({
             ? { ...shot, ...(typeof patch === 'function' ? patch(shot) : patch) }
             : shot
         ),
+        activeShot,
+        activeBeat: shots[activeShot]?.scriptBeat ?? state.activeBeat,
+      }
+    })
+  }),
+
+  updateFlowShotById: (shotId, patch) => set((state) => {
+    return updateActiveBranchShots(state, (shots, _branch, scene) => {
+      const activeShot = scene.activeShot ?? state.activeShot ?? 0
+      return {
+        shots: shots.map((shot) => (
+          shot.id === shotId
+            ? { ...shot, ...(typeof patch === 'function' ? patch(shot) : patch) }
+            : shot
+        )),
         activeShot,
         activeBeat: shots[activeShot]?.scriptBeat ?? state.activeBeat,
       }
@@ -1094,8 +1109,27 @@ const useStore = create((set, get) => ({
 
   // --- New Layout System States ---
   layoutMode: 'unified', // 'unified' | 'maximized'
-  maximizedPanel: null, // null | 'left' | 'center' | 'right'
+  maximizedPanel: 'left', // Storyboard construction is the default entry view.
   setMaximizedPanel: (panel) => set({ maximizedPanel: panel }),
+  drawingWorkspaceOpen: false,
+  selectedStoryboardShotIds: [],
+  setSelectedStoryboardShotIds: (next) => set((state) => ({
+    selectedStoryboardShotIds: typeof next === 'function'
+      ? next(state.selectedStoryboardShotIds)
+      : next,
+  })),
+  clearStoryboardShotSelection: () => set({ selectedStoryboardShotIds: [] }),
+  openDrawingWorkspace: () => set({
+    drawingWorkspaceOpen: true,
+    selectedStoryboardShotIds: [],
+    maximizedPanel: null,
+    centerTab: 'canvas',
+    zenMode: false,
+  }),
+  closeDrawingWorkspace: () => set({
+    drawingWorkspaceOpen: false,
+    maximizedPanel: 'left',
+  }),
   
   leftPanelVisible: true,
   setLeftPanelVisible: (val) => set({ leftPanelVisible: val }),

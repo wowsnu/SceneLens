@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import StoryboardView from './components/StoryboardView'
 import DecisionBoard from './components/DecisionBoard'
+import CenterPanel from './components/CenterPanel'
 import useStore from './store/useStore'
 import './App.css'
 
@@ -13,10 +14,15 @@ function App() {
   const centerTab = useStore((s) => s.centerTab)
   const setCenterTab = useStore((s) => s.setCenterTab)
   const requestScriptEditor = useStore((s) => s.requestScriptEditor)
+  const drawingWorkspaceOpen = useStore((s) => s.drawingWorkspaceOpen)
+  const closeDrawingWorkspace = useStore((s) => s.closeDrawingWorkspace)
+  const clearStoryboardShotSelection = useStore((s) => s.clearStoryboardShotSelection)
+  const activeBeat = useStore((s) => s.activeBeat)
   const zenMode = useStore((s) => s.zenMode)
   const setZenMode = useStore((s) => s.setZenMode)
 
   const isLabMode = centerTab === 'guidance'
+  const drawingFocused = drawingWorkspaceOpen && maximizedPanel === 'center'
 
   const toggleFullscreen = () => {
     if (!document.fullscreenElement) {
@@ -31,7 +37,11 @@ function App() {
       if (e.key === 'z' || e.key === 'Z') {
         const tag = document.activeElement?.tagName
         if (tag === 'INPUT' || tag === 'TEXTAREA') return
-        setZenMode(!zenMode)
+        if (drawingWorkspaceOpen) {
+          setMaximizedPanel(drawingFocused ? null : 'center')
+        } else {
+          setZenMode(!zenMode)
+        }
       }
       if (e.key === 'f' || e.key === 'F') {
         const tag = document.activeElement?.tagName
@@ -40,12 +50,13 @@ function App() {
       }
       if (e.key === 'Escape') {
         if (zenMode) setZenMode(false)
+        if (drawingFocused) setMaximizedPanel(null)
         if (isLabMode) setCenterTab('canvas')
       }
     }
     window.addEventListener('keydown', handleKey)
     return () => window.removeEventListener('keydown', handleKey)
-  }, [zenMode, isLabMode, setZenMode, setCenterTab])
+  }, [zenMode, isLabMode, drawingWorkspaceOpen, drawingFocused, setZenMode, setCenterTab, setMaximizedPanel])
 
   useEffect(() => {
     const onFullscreenChange = () => setIsFullscreen(!!document.fullscreenElement)
@@ -77,8 +88,8 @@ function App() {
       <main className="unified-workspace">
 
         {/* LEFT */}
-        {(maximizedPanel === null || maximizedPanel === 'left') && (
-          <section className={`panel-container left-panel ${!leftPanelVisible ? 'collapsed' : ''} ${maximizedPanel === 'left' ? 'maximized' : ''}`}>
+        {(maximizedPanel === null || maximizedPanel === 'left' || drawingWorkspaceOpen) && (
+          <section className={`panel-container left-panel ${!leftPanelVisible ? 'collapsed' : ''} ${maximizedPanel === 'left' ? 'maximized' : ''} ${drawingFocused ? 'panel-hidden' : ''}`}>
             <div className="panel-header">
               {leftPanelVisible && <span className="panel-title">📜 NARRATIVE</span>}
               {leftPanelVisible && (
@@ -94,7 +105,10 @@ function App() {
               {maximizedPanel === 'left' ? (
                 <button
                   className="panel-control-btn"
-                  onClick={() => setMaximizedPanel(null)}
+                  onClick={() => {
+                    clearStoryboardShotSelection()
+                    setMaximizedPanel(null)
+                  }}
                   style={{ marginLeft: leftPanelVisible ? 8 : 'auto' }}
                 >
                   ↙
@@ -126,18 +140,46 @@ function App() {
         )}
 
         {/* CENTER */}
-        <section className={`panel-container center-panel ${maximizedPanel === 'left' ? 'panel-hidden' : ''}`}>
+        <section className={`panel-container center-panel ${maximizedPanel === 'left' ? 'panel-hidden' : ''} ${drawingWorkspaceOpen ? 'drawing-workspace' : ''} ${drawingFocused ? 'maximized' : ''}`}>
           <div className="panel-header">
-            <span className="panel-title">STORYBOARD DECISION BOARD</span>
-            <button className="panel-control-btn" onClick={() => setZenMode(true)} title="Focus (Z)" style={{ marginLeft: 'auto' }}>
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/>
-              </svg>
-              Focus
-            </button>
+            <span className="panel-title">
+              {drawingWorkspaceOpen ? `DRAWING · BEAT ${activeBeat + 1}` : 'STORYBOARD DECISION BOARD'}
+            </span>
+            {drawingWorkspaceOpen ? (
+              <>
+                <button
+                  className="panel-control-btn"
+                  onClick={closeDrawingWorkspace}
+                  style={{ marginLeft: 'auto' }}
+                >
+                  Back to Storyboard
+                </button>
+                <button
+                  className="panel-control-btn"
+                  onClick={() => setMaximizedPanel(drawingFocused ? null : 'center')}
+                  title={drawingFocused ? 'Exit drawing focus (Z)' : 'Focus drawing (Z)'}
+                >
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    {drawingFocused
+                      ? <path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3" />
+                      : <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7" />}
+                  </svg>
+                  {drawingFocused ? 'Exit Focus' : 'Focus'}
+                </button>
+              </>
+            ) : (
+              <button className="panel-control-btn" onClick={() => setZenMode(true)} title="Focus (Z)" style={{ marginLeft: 'auto' }}>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/>
+                </svg>
+                Focus
+              </button>
+            )}
           </div>
           <div className="panel-content">
-            <DecisionBoard />
+            {drawingWorkspaceOpen
+              ? <CenterPanel showScriptPanel={drawingFocused} />
+              : <DecisionBoard />}
           </div>
         </section>
 

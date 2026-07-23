@@ -1,6 +1,5 @@
 import { useMemo, useState } from 'react'
 import useStore from '../store/useStore'
-import CenterPanel from './CenterPanel'
 import SceneOverview from './SceneOverview'
 import './DecisionBoard.css'
 
@@ -239,7 +238,6 @@ function getScopeLabel(scene, scope) {
 }
 
 export default function DecisionBoard() {
-  const [editOpen, setEditOpen] = useState(false)
   const [boardView, setBoardView] = useState('split')
   // 기본은 모두 펼침. 사용자가 접은 lane만 여기에 담긴다.
   const [collapsedLanes, setCollapsedLanes] = useState({})
@@ -275,6 +273,7 @@ export default function DecisionBoard() {
   const narrativeSuggestionCount = useStore((s) => s.narrativeSuggestions.length)
   const sceneIntention = useStore((s) => s.sceneIntention)
   const setLeftPanelVisible = useStore((s) => s.setLeftPanelVisible)
+  const openDrawingWorkspace = useStore((s) => s.openDrawingWorkspace)
   const scene = scenes[activeScene]
   const activeShot = scene?.activeShot ?? 0
   const activeBranch = scene?.activeBranch ?? 0
@@ -481,7 +480,7 @@ export default function DecisionBoard() {
               </button>
             ))}
           </div>
-          <button type="button" className="decision-board-secondary" onClick={() => setEditOpen(true)}>
+          <button type="button" className="decision-board-secondary" onClick={openDrawingWorkspace}>
             Edit Shot
           </button>
         </div>
@@ -800,21 +799,6 @@ export default function DecisionBoard() {
           </div>
         </section>
       </div>
-
-      {editOpen && (
-        <div className="shot-edit-overlay" role="dialog" aria-modal="true" aria-label="Edit selected shot">
-          <div className="shot-edit-panel">
-            <div className="shot-edit-header">
-              <div>
-                <span>Edit Mode</span>
-                <strong>{getScopeLabel(scene, scope)}</strong>
-              </div>
-              <button type="button" onClick={() => setEditOpen(false)}>Close</button>
-            </div>
-            <CenterPanel />
-          </div>
-        </div>
-      )}
     </div>
   )
 }

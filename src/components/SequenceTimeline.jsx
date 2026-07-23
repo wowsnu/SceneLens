@@ -25,7 +25,7 @@ export default function SequenceTimeline() {
   const handleAddShot = () => {
     insertShot(activeBranch, shots.length - 1, {
       label: 'New Shot',
-      cir: { shotSize: 'Medium', relation: 'Single' },
+      cir: {},
     })
     setActiveShot(shots.length)
   }
