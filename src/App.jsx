@@ -14,6 +14,8 @@ function App() {
   const centerTab = useStore((s) => s.centerTab)
   const setCenterTab = useStore((s) => s.setCenterTab)
   const requestScriptEditor = useStore((s) => s.requestScriptEditor)
+  const storyboardPanelsVisible = useStore((s) => s.storyboardPanelsVisible)
+  const setStoryboardPanelsVisible = useStore((s) => s.setStoryboardPanelsVisible)
   const drawingWorkspaceOpen = useStore((s) => s.drawingWorkspaceOpen)
   const closeDrawingWorkspace = useStore((s) => s.closeDrawingWorkspace)
   const clearStoryboardShotSelection = useStore((s) => s.clearStoryboardShotSelection)
@@ -92,11 +94,21 @@ function App() {
           <section className={`panel-container left-panel ${!leftPanelVisible ? 'collapsed' : ''} ${maximizedPanel === 'left' ? 'maximized' : ''} ${drawingFocused ? 'panel-hidden' : ''}`}>
             <div className="panel-header">
               {leftPanelVisible && <span className="panel-title">📜 NARRATIVE</span>}
+              {leftPanelVisible && maximizedPanel === 'left' && !drawingWorkspaceOpen && (
+                <button
+                  className="panel-control-btn"
+                  onClick={() => setStoryboardPanelsVisible(!storyboardPanelsVisible)}
+                  style={{ marginLeft: 'auto' }}
+                  title={storyboardPanelsVisible ? 'Focus on screenplay' : 'Show storyboard panels'}
+                >
+                  {storyboardPanelsVisible ? 'Hide panels' : 'Show panels'}
+                </button>
+              )}
               {leftPanelVisible && (
                 <button
                   className="panel-control-btn"
                   onClick={() => requestScriptEditor()}
-                  style={{ marginLeft: 'auto' }}
+                  style={{ marginLeft: maximizedPanel === 'left' && !drawingWorkspaceOpen ? 0 : 'auto' }}
                   title="Edit Script"
                 >
                   Edit Script

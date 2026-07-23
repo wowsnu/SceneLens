@@ -628,107 +628,90 @@
   border-radius: 999px;
   background: color-mix(in srgb, var(--lens-color), transparent 84%);
   color: color-mix(in srgb, var(--lens-color), white 24%);
-  font-size: 9.5px;
+  font-size: 11px;
   font-weight: 750;
 }
 
-.narrative-workbench {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: 8px;
-  margin-bottom: 10px;
-  padding: 10px;
-  border-radius: 9px;
-  border: 1px solid rgba(255, 255, 255, 0.07);
-  background: rgba(0, 0, 0, 0.16);
+.narrative-check-band {
+  padding-bottom: 11px;
 }
 
-.narrative-workbench label {
+.narrative-check-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 9px;
+  padding: 9px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.15);
+}
+
+.narrative-check-summary > div {
   min-width: 0;
 }
 
-.narrative-workbench label > span {
-  display: flex;
-  align-items: baseline;
-  gap: 5px;
-  margin-bottom: 5px;
-  color: rgba(255, 255, 255, 0.58);
-  font-size: 9.5px;
-  font-weight: 800;
-  letter-spacing: 0.04em;
+.narrative-check-summary span {
+  display: block;
+  color: rgba(245, 158, 11, 0.74);
+  font-size: 10px;
+  font-weight: 850;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
 }
 
-.narrative-workbench textarea {
-  width: 100%;
-  min-height: 52px;
-  resize: vertical;
-  padding: 8px 9px;
-  border-radius: 7px;
-  border: 1px solid color-mix(in srgb, var(--lens-color), transparent 78%);
-  outline: none;
-  background: rgba(0, 0, 0, 0.24);
-  color: rgba(255, 255, 255, 0.84);
+.narrative-check-summary strong {
+  display: block;
+  margin-top: 2px;
+  color: rgba(255, 255, 255, 0.86);
+  font-size: 13px;
+}
+
+.narrative-check-summary p {
+  margin: 3px 0 0;
+  overflow: hidden;
+  color: rgba(255, 255, 255, 0.46);
   font-size: 11px;
   line-height: 1.4;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.narrative-workbench textarea::placeholder {
-  color: rgba(255, 255, 255, 0.27);
-}
-
-.narrative-workbench textarea:focus {
-  border-color: color-mix(in srgb, var(--lens-color), transparent 48%);
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--lens-color), transparent 84%);
-}
-
-.narrative-workbench-actions {
-  grid-column: 1 / -1;
-  display: flex;
-  justify-content: flex-end;
-  gap: 7px;
-}
-
-.narrative-workbench-actions button {
-  min-height: 29px;
-  padding: 0 11px;
+.narrative-check-summary button {
+  flex: 0 0 auto;
+  height: 30px;
+  padding: 0 10px;
+  border: 1px solid rgba(245, 158, 11, 0.34);
   border-radius: 7px;
-  font-size: 10.5px;
+  background: rgba(245, 158, 11, 0.08);
+  color: rgba(253, 230, 138, 0.88);
+  font-size: 11px;
   font-weight: 800;
   cursor: pointer;
 }
 
-.narrative-propose-btn {
-  border: 1px solid color-mix(in srgb, var(--lens-color), transparent 48%);
-  background: color-mix(in srgb, var(--lens-color), transparent 82%);
-  color: color-mix(in srgb, var(--lens-color), white 28%);
+.narrative-check-summary button:hover {
+  border-color: rgba(245, 158, 11, 0.55);
+  background: rgba(245, 158, 11, 0.14);
+  color: #fff;
 }
 
-.narrative-workbench-actions button:hover:not(:disabled) {
-  filter: brightness(1.18);
-}
-
-.narrative-workbench-actions button:disabled {
-  cursor: not-allowed;
-  opacity: 0.35;
-}
-
-.narrative-suggest-btn {
-  height: 29px;
-  padding: 0 11px;
-  border-radius: 7px;
-  border: 1px solid color-mix(in srgb, var(--lens-color), transparent 50%);
-  background: color-mix(in srgb, var(--lens-color), transparent 84%);
-  color: color-mix(in srgb, var(--lens-color), white 28%);
+.narrative-check-notice {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin: -2px 1px 9px;
+  color: rgba(255, 255, 255, 0.4);
   font-size: 10.5px;
-  font-weight: 750;
-  cursor: pointer;
-  transition: border-color 0.15s, background 0.15s;
 }
 
-.narrative-suggest-btn:hover {
-  border-color: color-mix(in srgb, var(--lens-color), transparent 28%);
-  background: color-mix(in srgb, var(--lens-color), transparent 74%);
+.narrative-check-notice strong {
+  flex: 0 0 auto;
+  color: rgba(245, 158, 11, 0.76);
+  font-size: 10.5px;
+  text-transform: uppercase;
 }
 
 .narrative-band-options {

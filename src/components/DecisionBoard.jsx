@@ -249,7 +249,6 @@ export default function DecisionBoard() {
   const [scopeMode, setScopeMode] = useState('single')
   const [rangeStart, setRangeStart] = useState(0)
   const [rangeEnd, setRangeEnd] = useState(0)
-  const [narrativeRequest, setNarrativeRequest] = useState('')
   const [lensIntentSubmitted, setLensIntentSubmitted] = useState(() => (
     CREATIVE_LENSES.reduce((acc, lens) => ({ ...acc, [lens.id]: false }), {})
   ))
@@ -269,10 +268,10 @@ export default function DecisionBoard() {
   const activeScene = useStore((s) => s.activeScene)
   const activeBeat = useStore((s) => s.activeBeat)
   const setFlowActiveShot = useStore((s) => s.setFlowActiveShot)
-  const requestNarrativeSuggestions = useStore((s) => s.requestNarrativeSuggestions)
   const narrativeSuggestionCount = useStore((s) => s.narrativeSuggestions.length)
   const sceneIntention = useStore((s) => s.sceneIntention)
   const setLeftPanelVisible = useStore((s) => s.setLeftPanelVisible)
+  const setMaximizedPanel = useStore((s) => s.setMaximizedPanel)
   const openDrawingWorkspace = useStore((s) => s.openDrawingWorkspace)
   const scene = scenes[activeScene]
   const activeShot = scene?.activeShot ?? 0
@@ -546,8 +545,8 @@ export default function DecisionBoard() {
         <section className="decision-board-options" aria-label="Option cards and tradeoffs">
           {reviewOpen && selectedOptionReview}
 
-          {/* 상위 계층: 사용자와 직접 협업하는 Narrative Agent. */}
-          <div className="narrative-band" style={{ '--lens-color': NARRATIVE_AGENT.accent }}>
+          {/* Narrative의 대본 수정 작업은 넓은 Storyboard 화면에서 수행한다. */}
+          <div className="narrative-band narrative-check-band" style={{ '--lens-color': NARRATIVE_AGENT.accent }}>
             <div className="narrative-band-header">
               <div className="narrative-band-title">
                 <span className="narrative-band-glyph" aria-hidden="true">{NARRATIVE_AGENT.glyph}</span>
@@ -567,32 +566,28 @@ export default function DecisionBoard() {
                 )}
               </div>
             </div>
-            <div className="narrative-workbench">
-              <label>
-                <span>Narrative request</span>
-                <textarea
-                  value={narrativeRequest}
-                  onChange={(event) => setNarrativeRequest(event.target.value)}
-                  placeholder="예: 첫 Beat를 나누고 대사를 덜 설명적으로 바꿔줘."
-                  rows={2}
-                />
-              </label>
-              <div className="narrative-workbench-actions">
-                <button
-                  type="button"
-                  className="narrative-propose-btn"
-                  disabled={!narrativeRequest.trim()}
-                  onClick={() => {
-                    requestNarrativeSuggestions({
-                      narrativeRequest,
-                    })
-                    setLeftPanelVisible(true)
-                  }}
-                >
-                  Generate proposal
-                </button>
+            <div className="narrative-check-summary">
+              <div>
+                <span>Narrative check</span>
+                <strong>Beat {activeBeat + 1}</strong>
+                <p>{sceneIntention || 'Scene intention이 지정되지 않았습니다.'}</p>
               </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setLeftPanelVisible(true)
+                  setMaximizedPanel('left')
+                }}
+              >
+                Open screenplay
+              </button>
             </div>
+            {narrativeSuggestionCount > 0 && (
+              <div className="narrative-check-notice">
+                <span>수정 제안은 Storyboard 제작 화면의 대본 위치에서 검토합니다.</span>
+                <strong>{narrativeSuggestionCount} pending</strong>
+              </div>
+            )}
             <div className="narrative-band-options">
               {narrativeOptions.map((option) => (
                 <button

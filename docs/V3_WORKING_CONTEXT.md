@@ -284,6 +284,48 @@ Preview, 실행 도구로 재사용할 수 있다.
 - `src/components/DecisionBoard.jsx`
 - `src/store/useStore.js`
 
+### 6.4 Narrative 작업 위치 조정
+
+2026-07-23 후속 작업에서 Narrative의 주 요청창을 Decision/Lens 화면에서
+Storyboard 제작 화면의 오른쪽 Agent rail로 옮겼다.
+
+- 넓은 대본 화면 오른쪽에 접을 수 있는 세로형 `Narrative Agent` panel이 있다.
+- 대본과 Storyboard는 독립적으로 스크롤되고 Agent는 옆에 계속 남는다.
+- 사용자는 대본과 패널을 함께 보면서 구조 변경이나 script 수정을 요청한다.
+- 생성된 Mock 제안은 기존과 같이 관련 대본 위치에서 `Accept / Dismiss`한다.
+- inline 제안은 Agent 경고 카드가 아니라 대본에 붙은 작은 review/diff 형태로
+  표시하고, 제안 유형과 실제 변경 범위를 함께 보여준다.
+- Decision/Lens 화면의 Narrative 영역은 요청창이 아니라 `Narrative check`로
+  축소했다.
+- Narrative check는 현재 Beat, Scene intention, 미검토 제안 수를 보여준다.
+- `Open screenplay`로 넓은 Storyboard 제작 화면에 돌아갈 수 있다.
+
+이 배치는 Narrative를 상위 Agent로 두되, 실제 대본 작업을 하려면 대본이
+작아지는 기존의 역전된 사용 흐름을 없애기 위한 것이다.
+
+### 6.5 Script Focus와 대본 생성 Mock
+
+Storyboard 제작 화면은 별도 대본 페이지를 만들지 않고 같은 데이터 위에서 두
+가지 보기 상태를 지원한다.
+
+- `Hide panels`: 이미지 panel column과 batch generation bar를 숨기고 대본을
+  넓게 보는 Script Focus
+- `Show panels`: 기존 이미지와 빈 패널을 그대로 복원하는 Storyboard 보기
+- panel을 숨겨도 shot이나 이미지를 삭제하지 않는다.
+- 숨길 때 batch 생성을 위한 임시 selected panel 상태만 해제한다.
+
+오른쪽 Narrative rail에는 두 작업을 구분하는 toggle을 추가했다.
+
+- `Revise Beat`: 현재 Beat에 작은 inline 제안을 생성
+- `Create Script`: 아이디어나 장면 설명에서 전체 `Script Draft` Mock을 생성
+
+전체 Script Draft는 현재 대본을 즉시 덮어쓰지 않는다. 메인 대본 영역에 별도
+후보로 표시하고 `Dismiss / Again / Use draft`로 검토한다. `Use draft`를 선택한
+경우에만 실제 screenplay와 Beat가 갱신된다.
+
+최근 추가한 Narrative rail, inline suggestion, Script Draft, Storyboard 생성
+제어의 작은 글자는 읽을 수 있는 크기로 함께 상향했다.
+
 ---
 
 ## 7. 아직 구현되지 않았거나 Mock인 부분

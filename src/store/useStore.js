@@ -1111,6 +1111,11 @@ const useStore = create((set, get) => ({
   layoutMode: 'unified', // 'unified' | 'maximized'
   maximizedPanel: 'left', // Storyboard construction is the default entry view.
   setMaximizedPanel: (panel) => set({ maximizedPanel: panel }),
+  storyboardPanelsVisible: true,
+  setStoryboardPanelsVisible: (visible) => set({
+    storyboardPanelsVisible: visible,
+    ...(visible ? {} : { selectedStoryboardShotIds: [] }),
+  }),
   drawingWorkspaceOpen: false,
   selectedStoryboardShotIds: [],
   setSelectedStoryboardShotIds: (next) => set((state) => ({
