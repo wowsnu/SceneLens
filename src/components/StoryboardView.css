@@ -63,6 +63,27 @@
   display: flex;
   flex-direction: column;
   align-items: center;
+  /* Firefox: 밝은 기본 스크롤바 대신 다크 톤 */
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.16) transparent;
+}
+
+/* WebKit: 다른 패널과 통일된 다크 스크롤바 */
+.storyboard-scroll-container::-webkit-scrollbar {
+  width: 8px;
+}
+
+.storyboard-scroll-container::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.storyboard-scroll-container::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.16);
+}
+
+.storyboard-scroll-container::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.26);
 }
 
 .storyboard-list-inner {
@@ -96,7 +117,7 @@
   font-size: 13px;
 }
 
-.inline-script-editor textarea {
+.inline-script-editor .screenplay-input {
   width: 100%;
   height: 400px;
   background: #09090b;
@@ -113,6 +134,44 @@
 
 .inline-script-editor textarea:focus {
   border-color: #3b82f6;
+}
+
+.scene-intention-field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 18px;
+}
+
+.scene-intention-field > span {
+  color: #d4d4d8;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.scene-intention-field > span em {
+  margin-left: 5px;
+  color: #71717a;
+  font-size: 10px;
+  font-style: normal;
+  font-weight: 600;
+}
+
+.inline-script-editor .scene-intention-input {
+  width: 100%;
+  min-height: 76px;
+  padding: 14px 16px;
+  resize: vertical;
+  border: 1px solid #3f3f46;
+  border-radius: 8px;
+  outline: none;
+  background: #09090b;
+  color: #efeff1;
+  font-family: inherit;
+  font-size: 13px;
+  line-height: 1.5;
 }
 
 .editor-actions {
@@ -248,6 +307,7 @@
 .sb-add-shot-inline { align-self: flex-start; display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 10px; border-radius: 999px; border: 1px dashed rgba(255, 255, 255, 0.22); background: rgba(255, 255, 255, 0.025); color: #a1a1aa; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em; cursor: pointer; }
 .sb-add-shot-inline:hover { border-color: #60a5fa; color: #fff; background: rgba(96, 165, 250, 0.08); }
 .beat-indicator { position: absolute; top: -16px; right: 0; font-size: 11px; font-weight: 800; color: #3b82f6; text-transform: uppercase; }
+.script-element-block { position: relative; }
 .script-element-wrapper { position: relative; padding: 4px 0; }
 .split-beat-btn { position: absolute; bottom: -12px; left: 0; background: #3b82f6; color: #fff; border: none; font-size: 10px; padding: 4px 10px; border-radius: 4px; opacity: 0; cursor: pointer; z-index: 10; transition: all 0.2s; }
 .script-element-wrapper:hover .split-beat-btn { opacity: 1; transform: translateY(0); }
@@ -257,3 +317,172 @@
 .sb-img-wrapper:hover .sb-hover-actions { opacity: 1; }
 .sb-action-btn { padding: 10px 18px; border-radius: 6px; border: none; font-weight: 600; font-size: 13px; cursor: pointer; }
 .sb-analyze-btn { background: #3b82f6; color: #fff; }
+
+/* Narrative Agent가 기존 Beat/Panel 조작 단위 위에 올리는 Prototype 제안 */
+.narrative-inline-suggestion {
+  margin: 12px 0;
+  padding: 12px 13px;
+  border-radius: 10px;
+  border: 1px solid rgba(245, 158, 11, 0.42);
+  background:
+    linear-gradient(135deg, rgba(245, 158, 11, 0.11), rgba(245, 158, 11, 0.035)),
+    #101013;
+  box-shadow: inset 3px 0 0 rgba(245, 158, 11, 0.76);
+  font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+.narrative-inline-suggestion.split-beat {
+  position: relative;
+  margin: 18px 0 14px;
+}
+
+.narrative-inline-suggestion.split-beat::before,
+.narrative-inline-suggestion.split-beat::after {
+  content: '';
+  position: absolute;
+  top: -9px;
+  width: calc(50% - 22px);
+  border-top: 1px dashed rgba(245, 158, 11, 0.48);
+}
+
+.narrative-inline-suggestion.split-beat::before { left: 0; }
+.narrative-inline-suggestion.split-beat::after { right: 0; }
+
+.narrative-suggestion-heading {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.narrative-suggestion-heading span {
+  color: rgba(245, 158, 11, 0.82);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.narrative-suggestion-heading strong {
+  color: rgba(255, 255, 255, 0.92);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.narrative-inline-suggestion > p {
+  margin: 6px 0 0;
+  color: rgba(255, 255, 255, 0.58);
+  font-size: 10.5px;
+  line-height: 1.5;
+}
+
+.narrative-script-patch {
+  display: grid;
+  gap: 4px;
+  margin-top: 9px;
+  padding: 7px;
+  border-radius: 7px;
+  background: rgba(0, 0, 0, 0.22);
+  font-family: 'Courier Prime', ui-monospace, monospace;
+}
+
+.script-patch-line {
+  display: grid;
+  grid-template-columns: 15px minmax(0, 1fr);
+  gap: 5px;
+  padding: 5px 6px;
+  border-radius: 5px;
+}
+
+.script-patch-line > span {
+  font-weight: 900;
+}
+
+.script-patch-line p {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.script-patch-line.removed {
+  background: rgba(239, 68, 68, 0.09);
+  color: rgba(252, 165, 165, 0.76);
+  text-decoration: line-through;
+}
+
+.script-patch-line.added {
+  background: rgba(34, 197, 94, 0.09);
+  color: rgba(187, 247, 208, 0.88);
+}
+
+.narrative-script-patch small {
+  padding: 3px 6px 0;
+  color: rgba(245, 158, 11, 0.64);
+  font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: 9px;
+  line-height: 1.4;
+}
+
+.narrative-panel-purpose-list {
+  display: grid;
+  gap: 5px;
+  margin: 9px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.narrative-panel-purpose-list li {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: rgba(255, 255, 255, 0.68);
+  font-size: 10.5px;
+}
+
+.narrative-panel-purpose-list li span {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 18px;
+  border-radius: 5px;
+  background: rgba(245, 158, 11, 0.14);
+  color: #fbbf24;
+  font-size: 9px;
+  font-weight: 800;
+}
+
+.narrative-suggestion-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.narrative-suggestion-actions button {
+  height: 27px;
+  padding: 0 10px;
+  border-radius: 7px;
+  font-size: 10px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.narrative-dismiss-btn {
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.035);
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.narrative-accept-btn {
+  border: 1px solid rgba(245, 158, 11, 0.48);
+  background: rgba(245, 158, 11, 0.16);
+  color: #fbbf24;
+}
+
+.narrative-dismiss-btn:hover {
+  color: rgba(255, 255, 255, 0.82);
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.narrative-accept-btn:hover {
+  background: rgba(245, 158, 11, 0.24);
+}

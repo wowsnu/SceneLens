@@ -186,6 +186,138 @@ const updateActiveBranchShots = (state, updater) => {
   }
 }
 
+const shortenNarrativeText = (text = '', maxLength = 46) => (
+  text.length > maxLength ? `${text.slice(0, maxLength).trim()}…` : text
+)
+
+const includesAny = (text, keywords) => keywords.some((keyword) => text.includes(keyword))
+
+const createMockScriptSuggestion = ({ beatElements, targetBeat, requestKey, sceneIntention, narrativeRequest }) => {
+  const normalizedRequest = narrativeRequest.trim()
+  const normalizedIntention = sceneIntention.trim()
+  const dialogue = beatElements.find((element) => element.type === 'dialogue')
+  const wantsDialogueChange = includesAny(normalizedRequest, ['대사', '말', '설명', '짧게', '축약'])
+
+  if (dialogue && wantsDialogueChange) {
+    const hidesInformation = includesAny(`${normalizedIntention} ${normalizedRequest}`, ['숨', '불안', '위험', '긴장', '모호'])
+    return {
+      id: `narrative-${requestKey}-replace-${targetBeat}-${dialogue.globalIdx}`,
+      type: 'replace-script-line',
+      beat: targetBeat,
+      elementIndex: dialogue.globalIdx,
+      title: '이 대사를 덜 설명적으로 바꿔볼까요?',
+      reason: normalizedRequest,
+      originalText: dialogue.text,
+      proposedText: hidesInformation ? '그걸 정말 말해야 알아요?' : '그래서, 다음은요?',
+      actionLabel: 'Replace line',
+      sceneIntention: normalizedIntention,
+    }
+  }
+
+  const anchor = [...beatElements].reverse().find((element) => element.type !== 'transition') || beatElements[0]
+  const character = beatElements.find((element) => element.type === 'character')
+  const characterName = character?.text || '인물'
+  const hidesInformation = includesAny(`${normalizedIntention} ${normalizedRequest}`, ['숨', '불안', '위험', '긴장', '모호'])
+  const proposedText = hidesInformation
+    ? `${characterName}은 원인을 확인하지 못한 채 움직임을 멈춘다. 익숙하던 소리가 한 박자 늦게 끊긴다.`
+    : `${characterName}은 바로 답하지 않는다. 짧은 침묵 뒤, 주변의 변화를 한 번 더 살핀다.`
+
+  return {
+    id: `narrative-${requestKey}-insert-${targetBeat}-${anchor.globalIdx}`,
+    type: 'insert-script-line',
+    beat: targetBeat,
+    insertAfterIndex: anchor.globalIdx,
+    title: '이 Beat에 행동 한 줄을 더해볼까요?',
+    reason: normalizedRequest,
+    proposedText,
+    newElement: {
+      type: 'action',
+      text: proposedText,
+      beat: targetBeat,
+    },
+    actionLabel: 'Add line',
+    sceneIntention: normalizedIntention,
+  }
+}
+
+const createMockNarrativeSuggestions = (state, requestKey, input = {}) => {
+  const targetBeat = state.activeBeat ?? 0
+  const beatElements = state.screenplay
+    .map((element, globalIdx) => ({ ...element, globalIdx }))
+    .filter((element) => (element.beat ?? 0) === targetBeat)
+  const scene = state.scenes[state.activeScene]
+  const branch = scene?.branches?.[scene.activeBranch ?? 0]
+  const beatShots = (branch?.shots || []).filter((shot) => (shot.scriptBeat ?? 0) === targetBeat)
+  const suggestions = []
+  const narrativeRequest = input.narrativeRequest?.trim() || ''
+  const normalizedRequest = narrativeRequest.toLowerCase()
+  const requestsStructure = includesAny(normalizedRequest, [
+    '구조', '비트', 'beat', '패널', '컷', '나눠', '분할', '구성', '스토리보드',
+  ])
+  const requestsScriptChange = includesAny(normalizedRequest, [
+    '대사', '말', '설명', '짧게', '축약', '채워', '추가', '내용', '서사', '대본', '행동',
+  ])
+  const shouldSuggestScript = requestsScriptChange || !requestsStructure
+
+  if (shouldSuggestScript && narrativeRequest && beatElements.length > 0) {
+    suggestions.push(createMockScriptSuggestion({
+      beatElements,
+      targetBeat,
+      requestKey,
+      sceneIntention: state.sceneIntention || '',
+      narrativeRequest,
+    }))
+  }
+
+  if (requestsStructure && beatElements.length > 1) {
+    const candidates = beatElements.slice(1)
+    const preferred = candidates.find((element, index) => (
+      element.type === 'action' && beatElements[index]?.type !== 'scene-heading'
+    ))
+    const fallback = candidates[Math.max(0, Math.floor(candidates.length / 2) - 1)]
+    const boundary = preferred || fallback
+    const previous = beatElements.find((element) => element.globalIdx === boundary.globalIdx - 1)
+
+    suggestions.push({
+      id: `narrative-${requestKey}-split-${targetBeat}-${boundary.globalIdx}`,
+      type: 'split-beat',
+      beat: targetBeat,
+      elementIndex: boundary.globalIdx,
+      title: '여기서 Beat를 나눠볼까요?',
+      reason: `“${shortenNarrativeText(previous?.text)}” 이후 “${shortenNarrativeText(boundary.text)}”에서 정보나 행동의 국면이 달라집니다.`,
+      actionLabel: 'Split Beat',
+    })
+  }
+
+  if (requestsStructure && beatShots.length < 2) {
+    suggestions.push({
+      id: `narrative-${requestKey}-panels-${targetBeat}`,
+      type: 'panel-count',
+      beat: targetBeat,
+      targetCount: 2,
+      title: '이 Beat를 두 패널로 나눠볼까요?',
+      reason: '사건과 반응을 한 패널에 압축하지 않고 순서대로 확인할 수 있습니다.',
+      purposes: [
+        '사건 또는 새로운 정보를 먼저 제시',
+        '인물의 반응과 다음 행동을 분리',
+      ],
+      actionLabel: 'Add blank panel',
+    })
+  }
+
+  if (suggestions.length === 0) {
+    suggestions.push({
+      id: `narrative-${requestKey}-keep-${targetBeat}`,
+      type: 'keep-structure',
+      beat: targetBeat,
+      title: '현재 Beat와 패널 구성을 유지해도 좋습니다.',
+      reason: '이 Prototype 분석에서는 추가 분할보다 현재 정보 흐름을 보존하는 편이 명확합니다.',
+    })
+  }
+
+  return suggestions
+}
+
 const useStore = create((set, get) => ({
   viewMode: 'script',
   setViewMode: (mode) => set({ viewMode: mode }),
@@ -199,6 +331,8 @@ const useStore = create((set, get) => ({
   toggleScript: () => set((state) => ({ isScriptOpen: !state.isScriptOpen })),
   setScriptOpen: (val) => set({ isScriptOpen: val }),
   screenplay: SCREENPLAY,
+  sceneIntention: '',
+  setSceneIntention: (sceneIntention) => set({ sceneIntention }),
   setScreenplay: (script) => set((state) => {
     const maxBeat = Math.max(0, ...script.map((line) => line.beat ?? 0))
     const next = updateActiveBranchShots(state, (shots, _branch, scene) => {
@@ -213,10 +347,22 @@ const useStore = create((set, get) => ({
         activeBeat: Math.max(0, Math.min(state.activeBeat ?? 0, maxBeat)),
       }
     })
-    return { ...next, screenplay: script }
+    return { ...next, screenplay: script, narrativeSuggestions: [] }
   }),
   scriptEditorRequestKey: 0,
   requestScriptEditor: () => set((state) => ({ scriptEditorRequestKey: state.scriptEditorRequestKey + 1 })),
+  narrativeSuggestionRequestKey: 0,
+  narrativeSuggestions: [],
+  requestNarrativeSuggestions: (input = {}) => set((state) => {
+    const requestKey = state.narrativeSuggestionRequestKey + 1
+    return {
+      narrativeSuggestionRequestKey: requestKey,
+      narrativeSuggestions: createMockNarrativeSuggestions(state, requestKey, input),
+    }
+  }),
+  dismissNarrativeSuggestion: (suggestionId) => set((state) => ({
+    narrativeSuggestions: state.narrativeSuggestions.filter((suggestion) => suggestion.id !== suggestionId),
+  })),
   
   // 비트 나누기: 특정 지점에서 대본을 자르고 새 beat에 기본 shot을 하나 만든다.
   splitBeat: (elementIndex) => set((state) => {
@@ -268,6 +414,7 @@ const useStore = create((set, get) => ({
     return {
       ...next,
       screenplay: newScreenplay,
+      narrativeSuggestions: [],
     }
   }),
 
@@ -318,6 +465,7 @@ const useStore = create((set, get) => ({
     return {
       ...next,
       screenplay: newScreenplay,
+      narrativeSuggestions: [],
     }
   }),
 

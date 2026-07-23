@@ -1,43 +1,57 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import useStore from '../store/useStore'
 import CenterPanel from './CenterPanel'
 import SceneOverview from './SceneOverview'
 import './DecisionBoard.css'
 
-const LENSES = [
-  {
-    id: 'narrative',
-    role: 'Story Scout',
-    lens: '정보/서사',
-    brief: '관객이 무엇을 언제 알게 되는지 본다.',
-    prompt: '예: 원인은 숨기고 불안만 먼저 읽히게',
-    accent: '#f59e0b',
-  },
+// Narrative만 사용자와 직접 협업하는 상위 Agent로 드러낸다.
+// 하위 생성 모듈은 내부적으로 Agent일 수 있지만 UI에서는 같은 장면을
+// 서로 다른 관점으로 읽는 Creative Lens로 표현한다.
+const NARRATIVE_AGENT = {
+  id: 'narrative',
+  role: 'Narrative Agent',
+  lens: '정보/서사',
+  glyph: '📖',
+  tagline: '언제 알게 할 것인가',
+  brief: '관객이 무엇을 언제 알게 되는지 본다.',
+  prompt: '예: 원인은 숨기고 불안만 먼저 읽히게',
+  accent: '#f59e0b',
+}
+
+const CREATIVE_LENSES = [
   {
     id: 'staging',
-    role: 'Blocking Coach',
+    role: 'Mise-en-scène Lens',
     lens: '장면화/블로킹',
+    glyph: '🎭',
+    tagline: '무대를 어떻게 짤 것인가',
     brief: '거리, 시선, 몸의 방향, 사물 관계를 본다.',
     prompt: '예: 둘 사이의 불신과 거리감을 더 강하게',
     accent: '#10b981',
   },
   {
     id: 'camera',
-    role: 'Frame Designer',
+    role: 'Cinematography Lens',
     lens: '카메라/프레이밍/톤',
+    glyph: '🎥',
+    tagline: '어디서 볼 것인가',
     brief: '어디서, 얼마나 가까이, 어떤 톤으로 볼지 본다.',
     prompt: '예: 공간은 보이되 감정 밀도는 잃지 않게',
     accent: '#3b82f6',
   },
   {
     id: 'editing',
-    role: 'Rhythm Editor',
+    role: 'Editing Lens',
     lens: '편집/리듬',
+    glyph: '✂️',
+    tagline: '어디서 자르고 이을 것인가',
     brief: '몇 컷으로 나누고 어디서 끊을지 본다.',
     prompt: '예: 반응을 늦춰서 긴장을 오래 끌기',
     accent: '#ef4444',
   },
 ]
+
+const PERSPECTIVES = [NARRATIVE_AGENT, ...CREATIVE_LENSES]
 
 const MOCK_OPTIONS = [
   {
@@ -174,26 +188,6 @@ const MOCK_RELATIONS = [
   },
 ]
 
-const INTENTION_FIELDS = [
-  { id: 'event', label: 'Event', placeholder: '무슨 일이 일어나야 하나' },
-  { id: 'emotion', label: 'Emotion', placeholder: '인물이 어떤 감정으로 읽혀야 하나' },
-  { id: 'causality', label: 'Causality', placeholder: '원인이 어떻게 추론되어야 하나' },
-  { id: 'information', label: 'Information state', placeholder: 'viewer가 무엇을 알고/몰라야 하나' },
-  { id: 'attention', label: 'Attention target', placeholder: '시선이 어디에 머물러야 하나' },
-  { id: 'relationship', label: 'Relationship', placeholder: '인물/사물 관계가 어떻게 읽혀야 하나' },
-]
-
-const INITIAL_INTENTION = {
-  event: '재인이 이상한 낌새를 감지하지만 원인은 아직 드러나지 않는다.',
-  emotion: '지속적인 불안',
-  causality: '불안의 원인은 숨겨져야 함',
-  information: 'viewer는 위험을 감지하되 정체는 알 수 없어야 함',
-  attention: '재인의 얼굴 반응과 멈칫하는 몸짓',
-  relationship: '재인은 공간 안에서 고립되어 있음',
-}
-
-const INITIAL_INTENTION_BRIEF = '주인공이 막연한 불안을 느끼지만, 불안의 원인은 아직 viewer에게 드러나지 않았으면 좋겠다.'
-
 const MOCK_DEBATE_TURNS = [
   {
     id: 'debate-1',
@@ -247,20 +241,19 @@ function getScopeLabel(scene, scope) {
 export default function DecisionBoard() {
   const [editOpen, setEditOpen] = useState(false)
   const [boardView, setBoardView] = useState('split')
-  const [selectedOptionId, setSelectedOptionId] = useState(MOCK_OPTIONS[0].id)
+  // 기본은 모두 펼침. 사용자가 접은 lane만 여기에 담긴다.
+  const [collapsedLanes, setCollapsedLanes] = useState({})
+  const [selectedOptionId, setSelectedOptionId] = useState(null)
   const [reviewOpen, setReviewOpen] = useState(false)
   const [debateOpen, setDebateOpen] = useState(false)
-  const [intentionOpen, setIntentionOpen] = useState(false)
   const [selectedOptionIds, setSelectedOptionIds] = useState([])
   const [directorNote, setDirectorNote] = useState('')
   const [scopeMode, setScopeMode] = useState('single')
   const [rangeStart, setRangeStart] = useState(0)
   const [rangeEnd, setRangeEnd] = useState(0)
-  const [intentionBrief, setIntentionBrief] = useState(INITIAL_INTENTION_BRIEF)
-  const [intendedMeaning, setIntendedMeaning] = useState(INITIAL_INTENTION)
-  const [intentionSubmitted, setIntentionSubmitted] = useState(false)
+  const [narrativeRequest, setNarrativeRequest] = useState('')
   const [lensIntentSubmitted, setLensIntentSubmitted] = useState(() => (
-    LENSES.reduce((acc, lens) => ({ ...acc, [lens.id]: false }), {})
+    CREATIVE_LENSES.reduce((acc, lens) => ({ ...acc, [lens.id]: false }), {})
   ))
   const [rounds, setRounds] = useState([
     {
@@ -272,12 +265,16 @@ export default function DecisionBoard() {
     },
   ])
   const [lensIntents, setLensIntents] = useState(() => (
-    LENSES.reduce((acc, lens) => ({ ...acc, [lens.id]: '' }), {})
+    CREATIVE_LENSES.reduce((acc, lens) => ({ ...acc, [lens.id]: '' }), {})
   ))
   const scenes = useStore((s) => s.scenes)
   const activeScene = useStore((s) => s.activeScene)
   const activeBeat = useStore((s) => s.activeBeat)
   const setFlowActiveShot = useStore((s) => s.setFlowActiveShot)
+  const requestNarrativeSuggestions = useStore((s) => s.requestNarrativeSuggestions)
+  const narrativeSuggestionCount = useStore((s) => s.narrativeSuggestions.length)
+  const sceneIntention = useStore((s) => s.sceneIntention)
+  const setLeftPanelVisible = useStore((s) => s.setLeftPanelVisible)
   const scene = scenes[activeScene]
   const activeShot = scene?.activeShot ?? 0
   const activeBranch = scene?.activeBranch ?? 0
@@ -288,28 +285,33 @@ export default function DecisionBoard() {
   const scope = scopeMode === 'range'
     ? { mode: 'range', from: scopeFrom, to: scopeTo, shotIds: shots.slice(scopeFrom, scopeTo + 1).map((shot) => shot.id) }
     : { mode: 'single', shot: activeShot, shotIds: shots[activeShot]?.id ? [shots[activeShot].id] : [] }
-  const selectedOption = MOCK_OPTIONS.find((option) => option.id === selectedOptionId) || MOCK_OPTIONS[0]
 
+  const allOptions = MOCK_OPTIONS
+  const availableRelations = MOCK_RELATIONS
+  const selectedOption = allOptions.find((option) => option.id === selectedOptionId) || allOptions[0]
+
+  // Narrative 아래의 세 관점만 Creative Lens lane으로 렌더한다.
+  // 현재 option 내용은 모두 prototype MOCK_OPTIONS이다.
   const optionsByLens = useMemo(() => {
-    return LENSES.map((lens) => ({
+    return CREATIVE_LENSES.map((lens) => ({
       ...lens,
       options: MOCK_OPTIONS.filter((option) => option.lensId === lens.id),
     }))
   }, [])
 
-  const connectedRelations = MOCK_RELATIONS.filter(
-    (relation) => relation.from === selectedOption.id || relation.to === selectedOption.id
-  )
-  const selectedOptions = MOCK_OPTIONS.filter((option) => selectedOptionIds.includes(option.id))
-  const selectedRelations = MOCK_RELATIONS.filter(
-    (relation) => selectedOptionIds.includes(relation.from) && selectedOptionIds.includes(relation.to)
+  // 상단 Narrative 띠에 표시할 옵션(현재는 prototype).
+  const narrativeOptions = useMemo(
+    () => MOCK_OPTIONS.filter((option) => option.lensId === NARRATIVE_AGENT.id),
+    [],
   )
 
-  useEffect(() => {
-    if (scopeMode !== 'single') return
-    setRangeStart(activeShot)
-    setRangeEnd(activeShot)
-  }, [activeShot, scopeMode])
+  const connectedRelations = availableRelations.filter(
+    (relation) => relation.from === selectedOption.id || relation.to === selectedOption.id
+  )
+  const selectedOptions = allOptions.filter((option) => selectedOptionIds.includes(option.id))
+  const selectedRelations = availableRelations.filter(
+    (relation) => selectedOptionIds.includes(relation.from) && selectedOptionIds.includes(relation.to)
+  )
 
   const updateLensIntent = (lensId, value) => {
     setLensIntents((prev) => ({ ...prev, [lensId]: value }))
@@ -321,13 +323,8 @@ export default function DecisionBoard() {
     setLensIntentSubmitted((prev) => ({ ...prev, [lensId]: true }))
   }
 
-  const submitIntentionBrief = () => {
-    if (!intentionBrief.trim()) return
-    setIntentionSubmitted(true)
-    setIntendedMeaning((prev) => ({
-      ...prev,
-      event: intentionBrief,
-    }))
+  const toggleLane = (lensId) => {
+    setCollapsedLanes((prev) => ({ ...prev, [lensId]: !prev[lensId] }))
   }
 
   const selectScopeShot = (shotIdx) => {
@@ -388,8 +385,7 @@ export default function DecisionBoard() {
         selectedOptionIds: [...selectedOptionIds],
         directorNote,
         lensBriefs: { ...lensIntents },
-        intentionBrief,
-        intendedMeaning: { ...intendedMeaning },
+        intentionBrief: sceneIntention,
         scope,
       },
     ])
@@ -401,7 +397,7 @@ export default function DecisionBoard() {
   )
 
   const getLens = (lensId) => (
-    LENSES.find((lens) => lens.id === lensId) || LENSES[0]
+    PERSPECTIVES.find((lens) => lens.id === lensId) || PERSPECTIVES[0]
   )
 
   const selectedOptionReview = (
@@ -466,14 +462,14 @@ export default function DecisionBoard() {
         <div className="decision-board-title-block">
           <span className="decision-board-kicker">Storyboard Decision Board</span>
           <h1>{getScopeLabel(scene, scope)}</h1>
-          <p>Beat {activeBeat + 1} 기준의 mock round입니다. 카드를 묶고 감독 코멘트를 남기면 다음 라운드 입력으로 저장됩니다.</p>
+          <p>Beat {activeBeat + 1} 기준입니다. Narrative Agent가 요청을 해석하고, 세 Creative Lens가 같은 장면을 서로 다른 관점으로 검토합니다.</p>
         </div>
         <div className="decision-board-actions">
           <div className="board-view-toggle" aria-label="Board view mode">
             {[
               ['storyboard', 'Storyboard'],
               ['split', 'Split'],
-              ['agents', 'Agents'],
+              ['lenses', 'Lenses'],
             ].map(([mode, label]) => (
               <button
                 key={mode}
@@ -549,139 +545,180 @@ export default function DecisionBoard() {
         </section>
 
         <section className="decision-board-options" aria-label="Option cards and tradeoffs">
-          <div className={`intention-bar ${intentionOpen ? 'open' : ''}`}>
-            <button
-              type="button"
-              className="intention-bar-summary"
-              onClick={() => setIntentionOpen((open) => !open)}
-              aria-expanded={intentionOpen}
-            >
-              <span className="tradeoff-eyebrow">Intention</span>
-              <span className="intention-bar-text">{intentionBrief || 'No intention set'}</span>
-              <span className="intention-bar-caret">{intentionOpen ? '▴' : '▾'}</span>
-            </button>
-            {intentionOpen && (
-              <div className="intention-bar-body">
-                <label className="intention-brief-field">
-                  <span>What should this storyboard communicate?</span>
-                  <div className="intention-submit-row">
-                    <textarea
-                      value={intentionBrief}
-                      onChange={(e) => {
-                        setIntentionBrief(e.target.value)
-                        setIntentionSubmitted(false)
-                      }}
-                      placeholder="예: 주인공이 막연한 불안을 느끼지만, 불안의 원인은 아직 viewer에게 드러나지 않았으면 좋겠다."
-                      rows={2}
-                    />
-                    <button
-                      type="button"
-                      className="intention-send-btn"
-                      onClick={submitIntentionBrief}
-                      disabled={!intentionBrief.trim()}
-                    >
-                      {intentionSubmitted ? 'Sent' : 'Send'}
-                    </button>
-                  </div>
-                </label>
-                <div className="preview-content">
-                  {INTENTION_FIELDS.map((field) => (
-                    <div key={field.id} className="intention-field">
-                      <span>{field.label}</span>
-                      <p>{intendedMeaning[field.id]}</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-
           {reviewOpen && selectedOptionReview}
 
+          {/* 상위 계층: 사용자와 직접 협업하는 Narrative Agent. */}
+          <div className="narrative-band" style={{ '--lens-color': NARRATIVE_AGENT.accent }}>
+            <div className="narrative-band-header">
+              <div className="narrative-band-title">
+                <span className="narrative-band-glyph" aria-hidden="true">{NARRATIVE_AGENT.glyph}</span>
+                <div>
+                  <strong>
+                    <span className="narrative-band-badge">Agent</span>
+                    {NARRATIVE_AGENT.role}
+                    <em className="option-lane-tagline">{NARRATIVE_AGENT.tagline}</em>
+                  </strong>
+                  <p>{NARRATIVE_AGENT.brief}</p>
+                </div>
+              </div>
+              <div className="narrative-band-controls">
+                <span className="narrative-band-lens">{NARRATIVE_AGENT.lens}</span>
+                {narrativeSuggestionCount > 0 && (
+                  <span className="narrative-suggestion-count">{narrativeSuggestionCount} suggestion{narrativeSuggestionCount === 1 ? '' : 's'}</span>
+                )}
+              </div>
+            </div>
+            <div className="narrative-workbench">
+              <label>
+                <span>Narrative request</span>
+                <textarea
+                  value={narrativeRequest}
+                  onChange={(event) => setNarrativeRequest(event.target.value)}
+                  placeholder="예: 첫 Beat를 나누고 대사를 덜 설명적으로 바꿔줘."
+                  rows={2}
+                />
+              </label>
+              <div className="narrative-workbench-actions">
+                <button
+                  type="button"
+                  className="narrative-propose-btn"
+                  disabled={!narrativeRequest.trim()}
+                  onClick={() => {
+                    requestNarrativeSuggestions({
+                      narrativeRequest,
+                    })
+                    setLeftPanelVisible(true)
+                  }}
+                >
+                  Generate proposal
+                </button>
+              </div>
+            </div>
+            <div className="narrative-band-options">
+              {narrativeOptions.map((option) => (
+                <button
+                  key={option.id}
+                  type="button"
+                  className={`narrative-chip ${option.id === selectedOption.id ? 'selected' : ''}`}
+                  onClick={() => openOptionReview(option.id)}
+                >
+                  <span className="narrative-chip-title">{option.title}</span>
+                  <span className="narrative-chip-proposal">{option.proposal}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="agents-lane-bar">
+            <span className="agents-lane-eyebrow">Creative Lenses</span>
+            <p>같은 장면을 세 가지 관점으로 검토합니다.</p>
+          </div>
+
           <div className="option-lanes">
-            {optionsByLens.map((lens) => (
-              <div key={lens.id} className="option-lane" style={{ '--lens-color': lens.accent }}>
-                <div className="option-lane-header">
-                  <div>
-                    <span>{lens.role}</span>
+            {optionsByLens.map((lens) => {
+              const collapsed = !!collapsedLanes[lens.id]
+              return (
+              <div
+                key={lens.id}
+                className={`option-lane ${collapsed ? 'collapsed' : ''}`}
+                style={{ '--lens-color': lens.accent }}
+              >
+                <button
+                  type="button"
+                  className="option-lane-header"
+                  onClick={() => toggleLane(lens.id)}
+                  aria-expanded={!collapsed}
+                >
+                  <span className="option-lane-caret">{collapsed ? '▸' : '▾'}</span>
+                  <span className="option-lane-glyph" aria-hidden="true">{lens.glyph}</span>
+                  <div className="option-lane-titleblock">
+                    <span className="option-lane-role">
+                      {lens.role}
+                      <em className="option-lane-tagline">{lens.tagline}</em>
+                    </span>
                     <p>{lens.brief}</p>
                   </div>
+                  <span className="option-lane-count">{lens.options.length}</span>
                   <strong>{lens.lens}</strong>
-                </div>
-                <label className="lens-intent-field">
-                  <span>{lens.role} intent</span>
-                  <div className="lens-intent-row">
-                    <textarea
-                      value={lensIntents[lens.id]}
-                      onChange={(e) => updateLensIntent(lens.id, e.target.value)}
-                      placeholder={lens.prompt}
-                      rows={2}
-                    />
-                    <button
-                      type="button"
-                      className="lens-send-btn"
-                      onClick={() => submitLensIntent(lens.id)}
-                      disabled={!lensIntents[lens.id]?.trim()}
-                    >
-                      {lensIntentSubmitted[lens.id] ? 'Sent' : 'Send'}
-                    </button>
-                  </div>
-                </label>
-                {lens.options.map((option) => (
-                  <button
-                    key={option.id}
-                    type="button"
-                    className={`option-card ${option.id === selectedOption.id ? 'selected' : ''} ${selectedOptionIds.includes(option.id) ? 'chosen' : ''}`}
-                    onClick={() => openOptionReview(option.id)}
-                  >
-                    <span className="option-card-head">
-                      <span className="option-card-title">{option.title}</span>
-                      <span
-                        role="button"
-                        tabIndex={0}
-                        className={`option-pick ${selectedOptionIds.includes(option.id) ? 'picked' : ''}`}
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          toggleOptionSelection(option.id)
-                        }}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter' || e.key === ' ') {
-                            e.preventDefault()
-                            e.stopPropagation()
-                            toggleOptionSelection(option.id)
-                          }
-                        }}
-                        aria-pressed={selectedOptionIds.includes(option.id)}
+                </button>
+                {!collapsed && (
+                  <>
+                    <label className="lens-intent-field">
+                      <div className="lens-intent-row">
+                        <textarea
+                          value={lensIntents[lens.id]}
+                          onChange={(e) => updateLensIntent(lens.id, e.target.value)}
+                          placeholder={lens.prompt}
+                          aria-label={`${lens.role} focus`}
+                          rows={1}
+                        />
+                        <button
+                          type="button"
+                          className="lens-send-btn"
+                          onClick={() => submitLensIntent(lens.id)}
+                          disabled={!lensIntents[lens.id]?.trim()}
+                        >
+                          {lensIntentSubmitted[lens.id] ? 'Focused' : 'Set focus'}
+                        </button>
+                      </div>
+                    </label>
+                    {lens.options.map((option) => (
+                      <button
+                        key={option.id}
+                        type="button"
+                        className={`option-card compact ${option.id === selectedOption.id ? 'selected' : ''} ${selectedOptionIds.includes(option.id) ? 'chosen' : ''}`}
+                        onClick={() => openOptionReview(option.id)}
                       >
-                        {selectedOptionIds.includes(option.id) ? 'Selected' : 'Select'}
-                      </span>
-                    </span>
-                    <span className="option-card-proposal">{option.proposal}</span>
-                    <span className="option-card-tags">
-                      {option.tags.map((tag) => <em key={tag}>{tag}</em>)}
-                    </span>
-                  </button>
-                ))}
+                        <span className="option-card-head">
+                          <span className="option-card-title">{option.title}</span>
+                          <span
+                            role="button"
+                            tabIndex={0}
+                            className={`option-pick ${selectedOptionIds.includes(option.id) ? 'picked' : ''}`}
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              toggleOptionSelection(option.id)
+                            }}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter' || e.key === ' ') {
+                                e.preventDefault()
+                                e.stopPropagation()
+                                toggleOptionSelection(option.id)
+                              }
+                            }}
+                            aria-pressed={selectedOptionIds.includes(option.id)}
+                          >
+                            {selectedOptionIds.includes(option.id) ? 'Selected' : 'Select'}
+                          </span>
+                        </span>
+                        <span className="option-card-tags">
+                          {option.tags.map((tag) => <em key={tag}>{tag}</em>)}
+                        </span>
+                      </button>
+                    ))}
+                  </>
+                )}
               </div>
-            ))}
+              )
+            })}
             <button
               type="button"
               className={`agent-debate-hub ${debateOpen ? 'active' : ''}`}
               onClick={() => setDebateOpen((open) => !open)}
               aria-pressed={debateOpen}
-              title="Show agent reactions"
+              title="Compare cross-lens impacts"
             >
-              <span>💬</span>
-              <strong>{debateOpen ? 'Hide' : 'Debate'}</strong>
+              <span>◎</span>
+              <strong>{debateOpen ? 'Hide' : 'Overlap'}</strong>
             </button>
           </div>
 
           {debateOpen && (
-            <section className="agent-debate-panel" aria-label="Agent tradeoff reactions">
+            <section className="agent-debate-panel" aria-label="Cross-lens impacts">
               <div className="agent-debate-heading">
                 <div>
-                  <span className="tradeoff-eyebrow">Agent reactions</span>
-                  <h2>충돌을 합의하지 않고 비용으로 드러내기</h2>
+                  <span className="tradeoff-eyebrow">Lens overlap</span>
+                  <h2>각 관점의 효과와 비용을 함께 보기</h2>
                 </div>
                 <button type="button" onClick={() => setDebateOpen(false)}>Close</button>
               </div>
@@ -697,7 +734,7 @@ export default function DecisionBoard() {
                       </div>
                       <p>{turn.line}</p>
                       <div className="debate-target">
-                        <span>reacting to</span>
+                        <span>affects</span>
                         <strong>{target.role} / {getOptionTitle(turn.targetOptionId)}</strong>
                       </div>
                     </article>

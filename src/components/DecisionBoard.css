@@ -262,17 +262,18 @@
   flex: 1;
   min-height: 0;
   display: grid;
-  grid-template-columns: minmax(420px, 0.92fr) minmax(560px, 1.08fr);
+  grid-template-columns: minmax(420px, 1.08fr) minmax(440px, 0.92fr);
   gap: 12px;
 }
 
 .decision-board-main.view-storyboard,
-.decision-board-main.view-agents {
+.decision-board-main.view-lenses {
   grid-template-columns: 1fr;
 }
 
+
 .decision-board-main.view-storyboard .decision-board-options,
-.decision-board-main.view-agents .decision-board-storyboard {
+.decision-board-main.view-lenses .decision-board-storyboard {
   display: none;
 }
 
@@ -540,51 +541,392 @@
   line-height: 1.35;
 }
 
+/* ── 상위 계층: Narrative 띠 ── */
+.narrative-band {
+  flex: 0 0 auto;
+  margin: 12px 12px 0;
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: 1px solid color-mix(in srgb, var(--lens-color), transparent 68%);
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--lens-color), transparent 88%), rgba(255, 255, 255, 0.02));
+}
+
+.narrative-band-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.narrative-band-title {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  min-width: 0;
+}
+
+/* 상단 Narrative 렌즈 아이콘 (하위 lane보다 큼 = 상위 계층 강조) */
+.narrative-band-glyph {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  font-size: 19px;
+  line-height: 1;
+  background: color-mix(in srgb, var(--lens-color), transparent 82%);
+  box-shadow:
+    inset 0 0 0 1.5px color-mix(in srgb, var(--lens-color), transparent 38%),
+    0 0 0 4px color-mix(in srgb, var(--lens-color), transparent 90%);
+}
+
+.narrative-band-badge {
+  margin-right: 7px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--lens-color);
+  background: color-mix(in srgb, var(--lens-color), transparent 82%);
+  vertical-align: middle;
+}
+
+.narrative-band-title strong {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 7px;
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.92);
+}
+
+.narrative-band-title p {
+  margin: 2px 0 0;
+  font-size: 11.5px;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.narrative-band-lens {
+  flex: 0 0 auto;
+  font-size: 11px;
+  color: color-mix(in srgb, var(--lens-color), white 20%);
+}
+
+.narrative-band-controls {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.narrative-suggestion-count {
+  padding: 3px 7px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--lens-color), transparent 84%);
+  color: color-mix(in srgb, var(--lens-color), white 24%);
+  font-size: 9.5px;
+  font-weight: 750;
+}
+
+.narrative-workbench {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 8px;
+  margin-bottom: 10px;
+  padding: 10px;
+  border-radius: 9px;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  background: rgba(0, 0, 0, 0.16);
+}
+
+.narrative-workbench label {
+  min-width: 0;
+}
+
+.narrative-workbench label > span {
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+  margin-bottom: 5px;
+  color: rgba(255, 255, 255, 0.58);
+  font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.narrative-workbench textarea {
+  width: 100%;
+  min-height: 52px;
+  resize: vertical;
+  padding: 8px 9px;
+  border-radius: 7px;
+  border: 1px solid color-mix(in srgb, var(--lens-color), transparent 78%);
+  outline: none;
+  background: rgba(0, 0, 0, 0.24);
+  color: rgba(255, 255, 255, 0.84);
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.narrative-workbench textarea::placeholder {
+  color: rgba(255, 255, 255, 0.27);
+}
+
+.narrative-workbench textarea:focus {
+  border-color: color-mix(in srgb, var(--lens-color), transparent 48%);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--lens-color), transparent 84%);
+}
+
+.narrative-workbench-actions {
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: flex-end;
+  gap: 7px;
+}
+
+.narrative-workbench-actions button {
+  min-height: 29px;
+  padding: 0 11px;
+  border-radius: 7px;
+  font-size: 10.5px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.narrative-propose-btn {
+  border: 1px solid color-mix(in srgb, var(--lens-color), transparent 48%);
+  background: color-mix(in srgb, var(--lens-color), transparent 82%);
+  color: color-mix(in srgb, var(--lens-color), white 28%);
+}
+
+.narrative-workbench-actions button:hover:not(:disabled) {
+  filter: brightness(1.18);
+}
+
+.narrative-workbench-actions button:disabled {
+  cursor: not-allowed;
+  opacity: 0.35;
+}
+
+.narrative-suggest-btn {
+  height: 29px;
+  padding: 0 11px;
+  border-radius: 7px;
+  border: 1px solid color-mix(in srgb, var(--lens-color), transparent 50%);
+  background: color-mix(in srgb, var(--lens-color), transparent 84%);
+  color: color-mix(in srgb, var(--lens-color), white 28%);
+  font-size: 10.5px;
+  font-weight: 750;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.narrative-suggest-btn:hover {
+  border-color: color-mix(in srgb, var(--lens-color), transparent 28%);
+  background: color-mix(in srgb, var(--lens-color), transparent 74%);
+}
+
+.narrative-band-options {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 8px;
+}
+
+.narrative-chip {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 9px 10px;
+  text-align: left;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.025);
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.narrative-chip:hover {
+  border-color: color-mix(in srgb, var(--lens-color), transparent 55%);
+}
+
+.narrative-chip.selected {
+  border-color: var(--lens-color);
+  background: color-mix(in srgb, var(--lens-color), transparent 90%);
+}
+
+.narrative-chip-title {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.narrative-chip-proposal {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+/* ── Creative Lens lane 바 (확장 토글) ── */
+.agents-lane-bar {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 12px 12px 0;
+}
+
+.agents-lane-eyebrow {
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.agents-lane-bar p {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.32);
+  font-size: 10.5px;
+}
+
 .option-lanes {
   position: relative;
   flex: 0 0 auto;
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
   padding: 12px;
 }
 
 .option-lane {
+  position: relative;
   min-width: 0;
   display: flex;
   flex-direction: column;
-  padding: 12px;
+  padding: 10px 12px 10px 14px;
   border-radius: 8px;
-  border: 1px solid color-mix(in srgb, var(--lens-color), transparent 74%);
+  border: 1px solid color-mix(in srgb, var(--lens-color), transparent 62%);
   background:
-    linear-gradient(180deg, color-mix(in srgb, var(--lens-color), transparent 93%), rgba(255, 255, 255, 0.025));
+    linear-gradient(180deg, color-mix(in srgb, var(--lens-color), transparent 90%), rgba(255, 255, 255, 0.02));
+  overflow: hidden;
 }
 
+/* 렌즈별 색을 왼쪽 세로 바로 각인 */
+.option-lane::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: var(--lens-color);
+  opacity: 0.85;
+}
+
+.option-lane.collapsed::before {
+  opacity: 0.4;
+}
+
+/* 헤더는 클릭 가능한 토글 버튼 */
 .option-lane-header {
   display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 8px;
-  margin-bottom: 7px;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  padding: 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
 }
 
-.option-lane-header div {
-  min-width: 0;
+.option-lane.collapsed .option-lane-header {
+  /* 접힌 상태에서는 헤더만 남으므로 아래 여백 제거 */
 }
 
-.option-lane-header span {
-  display: block;
+.option-lane:not(.collapsed) .option-lane-header {
+  margin-bottom: 9px;
+}
+
+.option-lane-caret {
+  flex: 0 0 auto;
   color: color-mix(in srgb, var(--lens-color), white 14%);
+  font-size: 11px;
+}
+
+/* 렌즈 아이콘: accent 링을 두른 원형 배지 */
+.option-lane-glyph {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
   font-size: 15px;
+  line-height: 1;
+  background: color-mix(in srgb, var(--lens-color), transparent 86%);
+  box-shadow:
+    inset 0 0 0 1.5px color-mix(in srgb, var(--lens-color), transparent 45%),
+    0 0 0 3px color-mix(in srgb, var(--lens-color), transparent 92%);
+}
+
+.option-lane-titleblock {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.option-lane-role {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+  flex-wrap: wrap;
+  color: color-mix(in srgb, var(--lens-color), white 14%);
+  font-size: 14px;
   line-height: 1.05;
   font-weight: 900;
 }
 
-.option-lane-header p {
-  margin: 3px 0 0;
-  color: rgba(226, 232, 240, 0.58);
-  font-size: 12px;
-  line-height: 1.35;
+/* 렌즈 태그라인: 그 관점이 던지는 질문 */
+.option-lane-tagline {
+  font-style: normal;
+  font-size: 11px;
+  font-weight: 600;
+  color: color-mix(in srgb, var(--lens-color), white 34%);
+  opacity: 0.85;
+}
+
+.option-lane-tagline::before {
+  content: '· ';
+  opacity: 0.6;
+}
+
+.option-lane-titleblock p {
+  margin: 2px 0 0;
+  color: rgba(226, 232, 240, 0.5);
+  font-size: 11px;
+  line-height: 1.3;
+}
+
+/* 접으면 설명 숨겨 헤더 한 줄로 */
+.option-lane.collapsed .option-lane-titleblock p {
+  display: none;
+}
+
+.option-lane-count {
+  flex: 0 0 auto;
+  min-width: 18px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  text-align: center;
+  background: color-mix(in srgb, var(--lens-color), transparent 84%);
+  color: color-mix(in srgb, var(--lens-color), white 24%);
+  font-size: 11px;
+  font-weight: 800;
 }
 
 .option-lane-header strong {
@@ -600,16 +942,6 @@
 .lens-intent-field {
   display: block;
   margin-bottom: 8px;
-}
-
-.lens-intent-field span {
-  display: block;
-  margin-bottom: 4px;
-  color: rgba(255, 255, 255, 0.34);
-  font-size: 10px;
-  font-weight: 900;
-  letter-spacing: 0.7px;
-  text-transform: uppercase;
 }
 
 .lens-intent-row {
@@ -694,9 +1026,28 @@
     linear-gradient(135deg, color-mix(in srgb, var(--lens-color), transparent 90%), rgba(15, 15, 20, 0.8));
 }
 
+/* 압축 카드: 제목 + 태그만, 상세는 클릭 시 좌측 review 패널에서 */
+.option-card.compact {
+  gap: 5px;
+  padding: 7px 9px 7px 11px;
+  border-left: 2px solid color-mix(in srgb, var(--lens-color), transparent 55%);
+}
+
+.option-card.compact:hover {
+  border-left-color: var(--lens-color);
+}
+
+.option-card.compact .option-card-title {
+  font-size: 13px;
+}
+
+.option-card.compact .option-card-tags em {
+  font-size: 9.5px;
+}
+
 .option-card-head {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
   gap: 8px;
 }
@@ -706,6 +1057,10 @@
   font-size: 15px;
   line-height: 1.15;
   font-weight: 900;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .option-pick {
@@ -1299,10 +1654,6 @@
 
   .scope-generate-btn {
     width: 100%;
-  }
-
-  .option-lanes {
-    grid-template-columns: 1fr;
   }
 
   .agent-debate-hub {
