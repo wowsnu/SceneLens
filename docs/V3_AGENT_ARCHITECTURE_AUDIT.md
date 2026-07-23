@@ -8,6 +8,10 @@
 - 범위: 읽기 기반 감사와 구현 제안
 - 비범위: 이번 단계에서는 제품 기능 코드를 변경하지 않음
 
+> 이 문서는 최초 코드 감사 시점의 기록이다. 이후 구현된 Narrative mock,
+> Storyboard batch draft, Drawing 분할 workspace와 현재 합의사항은
+> [`V3_WORKING_CONTEXT.md`](./V3_WORKING_CONTEXT.md)에서 이어서 관리한다.
+
 ---
 
 ## 1. 결론
