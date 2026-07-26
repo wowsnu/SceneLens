@@ -434,6 +434,8 @@ const createMockNarrativeSuggestions = (state, requestKey, input = {}) => {
 // 처음 정하는 주체가 아니라, Tentative로 제안된 값을 검토·대안 제시하는 주체다.
 // 설계 근거: docs/NARRATIVE_LENS_AS_JULCONTI.md
 const CUT_PLAN_SHOT_SIZES = ['Wide', 'Full', 'Medium', 'Bust', 'Close-Up', 'ECU']
+const CUT_PLAN_ANGLES = ['Eye level', 'High angle', 'Low angle', 'Over the shoulder', 'POV', 'Bird eye']
+const CUT_PLAN_MOVES = ['Fixed', 'Pan', 'Tilt', 'Dolly in', 'Dolly out', 'Handheld']
 
 const createCutPlanItemId = () => `cut-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
 
@@ -448,6 +450,12 @@ const createCutPlanItem = ({
   purpose = '',
   characters = '',
   shotSize = 'Medium',
+  // 촬영 지시. 줄콘티가 원래 담는 정보이며 패널에서 조정한다.
+  angle = 'Eye level',
+  cameraMove = 'Fixed',
+  // 사용자가 조립된 프롬프트를 직접 고친 경우. 비어 있으면 컷에서 조립한
+  // 문장을 쓴다. 원문은 언제든 다시 조립할 수 있으므로 되돌리기가 가능하다.
+  promptOverride = '',
   status = 'Tentative',
   provenance = 'AI',
 } = {}) => ({
@@ -461,6 +469,9 @@ const createCutPlanItem = ({
   purpose,
   characters,
   shotSize,
+  angle,
+  cameraMove,
+  promptOverride,
   status,
   provenance,
 })
@@ -568,6 +579,93 @@ const createMockCutPlan = (state) => {
   return items
 }
 
+// --- 컷 → 프롬프트 조립 -------------------------------------------------
+// 프롬프트는 사용자가 백지에서 쓰는 것이 아니라 확정된 컷에서 조립된다.
+// 줄콘티를 텍스트로 확정한 이유가 여기에 있다 (Spec §22.12:
+// "Fixed Decisions are explicit generation constraints").
+// 설계 근거: docs/PANEL_GENERATION_DESIGN.md
+const SHOT_SIZE_PHRASES = {
+  Wide: '와이드 샷, 공간 전체가 보인다',
+  Full: '풀 샷, 인물 전신이 들어온다',
+  Medium: '미디엄 샷, 상반신 위주',
+  Bust: '바스트 샷, 가슴 위로',
+  'Close-Up': '클로즈업, 얼굴이 화면을 채운다',
+  ECU: '익스트림 클로즈업, 부분만 크게',
+}
+
+// purpose는 묘사가 아니라 무엇을 강조할지를 정한다. 구도 지시로 옮긴다.
+const PURPOSE_PHRASES = {
+  '공간 설정': '공간의 배치와 분위기가 읽히도록',
+  발화: '말하는 인물에게 시선이 가도록',
+  리액션: '반응하는 표정이 분명히 보이도록',
+  '행동 강조': '동작의 방향과 결과가 분명히 보이도록',
+}
+
+export const buildCutPrompt = (cut, { sceneIntention = '', sceneNote = '' } = {}) => {
+  if (!cut) return null
+
+  // 자동 조립분과 사용자가 덧붙인 지시를 나눠 둔다. provenance가 갈린다.
+  // 조각을 이어 붙이면 라벨 나열처럼 읽힌다. 문장으로 만든다.
+  const shot = SHOT_SIZE_PHRASES[cut.shotSize] || cut.shotSize
+  const cast = (cut.characters || '').split(',').map((n) => n.trim()).filter(Boolean)
+
+  // 1문장: 언제, 어디서, 어떤 크기로.
+  const place = cut.place ? `${cut.place}${cut.time ? ` ${cut.time}` : ''}` : cut.time
+  // 앵글은 기본값(눈높이)일 때 굳이 적지 않는다.
+  const angleText = cut.angle && cut.angle !== 'Eye level' ? `${cut.angle}. ` : ''
+  const opening = place ? `${place}. ${angleText}${shot}.` : `${angleText}${shot}.`
+
+  // 2문장: 화면 안에서 무슨 일이 일어나는가.
+  const isSpeech = cut.purpose === '발화' || cut.purpose === '리액션'
+  const speaker = cast[0]
+  let action = ''
+  if (cut.content) {
+    if (isSpeech) {
+      // 대사를 그대로 두면 이미지 모델이 글자를 그리려 한다.
+      action = speaker
+        ? `${speaker}${hasFinalConsonant(speaker) ? '이' : '가'} "${cut.content}"라고 말하는 순간이다.`
+        : `누군가 "${cut.content}"라고 말하는 순간이다.`
+    } else {
+      const body = cut.content.replace(/[.。]\s*$/, '')
+      action = `${body}.`
+    }
+  }
+
+  // 3문장: 화면에 누가 있는가. 앞 문장에 이미 나온 인물은 다시 적지 않는다.
+  const others = cast.filter((name) => !action.includes(name))
+  const castNames = others.join(', ')
+  const castLine = others.length > 0
+    ? `화면에는 ${castNames}${hasFinalConsonant(castNames) ? '이' : '가'} ${others.length > 1 ? '함께 ' : ''}보인다.`
+    : ''
+
+  // 4문장: 무엇이 읽혀야 하는가.
+  const emphasisPhrase = PURPOSE_PHRASES[cut.purpose]
+  const emphasis = emphasisPhrase
+    ? `${emphasisPhrase} 잡는다.`
+    : (cut.purpose
+      ? `${cut.purpose}${hasFinalConsonant(cut.purpose) ? '이' : '가'} 드러나도록 잡는다.`
+      : '')
+
+  const auto = [opening, action, castLine, emphasis].filter(Boolean).join(' ')
+  // 장면 전체에 걸리는 지시는 컷마다 반복하지 않고 따로 둔다.
+  const shared = [sceneIntention && `장면 의도: ${sceneIntention}`, sceneNote]
+    .filter(Boolean)
+    .join(' / ')
+
+  // 사용자가 직접 고쳤으면 그것을 쓴다. 조립분은 되돌리기용으로 함께 넘긴다.
+  const edited = (cut.promptOverride || '').trim()
+
+  return {
+    auto,
+    // 실제로 생성에 쓰이는 문장.
+    effective: edited || auto,
+    isEdited: Boolean(edited),
+    shared,
+    // 컷의 어느 값이 프롬프트의 어느 자리로 갔는지 추적 가능하게 남긴다.
+    parts: { opening, action, castLine, emphasis },
+  }
+}
+
 // 순서가 바뀌면 전체 번호와 Beat 안 번호를 함께 다시 매긴다.
 const reorderCutPlan = (items) => {
   const perBeat = new Map()
@@ -659,6 +757,11 @@ const useStore = create((set, get) => ({
   cutPlanAccepted: false,
   cutPlanRequestKey: 0,
   cutPlanShotSizes: CUT_PLAN_SHOT_SIZES,
+  cutPlanAngles: CUT_PLAN_ANGLES,
+  cutPlanMoves: CUT_PLAN_MOVES,
+  // 조명·그림체처럼 장면 전체에 걸리는 지시. 컷마다 반복하지 않는다.
+  scenePromptNote: '',
+  setScenePromptNote: (scenePromptNote) => set({ scenePromptNote }),
   requestCutPlan: () => set((state) => ({
     cutPlan: createMockCutPlan(state),
     cutPlanAccepted: false,
@@ -667,10 +770,19 @@ const useStore = create((set, get) => ({
     cutPlanRequestKey: state.cutPlanRequestKey + 1,
   })),
   updateCutPlanItem: (itemId, patch) => set((state) => ({
-    cutPlan: state.cutPlan.map((item) => (
-      // 사용자가 직접 만진 값은 출처가 User로 바뀐다.
-      item.id === itemId ? { ...item, ...patch, provenance: 'User' } : item
-    )),
+    cutPlan: state.cutPlan.map((item) => {
+      if (item.id !== itemId) return item
+      // 프롬프트 문구만 고친 것은 컷의 결정(샷 사이즈·내용)을 바꾼 것이
+      // 아니다. 컷의 출처는 그대로 두고 프롬프트 출처만 따로 본다
+      // (buildCutPrompt의 isEdited가 그 역할을 한다).
+      const onlyPromptText = Object.keys(patch)
+        .every((key) => key === 'promptOverride')
+      return {
+        ...item,
+        ...patch,
+        provenance: onlyPromptText ? item.provenance : 'User',
+      }
+    }),
   })),
   setCutPlanItemStatus: (itemId, status) => set((state) => ({
     // 상태 전환은 출처를 바꾸지 않는다 (Spec §8.2).
@@ -1667,7 +1779,7 @@ const useStore = create((set, get) => ({
 
   // --- New Layout System States ---
   layoutMode: 'unified', // 'unified' | 'maximized'
-  maximizedPanel: 'left', // Storyboard construction is the default entry view.
+  maximizedPanel: 'left', // 사이트 진입은 서사/스토리보드 구성 화면에서 시작한다.
   setMaximizedPanel: (panel) => set({ maximizedPanel: panel }),
   storyboardPanelsVisible: true,
   setStoryboardPanelsVisible: (visible) => set({
@@ -1691,7 +1803,7 @@ const useStore = create((set, get) => ({
   }),
   closeDrawingWorkspace: () => set({
     drawingWorkspaceOpen: false,
-    maximizedPanel: 'left',
+    maximizedPanel: null,
   }),
   
   leftPanelVisible: true,

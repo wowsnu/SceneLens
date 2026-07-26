@@ -18,9 +18,30 @@ const INITIAL_PRESETS = [
   { label: 'P', color: '#ef4444', full: 'PROPRIETOR' },
 ]
 
+const INITIAL_ELEMENTS = [
+  { id: 'e1', type: 'rect', x: 400, y: 350, w: 450, h: 120, label: 'COUNTER' },
+  { id: 'e2', type: 'rect', x: 300, y: 240, w: 700, h: 50, label: 'SHELF' },
+  { id: 'e3', type: 'text', x: 450, y: 530, text: 'SCENE: RURAL GAS STATION' },
+  { id: 'm1', type: 'marker', x: 440, y: 480, label: 'C', color: '#3b82f6', waypoints: [] },
+  { id: 'm2', type: 'marker', x: 660, y: 380, label: 'P', color: '#ef4444', waypoints: [] },
+]
+
 const PRESET_COLORS = ['#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#06b6d4', '#f97316']
 
-export default function SpatialMap({ compact = false }) {
+function cloneElements(elements) {
+  return elements.map((element) => ({
+    ...element,
+    waypoints: element.waypoints?.map((waypoint) => ({ ...waypoint })),
+  }))
+}
+
+export default function SpatialMap({
+  compact = false,
+  initialElements = INITIAL_ELEMENTS,
+  initialEntityPresets = INITIAL_PRESETS,
+  onElementsChange,
+  showShotNodes = true,
+}) {
   const setViewMode = useStore((s) => s.setViewMode)
   const strategies = useStore((s) => s.strategies)
   const activeStrategy = useStore((s) => s.activeStrategy)
@@ -39,16 +60,10 @@ export default function SpatialMap({ compact = false }) {
   const [showLabels, setShowLabels] = useState(false)
   const [isAnalyzing, setIsAnalyzing] = useState(false)
   const [hasAnalyzed, setHasAnalyzed] = useState(false)
-  const [entityPresets, setEntityPresets] = useState(INITIAL_PRESETS)
+  const [entityPresets, setEntityPresets] = useState(() => initialEntityPresets.map((preset) => ({ ...preset })))
   const [newCharName, setNewCharName] = useState('')
 
-  const [elements, setElements] = useState([
-    { id: 'e1', type: 'rect', x: 400, y: 350, w: 450, h: 120, label: 'COUNTER' },
-    { id: 'e2', type: 'rect', x: 300, y: 240, w: 700, h: 50, label: 'SHELF' },
-    { id: 'e3', type: 'text', x: 450, y: 530, text: 'SCENE: RURAL GAS STATION' },
-    { id: 'm1', type: 'marker', x: 440, y: 480, label: 'C', color: '#3b82f6', waypoints: [] },
-    { id: 'm2', type: 'marker', x: 660, y: 380, label: 'P', color: '#ef4444', waypoints: [] },
-  ])
+  const [elements, setElements] = useState(() => cloneElements(initialElements))
 
   const [nodePositions, setNodePositions] = useState({})
   const [drawingPreview, setDrawingPreview] = useState(null)
@@ -61,6 +76,10 @@ export default function SpatialMap({ compact = false }) {
   const strategy = strategies[activeStrategy]
   const shots = strategy?.shots || []
   const shotCount = shots.length
+
+  useEffect(() => {
+    onElementsChange?.(cloneElements(elements))
+  }, [elements, onElementsChange])
 
   const updateTransform = useCallback(() => {
     if (contentRef.current) {
@@ -127,7 +146,11 @@ export default function SpatialMap({ compact = false }) {
   const addEntity = (preset) => {
     entityIdRef.current += 1
     const newId = `ent-${entityIdRef.current}`
-    const centerPos = { x: (window.innerWidth/2 - panRef.current.x) / zoomRef.current, y: (window.innerHeight/2 - panRef.current.y) / zoomRef.current }
+    const rect = mapContainerRef.current?.getBoundingClientRect()
+    const centerPos = {
+      x: ((rect?.width || window.innerWidth) / 2 - panRef.current.x) / zoomRef.current,
+      y: ((rect?.height || window.innerHeight) / 2 - panRef.current.y) / zoomRef.current,
+    }
     setElements([...elements, { id: newId, type: 'marker', x: centerPos.x, y: centerPos.y, label: preset.label, color: preset.color, waypoints: [] }])
     setShowEntityMenu(false); setActiveTool('select')
   }
@@ -240,7 +263,7 @@ export default function SpatialMap({ compact = false }) {
   const renderPaths = () => {
     return (
       <>
-        {shots.slice(0, -1).map((_, i) => {
+        {showShotNodes && shots.slice(0, -1).map((_, i) => {
           const p1 = nodePositions[i], p2 = nodePositions[i+1]; if (!p1 || !p2) return null
           const nodeOffset = compact ? 20 : 120
           const nodeOffsetY = compact ? 20 : 70
@@ -347,10 +370,12 @@ export default function SpatialMap({ compact = false }) {
             </React.Fragment>
           ))}
           {drawingPreview && <div className={`board-element drawing-preview ${drawingPreview.type}`} style={{ left: drawingPreview.x, top: drawingPreview.y, width: drawingPreview.w, height: drawingPreview.h }} />}
-          <div className="axis-of-action" style={{ top: '430px', left: '440px', width: '250px', transform: 'rotate(-25deg)' }}><span className="axis-label">AXIS OF ACTION</span></div>
+          {showShotNodes && (
+            <div className="axis-of-action" style={{ top: '430px', left: '440px', width: '250px', transform: 'rotate(-25deg)' }}><span className="axis-label">AXIS OF ACTION</span></div>
+          )}
         </div>
         <svg className="spatial-links-layer"><defs><marker id="arrowhead" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="rgba(255, 255, 255, 0.15)" /></marker></defs><g>{renderPaths()}</g></svg>
-        {shots.map((shot, i) => {
+        {showShotNodes && shots.map((shot, i) => {
           const pos = nodePositions[i] || { x: 0, y: 0, angle: 0 }
           if (compact) {
             const isActive = activeShot === i
@@ -447,7 +472,9 @@ export default function SpatialMap({ compact = false }) {
         <button className="zoom-btn" onClick={() => handleZoom(0.15)}>+</button>
         <button className="zoom-btn" onClick={() => handleZoom(-0.15)}>−</button>
         <button className="zoom-btn" onClick={() => {
-          const positions = Object.values(nodePositions)
+          const positions = showShotNodes
+            ? Object.values(nodePositions)
+            : elements.map((element) => ({ x: element.x, y: element.y }))
           if (positions.length === 0) return
           const minX = Math.min(...positions.map(p => p.x))
           const maxX = Math.max(...positions.map(p => p.x))
@@ -462,7 +489,7 @@ export default function SpatialMap({ compact = false }) {
         }}>⊙</button>
       </div>
 
-      {!compact && (
+      {!compact && showShotNodes && (
         <div className="board-controls">
           <button className="board-btn primary"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>ADD SHOT</button>
           <div className="tool-divider-v" />

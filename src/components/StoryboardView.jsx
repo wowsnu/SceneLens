@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
-import useStore, { selectCutStage } from '../store/useStore'
+import { Fragment, useCallback, useEffect, useRef, useState } from 'react'
+import useStore, { buildCutPrompt, selectCutStage } from '../store/useStore'
 import './StoryboardView.css'
 
 const MOCK_PANEL_PALETTES = [
@@ -166,6 +166,131 @@ function ScriptLineEditor({
   )
 }
 
+// Panels 단계의 오른쪽. 선택한 패널이 어느 컷에서 왔고 무엇이 정해져
+// 있는지 보여주고 그 자리에서 고친다. 값의 출처는 컷이므로 컷을 고친다.
+// 설계 근거: docs/PANEL_GENERATION_DESIGN.md §3.3
+function ShotInspector({
+  shot, cut, prompt, shotSizes, angles, moves, onChange, onStatusChange, onClose,
+}) {
+  if (!shot) {
+    return (
+      <aside className="shot-inspector empty" aria-label="Shot inspector">
+        <p>패널을 클릭하면 그 컷의 설정이 여기에 나타납니다.</p>
+      </aside>
+    )
+  }
+
+  if (!cut) {
+    return (
+      <aside className="shot-inspector empty" aria-label="Shot inspector">
+        <header>
+          <strong>{shot.label}</strong>
+          <button type="button" onClick={onClose} aria-label="Close">×</button>
+        </header>
+        <p>이 패널은 컷 플랜과 연결되어 있지 않습니다. 컷 플랜을 다시 적용하면 연결됩니다.</p>
+      </aside>
+    )
+  }
+
+  const field = (label, key, options) => (
+    <label className="shot-inspector-field" key={key}>
+      <span>{label}</span>
+      {options ? (
+        <select value={cut[key]} onChange={(event) => onChange(cut.id, { [key]: event.target.value })}>
+          {options.map((option) => <option key={option} value={option}>{option}</option>)}
+        </select>
+      ) : (
+        <input
+          type="text"
+          value={cut[key] || ''}
+          onChange={(event) => onChange(cut.id, { [key]: event.target.value })}
+        />
+      )}
+    </label>
+  )
+
+  return (
+    <aside className="shot-inspector" aria-label="Shot inspector">
+      <header>
+        <div>
+          <span>Cut {cut.beat + 1}-{cut.beatOrder}</span>
+          <strong>{shot.label}</strong>
+        </div>
+        <button type="button" onClick={onClose} aria-label="Close inspector">×</button>
+      </header>
+
+      <section>
+        <h4>이 컷의 결정</h4>
+        <div className="shot-inspector-grid">
+          {field('샷 사이즈', 'shotSize', shotSizes)}
+          {field('앵글', 'angle', angles)}
+          {field('카메라', 'cameraMove', moves)}
+          {field('시간', 'time')}
+          {field('장소', 'place')}
+          {field('인물', 'characters')}
+        </div>
+        <label className="shot-inspector-field wide">
+          <span>중요한 것</span>
+          <input
+            type="text"
+            value={cut.purpose || ''}
+            onChange={(event) => onChange(cut.id, { purpose: event.target.value })}
+          />
+        </label>
+      </section>
+
+      <section>
+        <h4>
+          커밋 상태
+          <em className={`provenance-${cut.provenance.toLowerCase()}`}>{cut.provenance}</em>
+        </h4>
+        <div className="shot-inspector-status">
+          {['Fixed', 'Tentative', 'Open'].map((status) => (
+            <button
+              key={status}
+              type="button"
+              className={cut.status === status ? `active status-${status.toLowerCase()}` : ''}
+              onClick={() => onStatusChange(cut.id, status)}
+            >
+              {status}
+            </button>
+          ))}
+        </div>
+        <p className="shot-inspector-hint">
+          {cut.status === 'Fixed'
+            ? '후속 제작에서 지켜야 할 결정입니다. 재생성해도 유지됩니다.'
+            : cut.status === 'Open'
+              ? '검토 후 의도적으로 열어둔 부분입니다. 바뀌어도 괜찮습니다.'
+              : '아직 검토하지 않았습니다. 그려진 그림은 확정이 아닙니다.'}
+        </p>
+      </section>
+
+      <section>
+        <h4>
+          프롬프트
+          {prompt?.isEdited && (
+            <button
+              type="button"
+              className="shot-inspector-revert"
+              onClick={() => onChange(cut.id, { promptOverride: '' })}
+            >
+              되돌리기
+            </button>
+          )}
+        </h4>
+        <textarea
+          className="shot-inspector-prompt"
+          value={prompt?.effective || ''}
+          rows={9}
+          onChange={(event) => onChange(cut.id, { promptOverride: event.target.value })}
+          placeholder="컷 내용이 비어 있습니다."
+        />
+        {prompt?.shared && <p className="shot-inspector-shared">{prompt.shared}</p>}
+      </section>
+    </aside>
+  )
+}
+
 function NarrativeSuggestionCard({ suggestion, onAccept, onDismiss }) {
   const canAccept = suggestion.type !== 'keep-structure'
   const suggestionMeta = {
@@ -282,6 +407,10 @@ export default function StoryboardView() {
   const backToScript = useStore((s) => s.backToScript)
   const clearCutPlanStageOverride = useStore((s) => s.clearCutPlanStageOverride)
   const cutPlanShotSizes = useStore((s) => s.cutPlanShotSizes)
+  const cutPlanAngles = useStore((s) => s.cutPlanAngles)
+  const cutPlanMoves = useStore((s) => s.cutPlanMoves)
+  const scenePromptNote = useStore((s) => s.scenePromptNote)
+  const setScenePromptNote = useStore((s) => s.setScenePromptNote)
   const requestCutPlan = useStore((s) => s.requestCutPlan)
   const updateCutPlanItem = useStore((s) => s.updateCutPlanItem)
   const setCutPlanItemStatus = useStore((s) => s.setCutPlanItemStatus)
@@ -302,6 +431,10 @@ export default function StoryboardView() {
   const [pendingFocus, setPendingFocus] = useState(null)
   // 접어둔 컷 플랜 Beat 번호.
   const [collapsedCutBeats, setCollapsedCutBeats] = useState([])
+  // 프롬프트를 펼쳐 본 컷. 한 번에 하나만 연다.
+  const [expandedPromptCutId, setExpandedPromptCutId] = useState(null)
+  // Panels 단계에서 인스펙터에 띄운 패널.
+  const [inspectedShotId, setInspectedShotId] = useState(null)
   const [generationScope, setGenerationScope] = useState('all')
   const [panelCandidates, setPanelCandidates] = useState({})
   const handledScriptEditorRequestKey = useRef(0)
@@ -365,6 +498,15 @@ export default function StoryboardView() {
     if (last && last.beat === item.beat) last.items.push({ item, index })
     else cutPlanBeatGroups.push({ beat: item.beat, items: [{ item, index }] })
   })
+
+  // 인스펙터에 띄울 패널과 그 근원 컷.
+  const inspectedShot = flowShots.find((shot) => shot.id === inspectedShotId) || null
+  const inspectedCut = inspectedShot
+    ? cutPlan.find((item) => item.id === inspectedShot.cutPlanItemId) || null
+    : null
+  const inspectedPrompt = inspectedCut
+    ? buildCutPrompt(inspectedCut, { sceneIntention, sceneNote: scenePromptNote })
+    : null
 
   const toggleCutBeat = (beat) => setCollapsedCutBeats((current) => (
     current.includes(beat) ? current.filter((b) => b !== beat) : [...current, beat]
@@ -845,7 +987,8 @@ export default function StoryboardView() {
                           </th>
                         </tr>
                         {!collapsed && group.items.map(({ item, index }) => (
-                        <tr key={item.id} className={`status-${item.status.toLowerCase()}`}>
+                        <Fragment key={item.id}>
+                        <tr className={`status-${item.status.toLowerCase()}`}>
                           <td className="col-cut">
                             <span className="cut-plan-number">
                               {item.beat + 1}-{item.beatOrder}
@@ -923,6 +1066,18 @@ export default function StoryboardView() {
                             <div className="cut-plan-row-tools">
                               <button
                                 type="button"
+                                className={expandedPromptCutId === item.id ? 'active' : ''}
+                                onClick={() => setExpandedPromptCutId(
+                                  expandedPromptCutId === item.id ? null : item.id,
+                                )}
+                                aria-label="Show prompt"
+                                aria-expanded={expandedPromptCutId === item.id}
+                                title="프롬프트 보기"
+                              >
+                                P
+                              </button>
+                              <button
+                                type="button"
                                 onClick={() => moveCutPlanItem(item.id, -1)}
                                 disabled={index === 0}
                                 aria-label="Move cut up"
@@ -959,11 +1114,78 @@ export default function StoryboardView() {
                             </div>
                           </td>
                         </tr>
+                        {expandedPromptCutId === item.id && (() => {
+                          const prompt = buildCutPrompt(item, {
+                            sceneIntention,
+                            sceneNote: scenePromptNote,
+                          })
+                          return (
+                            <tr className="cut-plan-prompt-row">
+                              <td colSpan={9}>
+                                <div className="cut-plan-prompt">
+                                  <div className="cut-plan-prompt-auto">
+                                    <span>
+                                      {prompt.isEdited ? '프롬프트 · User' : '컷에서 조립됨 · AI'}
+                                      {prompt.isEdited && (
+                                        <button
+                                          type="button"
+                                          className="cut-plan-prompt-revert"
+                                          onClick={() => updateCutPlanItem(item.id, {
+                                            promptOverride: '',
+                                          })}
+                                          title="컷에서 다시 조립"
+                                        >
+                                          되돌리기
+                                        </button>
+                                      )}
+                                    </span>
+                                    {/* 바로 고칠 수 있게 둔다. 고치면 이 컷의
+                                        프롬프트 출처가 User로 바뀐다. */}
+                                    <textarea
+                                      className="cut-plan-prompt-input"
+                                      value={prompt.effective}
+                                      rows={3}
+                                      onChange={(event) => updateCutPlanItem(item.id, {
+                                        promptOverride: event.target.value,
+                                      })}
+                                      placeholder="컷 내용이 비어 있습니다."
+                                      aria-label={`Cut ${item.order} prompt`}
+                                    />
+                                    {prompt.isEdited && (
+                                      <p className="cut-plan-prompt-original">
+                                        컷 기준: {prompt.auto}
+                                      </p>
+                                    )}
+                                  </div>
+                                  {prompt.shared && (
+                                    <div className="cut-plan-prompt-shared">
+                                      <span>장면 공통</span>
+                                      <p>{prompt.shared}</p>
+                                    </div>
+                                  )}
+                                </div>
+                              </td>
+                            </tr>
+                          )
+                        })()}
+                        </Fragment>
                         ))}
                       </tbody>
                     )
                   })}
                 </table>
+              </div>
+
+              {/* 조명·그림체는 컷마다 반복하지 않고 장면 전체에 한 번 건다. */}
+              <div className="cut-plan-scene-note">
+                <label htmlFor="scene-prompt-note">장면 전체 지시</label>
+                <input
+                  id="scene-prompt-note"
+                  type="text"
+                  value={scenePromptNote}
+                  onChange={(event) => setScenePromptNote(event.target.value)}
+                  placeholder="모든 컷에 적용 (예: 차가운 형광등, 거친 연필 스케치)"
+                />
               </div>
 
               <footer className="cut-plan-footer">
@@ -1239,7 +1461,11 @@ export default function StoryboardView() {
                         return (
                           <div
                             key={shot.id || shotIdx}
-                            className={`sb-shot-card ${shotIdx === activeShot ? 'active-shot' : ''} ${isSelected ? 'selected-for-generation' : ''} ${candidate ? 'has-ai-candidate' : ''}`}
+                            className={`sb-shot-card ${shotIdx === activeShot ? 'active-shot' : ''} ${isSelected ? 'selected-for-generation' : ''} ${candidate ? 'has-ai-candidate' : ''} ${inspectedShotId === shot.id ? 'inspected' : ''}`}
+                            onClick={(event) => {
+                              event.stopPropagation()
+                              setInspectedShotId(shot.id)
+                            }}
                           >
                             <button
                               type="button"
@@ -1390,7 +1616,21 @@ export default function StoryboardView() {
           })}
         </div>
       </div>
-      {isExpanded && !drawingWorkspaceOpen && (
+      {isExpanded && !drawingWorkspaceOpen && cutStage === 'panels' && (
+        <ShotInspector
+          shot={inspectedShot}
+          cut={inspectedCut}
+          prompt={inspectedPrompt}
+          shotSizes={cutPlanShotSizes}
+          angles={cutPlanAngles}
+          moves={cutPlanMoves}
+          onChange={updateCutPlanItem}
+          onStatusChange={setCutPlanItemStatus}
+          onClose={() => setInspectedShotId(null)}
+        />
+      )}
+
+      {isExpanded && !drawingWorkspaceOpen && cutStage !== 'panels' && (
         <aside
           className={`storyboard-narrative-rail ${narrativeRailOpen ? 'open' : 'collapsed'}`}
           aria-label="Narrative Agent"

@@ -489,12 +489,22 @@ Narrative is not the final authority. The user is.
 
 Responsibilities:
 
-- character and object placement;
-- spatial relations;
-- blocking and gaze;
-- pose and expression;
-- background and props;
-- visible spatial cues.
+- maintain a scene-level state for characters, place, fixed props, and shared
+  environment conditions;
+- propose Shot-level blocking and spatial relations;
+- propose performance actions, pose, gaze, and expression;
+- choreograph movable props;
+- use doors, furniture, consoles, and other set elements as part of action;
+- preserve or intentionally change spatial and prop continuity across a range.
+
+The UI separates:
+
+- Scene State: global references inherited by Shots;
+- Shot Staging: local changes and composable staging moves.
+
+Shot Staging suggestions are not limited to mutually exclusive high-level
+directions. Blocking, performance, eyeline, prop choreography, and set
+interaction moves may be selected together when compatible.
 
 ### 9.4 Cinematography Agent
 
@@ -511,12 +521,25 @@ Responsibilities:
 
 Responsibilities:
 
-- cut division;
-- shot order at the implementation level;
-- transition;
-- pacing and rhythm;
-- reaction timing;
-- continuity between panels.
+- trim the beginning or end of a Shot;
+- hold a reaction or action longer;
+- split one Shot into multiple Shots;
+- propose a new reaction, detail, insert, or bridge Shot;
+- retime the connection between adjacent Shots;
+- change shot order at the implementation level;
+- inspect pacing, rhythm, repetition, and continuity across a Range.
+
+The Editing UI does not require a separate Boundary mode. When one Shot is
+selected, Editing inspects:
+
+- the selected Shot internally;
+- the incoming connection from the previous Shot;
+- the outgoing connection to the next Shot.
+
+Every suggestion identifies whether it targets the current Shot, the previous
+connection, or the next connection. A new-Shot proposal must state the exact
+insertion position, the provisional panel content, and the resulting Shot
+order.
 
 ### 9.6 Narrative and Editing boundary
 
@@ -718,9 +741,18 @@ Boundary describes the kind of target: a transition between panels.
 
 They should not be peer values in one scope enum.
 
+The current user-facing scope control therefore remains:
+
+- Single Shot;
+- Range.
+
+For Editing, Single Shot automatically includes the selected Shot's incoming
+and outgoing boundaries. Boundary is an Option target inferred from context,
+not a separate scope button.
+
 ### 12.2 Target types
 
-The UI uses direct storyboard selection:
+The system supports the following application targets:
 
 - one panel;
 - multiple panels;
@@ -728,14 +760,25 @@ The UI uses direct storyboard selection:
 - multiple transitions;
 - the whole scene.
 
-The user should not need to select technical labels such as Range or Boundary.
+The user should not need to select technical labels such as Boundary. An
+Editing Option may target an adjacent transition even when the user's focus is
+the neighboring panel.
 
 ### 12.3 Interaction
 
 - click a panel → one panel;
 - drag across panels → multiple panels;
-- click the space between panels → a transition;
 - select the scene header → the whole scene.
+
+When Editing is active:
+
+- one panel focus → current panel plus its existing incoming and outgoing
+  connections;
+- multiple panel focus → sequence rhythm plus transitions inside the selected
+  Range.
+
+Explicit transition clicking may be added later, but it is not required for the
+core Editing flow.
 
 ### 12.4 User focus versus Option application
 
@@ -843,6 +886,51 @@ Axis answers:
 Target answers:
 
     Where does this choice apply?
+
+### 13.5 Initial Creative Lens criteria
+
+Each Creative Lens uses a small, stable set of criteria. These criteria are the
+initial routing taxonomy, not a fixed list of Decisions.
+
+- Cinematography:
+  - camera distance;
+  - camera angle;
+  - framing;
+  - visibility and occlusion;
+  - camera movement.
+- Mise-en-scène:
+  - character placement;
+  - distance between characters;
+  - gaze;
+  - props;
+  - background.
+- Editing:
+  - cut division;
+  - shot order;
+  - transition;
+  - reaction timing;
+  - rhythm.
+
+Narrative remains the upper layer and separately handles:
+
+- Beat structure;
+- information reveal order;
+- causal understanding;
+- emotional change.
+
+Concrete Decision topics vary by scene, selected target, and Board version.
+However, they must be derived from evidence such as:
+
+- a user request;
+- a Narrative constraint;
+- an explicit user edit;
+- an AI generation trace;
+- a visible candidate confirmed by the user.
+
+The same Board version must not produce an unstable or arbitrary list of
+Decision topics. If there is no meaningful evidence for a Lens, the system
+should not invent an item merely to fill the lane. The user may always add or
+ignore a Decision topic.
 
 ---
 
@@ -1589,28 +1677,28 @@ The current v3 Decision Board is a visual prototype rather than an implementatio
 
 Known gaps:
 
-- Narrative is currently displayed as a peer of the other agents;
 - agent content is largely mock data;
 - the Decision model is not a persistent source of truth;
 - status and provenance do not drive generation;
 - Option cards are not organized under canonical Decision topics;
 - cross-agent interaction resembles debate more than structured consequence reporting;
 - round planning and versioned application are missing;
-- the existing storyboard and Decision Board are not yet integrated as one workflow;
+- selected Mise-en-scène and Editing suggestions do not yet mutate the Storyboard;
+- Mise-en-scène and Editing Range behavior is not implemented;
 - Viewer Reflection is not implemented;
 - current UI does not distinguish Production, Review, and Full views.
 
-Required conceptual refactor:
+Current prototype direction:
 
 ~~~text
 Current
-  four peer lenses
-  static mock Options
-  debate transcript
-
-Target
   Narrative upper layer
-  three lower implementation agents
+  three user-selectable Creative Lenses
+  Scene State and composable Shot Staging moves
+  Editing Single focus with adjacent Boundary suggestions
+  static scene-specific mock proposals
+
+Still required
   persistent Decision Inventory
   Decision-centered Option Sets
   structured cross-agent responses

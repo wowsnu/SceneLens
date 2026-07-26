@@ -1,10 +1,12 @@
 # SceneLens v3 작업 맥락과 인수인계
 
-- 마지막 정리: 2026-07-23
+- 마지막 정리: 2026-07-26
 - 작업 브랜치: `feature/scene-flow-fill`
-- 구현 기준 커밋: `0865aee`
+- 작업 출발 커밋: `48fa9f4`
 - 관련 설계: [`SCENELENS_DECISION_SYSTEM_SPEC.md`](./SCENELENS_DECISION_SYSTEM_SPEC.md)
 - 코드 감사: [`V3_AGENT_ARCHITECTURE_AUDIT.md`](./V3_AGENT_ARCHITECTURE_AUDIT.md)
+- 패널 생성 설계: [`PANEL_GENERATION_DESIGN.md`](./PANEL_GENERATION_DESIGN.md)
+  (프롬프트는 컷에서 조립. Agent를 새로 띄우지 않고 Option card로. 비구속 표시는 미정)
 - 서사 렌즈 재프레이밍: [`NARRATIVE_LENS_AS_JULCONTI.md`](./NARRATIVE_LENS_AS_JULCONTI.md)
   (서사 렌즈 = 줄콘티의 계산적 구현. Narrative rail에 `Propose Cut Plan` 추가 제안)
 
@@ -58,6 +60,22 @@ Narrative Agent
   `Creative Lens`로 보여준다.
 - 하위 Lens는 관련 축의 질문과 대안을 제안할 수 있고, Narrative 검토가 필요한
   충돌을 위로 올릴 수 있다.
+
+#### 초기 Creative Lens 기준
+
+Mock 단계에서는 다음의 작고 고정된 기준을 사용한다.
+
+- Cinematography: 거리, 각도, 프레이밍, 시야·가림, 카메라 움직임
+- Mise-en-scène: 인물 배치, 인물 간 거리, 시선, 소품, 배경
+- Editing: 컷 분할, 순서, 전환, 반응 타이밍, 리듬
+
+Narrative는 상위에서 Beat, 정보 공개 순서, 인과관계와 감정 변화를 관리한다.
+
+Lens 기준은 고정되지만 실제 Decision 항목은 장면, 선택 target, Board version에
+따라 달라진다. 항목은 사용자 요청, Narrative 제약, 사용자 편집, AI 생성 기록,
+사용자가 확인한 시각적 후보 중 하나 이상의 근거를 가져야 한다. 같은 Board
+version에서 항목 목록이 임의로 바뀌어서는 안 되며, 근거가 없으면 억지로
+항목을 만들지 않는다.
 
 ### 2.2 초기 입력과 Narrative의 역할
 
@@ -328,6 +346,91 @@ Storyboard 제작 화면은 별도 대본 페이지를 만들지 않고 같은 �
 최근 추가한 Narrative rail, inline suggestion, Script Draft, Storyboard 생성
 제어의 작은 글자는 읽을 수 있는 크기로 함께 상향했다.
 
+### 6.6 Decision Board와 Creative Lens Mock
+
+Decision/Lens 화면은 상위 Narrative와 세 하위 Creative Lens의 역할을 실제 UI
+흐름으로 시험하는 단계다. 아직 실제 Agent 호출이나 canonical Decision
+데이터 모델은 연결되지 않았으며, 현재 내용은 장면별 Mock이다.
+
+공통 UI:
+
+- 사용자가 `미장센 / 촬영 / 편집` 중 주 렌즈를 직접 선택한다.
+- 선택한 렌즈의 작업 공간만 바로 아래에 표시한다.
+- 기존 화면 중앙에 떠 있던 `Overlap` 버튼은 제거하고, 주 렌즈 선택 영역의
+  `렌즈 비교 / Overlap`으로 고정했다.
+- 새로 만든 카드와 동작 이름은 한글을 먼저 쓰고 필요한 경우에만
+  `한글 / English term` 형식으로 전문용어를 함께 표시한다.
+- 분석문을 길게 늘어놓기보다 한 줄의 핵심 판단 뒤에 실행 가능한 제안을
+  우선한다.
+
+#### Cinematography
+
+- 현재 Shot 또는 Range의 촬영 상태와 통합 촬영안을 구분해 표시한다.
+- Single은 한 Shot의 샷 크기, 각도, 프레이밍, 시야·가림, 움직임을 다룬다.
+- Range는 여러 Shot의 크기와 시각적 중심이 어떻게 진행되는지 다룬다.
+- 제안은 축을 하나씩 고르는 질문이 아니라 함께 작동하는 촬영안 묶음이다.
+- 현재 분석과 이론 기반 제안을 구분하지만, Viewer처럼 보이는 것을 장황하게
+  재서술하지 않는 방향으로 계속 압축해야 한다.
+
+#### Mise-en-scène
+
+Mise-en-scène은 `씬 기준 / Scene State`와 `샷 미장센 / Shot Staging`으로
+나뉜다.
+
+Scene State:
+
+- 인물 기준 카드는 사진을 앞면에 먼저 보여주고, 뒷면에서 이름, 역할, 외형
+  정보를 수정한다.
+- 장소는 현재 `장소 정체`와 `고정 소품`만 간단히 표시한다.
+- 장소 카드의 큰 2D 평면도를 누르면 기존 `SpatialMap`을 재사용한 공간
+  편집기가 열린다.
+- 관제실, 콘솔, 모니터 벽, 철문, 캐비닛과 재인·민호의 위치를 조작할 수 있다.
+- 공간 편집 결과는 편집기를 닫았다 다시 열어도 유지된다.
+
+Shot Staging:
+
+- 그림이나 현재 상태표를 반복하지 않고, 현재 Shot의 핵심 판단 한 줄 뒤에
+  제안을 바로 표시한다.
+- 제안 범주는 `인물 배치 / Blocking`, `연기 동작 / Performance`,
+  `시선 설계 / Eyeline`, `소품 동선 / Prop choreography`,
+  `세트 활용 / Set interaction`이다.
+- 이 제안들은 서로 배타적인 방향이 아니라 함께 조합할 수 있는
+  `Staging move`다.
+- 여러 카드를 `미장센에 추가`할 수 있으며, 각 Shot에 맞는 구체적인 행동으로
+  Mock 내용이 바뀐다.
+- Shot Staging의 Range 동선·연속성 검사는 아직 구현하지 않았다.
+
+#### Editing
+
+Editing의 핵심 목적은 현재 Shot과 인접 Shot의 흐름을 자연스럽게 만들 수 있는
+구체적인 편집 동작을 제안하는 것이다.
+
+- 사용자에게 별도 `Boundary` 선택을 요구하지 않는다.
+- Editing에서 Single Shot을 선택하면 다음 세 범위를 자동으로 함께 본다.
+  - 현재 Shot 내부
+  - 이전 Shot → 현재 Shot
+  - 현재 Shot → 다음 Shot
+- 카드에는 `현재 샷`, `이전 연결`, `다음 연결` target을 명시한다.
+- 현재 Shot 내부에서는 앞부분 줄이기, Shot 나누기, 끝 반응 유지 등을
+  제안한다.
+- 인접 연결에서는 행동·시선 연결 시점을 조정하거나 새 Shot을 삽입하도록
+  제안한다.
+- 새 Shot 제안은 추상적인 촬영 용어보다 삽입 위치, 새 패널에 들어갈 내용,
+  변경 결과를 `S1 → 새 Shot → S2`처럼 직접 보여준다.
+- 여러 편집 동작을 `편집안에 추가`할 수 있다.
+- Editing Range의 삭제, 병합, 재배열, 전체 리듬 제안은 아직 구현하지 않았다.
+
+### 6.7 Decision Board 화면 정리
+
+- 기존 내부 제목 블록과 장면 설명을 제거해 Scope와 실제 작업 내용을 위로
+  올렸다.
+- Storyboard / Lenses / Split 보기와 Edit Shot 제어는 앱 중앙 상단 헤더에
+  모았다.
+- Storyboard 영역 스크롤바는 Narrative 패널과 같은 시각 언어로 정리했다.
+- Decision/Lens 화면 진입 시 왼쪽 서사 패널은 기본적으로 숨고, 필요할 때
+  다시 펼칠 수 있다.
+- 앱의 첫 진입 자체는 여전히 넓은 Storyboard/Narrative 제작 화면이다.
+
 ---
 
 ## 7. 아직 구현되지 않았거나 Mock인 부분
@@ -348,6 +451,13 @@ Storyboard 제작 화면은 별도 대본 페이지를 만들지 않고 같은 �
 - 구조화된 Supports / Trade-off / Narrative check
 - Round plan, selective Apply, Board version 비교
 - Viewer Reflection
+- Creative Lens 제안의 실제 LLM/Agent 호출
+- Mise-en-scène Scene State와 Shot Staging의 영속 데이터 모델
+- SpatialMap의 실제 Shot staging 데이터 연결
+- 선택한 Staging move를 패널 배치에 적용하는 기능
+- Editing 제안을 실제 trim, split, insert 작업으로 적용하는 기능
+- Editing Range의 삭제, 병합, 재배열, 전체 리듬 제안
+- Mise-en-scène Range의 동선·소품·배치 연속성 검사
 
 Decision Board 안에는 여전히 정적 mock Option, 관계, 대화 데이터가 남아 있다.
 기존 CIR/Strategy backend도 새 Decision 계약과 아직 연결되지 않았다.
@@ -367,15 +477,23 @@ Decision Board 안에는 여전히 정적 mock Option, 관계, 대화 데이터�
 
 ### 바로 다음 수직 슬라이스
 
-1. 현재 Storyboard 제작 → Draw 분할 → Focus → 복귀 흐름을 브라우저에서
-   실제 사용자 동작으로 다시 확인한다.
-2. Narrative mock 제안이 대본, Beat, shot 수를 바꿀 때 모든 active index와
-   Canvas가 안정적으로 동기화되는지 확인한다.
-3. `Blank / Draw / Generate / Import`가 패널 source로 일관되게 보이도록
+1. 현재 Decision/Lens 화면을 실제 브라우저에서 다시 확인해 카드 크기, 스크롤,
+   주 렌즈 전환, Shot 이동 동기화를 검증한다.
+2. Editing Range에서 여러 Shot의 반복, 누락, 삭제·병합·재배열, 전체 리듬
+   제안을 Mock으로 만든다.
+3. Mise-en-scène Range에서 인물 동선, 소품 위치, 시선, 배치 연속성을
+   검사하는 Mock을 만든다.
+4. 선택한 Editing 또는 Staging 제안 하나를 실제 Storyboard 변경으로
+   적용하는 최소 동작을 연결한다.
+5. 그 다음 Mock 제안을 실제 Creative Lens 호출 계약으로 교체한다.
+
+Storyboard 제작 흐름의 실제 이미지 생성 연결은 별도 축으로 남아 있다.
+
+1. `Blank / Draw / Generate / Import`가 패널 source로 일관되게 보이도록
    초기 Board 제작 흐름을 마무리한다.
-4. Mock batch candidate를 실제 이미지 생성 호출에 연결하되, 우선 한 패널의
+2. Mock batch candidate를 실제 이미지 생성 호출에 연결하되, 우선 한 패널의
    생성 → candidate 검토 → Accept를 완성한다.
-5. 그 다음 동일 계약을 Beat/Selected/All blanks batch로 확장한다.
+3. 같은 계약을 Beat/Selected/All blanks batch로 확장한다.
 
 ### 초기 hybrid Board가 안정된 뒤
 
@@ -391,11 +509,15 @@ Decision Board 안에는 여전히 정적 mock Option, 관계, 대화 데이터�
 
 ## 9. 검증 기준
 
-`0865aee` 커밋 직전에 다음 검증을 통과했다.
+2026-07-26 Creative Lens Mock 작업에서 다음 검증을 통과했다.
 
 - 수정 파일 대상 ESLint 통과
 - `npm run build` 통과
 - `git diff --check` 통과
+
+전체 `npm run lint`는 현재 `.venv` 내부 JavaScript와 기존
+`AutoFillPanel.jsx`, `SegmentCutout.jsx` 오류 때문에 실패한다. 이번 작업에서
+수정한 `DecisionBoard.jsx`와 `SpatialMap.jsx`는 개별 ESLint를 통과했다.
 
 새 작업을 이어갈 때 최소한 다음을 다시 확인한다.
 
@@ -420,15 +542,15 @@ npm run build
 
 ## 10. Git 상태 메모
 
-이 문서를 만들기 직전의 상태:
+이 문서를 갱신하기 직전의 상태:
 
 - 브랜치: `feature/scene-flow-fill`
 - 원격: `origin/feature/scene-flow-fill`
-- 원격보다 로컬이 3개 커밋 앞서 있었음
+- 커밋 직전 작업 트리에 Creative Lens와 Decision Board 변경이 남아 있었음
 - 최근 기능 커밋:
-  - `0865aee feat: add storyboard drafting and split drawing workspace`
-  - `d3f2db8 feat: prototype narrative agent and creative lens workflow`
-  - `8aab13c feat: expand storyboard decision workflow`
+  - `48fa9f4 feat: rework script authoring and cut plan into a stepwise flow`
+  - `c9499d3 feat: add cut plan stage between script and panels`
+  - `a3335cd feat: add narrative script workspace and draft flow`
 
 이 숫자는 이후 커밋과 push에 따라 달라질 수 있으므로, 실제 재개 시에는
 `git status --short --branch`로 다시 확인한다.

@@ -1039,6 +1039,7 @@
 
 .cut-plan-table {
   width: 100%;
+  table-layout: fixed;
   border-collapse: collapse;
   font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   font-size: 15px;
@@ -1065,7 +1066,7 @@
 }
 
 .cut-plan-table td {
-  padding: 5px 6px;
+  padding: 5px 5px;
   vertical-align: middle;
 }
 
@@ -1087,7 +1088,7 @@
 }
 
 .cut-plan-table .col-cut {
-  width: 92px;
+  width: 76px;
   padding-left: 12px;
   white-space: nowrap;
 }
@@ -1099,13 +1100,14 @@
   font-weight: 700;
 }
 
-.cut-plan-table .col-time { width: 76px; }
-.cut-plan-table .col-place { width: 118px; }
-.cut-plan-table .col-purpose { width: 180px; }
-.cut-plan-table .col-cast { width: 112px; }
-.cut-plan-table .col-shot { width: 104px; }
-.cut-plan-table .col-status { width: 124px; }
-.cut-plan-table .col-tools { width: 104px; }
+/* 고정 컬럼을 줄여 '내용'이 실제로 읽을 만한 폭을 갖게 한다. */
+.cut-plan-table .col-time { width: 62px; }
+.cut-plan-table .col-place { width: 92px; }
+.cut-plan-table .col-purpose { width: 132px; }
+.cut-plan-table .col-cast { width: 88px; }
+.cut-plan-table .col-shot { width: 92px; }
+.cut-plan-table .col-status { width: 108px; }
+.cut-plan-table .col-tools { width: 122px; }
 
 /* 입력은 평소 표의 글자처럼 보이고, 다가가야 편집 가능함이 드러난다. */
 .cut-plan-table input,
@@ -1137,8 +1139,17 @@
   color: rgba(255, 255, 255, 0.2);
 }
 
+/* 남는 폭을 전부 '내용'이 가져간다. table-layout: fixed 이므로 폭을
+   지정하지 않은 이 칸이 나머지를 흡수한다. */
 .cut-plan-table .col-content input {
   color: #fff;
+}
+
+/* 긴 텍스트가 표를 밀어내지 않게 한다. */
+.cut-plan-table th,
+.cut-plan-table td {
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .cut-plan-status-select {
@@ -1263,10 +1274,12 @@
 }
 
 .cut-plan-review {
-  /* 컬럼이 많아 기본 본문 폭으로는 좁다. 이 화면에서만 넓게 쓴다. */
-  width: min(1340px, calc(100vw - 340px));
+  /* 컬럼이 많아 기본 본문 폭(1100px)으로는 좁다. 부모의 좌우 padding까지
+     되찾아 이 화면에서만 넓게 쓴다. viewport 기준으로 계산하면 rail이
+     접혔을 때 폭이 맞지 않는다. */
+  width: calc(100% + 80px);
   max-width: none;
-  margin: 26px auto 16px;
+  margin: 26px -40px 16px;
   overflow: hidden;
   border: 1px solid rgba(216, 170, 98, 0.24);
   border-radius: 10px;
@@ -1327,6 +1340,135 @@
 .cut-plan-provenance.provenance-user {
   background: rgba(216, 170, 98, 0.14);
   color: #e1bd85;
+}
+
+/* 프롬프트: 컷에서 조립된 부분과 사용자가 덧붙인 부분을 나눠 보인다.
+   provenance가 눈으로 갈린다. */
+.cut-plan-prompt-row td {
+  padding: 0 !important;
+  background: rgba(216, 170, 98, 0.035);
+}
+
+.cut-plan-prompt {
+  display: grid;
+  gap: 10px;
+  padding: 14px 16px 16px;
+  border-top: 1px solid rgba(216, 170, 98, 0.18);
+}
+
+.cut-plan-prompt span {
+  display: block;
+  margin-bottom: 4px;
+  color: rgba(216, 170, 98, 0.7);
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+/* 조립된 프롬프트를 그 자리에서 고친다. 고치면 출처가 User로 바뀌고
+   되돌리기로 컷 기준 문장을 회복할 수 있다. */
+.cut-plan-prompt-input {
+  width: 100%;
+  padding: 9px 11px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.3);
+  color: rgba(255, 255, 255, 0.86);
+  font-family: 'Courier Prime', ui-monospace, monospace;
+  font-size: 13.5px;
+  line-height: 1.6;
+  resize: vertical;
+}
+
+.cut-plan-prompt-input:hover {
+  border-color: rgba(255, 255, 255, 0.16);
+}
+
+.cut-plan-prompt-input:focus {
+  outline: none;
+  border-color: rgba(216, 170, 98, 0.45);
+}
+
+.cut-plan-prompt-auto span {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.cut-plan-prompt-revert {
+  padding: 2px 7px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 4px;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.45);
+  font-family: Inter, -apple-system, sans-serif;
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
+  cursor: pointer;
+}
+
+.cut-plan-prompt-revert:hover {
+  border-color: rgba(255, 255, 255, 0.28);
+  color: #fff;
+}
+
+/* 고친 뒤에도 컷 기준 문장을 볼 수 있어야 어긋남을 알아챈다. */
+.cut-plan-prompt-original {
+  margin: 6px 0 0;
+  color: rgba(255, 255, 255, 0.32);
+  font-size: 11.5px;
+  line-height: 1.5;
+}
+
+.cut-plan-prompt-shared p {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.42);
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+
+.cut-plan-row-tools button.active {
+  border-color: rgba(216, 170, 98, 0.5);
+  background: rgba(216, 170, 98, 0.14);
+  color: #e6c38c;
+}
+
+/* 장면 전체 지시는 표 아래에 한 번만 둔다. */
+.cut-plan-scene-note {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+  background: rgba(255, 255, 255, 0.012);
+}
+
+.cut-plan-scene-note label {
+  flex: 0 0 auto;
+  color: rgba(255, 255, 255, 0.42);
+  font-size: 11.5px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+}
+
+.cut-plan-scene-note input {
+  flex: 1;
+  min-width: 0;
+  padding: 8px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.24);
+  color: rgba(255, 255, 255, 0.84);
+  font-family: inherit;
+  font-size: 13.5px;
+}
+
+.cut-plan-scene-note input:focus {
+  outline: none;
+  border-color: rgba(216, 170, 98, 0.45);
 }
 
 .cut-plan-footer {
@@ -1424,6 +1566,263 @@
 
 
 /* Narrative Agent: 대본 옆에 머무는 세로형 collaborator rail */
+/* Panels 단계의 오른쪽. 선택한 패널의 컷 설정을 그 자리에서 고친다. */
+.shot-inspector {
+  flex: 0 0 320px;
+  width: 320px;
+  height: 100%;
+  overflow-y: auto;
+  border-left: 1px solid rgba(255, 255, 255, 0.075);
+  background: #101013;
+  color: #f4f4f5;
+  font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+.shot-inspector.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  text-align: center;
+}
+
+.shot-inspector.empty p {
+  color: rgba(255, 255, 255, 0.32);
+  font-size: 12.5px;
+  line-height: 1.6;
+}
+
+.shot-inspector > header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.shot-inspector > header > div {
+  flex: 1;
+  min-width: 0;
+}
+
+.shot-inspector > header span {
+  display: block;
+  color: rgba(216, 170, 98, 0.8);
+  font-family: 'Courier Prime', ui-monospace, monospace;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.shot-inspector > header strong {
+  display: block;
+  margin-top: 2px;
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 14px;
+}
+
+.shot-inspector > header button {
+  flex: 0 0 auto;
+  width: 26px;
+  height: 26px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.45);
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.shot-inspector > header button:hover {
+  border-color: rgba(255, 255, 255, 0.26);
+  color: #fff;
+}
+
+.shot-inspector section {
+  padding: 14px 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.shot-inspector h4 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 10px;
+  color: rgba(255, 255, 255, 0.36);
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.shot-inspector h4 em {
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 9.5px;
+  font-style: normal;
+  letter-spacing: 0.04em;
+}
+
+.shot-inspector h4 em.provenance-ai {
+  background: rgba(126, 168, 214, 0.14);
+  color: rgba(158, 194, 232, 0.9);
+}
+
+.shot-inspector h4 em.provenance-user {
+  background: rgba(216, 170, 98, 0.14);
+  color: #e1bd85;
+}
+
+.shot-inspector-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.shot-inspector-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.shot-inspector-field.wide {
+  margin-top: 8px;
+}
+
+.shot-inspector-field span {
+  color: rgba(255, 255, 255, 0.34);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.shot-inspector-field input,
+.shot-inspector-field select,
+.shot-inspector-field textarea {
+  width: 100%;
+  padding: 7px 9px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.24);
+  color: rgba(255, 255, 255, 0.85);
+  font-family: inherit;
+  font-size: 13px;
+  resize: vertical;
+}
+
+.shot-inspector-field input:focus,
+.shot-inspector-field select:focus,
+.shot-inspector-field textarea:focus {
+  outline: none;
+  border-color: rgba(216, 170, 98, 0.45);
+}
+
+.shot-inspector-field option {
+  background: #18181b;
+}
+
+.shot-inspector-status {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 4px;
+}
+
+.shot-inspector-status button {
+  padding: 7px 4px;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 6px;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.42);
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.shot-inspector-status button:hover {
+  border-color: rgba(255, 255, 255, 0.24);
+  color: #fff;
+}
+
+.shot-inspector-status button.active.status-fixed {
+  border-color: rgba(216, 170, 98, 0.5);
+  background: rgba(216, 170, 98, 0.14);
+  color: #e6c38c;
+}
+
+.shot-inspector-status button.active.status-tentative {
+  border-color: rgba(126, 168, 214, 0.5);
+  background: rgba(126, 168, 214, 0.14);
+  color: rgba(158, 194, 232, 0.95);
+}
+
+.shot-inspector-status button.active.status-open {
+  border-color: rgba(255, 255, 255, 0.3);
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.shot-inspector-hint {
+  margin: 8px 0 0;
+  color: rgba(255, 255, 255, 0.36);
+  font-size: 11.5px;
+  line-height: 1.5;
+}
+
+.shot-inspector-revert {
+  margin-left: auto;
+  padding: 2px 7px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 4px;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.45);
+  font-family: inherit;
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
+  cursor: pointer;
+}
+
+.shot-inspector-revert:hover {
+  border-color: rgba(255, 255, 255, 0.28);
+  color: #fff;
+}
+
+.shot-inspector-prompt {
+  width: 100%;
+  /* 프롬프트가 길어 스크롤로 가리면 전체를 못 본다. */
+  min-height: 190px;
+  padding: 9px 11px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.3);
+  color: rgba(255, 255, 255, 0.86);
+  font-family: 'Courier Prime', ui-monospace, monospace;
+  font-size: 13px;
+  line-height: 1.6;
+  resize: vertical;
+}
+
+.shot-inspector-prompt:focus {
+  outline: none;
+  border-color: rgba(216, 170, 98, 0.45);
+}
+
+.shot-inspector-shared {
+  margin: 8px 0 0;
+  color: rgba(255, 255, 255, 0.34);
+  font-size: 11.5px;
+  line-height: 1.5;
+}
+
+/* 인스펙터에 띄운 패널을 표시한다. */
+.sb-shot-card.inspected {
+  outline: 2px solid rgba(216, 170, 98, 0.6);
+  outline-offset: 2px;
+}
+
 .storyboard-narrative-rail {
   --narrative-accent: #d8aa62;
   flex: 0 0 310px;
