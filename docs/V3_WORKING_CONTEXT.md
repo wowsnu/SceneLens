@@ -2,13 +2,13 @@
 
 - 마지막 정리: 2026-07-26
 - 작업 브랜치: `feature/scene-flow-fill`
-- 작업 출발 커밋: `48fa9f4`
+- 구현 기준 커밋: `05bfe6c`
 - 관련 설계: [`SCENELENS_DECISION_SYSTEM_SPEC.md`](./SCENELENS_DECISION_SYSTEM_SPEC.md)
 - 코드 감사: [`V3_AGENT_ARCHITECTURE_AUDIT.md`](./V3_AGENT_ARCHITECTURE_AUDIT.md)
 - 패널 생성 설계: [`PANEL_GENERATION_DESIGN.md`](./PANEL_GENERATION_DESIGN.md)
   (프롬프트는 컷에서 조립. Agent를 새로 띄우지 않고 Option card로. 비구속 표시는 미정)
 - 서사 렌즈 재프레이밍: [`NARRATIVE_LENS_AS_JULCONTI.md`](./NARRATIVE_LENS_AS_JULCONTI.md)
-  (서사 렌즈 = 줄콘티의 계산적 구현. Narrative rail에 `Propose Cut Plan` 추가 제안)
+  (서사 렌즈 = 줄콘티의 계산적 구현. 근거는 전문가 formative 세션)
 
 이 문서는 대화를 다시 읽지 않아도 SceneLens v3 작업을 이어갈 수 있도록 만든
 현재 맥락 문서다. 장기적인 개념 명세는 Decision System Spec에, 실제 코드와
@@ -334,17 +334,11 @@ Storyboard 제작 화면은 별도 대본 페이지를 만들지 않고 같은 �
 - panel을 숨겨도 shot이나 이미지를 삭제하지 않는다.
 - 숨길 때 batch 생성을 위한 임시 selected panel 상태만 해제한다.
 
-오른쪽 Narrative rail에는 두 작업을 구분하는 toggle을 추가했다.
+`Hide panels` 토글은 Panels 단계에서만 보인다. 컷을 확정하기 전에는 패널
+자체가 없으므로 토글이 의미를 갖지 않는다.
 
-- `Revise Beat`: 현재 Beat에 작은 inline 제안을 생성
-- `Create Script`: 아이디어나 장면 설명에서 전체 `Script Draft` Mock을 생성
-
-전체 Script Draft는 현재 대본을 즉시 덮어쓰지 않는다. 메인 대본 영역에 별도
-후보로 표시하고 `Dismiss / Again / Use draft`로 검토한다. `Use draft`를 선택한
-경우에만 실제 screenplay와 Beat가 갱신된다.
-
-최근 추가한 Narrative rail, inline suggestion, Script Draft, Storyboard 생성
-제어의 작은 글자는 읽을 수 있는 크기로 함께 상향했다.
+Narrative rail의 `Create Script`는 이후 제거했다(6.9 참고). 전체 대본을
+한 번에 만드는 대신 줄글 → 대본 → Beat 순으로 단계적으로 진행한다.
 
 ### 6.6 Decision Board와 Creative Lens Mock
 
@@ -431,6 +425,99 @@ Editing의 핵심 목적은 현재 Shot과 인접 Shot의 흐름을 자연스럽
   다시 펼칠 수 있다.
 - 앱의 첫 진입 자체는 여전히 넓은 Storyboard/Narrative 제작 화면이다.
 
+### 6.8 대본 입력과 인라인 편집
+
+기준 커밋: `48fa9f4`
+
+- 첫 화면을 `Write scene`으로 바꾸고 대본을 빈 상태에서 시작한다.
+  예시는 줄글 형태의 거친 초안과 정리된 대본 두 가지를 고를 수 있다.
+- Script 단계에서 대본을 줄 단위로 그 자리에서 고친다. 별도 raw 편집기를
+  열고 전체를 다시 붙여넣지 않아도 되며 beat 구조가 보존된다.
+  - Enter는 커서 뒤 내용을 새 줄로 넘기고 커서가 따라간다.
+  - 줄 맨 앞 Backspace는 앞 줄과 합친다.
+  - 위아래 화살표로 줄 사이를 오간다.
+- 줄 종류 변경과 삭제는 Beat 헤더의 `줄 편집`으로 모았다. 줄마다 버튼이
+  hover로 튀어나오면 대본 읽기를 방해한다.
+- Beat 헤더에서 Beat 추가·합치기. 빈 Beat는 존재할 수 없으므로 빈 줄
+  하나를 함께 만든다.
+
+주의: 기존 `Apply to Storyboard` 경로는 여전히 모든 줄을 `beat: 0`으로
+초기화한다. 인라인 편집만 beat를 보존한다.
+
+### 6.9 단계 분리와 Narrative rail
+
+기준 커밋: `c9499d3`, `48fa9f4`
+
+Script / Cut plan / Panels를 화면 단위로 구분했다.
+
+- `selectCutStage`로 단계 파생을 한 곳에 모아 컴포넌트 간 기준이 어긋나지
+  않게 한다.
+- 단계 이동은 작업을 지우지 않는다. 삭제는 명시적 Discard에서만 일어난다.
+- rail의 `Create Script`를 제거하고, 상태를 보고 다음 단계를 먼저 제시한다.
+  줄거리 → 대본으로 다듬기 → Beat 나누기 → 컷 플랜.
+- `대본으로 다듬기`는 지문·대사 분리와 Beat 나누기를 한 번에 하고 전체
+  초안으로 검토받는다.
+- 보조 동작은 언제나 건너뛰기로 고정한다. 상황에 따라 삭제로 바뀌면 같은
+  자리의 버튼이 다른 일을 하게 된다.
+
+### 6.10 줄콘티(Cut plan)
+
+기준 커밋: `c9499d3`, `48fa9f4`
+
+대본과 패널 사이의 경유 단계. 설계 근거는
+[`NARRATIVE_LENS_AS_JULCONTI.md`](./NARRATIVE_LENS_AS_JULCONTI.md).
+
+- 현업 관행대로 `shotSize`, `angle`, `cameraMove`까지 포함한다. 하위 Lens는
+  이 값을 처음 정하는 주체가 아니라 Tentative 제안을 검토하는 주체다.
+- 표 형태로 컷을 나란히 놓는다.
+  (컷 / 시간 / 장소 / 내용 / 중요한 것 / 인물 / 샷 / 상태)
+- 컷 번호는 `1-1`, `2-1` 형식이라 Beat 구조가 번호에 드러난다. 순서를
+  바꾸면 `beatOrder`도 함께 재계산된다.
+- Beat별로 묶고 접었다 펼 수 있다.
+- 항목별 `Fixed / Tentative / Open` 상태와 `User / AI` 출처. 상태 전환은
+  출처를 바꾸지 않는다(Spec §8.2).
+- Skip은 자동 생성하되 건너뛴 사실을 기록해 전부 Tentative로 남긴다.
+
+`Accept cut plan`이 컷 구성을 패널에 반영한다.
+
+- 컷 개수 = 패널 개수, 컷의 `shotSize`가 패널 `cir`가 된다.
+- 패널에 `cutPlanItemId`가 붙어 출처가 남는다.
+- 이미 그린 그림은 컷을 재배열해도 따라 이동한다.
+- 연결되지 못한 그림은 조용히 버리지 않고 경고로 알린다. 다만 현재는
+  경고만 하고 복구는 하지 못한다.
+
+### 6.11 컷에서 프롬프트 조립과 Shot Inspector
+
+기준 커밋: `05bfe6c`. 설계 근거는
+[`PANEL_GENERATION_DESIGN.md`](./PANEL_GENERATION_DESIGN.md).
+
+`buildCutPrompt`가 컷에서 프롬프트를 조립한다. 사용자가 백지에서 쓰지
+않는다(Spec §22.12).
+
+- place + time + angle + shotSize → 첫 문장
+- content → 무슨 일이 일어나는가. 대사 컷은 `"..."라고 말하는 순간`으로
+  감싼다. 그대로 두면 이미지 모델이 글자를 그리려 한다
+- characters → 앞 문장에 이미 나온 인물은 제외하고 나열
+- purpose → 묘사가 아니라 구도 지시로 번역 (`PURPOSE_PHRASES`)
+- 앵글은 기본값(Eye level)일 때 적지 않는다
+
+조립된 프롬프트는 그 자리에서 고칠 수 있다(`promptOverride`).
+
+- 프롬프트 문구만 고치면 컷 출처는 AI로 유지되고 프롬프트만 User가 된다.
+  샷 사이즈나 내용 같은 결정을 고쳐야 컷 출처가 User로 바뀐다.
+- `되돌리기`로 조립분을 회복한다. 고친 상태에서도 컷 기준 문장을 함께
+  보여줘 어긋남을 알아챌 수 있게 한다.
+- 조명·그림체처럼 장면 전체에 걸리는 지시는 `scenePromptNote`로 따로 둔다.
+
+Panels 단계에서 패널을 클릭하면 rail 자리에 `ShotInspector`가 열린다.
+
+- 샷 사이즈 / 앵글 / 카메라 / 시간 / 장소 / 인물 / 중요한 것
+- 커밋 상태와 출처를 한 자리에서 본다. 상태별 설명이 §17.5의 비구속
+  표시 역할을 한다
+- 프롬프트 편집
+- **인스펙터가 고치는 것은 패널이 아니라 컷이다.** 컷 플랜 표와 같은
+  데이터를 보므로 한쪽을 고치면 다른 쪽도 바뀐다
+
 ---
 
 ## 7. 아직 구현되지 않았거나 Mock인 부분
@@ -440,12 +527,13 @@ Editing의 핵심 목적은 현재 Shot과 인접 Shot의 흐름을 자연스럽
 
 - Narrative request의 실제 LLM 호출
 - Narrative scaffold의 영속 데이터 모델
+- 실제 이미지 생성 API 연결. `createMockPanelImage`가 shot 순번으로 SVG를
+  만들 뿐이고, **조립된 프롬프트가 아직 생성에 쓰이지 않는다**
 - 실제 여러 패널 이미지 생성과 batch API
 - AI candidate의 영속 저장과 생성 작업 상태
 - Import를 포함한 완전한 네 가지 panel source UI
 - canonical Decision 모델과 Decision Inventory
-- Event Log 기반 provenance
-- Fixed / Tentative / Open을 실제 상태로 다루는 UI
+- Event Log 기반 provenance (현재 출처는 store 액션에서 직접 정한다)
 - Production / Review / Full filter
 - Decision별 current choice와 Option Set
 - 구조화된 Supports / Trade-off / Narrative check
@@ -461,6 +549,26 @@ Editing의 핵심 목적은 현재 Shot과 인접 Shot의 흐름을 자연스럽
 
 Decision Board 안에는 여전히 정적 mock Option, 관계, 대화 데이터가 남아 있다.
 기존 CIR/Strategy backend도 새 Decision 계약과 아직 연결되지 않았다.
+
+부분적으로만 된 것:
+
+- `Fixed / Tentative / Open`은 컷 플랜과 Shot Inspector에서 실제 상태로
+  다루지만, 아직 생성 제약으로 쓰이지는 않는다(Spec §22.12 미구현).
+- Shot Inspector는 현재 값을 고치는 데까지만 한다. 대안을 나란히 놓는
+  Option Set은 없다(Spec §15).
+
+새로 확인된 항목:
+
+- 비구속(Tentative/Open) 요소를 화면에서 어떻게 보일지 미정.
+  [`PANEL_GENERATION_DESIGN.md`](./PANEL_GENERATION_DESIGN.md) §4.3에 후보
+  세 가지를 적어두었다.
+- `Accept cut plan`에서 컷과 연결되지 못한 그림은 경고만 하고 사라진다.
+  되돌리려면 Round/버전 개념이 필요하다(Spec §17).
+- `splitBeat`는 `[...state.screenplay]` 얕은 복사 후 `newScreenplay[i].beat`를
+  직접 변형한다. 원본 객체를 건드리므로 리렌더 문제가 생길 수 있다.
+  `addBeatAfter`는 `map`으로 새 객체를 만들어 이 문제를 피했다.
+- `DecisionBoard`의 `Edit Shot`이 `openDrawingWorkspace()`를 직접 불러
+  단계 게이트를 우회한다.
 
 추가로 확인된 작은 정리 항목:
 
@@ -488,12 +596,20 @@ Decision Board 안에는 여전히 정적 mock Option, 관계, 대화 데이터�
 5. 그 다음 Mock 제안을 실제 Creative Lens 호출 계약으로 교체한다.
 
 Storyboard 제작 흐름의 실제 이미지 생성 연결은 별도 축으로 남아 있다.
+설계는 [`PANEL_GENERATION_DESIGN.md`](./PANEL_GENERATION_DESIGN.md) §5에
+정리했고, 현재 1·2단계까지 왔다.
 
-1. `Blank / Draw / Generate / Import`가 패널 source로 일관되게 보이도록
-   초기 Board 제작 흐름을 마무리한다.
-2. Mock batch candidate를 실제 이미지 생성 호출에 연결하되, 우선 한 패널의
+1. ~~컷 → 프롬프트 조립을 mock으로 붙인다~~ (완료, 6.11)
+2. ~~조립된 프롬프트 + 편집 UI~~ (완료, 6.11)
+3. **조립된 프롬프트를 실제 이미지 생성 호출에 연결한다.** 우선 한 패널의
    생성 → candidate 검토 → Accept를 완성한다.
-3. 같은 계약을 Beat/Selected/All blanks batch로 확장한다.
+4. 상태별 표시를 정한다. Tentative/Open이 확정처럼 보이지 않게 하는 방법을
+   §4.3의 후보 중에서 고른다. 실제 이미지가 나와야 판단이 선다.
+5. Shot Inspector를 Option card로 확장한다. 현재 값 옆에 대안을 효과·비용과
+   함께 놓는다(Spec §15).
+6. 같은 계약을 Beat/Selected/All blanks batch로 확장한다.
+
+3번을 먼저 하는 이유: 4·5번의 판단이 실제 생성 결과에 달려 있다.
 
 ### 초기 hybrid Board가 안정된 뒤
 
@@ -528,15 +644,33 @@ npm run build
 
 수동 UI 확인 포인트:
 
-1. 첫 진입이 Storyboard 제작 화면인가
-2. Decision/Lens 화면에서 batch bar가 숨는가
-3. Selected 범위가 다른 화면으로 이동할 때 해제되는가
-4. Add shot이 현재 위치에서 바로 동작하는가
-5. 마지막 shot 삭제가 막히는가
-6. Draw가 분할 화면을 여는가
-7. Focus와 Exit Focus가 Canvas 내용을 유지하는가
-8. Beat 클릭 시 대본, shot, Canvas가 함께 바뀌는가
-9. 빈 shot으로 이동했을 때 이전 이미지가 남지 않는가
+단계 흐름
+
+1. 첫 진입이 `Write scene`인가 (대본이 비어 있으므로)
+2. `예시 · 거친 초안` → rail이 `대본으로 다듬기`를 제시하는가
+3. 초안 수락 후 rail이 `Beat 나누기 제안`으로 바뀌는가
+4. Beat가 나뉜 뒤 rail이 `컷 플랜 만들기`로 바뀌는가
+5. 세 단계가 각각 다른 화면인가
+   (Script=대본만, Cut plan=표만, Panels=대본+패널)
+6. 단계 이동으로 되돌아가도 컷이 지워지지 않는가
+7. 컷 확정 전에는 패널과 `Hide panels` 토글이 보이지 않는가
+
+대본 편집
+
+8. 줄 끝/중간에서 Enter가 커서를 새 줄로 옮기는가
+9. 줄 맨 앞 Backspace가 앞 줄과 합치는가. 첫 줄에서는 아무 일이 없는가
+10. Beat 헤더의 `줄 편집`으로만 줄 도구가 드러나는가
+
+컷 플랜과 패널
+
+11. 컷 번호가 `1-1`, `2-1` 형식이고 순서를 바꾸면 다시 매겨지는가
+12. Beat 그룹을 접었다 펼 수 있는가
+13. 가로 스크롤 없이 표가 들어오는가
+14. `Accept cut plan` 후 패널 수가 컷 수와 같은가
+15. 이미 그린 그림이 컷 재배열을 따라 이동하는가
+16. 패널을 클릭하면 Inspector가 열리고, 거기서 고친 값이 컷 플랜 표에도
+    반영되는가
+17. 프롬프트만 고쳤을 때 컷 출처가 AI로 남는가
 
 ---
 
@@ -546,11 +680,12 @@ npm run build
 
 - 브랜치: `feature/scene-flow-fill`
 - 원격: `origin/feature/scene-flow-fill`
-- 커밋 직전 작업 트리에 Creative Lens와 Decision Board 변경이 남아 있었음
 - 최근 기능 커밋:
+  - `05bfe6c feat: prototype creative lens decision workflows`
+    (Creative Lens/Decision Board 작업과 프롬프트 조립·Shot Inspector가
+    한 커밋에 함께 들어갔다)
   - `48fa9f4 feat: rework script authoring and cut plan into a stepwise flow`
   - `c9499d3 feat: add cut plan stage between script and panels`
-  - `a3335cd feat: add narrative script workspace and draft flow`
 
 이 숫자는 이후 커밋과 push에 따라 달라질 수 있으므로, 실제 재개 시에는
 `git status --short --branch`로 다시 확인한다.
