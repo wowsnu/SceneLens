@@ -991,25 +991,27 @@ const useStore = create((set, get) => ({
   
   // 비트 나누기: 특정 지점에서 대본을 자르고 새 beat에 기본 shot을 하나 만든다.
   splitBeat: (elementIndex) => set((state) => {
-    const newScreenplay = [...state.screenplay]
-    if (elementIndex <= 0 || elementIndex >= newScreenplay.length) return state
-    
-    // 1. 해당 지점부터 끝까지 일단 비트 번호 증가
-    for (let i = elementIndex; i < newScreenplay.length; i++) {
-      newScreenplay[i].beat = (newScreenplay[i].beat || 0) + 1
-    }
+    if (elementIndex <= 0 || elementIndex >= state.screenplay.length) return state
 
-    // 2. 비트 번호 순차 재정렬 (0, 1, 2... 빈 틈 없게)
-    let currentNewBeat = 0
-    let lastOldBeat = newScreenplay[0].beat
-    newScreenplay[0].beat = 0
-    for (let i = 1; i < newScreenplay.length; i++) {
-      if (newScreenplay[i].beat !== lastOldBeat) {
-        currentNewBeat++
-        lastOldBeat = newScreenplay[i].beat
+    // 원본 요소를 변형하지 않는다. 얕은 복사 후 element.beat를 직접 쓰면
+    // 모듈 상수(SCREENPLAY, ROUGH_SCREENPLAY)까지 오염돼 예시를 다시
+    // 불러왔을 때 이미 나뉜 상태가 나온다.
+    const shifted = state.screenplay.map((element, index) => ({
+      ...element,
+      beat: index >= elementIndex ? (element.beat ?? 0) + 1 : (element.beat ?? 0),
+    }))
+
+    // 비트 번호를 0부터 빈 틈 없이 다시 매긴다.
+    let currentBeat = 0
+    let lastSeen = shifted[0].beat
+    const newScreenplay = shifted.map((element, index) => {
+      if (index === 0) return { ...element, beat: 0 }
+      if (element.beat !== lastSeen) {
+        currentBeat += 1
+        lastSeen = element.beat
       }
-      newScreenplay[i].beat = currentNewBeat
-    }
+      return { ...element, beat: currentBeat }
+    })
 
     // 3. 삽입될 샷의 인덱스 계산 (방금 생성된 비트 번호가 삽입 위치)
     const insertAt = newScreenplay[elementIndex].beat
@@ -1091,31 +1093,28 @@ const useStore = create((set, get) => ({
   // 비트 합치기: 현재 비트를 이전 비트와 병합한다. Shot은 삭제하지 않고 target beat로 귀속시킨다.
   mergeBeat: (elementIndex) => set((state) => {
     if (elementIndex === 0) return state
-    const newScreenplay = [...state.screenplay]
-    
-    // 1. 삭제될 샷의 인덱스 파악 (현재 요소의 비트 번호)
-    const deleteIdx = newScreenplay[elementIndex].beat
-    const targetBeat = newScreenplay[elementIndex - 1].beat
 
-    // 2. 비트 병합
-    const currentBeat = newScreenplay[elementIndex].beat
-    for (let i = elementIndex; i < newScreenplay.length; i++) {
-      if (newScreenplay[i].beat === currentBeat) {
-        newScreenplay[i].beat = targetBeat
-      }
-    }
+    const deleteIdx = state.screenplay[elementIndex].beat ?? 0
+    const targetBeat = state.screenplay[elementIndex - 1].beat ?? 0
+    const currentBeat = deleteIdx
 
-    // 3. 비트 번호 순차 재정렬
+    // splitBeat와 같은 이유로 원본 요소를 변형하지 않는다.
+    const merged = state.screenplay.map((element, index) => (
+      index >= elementIndex && (element.beat ?? 0) === currentBeat
+        ? { ...element, beat: targetBeat }
+        : { ...element, beat: element.beat ?? 0 }
+    ))
+
     let currentNewBeat = 0
-    let lastOldBeat = newScreenplay[0].beat
-    newScreenplay[0].beat = 0
-    for (let i = 1; i < newScreenplay.length; i++) {
-      if (newScreenplay[i].beat !== lastOldBeat) {
-        currentNewBeat++
-        lastOldBeat = newScreenplay[i].beat
+    let lastSeen = merged[0].beat
+    const newScreenplay = merged.map((element, index) => {
+      if (index === 0) return { ...element, beat: 0 }
+      if (element.beat !== lastSeen) {
+        currentNewBeat += 1
+        lastSeen = element.beat
       }
-      newScreenplay[i].beat = currentNewBeat
-    }
+      return { ...element, beat: currentNewBeat }
+    })
 
     const next = updateActiveBranchShots(state, (shots) => {
       const remapped = shots.map((shot) => {

@@ -486,7 +486,19 @@ Script / Cut plan / Panels를 화면 단위로 구분했다.
 - 연결되지 못한 그림은 조용히 버리지 않고 경고로 알린다. 다만 현재는
   경고만 하고 복구는 하지 못한다.
 
-### 6.11 컷에서 프롬프트 조립과 Shot Inspector
+### 6.11 Beat 분할·병합의 불변성
+
+기준 커밋: `60ece55` 이후
+
+`splitBeat`와 `mergeBeat`는 `[...state.screenplay]` 얕은 복사 후
+`element.beat`를 직접 변형하고 있었다. 원본 요소를 건드리므로 모듈 상수인
+`SCREENPLAY`, `ROUGH_SCREENPLAY`까지 오염되어, Beat를 한 번 나눈 뒤 예시
+대본을 다시 불러오면 이미 나뉜 상태가 나왔다.
+
+둘 다 `map`으로 새 객체를 만들도록 고쳤다. Beat 번호를 0부터 빈 틈 없이
+다시 매기는 동작은 그대로다.
+
+### 6.12 컷에서 프롬프트 조립과 Shot Inspector
 
 기준 커밋: `05bfe6c`. 설계 근거는
 [`PANEL_GENERATION_DESIGN.md`](./PANEL_GENERATION_DESIGN.md).
@@ -564,11 +576,10 @@ Decision Board 안에는 여전히 정적 mock Option, 관계, 대화 데이터�
   세 가지를 적어두었다.
 - `Accept cut plan`에서 컷과 연결되지 못한 그림은 경고만 하고 사라진다.
   되돌리려면 Round/버전 개념이 필요하다(Spec §17).
-- `splitBeat`는 `[...state.screenplay]` 얕은 복사 후 `newScreenplay[i].beat`를
-  직접 변형한다. 원본 객체를 건드리므로 리렌더 문제가 생길 수 있다.
-  `addBeatAfter`는 `map`으로 새 객체를 만들어 이 문제를 피했다.
-- `DecisionBoard`의 `Edit Shot`이 `openDrawingWorkspace()`를 직접 불러
-  단계 게이트를 우회한다.
+- Decision Board 헤더의 `Edit Shot`이 `openDrawingWorkspace()`를 직접 불러
+  단계 게이트를 우회한다. 다만 데이터를 망가뜨리지는 않고, 이 화면은
+  script → cut → panel 흐름과 별개인 기존 Mock이라 그대로 두었다.
+  막으려면 "컷 확정 전의 Decision Board는 무엇인가"를 먼저 정해야 한다.
 
 추가로 확인된 작은 정리 항목:
 
