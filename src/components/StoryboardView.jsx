@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import useStore from '../store/useStore'
+import useStore, { selectCutStage } from '../store/useStore'
 import './StoryboardView.css'
 
 const MOCK_PANEL_PALETTES = [
@@ -45,56 +45,78 @@ function createMockPanelImage(shotIdx, version = 1) {
   return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`
 }
 
-function createMockScreenplayDraft({ screenplay, request, sceneIntention, version }) {
-  const currentHeading = screenplay.find((element) => element.type === 'scene-heading')?.text
-  const characters = screenplay
-    .filter((element) => element.type === 'character')
-    .map((element) => element.text)
-    .filter((name, index, names) => names.indexOf(name) === index)
-  const lead = characters[0] || '재인'
-  const counterpart = characters[1] || '민호'
-  const direction = `${sceneIntention} ${request}`.toLowerCase()
-  const tense = ['불안', '위험', '긴장', '숨', '의심'].some((keyword) => direction.includes(keyword))
+const SCRIPT_LINE_TYPES = [
+  { value: 'scene-heading', label: 'Scene' },
+  { value: 'action', label: 'Action' },
+  { value: 'character', label: 'Character' },
+  { value: 'dialogue', label: 'Dialogue' },
+  { value: 'parenthetical', label: 'Paren.' },
+  { value: 'transition', label: 'Transition' },
+]
 
-  return {
-    id: `script-draft-${Date.now()}`,
-    version,
-    request: request.trim(),
-    screenplay: [
-      { type: 'scene-heading', text: currentHeading || 'INT. CONTROL ROOM - NIGHT', beat: 0 },
-      {
-        type: 'action',
-        text: tense
-          ? '꺼진 모니터들 사이로 하나의 경고등만 느리게 깜빡인다. 익숙한 기계음이 갑자기 멎는다.'
-          : '정돈된 공간에 미세한 변화가 생긴다. 아무도 먼저 그것을 말하지 않는다.',
-        beat: 0,
-      },
-      { type: 'character', text: lead, beat: 0 },
-      {
-        type: 'dialogue',
-        text: tense ? '방금, 들었어요?' : '뭔가 달라졌어요.',
-        beat: 0,
-      },
-      {
-        type: 'action',
-        text: `${counterpart}은 바로 답하지 않는다. ${lead}의 시선이 향한 곳을 확인한 뒤 한 걸음 다가선다.`,
-        beat: 1,
-      },
-      { type: 'character', text: counterpart, beat: 1 },
-      {
-        type: 'dialogue',
-        text: tense ? '아무것도 만지지 마.' : '먼저 확인해보죠.',
-        beat: 1,
-      },
-      {
-        type: 'action',
-        text: tense
-          ? '경고등이 꺼진다. 두 사람 사이에 남은 것은 갑자기 커진 정적뿐이다.'
-          : '두 사람은 같은 방향을 보지만 서로 다른 거리를 유지한다.',
-        beat: 1,
-      },
-    ],
+// Script 단계에서 대본을 그 자리에서 고친다. 별도 raw 편집기를 열고
+// 전체를 다시 붙여넣지 않아도 되고, beat 구조가 유지된다.
+function ScriptLineEditor({ element, index, onChange, onChangeType, onInsertAfter, onRemove, canRemove }) {
+  const textareaRef = useRef(null)
+
+  // 내용에 맞춰 높이를 맞춰야 대본처럼 읽힌다.
+  const resize = () => {
+    const node = textareaRef.current
+    if (!node) return
+    node.style.height = 'auto'
+    node.style.height = `${node.scrollHeight}px`
   }
+
+  useEffect(resize, [element.text])
+
+  return (
+    <div className="script-line-editor" onClick={(event) => event.stopPropagation()}>
+      <select
+        className="script-line-type"
+        value={element.type}
+        onChange={(event) => onChangeType(index, event.target.value)}
+        aria-label={`Line ${index + 1} type`}
+        title="Line type"
+      >
+        {SCRIPT_LINE_TYPES.map((option) => (
+          <option key={option.value} value={option.value}>{option.label}</option>
+        ))}
+      </select>
+      <textarea
+        ref={textareaRef}
+        className={`script-line-input sb-script-${element.type}`}
+        value={element.text}
+        rows={1}
+        placeholder="빈 줄"
+        aria-label={`Line ${index + 1}`}
+        onChange={(event) => {
+          onChange(index, event.target.value)
+          resize()
+        }}
+        onKeyDown={(event) => {
+          // Enter로 다음 줄, Backspace로 빈 줄 삭제 — 대본 편집기의 기본 동작.
+          if (event.key === 'Enter' && !event.shiftKey) {
+            event.preventDefault()
+            const nextType = element.type === 'character' ? 'dialogue' : 'action'
+            onInsertAfter(index, nextType)
+          } else if (event.key === 'Backspace' && element.text === '' && canRemove) {
+            event.preventDefault()
+            onRemove(index)
+          }
+        }}
+      />
+      <button
+        type="button"
+        className="script-line-remove"
+        onClick={() => onRemove(index)}
+        disabled={!canRemove}
+        aria-label={`Delete line ${index + 1}`}
+        title="Delete line"
+      >
+        ×
+      </button>
+    </div>
+  )
 }
 
 function NarrativeSuggestionCard({ suggestion, onAccept, onDismiss }) {
@@ -118,6 +140,20 @@ function NarrativeSuggestionCard({ suggestion, onAccept, onDismiss }) {
         <em>{suggestionMeta.label} · B{(suggestion.beat ?? 0) + 1}</em>
       </header>
       <p>{suggestion.reason}</p>
+      {suggestion.type === 'expand-to-screenplay' && (
+        <div className="narrative-script-patch">
+          <div className="script-patch-line removed">
+            <span>−</span>
+            <p>{suggestion.originalText}</p>
+          </div>
+          {suggestion.proposedElements.map((element, index) => (
+            <div key={`${element.type}-${index}`} className="script-patch-line added">
+              <span>+</span>
+              <p className={`patch-type-${element.type}`}>{element.text}</p>
+            </div>
+          ))}
+        </div>
+      )}
       {(suggestion.type === 'insert-script-line' || suggestion.type === 'replace-script-line') && (
         <div className="narrative-script-patch">
           {suggestion.originalText && (
@@ -191,20 +227,62 @@ export default function StoryboardView() {
   const dismissNarrativeSuggestion = useStore((s) => s.dismissNarrativeSuggestion)
   const updateFlowShotById = useStore((s) => s.updateFlowShotById)
   const setPendingCanvasImage = useStore((s) => s.setPendingCanvasImage)
+  const cutPlan = useStore((s) => s.cutPlan)
+  const cutPlanAccepted = useStore((s) => s.cutPlanAccepted)
+  const cutPlanSkipped = useStore((s) => s.cutPlanSkipped)
+  const reopenCutPlan = useStore((s) => s.reopenCutPlan)
+  const skipCutPlan = useStore((s) => s.skipCutPlan)
+  const cutPlanOrphanedShots = useStore((s) => s.cutPlanOrphanedShots)
+  const clearCutPlanOrphanWarning = useStore((s) => s.clearCutPlanOrphanWarning)
+  const cutStage = useStore(selectCutStage)
+  const requestBeatSplit = useStore((s) => s.requestBeatSplit)
+  const requestScreenplayFormatting = useStore((s) => s.requestScreenplayFormatting)
+  const expandScreenplayLine = useStore((s) => s.expandScreenplayLine)
+  const loadExampleScreenplay = useStore((s) => s.loadExampleScreenplay)
+  const updateScreenplayLine = useStore((s) => s.updateScreenplayLine)
+  const setScreenplayLineType = useStore((s) => s.setScreenplayLineType)
+  const insertScreenplayLine = useStore((s) => s.insertScreenplayLine)
+  const removeScreenplayLine = useStore((s) => s.removeScreenplayLine)
+  const backToScript = useStore((s) => s.backToScript)
+  const clearCutPlanStageOverride = useStore((s) => s.clearCutPlanStageOverride)
+  const cutPlanShotSizes = useStore((s) => s.cutPlanShotSizes)
+  const requestCutPlan = useStore((s) => s.requestCutPlan)
+  const updateCutPlanItem = useStore((s) => s.updateCutPlanItem)
+  const setCutPlanItemStatus = useStore((s) => s.setCutPlanItemStatus)
+  const addCutPlanItem = useStore((s) => s.addCutPlanItem)
+  const removeCutPlanItem = useStore((s) => s.removeCutPlanItem)
+  const moveCutPlanItem = useStore((s) => s.moveCutPlanItem)
+  const dismissCutPlan = useStore((s) => s.dismissCutPlan)
+  const acceptCutPlan = useStore((s) => s.acceptCutPlan)
 
   const [isEditingRaw, setIsEditingRaw] = useState(false)
   const [rawText, setRawText] = useState('')
   const [rawSceneIntention, setRawSceneIntention] = useState('')
   const [narrativeRequest, setNarrativeRequest] = useState('')
   const [narrativeRailOpen, setNarrativeRailOpen] = useState(true)
-  const [narrativeTask, setNarrativeTask] = useState('revise')
-  const [scriptDraft, setScriptDraft] = useState(null)
   const [generationScope, setGenerationScope] = useState('all')
   const [panelCandidates, setPanelCandidates] = useState({})
   const handledScriptEditorRequestKey = useRef(0)
 
   const isExpanded = maximizedPanel === 'left'
-  const showStoryboardPanels = isExpanded && storyboardPanelsVisible
+  // 줄콘티는 대본과 패널 사이의 경유 단계다. 컷을 확정하기 전에는 패널 작업을
+  // 열지 않아, 컷 분해가 그림 생성에 묻혀 암묵적으로 처리되는 것을 막는다.
+  // 설계 근거: docs/NARRATIVE_LENS_AS_JULCONTI.md
+  // Cut plan 단계에서는 대본을 내리고 컷 분해만 남긴다. 대본 아래 덧붙은
+  // 섹션이 아니라 거쳐 가는 단계로 읽히게 하기 위한 것이다.
+  // 대본이 없으면 첫 화면이 곧 대본 쓰기 화면이다. state로 동기화하지 않고
+  // 파생시켜 두 값이 어긋날 수 없게 한다.
+  const hasScreenplay = screenplay.length > 0
+  const showWriteScene = isEditingRaw || !hasScreenplay
+  const isCutPlanStage = cutStage === 'cutplan' && isExpanded && !drawingWorkspaceOpen && !showWriteScene
+  // Script 단계에서는 대본을 읽기 전용으로 두지 않고 그 자리에서 고친다.
+  const isScriptStage = cutStage === 'script' && isExpanded && !drawingWorkspaceOpen && !showWriteScene
+  // 단계별로 보이는 것이 다르다.
+  //   script  → 대본만
+  //   cutplan → 컷 리스트만
+  //   panels  → 대본 + 패널
+  // 패널은 확정 여부가 아니라 "지금 어느 단계를 보고 있는가"를 따른다.
+  const showStoryboardPanels = isExpanded && storyboardPanelsVisible && cutStage === 'panels'
   const activeBranch = scene?.activeBranch ?? 0
   const activeShot = scene?.activeShot ?? 0
   const branch = scene?.branches?.[activeBranch]
@@ -237,6 +315,17 @@ export default function StoryboardView() {
     }
   })
   if (currentBeat.length > 0) beats.push({ beat: beatIdx, elements: currentBeat })
+
+  // 줄글로 들어온 이야기는 대사도 인물 구분도 없다. 대본으로 세우는 것이
+  // Beat 나누기보다 먼저다.
+  const hasDialogue = screenplay.some((element) => element.type === 'dialogue')
+  const hasLongProse = screenplay.some((element) => (
+    element.type === 'action' && element.text.length >= 30
+  ))
+  const needsScreenplayFormatting = !hasDialogue && hasLongProse
+  // 대본이 섰는데 Beat가 하나뿐이면 그다음이 Beat 나누기다.
+  const needsBeatSplit = !needsScreenplayFormatting
+    && beats.length === 1 && screenplay.length >= 4
 
   const getBeatShots = (beat) => flowShots
     .map((shot, shotIdx) => ({ shot, shotIdx }))
@@ -363,6 +452,12 @@ export default function StoryboardView() {
   }
 
   const handleAcceptNarrativeSuggestion = (suggestion) => {
+    if (suggestion.type === 'expand-to-screenplay') {
+      expandScreenplayLine(suggestion.elementIndex, suggestion.proposedElements)
+      dismissNarrativeSuggestion(suggestion.id)
+      return
+    }
+
     if (suggestion.type === 'split-beat') {
       splitBeat(suggestion.elementIndex)
       return
@@ -397,12 +492,39 @@ export default function StoryboardView() {
 
   const handleUploadScript = () => {
     const lines = rawText.split('\n').filter((line) => line.trim() !== '')
-    const newScreenplay = lines.map((line) => {
+    // 거친 입력도 받으므로 형식 추론은 느슨하게 한다. 정확한 분류는
+    // 사용자가 Script 단계에서 줄 종류를 직접 바꿔 고칠 수 있다.
+    //
+    // 주의: 한글은 대소문자가 없어 `text === text.toUpperCase()`가 항상 참이다.
+    // 영문 대문자 규칙만으로 인물 이름을 판별하면 한글 대본의 모든 줄이
+    // character가 되므로, 문장부호와 길이로 함께 판단한다.
+    const isSceneHeading = (text) => /^(INT|EXT|I\/E)[. ]/i.test(text)
+    const isTransition = (text) => /^(CUT TO|FADE (IN|OUT)|DISSOLVE|SMASH CUT)/i.test(text)
+    const isParenthetical = (text) => text.startsWith('(') && text.endsWith(')')
+    const isCharacterName = (text) => {
+      if (!text || text.length > 20) return false
+      if (isSceneHeading(text) || isTransition(text) || isParenthetical(text)) return false
+      // 문장부호가 있으면 이름이 아니라 서술·대사로 본다.
+      if (/[.!?,。…]/.test(text)) return false
+      const hasLatin = /[a-zA-Z]/.test(text)
+      // 영문은 전부 대문자일 때만 이름으로 본다.
+      if (hasLatin) return text === text.toUpperCase()
+      // 한글 등은 짧고 공백이 거의 없는 줄만 이름으로 본다.
+      return text.split(/\s+/).length <= 2
+    }
+
+    const newScreenplay = lines.map((line, index) => {
+      const trimmed = line.trim()
+      const prev = index > 0 ? lines[index - 1].trim() : ''
       let type = 'action'
-      if (line === line.toUpperCase() && (line.includes('INT.') || line.includes('EXT.'))) type = 'scene-heading'
-      else if (line === line.toUpperCase() && line.length < 30) type = 'character'
-      else if (line.startsWith('(') && line.endsWith(')')) type = 'parenthetical'
-      return { type, text: line, beat: 0 }
+
+      if (isSceneHeading(trimmed)) type = 'scene-heading'
+      else if (isTransition(trimmed)) type = 'transition'
+      else if (isParenthetical(trimmed)) type = 'parenthetical'
+      else if (isCharacterName(prev) || isParenthetical(prev)) type = 'dialogue'
+      else if (isCharacterName(trimmed)) type = 'character'
+
+      return { type, text: trimmed, beat: 0 }
     })
     setSceneIntention(rawSceneIntention.trim())
     setScreenplay(newScreenplay)
@@ -411,36 +533,78 @@ export default function StoryboardView() {
 
   const handleNarrativeRequest = () => {
     if (!narrativeRequest.trim()) return
-
-    if (narrativeTask === 'generate') {
-      setScriptDraft((current) => createMockScreenplayDraft({
-        screenplay,
-        request: narrativeRequest,
-        sceneIntention,
-        version: (current?.version || 0) + 1,
-      }))
-      return
-    }
-
     requestNarrativeSuggestions({ narrativeRequest })
-  }
-
-  const acceptScriptDraft = () => {
-    if (!scriptDraft) return
-    setScreenplay(scriptDraft.screenplay)
-    setScriptDraft(null)
-    setNarrativeRequest('')
   }
 
   return (
     <div className={`storyboard-view ${isExpanded && !drawingWorkspaceOpen ? 'with-narrative-rail' : ''}`}>
       <div className="storyboard-scroll-container">
         <div className="storyboard-list-inner">
-          {isEditingRaw && (
+          {isExpanded && !drawingWorkspaceOpen && (
+            <nav className="cut-plan-stages" aria-label="Storyboard stages">
+              <ol>
+                <li className={`stage-done${cutStage === 'script' ? ' stage-current' : ''}`}>
+                  <button
+                    type="button"
+                    onClick={backToScript}
+                    disabled={cutStage === 'script'}
+                    aria-current={cutStage === 'script' ? 'step' : undefined}
+                  >
+                    <span className="stage-index">1</span>
+                    <div>
+                      <strong>Script</strong>
+                      <em>{screenplay.length} lines · {beats.length} beats</em>
+                    </div>
+                  </button>
+                </li>
+                <li className={`${cutPlanAccepted ? 'stage-done' : cutPlan.length > 0 ? 'stage-active' : ''}${cutStage === 'cutplan' ? ' stage-current' : ''}`}>
+                  <button
+                    type="button"
+                    onClick={cutPlan.length === 0 ? requestCutPlan : reopenCutPlan}
+                    disabled={cutStage === 'cutplan'}
+                    aria-current={cutStage === 'cutplan' ? 'step' : undefined}
+                  >
+                  <span className="stage-index">2</span>
+                  <div>
+                    <strong>Cut plan</strong>
+                    <em>
+                      {cutPlanSkipped
+                        ? '건너뜀 · 전부 Tentative'
+                        : cutPlanAccepted
+                          ? `${cutPlan.length} cuts 확정`
+                          : cutPlan.length > 0
+                            ? `${cutPlan.length} cuts 검토 중`
+                            : '컷 분해 필요'}
+                    </em>
+                  </div>
+                  </button>
+                </li>
+                <li className={`${cutPlanAccepted ? 'stage-active' : 'stage-locked'}${cutStage === 'panels' ? ' stage-current' : ''}`}>
+                  <button
+                    type="button"
+                    onClick={acceptCutPlan}
+                    disabled={!cutPlanAccepted}
+                    aria-current={cutStage === 'panels' ? 'step' : undefined}
+                  >
+                    <span className="stage-index">3</span>
+                    <div>
+                      <strong>Panels</strong>
+                      <em>{cutPlanAccepted ? `${flowShots.length} panels` : '컷 확정 후 열림'}</em>
+                    </div>
+                  </button>
+                </li>
+              </ol>
+            </nav>
+          )}
+
+          {showWriteScene && (
             <div className="inline-script-editor">
               <div className="editor-header">
-                <h3>Paste & Sync Screenplay</h3>
-                <p>Add the scene's guiding intention, then paste the screenplay to create storyboard beats.</p>
+                <h3>Write scene</h3>
+                <p>
+                  장면을 적거나 붙여넣으세요. 완성된 대본이 아니어도 됩니다 —
+                  거친 메모나 간단한 대사도 괜찮습니다.
+                </p>
               </div>
               <label className="scene-intention-field">
                 <span>Scene intention <em>optional</em></span>
@@ -454,52 +618,277 @@ export default function StoryboardView() {
               </label>
               <textarea
                 className="screenplay-input"
-                placeholder="Paste your screenplay here..."
+                placeholder={'예:\n밤, 지하 관제실. 재인이 몰래 들어온다.\n민호는 이미 알고 있었다는 듯 앉아 있다.\n\n민호\n생각보다 오래 걸렸네.'}
                 value={rawText}
                 onChange={(e) => setRawText(e.target.value)}
               />
               <div className="editor-actions">
-                <button className="cancel-btn" onClick={() => setIsEditingRaw(false)}>Cancel</button>
-                <button className="apply-btn" onClick={handleUploadScript}>Apply to Storyboard</button>
+                {!hasScreenplay && (
+                  <div className="example-btn-group">
+                    <button
+                      type="button"
+                      className="example-btn"
+                      onClick={() => {
+                        loadExampleScreenplay('rough')
+                        setIsEditingRaw(false)
+                      }}
+                      title="Beat가 나뉘지 않은 투박한 초안"
+                    >
+                      예시 · 거친 초안
+                    </button>
+                    <button
+                      type="button"
+                      className="example-btn"
+                      onClick={() => {
+                        loadExampleScreenplay('formatted')
+                        setIsEditingRaw(false)
+                      }}
+                      title="Beat까지 정리된 대본"
+                    >
+                      예시 · 정리된 대본
+                    </button>
+                  </div>
+                )}
+                {hasScreenplay && (
+                  <button className="cancel-btn" onClick={() => setIsEditingRaw(false)}>Cancel</button>
+                )}
+                <button
+                  className="apply-btn"
+                  onClick={handleUploadScript}
+                  disabled={!rawText.trim()}
+                >
+                  Continue
+                </button>
               </div>
             </div>
           )}
 
-          {scriptDraft && isExpanded && !drawingWorkspaceOpen && (
-            <section className="script-draft-review" aria-label="Generated screenplay draft">
+          {cutStage === 'script' && isExpanded && !drawingWorkspaceOpen && !showWriteScene && (
+            <section className="cut-plan-gate" aria-label="Cut plan required">
+              <span className="script-draft-mark" aria-hidden="true">N</span>
+              <div className="cut-plan-gate-copy">
+                <span>줄콘티 · Cut plan</span>
+                <strong>
+                  {cutPlan.length === 0
+                    ? '그림 전에 컷을 먼저 나눕니다'
+                    : cutPlanAccepted
+                      ? '컷 구성이 확정되어 있습니다'
+                      : '작업 중인 컷 구성이 있습니다'}
+                </strong>
+                <p>
+                  {cutPlan.length === 0
+                    ? '이 장면을 몇 개의 컷으로 나눌지, 각 컷에 무엇을 담을지 텍스트로 정합니다. 그림보다 고치기 쉽고, 컷 수와 순서가 그림 생성에 묻히지 않습니다.'
+                    : cutPlanAccepted
+                      ? `${cutPlan.length}개의 컷이 확정되어 있습니다. 대본을 확인했으면 패널로 돌아가세요.`
+                      : `${cutPlan.length}개의 컷을 검토하던 중입니다. 대본을 확인했으면 이어서 진행하세요.`}
+                </p>
+              </div>
+              <div className="cut-plan-gate-actions">
+                {cutPlan.length > 0 ? (
+                  <>
+                    <button
+                      type="button"
+                      className="skip"
+                      onClick={cutPlanAccepted ? reopenCutPlan : dismissCutPlan}
+                    >
+                      {cutPlanAccepted ? 'Edit cuts' : 'Discard cuts'}
+                    </button>
+                    <button
+                      type="button"
+                      className="use-draft"
+                      onClick={clearCutPlanStageOverride}
+                    >
+                      {cutPlanAccepted ? 'Back to panels' : 'Continue cut plan'}
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <button type="button" className="skip" onClick={skipCutPlan}>
+                      Skip for now
+                    </button>
+                    <button type="button" className="use-draft" onClick={requestCutPlan}>
+                      Propose cuts
+                    </button>
+                  </>
+                )}
+              </div>
+            </section>
+          )}
+
+          {cutPlan.length > 0 && cutStage === 'cutplan' && isExpanded && !drawingWorkspaceOpen && (
+            <section className="cut-plan-review" aria-label="Cut plan">
               <header>
                 <span className="script-draft-mark" aria-hidden="true">N</span>
                 <div>
-                  <span>Script draft · Mock · V{scriptDraft.version}</span>
-                  <strong>새 대본 초안</strong>
-                  <p>“{scriptDraft.request}”을 바탕으로 만들었습니다. 현재 대본은 아직 바뀌지 않았습니다.</p>
+                  <span>줄콘티 · Cut plan · Mock</span>
+                  <strong>
+                    {cutPlanSkipped ? '검토하지 않고 넘어간 컷 구성' : '컷 분해 제안'}
+                  </strong>
+                  <p>
+                    {cutPlanSkipped
+                      ? '컷 분해를 건너뛰어 자동 생성했습니다. 모든 컷이 Tentative로 남아 있습니다.'
+                      : '그림으로 가기 전에 컷 수와 순서를 먼저 정합니다. 대본은 바뀌지 않습니다.'}
+                  </p>
                 </div>
                 <div className="script-draft-actions">
-                  <button type="button" onClick={() => setScriptDraft(null)}>Dismiss</button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setScriptDraft((current) => createMockScreenplayDraft({
-                        screenplay,
-                        request: narrativeRequest || current.request,
-                        sceneIntention,
-                        version: current.version + 1,
-                      }))
-                    }}
-                  >
-                    Again
+                  <button type="button" onClick={backToScript}>Back to script</button>
+                  <button type="button" onClick={requestCutPlan}>Again</button>
+                  <button type="button" className="use-draft" onClick={acceptCutPlan}>
+                    Accept cut plan
                   </button>
-                  <button type="button" className="use-draft" onClick={acceptScriptDraft}>Use draft</button>
                 </div>
               </header>
-              <div className="script-draft-body">
-                {scriptDraft.screenplay.map((element, index) => (
-                  <div key={`${element.type}-${index}`} className={`script-draft-line type-${element.type}`}>
-                    {element.text}
-                  </div>
+
+              <ol className="cut-plan-list">
+                {cutPlan.map((item, index) => (
+                  <li key={item.id} className={`cut-plan-item status-${item.status.toLowerCase()}`}>
+                    <div className="cut-plan-item-head">
+                      <span className="cut-plan-order">{String(item.order).padStart(2, '0')}</span>
+                      <span className="cut-plan-beat">B{item.beat + 1}</span>
+                      <span className={`cut-plan-provenance provenance-${item.provenance.toLowerCase()}`}>
+                        {item.provenance}
+                      </span>
+                      <div className="cut-plan-status-group" role="group" aria-label={`Cut ${item.order} status`}>
+                        {['Fixed', 'Tentative', 'Open'].map((status) => (
+                          <button
+                            key={status}
+                            type="button"
+                            className={item.status === status ? 'active' : ''}
+                            onClick={() => setCutPlanItemStatus(item.id, status)}
+                          >
+                            {status}
+                          </button>
+                        ))}
+                      </div>
+                      <div className="cut-plan-item-tools">
+                        <button
+                          type="button"
+                          onClick={() => moveCutPlanItem(item.id, -1)}
+                          disabled={index === 0}
+                          aria-label="Move cut up"
+                          title="Move up"
+                        >
+                          ↑
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => moveCutPlanItem(item.id, 1)}
+                          disabled={index === cutPlan.length - 1}
+                          aria-label="Move cut down"
+                          title="Move down"
+                        >
+                          ↓
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => addCutPlanItem(item.id, item.beat)}
+                          aria-label="Add cut after"
+                          title="Add cut after"
+                        >
+                          +
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => removeCutPlanItem(item.id)}
+                          disabled={cutPlan.length === 1}
+                          aria-label="Remove cut"
+                          title="Remove cut"
+                        >
+                          ×
+                        </button>
+                      </div>
+                    </div>
+                    <textarea
+                      className="cut-plan-content"
+                      value={item.content}
+                      onChange={(event) => updateCutPlanItem(item.id, { content: event.target.value })}
+                      placeholder="이 컷에서 무엇이 일어나는가"
+                      aria-label={`Cut ${item.order} content`}
+                      rows={2}
+                    />
+                    <div className="cut-plan-fields">
+                      <label>
+                        <span>Shot</span>
+                        <select
+                          value={item.shotSize}
+                          onChange={(event) => updateCutPlanItem(item.id, { shotSize: event.target.value })}
+                        >
+                          {cutPlanShotSizes.map((size) => (
+                            <option key={size} value={size}>{size}</option>
+                          ))}
+                        </select>
+                      </label>
+                      <label>
+                        <span>Camera</span>
+                        <input
+                          type="text"
+                          value={item.cameraMovement}
+                          onChange={(event) => updateCutPlanItem(item.id, { cameraMovement: event.target.value })}
+                          placeholder="Fixed / Pan / Dolly in"
+                        />
+                      </label>
+                      <label>
+                        <span>Reveals</span>
+                        <input
+                          type="text"
+                          value={item.reveals}
+                          onChange={(event) => updateCutPlanItem(item.id, { reveals: event.target.value })}
+                          placeholder="이 컷이 새로 알려주는 것"
+                        />
+                      </label>
+                      <label>
+                        <span>Purpose</span>
+                        <input
+                          type="text"
+                          value={item.purpose}
+                          onChange={(event) => updateCutPlanItem(item.id, { purpose: event.target.value })}
+                          placeholder="이 컷이 존재하는 이유"
+                        />
+                      </label>
+                    </div>
+                  </li>
                 ))}
-              </div>
+              </ol>
+              <footer className="cut-plan-footer">
+                <button type="button" onClick={() => addCutPlanItem(null, activeBeat)}>
+                  + Add cut
+                </button>
+                <span>
+                  {cutPlan.filter((item) => item.status === 'Fixed').length} Fixed ·{' '}
+                  {cutPlan.filter((item) => item.status === 'Tentative').length} Tentative ·{' '}
+                  {cutPlan.filter((item) => item.status === 'Open').length} Open
+                </span>
+              </footer>
             </section>
+          )}
+
+          {cutPlanOrphanedShots.length > 0 && isExpanded && !drawingWorkspaceOpen && (
+            <div className="cut-plan-orphan-warning" role="status">
+              <div>
+                <strong>
+                  그림이 있는 패널 {cutPlanOrphanedShots.length}개가 컷과 연결되지 않았습니다
+                </strong>
+                <p>
+                  컷을 지우거나 순서를 크게 바꾸면 기존 그림이 갈 곳을 잃습니다.
+                  컷을 다시 열어 자리를 만들거나, 이대로 진행할 수 있습니다.
+                </p>
+              </div>
+              <div className="cut-plan-orphan-actions">
+                <button type="button" onClick={clearCutPlanOrphanWarning}>
+                  이대로 진행
+                </button>
+                <button
+                  type="button"
+                  className="reopen"
+                  onClick={() => {
+                    clearCutPlanOrphanWarning()
+                    reopenCutPlan()
+                  }}
+                >
+                  컷 다시 열기
+                </button>
+              </div>
+            </div>
           )}
 
           {showStoryboardPanels && !drawingWorkspaceOpen && (
@@ -585,7 +974,7 @@ export default function StoryboardView() {
             </section>
           )}
 
-          {beats.map((beatGroup, i) => {
+          {!isCutPlanStage && beats.map((beatGroup, i) => {
             const beatShots = getBeatShots(beatGroup.beat)
             const beatSuggestions = narrativeSuggestions.filter((suggestion) => suggestion.beat === beatGroup.beat)
             const inlineSuggestionTypes = new Set(['split-beat', 'insert-script-line', 'replace-script-line'])
@@ -621,9 +1010,21 @@ export default function StoryboardView() {
                     return (
                     <div key={el.globalIdx} className="script-element-block">
                       <div className="script-element-wrapper">
-                        <div className={`sb-script-${el.type}`}>
-                          {el.text}
-                        </div>
+                        {isScriptStage ? (
+                          <ScriptLineEditor
+                            element={el}
+                            index={el.globalIdx}
+                            onChange={updateScreenplayLine}
+                            onChangeType={setScreenplayLineType}
+                            onInsertAfter={insertScreenplayLine}
+                            onRemove={removeScreenplayLine}
+                            canRemove={screenplay.length > 1}
+                          />
+                        ) : (
+                          <div className={`sb-script-${el.type}`}>
+                            {el.text}
+                          </div>
+                        )}
                         <button
                           className="split-beat-btn"
                           onClick={(e) => {
@@ -646,6 +1047,20 @@ export default function StoryboardView() {
                     </div>
                     )
                   })}
+                  {isScriptStage && beatGroup.elements.length > 0 && (
+                    <button
+                      type="button"
+                      className="script-line-add"
+                      onClick={(event) => {
+                        event.stopPropagation()
+                        insertScreenplayLine(
+                          beatGroup.elements[beatGroup.elements.length - 1].globalIdx,
+                        )
+                      }}
+                    >
+                      + Add line
+                    </button>
+                  )}
                   {nonBoundarySuggestions.map((suggestion) => (
                     <NarrativeSuggestionCard
                       key={suggestion.id}
@@ -775,6 +1190,19 @@ export default function StoryboardView() {
                             )}
                             <div className="sb-shot-meta">
                               <span>{beatShotLabel}</span>
+                              {/* 이 패널이 어느 컷에서 나왔는지 보인다. */}
+                              {(() => {
+                                const originCut = cutPlan.find((item) => item.id === shot.cutPlanItemId)
+                                if (!originCut) return null
+                                return (
+                                  <span
+                                    className={`sb-shot-cut-origin status-${originCut.status.toLowerCase()}`}
+                                    title={`Cut ${originCut.order} · ${originCut.shotSize} · ${originCut.status}`}
+                                  >
+                                    C{String(originCut.order).padStart(2, '0')} · {originCut.shotSize}
+                                  </span>
+                                )
+                              })()}
                               <span className="sb-shot-source">
                                 {candidate
                                   ? 'Candidate'
@@ -845,7 +1273,13 @@ export default function StoryboardView() {
                   <span>Working context</span>
                   <em>Live</em>
                 </div>
-                <strong>Beat {String(activeBeat + 1).padStart(2, '0')}</strong>
+                <strong>
+                  {needsScreenplayFormatting
+                    ? '줄거리 상태의 이야기'
+                    : needsBeatSplit
+                      ? '아직 나뉘지 않은 장면'
+                      : `Beat ${String(activeBeat + 1).padStart(2, '0')} · 전체 ${beats.length}`}
+                </strong>
                 <p>
                   {sceneIntention
                     || 'Scene intention이 없습니다. 현재 대본과 Beat만 기준으로 제안합니다.'}
@@ -853,37 +1287,44 @@ export default function StoryboardView() {
               </section>
 
               <section className="narrative-rail-guidance">
-                <span>Ask Narrative</span>
-                <div className="narrative-task-toggle" aria-label="Narrative task">
-                  <button
-                    type="button"
-                    className={narrativeTask === 'revise' ? 'active' : ''}
-                    onClick={() => setNarrativeTask('revise')}
-                  >
-                    Revise Beat
-                  </button>
-                  <button
-                    type="button"
-                    className={narrativeTask === 'generate' ? 'active' : ''}
-                    onClick={() => setNarrativeTask('generate')}
-                  >
-                    Create Script
-                  </button>
-                </div>
-                <p>
-                  {narrativeTask === 'generate'
-                    ? '아이디어나 장면 설명에서 새 대본 초안을 만듭니다.'
-                    : '현재 Beat의 구조, 행동, 대사를 수정합니다.'}
-                </p>
-                {narrativeTask === 'generate' && scriptDraft ? (
-                  <div className="narrative-rail-proposal-status script-ready">
-                    <span>{scriptDraft.version}</span>
-                    <div>
-                      <strong>Script draft ready</strong>
-                      <p>대본 영역에서 초안을 검토하세요.</p>
-                    </div>
-                  </div>
-                ) : narrativeTask === 'revise' && narrativeSuggestions.length > 0 ? (
+                <span>Next step</span>
+                {/* 사용자가 무엇을 물어야 할지 몰라도 다음 단계가 보이게 한다.
+                    대본이 한 덩어리면 Beat 나누기가 먼저다. */}
+                {needsScreenplayFormatting ? (
+                  <>
+                    <p>
+                      아직 줄거리 설명에 가깝습니다. 화면에 보이는 지문과 대사로
+                      바꾸면 이후 Beat와 컷을 나눌 수 있습니다.
+                    </p>
+                    <button
+                      type="button"
+                      className="narrative-rail-primary"
+                      onClick={requestScreenplayFormatting}
+                    >
+                      대본으로 다듬기
+                    </button>
+                  </>
+                ) : needsBeatSplit ? (
+                  <>
+                    <p>
+                      대본이 아직 한 덩어리입니다. 국면이 바뀌는 지점을 찾아
+                      Beat로 나누면 이후 작업을 Beat 단위로 진행할 수 있습니다.
+                    </p>
+                    <button
+                      type="button"
+                      className="narrative-rail-primary"
+                      onClick={requestBeatSplit}
+                    >
+                      Beat 나누기 제안
+                    </button>
+                  </>
+                ) : (
+                  <p>
+                    Beat {activeBeat + 1}을(를) 보고 있습니다. 이 Beat의 행동과
+                    대사를 조금씩 고쳐 나가세요.
+                  </p>
+                )}
+                {narrativeSuggestions.length > 0 ? (
                   <div className="narrative-rail-proposal-status">
                     <span>{narrativeSuggestions.length}</span>
                     <div>
@@ -904,22 +1345,18 @@ export default function StoryboardView() {
                   id="narrative-screenplay-request"
                   value={narrativeRequest}
                   onChange={(event) => setNarrativeRequest(event.target.value)}
-                  placeholder={narrativeTask === 'generate'
-                    ? '예: 야간 관제실에서 두 인물이 사라진 신호를 발견하는 장면'
-                    : '예: 이 Beat를 둘로 나누고 대사를 덜 설명적으로 바꿔줘.'}
-                  aria-label={narrativeTask === 'generate'
-                    ? 'Describe a screenplay to generate'
-                    : `Narrative request for Beat ${activeBeat + 1}`}
+                  placeholder="예: 이 Beat를 둘로 나누고 대사를 덜 설명적으로 바꿔줘."
+                  aria-label={`Narrative request for Beat ${activeBeat + 1}`}
                   rows={4}
                 />
                 <div>
-                  <span>{narrativeTask === 'generate' ? '새 초안으로 생성' : `Beat ${activeBeat + 1}에 적용`}</span>
+                  <span>{`Beat ${activeBeat + 1}에 적용`}</span>
                   <button
                     type="button"
                     disabled={!narrativeRequest.trim()}
                     onClick={handleNarrativeRequest}
                   >
-                    {narrativeTask === 'generate' ? 'Create draft' : 'Propose'}
+                    Propose
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
                       <path d="m9 18 6-6-6-6" />
                     </svg>

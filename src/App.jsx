@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import StoryboardView from './components/StoryboardView'
 import DecisionBoard from './components/DecisionBoard'
 import CenterPanel from './components/CenterPanel'
-import useStore from './store/useStore'
+import useStore, { selectCutStage } from './store/useStore'
 import './App.css'
 
 function App() {
@@ -16,6 +16,7 @@ function App() {
   const requestScriptEditor = useStore((s) => s.requestScriptEditor)
   const storyboardPanelsVisible = useStore((s) => s.storyboardPanelsVisible)
   const setStoryboardPanelsVisible = useStore((s) => s.setStoryboardPanelsVisible)
+  const cutStage = useStore(selectCutStage)
   const drawingWorkspaceOpen = useStore((s) => s.drawingWorkspaceOpen)
   const closeDrawingWorkspace = useStore((s) => s.closeDrawingWorkspace)
   const clearStoryboardShotSelection = useStore((s) => s.clearStoryboardShotSelection)
@@ -94,7 +95,8 @@ function App() {
           <section className={`panel-container left-panel ${!leftPanelVisible ? 'collapsed' : ''} ${maximizedPanel === 'left' ? 'maximized' : ''} ${drawingFocused ? 'panel-hidden' : ''}`}>
             <div className="panel-header">
               {leftPanelVisible && <span className="panel-title">📜 NARRATIVE</span>}
-              {leftPanelVisible && maximizedPanel === 'left' && !drawingWorkspaceOpen && (
+              {/* 패널 단계에서만 패널 토글이 의미를 갖는다. */}
+              {leftPanelVisible && maximizedPanel === 'left' && !drawingWorkspaceOpen && cutStage === 'panels' && (
                 <button
                   className="panel-control-btn"
                   onClick={() => setStoryboardPanelsVisible(!storyboardPanelsVisible)}

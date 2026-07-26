@@ -240,6 +240,104 @@ const createMockScriptSuggestion = ({ beatElements, targetBeat, requestKey, scen
   }
 }
 
+// 줄글로 들어온 이야기를 대본 형식으로 세운다. 한 줄의 서술에서 지문과
+// 대사를 분리해 제안한다. 원문을 덮어쓰지 않고 줄 단위로 수락받는다.
+// 실제 Narrative LLM 호출로 교체될 자리다.
+const createMockScreenplaySuggestions = (state, requestKey) => {
+  const withIdx = state.screenplay.map((element, globalIdx) => ({ ...element, globalIdx }))
+  const suggestions = []
+
+  withIdx.forEach((element) => {
+    if (suggestions.length >= 2) return
+    if (element.type !== 'action') return
+
+    const text = element.text
+    // 대사가 오갈 만한 서술인지 본다.
+    const impliesDialogue = includesAny(text, ['대치', '말', '기다리', '묻', '설득', '협상'])
+    // 이미 대본 형식이면 건드리지 않는다.
+    const alreadyScripted = text.length < 30
+
+    if (alreadyScripted) return
+
+    const names = ['재인', '민호'].filter((name) => text.includes(name))
+    const speaker = names[names.length - 1] || '인물'
+    const subject = names[0] || '인물'
+    // 받침 유무에 따라 조사를 고른다. '민호이 멈춰 선다' 같은 문장을 막는다.
+    const hasFinalConsonant = (word) => {
+      const last = word.charCodeAt(word.length - 1)
+      if (last < 0xac00 || last > 0xd7a3) return false
+      return (last - 0xac00) % 28 !== 0
+    }
+    const subjectParticle = hasFinalConsonant(subject) ? '이' : '가'
+
+    suggestions.push({
+      id: `screenplay-${requestKey}-${element.globalIdx}`,
+      type: 'expand-to-screenplay',
+      beat: element.beat ?? 0,
+      elementIndex: element.globalIdx,
+      title: impliesDialogue
+        ? '이 부분을 지문과 대사로 풀어볼까요?'
+        : '이 서술을 장면 지문으로 다듬어볼까요?',
+      reason: `“${shortenNarrativeText(text, 40)}”은 아직 줄거리 설명에 가깝습니다. 화면에 보이는 것으로 바꾸면 이후 컷을 나누기 쉬워집니다.`,
+      originalText: text,
+      // 지문 한 줄 + 대사 한 쌍으로 세운다.
+      proposedElements: impliesDialogue
+        ? [
+          { type: 'action', text: `${subject}${subjectParticle} 멈춰 선다. 두 사람 사이의 거리가 좁혀지지 않는다.` },
+          { type: 'character', text: speaker },
+          { type: 'dialogue', text: '생각보다 오래 걸렸네.' },
+        ]
+        : [
+          // 원문을 자르지 않는다. 잘라 붙이면 문장이 깨진다.
+          { type: 'action', text: `${subject}${subjectParticle} 움직인다. 그 행동이 화면 안에서 분명히 보인다.` },
+        ],
+      actionLabel: 'Apply lines',
+    })
+  })
+
+  return suggestions
+}
+
+// 거친 메모로 들어온 대본은 전부 beat 0이다. 국면이 바뀌는 지점을 찾아
+// Beat 경계를 제안한다. 사용자가 무엇을 물어야 할지 몰라도 다음 단계가
+// 보이도록, 요청 문구 없이 호출할 수 있게 둔다.
+const createMockBeatSplitSuggestions = (state, requestKey) => {
+  const withIdx = state.screenplay.map((element, globalIdx) => ({ ...element, globalIdx }))
+  const beatCount = new Set(withIdx.map((element) => element.beat ?? 0)).size
+
+  // 이미 나뉘어 있으면 더 쪼개자고 하지 않는다.
+  if (beatCount > 1 || withIdx.length < 4) return []
+
+  const suggestions = []
+  // 국면 전환의 단서: 인물이 새로 말하기 시작하는 지점, 전환 지시.
+  withIdx.forEach((element, index) => {
+    if (index === 0 || suggestions.length >= 3) return
+    const prev = withIdx[index - 1]
+    const startsDialogue = element.type === 'character' && prev.type === 'action'
+    const isTransition = element.type === 'transition'
+    const backToAction = element.type === 'action'
+      && (prev.type === 'dialogue' || prev.type === 'parenthetical')
+
+    if (!startsDialogue && !isTransition && !backToAction) return
+
+    suggestions.push({
+      id: `beat-split-${requestKey}-${element.globalIdx}`,
+      type: 'split-beat',
+      beat: 0,
+      elementIndex: element.globalIdx,
+      title: '여기서 Beat를 나눠볼까요?',
+      reason: startsDialogue
+        ? `“${shortenNarrativeText(prev.text)}” 이후 대화가 시작되면서 국면이 바뀝니다.`
+        : isTransition
+          ? '전환 지시에서 장면의 국면이 끊깁니다.'
+          : `대사 이후 “${shortenNarrativeText(element.text)}”에서 행동으로 국면이 옮겨갑니다.`,
+      actionLabel: 'Split Beat',
+    })
+  })
+
+  return suggestions
+}
+
 const createMockNarrativeSuggestions = (state, requestKey, input = {}) => {
   const targetBeat = state.activeBeat ?? 0
   const beatElements = state.screenplay
@@ -318,9 +416,270 @@ const createMockNarrativeSuggestions = (state, requestKey, input = {}) => {
   return suggestions
 }
 
+// --- 줄콘티 (Cut Plan) -------------------------------------------------
+// 그림 콘티 이전에 컷 분해를 텍스트로 확정하는 현업의 줄콘티 단계.
+// 현업 관행대로 샷 사이즈·카메라 움직임까지 포함한다. 하위 Lens는 이 값을
+// 처음 정하는 주체가 아니라, Tentative로 제안된 값을 검토·대안 제시하는 주체다.
+// 설계 근거: docs/NARRATIVE_LENS_AS_JULCONTI.md
+const CUT_PLAN_SHOT_SIZES = ['Wide', 'Full', 'Medium', 'Bust', 'Close-Up', 'ECU']
+
+const createCutPlanItemId = () => `cut-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+
+const createCutPlanItem = ({
+  order = 1,
+  beat = 0,
+  content = '',
+  reveals = '',
+  purpose = '',
+  shotSize = 'Medium',
+  cameraMovement = 'Fixed',
+  status = 'Tentative',
+  provenance = 'AI',
+} = {}) => ({
+  id: createCutPlanItemId(),
+  order,
+  beat,
+  content,
+  reveals,
+  purpose,
+  shotSize,
+  cameraMovement,
+  status,
+  provenance,
+})
+
+// Beat의 대본 요소를 읽어 줄콘티 초안을 만드는 Mock.
+// 실제 Narrative LLM 호출로 교체될 자리다.
+const createMockCutPlan = (state) => {
+  const withIdx = state.screenplay.map((element, globalIdx) => ({ ...element, globalIdx }))
+  const beats = [...new Set(withIdx.map((element) => element.beat ?? 0))].sort((a, b) => a - b)
+  const items = []
+
+  beats.forEach((beat) => {
+    const beatElements = withIdx.filter((element) => (element.beat ?? 0) === beat)
+    const actions = beatElements.filter((element) => element.type === 'action')
+    const dialogues = beatElements.filter((element) => element.type === 'dialogue')
+    const heading = beatElements.find((element) => element.type === 'scene-heading')
+    const speakers = [...new Set(beatElements
+      .filter((element) => element.type === 'character')
+      .map((element) => element.text))]
+
+    // 공간을 세우는 컷: scene heading이 있는 Beat에서만.
+    if (heading) {
+      items.push(createCutPlanItem({
+        order: items.length + 1,
+        beat,
+        content: shortenNarrativeText(actions[0]?.text || heading.text, 70),
+        reveals: '장소와 상황',
+        purpose: '공간 설정',
+        shotSize: 'Wide',
+        cameraMovement: 'Fixed',
+      }))
+    }
+
+    // 대사가 오가는 Beat: 화자 수만큼 컷을 나눈다.
+    if (dialogues.length > 0) {
+      const speakerCount = Math.max(1, Math.min(speakers.length, 2))
+      for (let i = 0; i < speakerCount; i += 1) {
+        items.push(createCutPlanItem({
+          order: items.length + 1,
+          beat,
+          content: `${speakers[i] || '인물'}: ${shortenNarrativeText(dialogues[i]?.text || dialogues[0].text, 50)}`,
+          reveals: i === 0 ? '대사가 전달하는 정보' : '상대의 반응',
+          purpose: i === 0 ? '발화' : '리액션',
+          shotSize: 'Bust',
+          cameraMovement: 'Fixed',
+        }))
+      }
+    }
+
+    // 대사 없이 행동만 있는 Beat.
+    if (dialogues.length === 0 && !heading && actions.length > 0) {
+      items.push(createCutPlanItem({
+        order: items.length + 1,
+        beat,
+        content: shortenNarrativeText(actions[actions.length - 1].text, 70),
+        reveals: '행동의 결과',
+        purpose: '행동 강조',
+        shotSize: actions.length > 2 ? 'Close-Up' : 'Medium',
+        cameraMovement: 'Fixed',
+      }))
+    }
+  })
+
+  return items
+}
+
+const reorderCutPlan = (items) => items.map((item, index) => ({ ...item, order: index + 1 }))
+
+// 현재 단계를 상태에서 파생시킨다. 여러 컴포넌트가 같은 기준을 쓰도록
+// 이 함수를 selector로 공유한다.
+//   script  → 대본만
+//   cutplan → 컷 리스트만
+//   panels  → 대본 + 패널
+export const selectCutStage = (state) => {
+  if (state.cutPlanStageOverride) return state.cutPlanStageOverride
+  if (state.cutPlanAccepted) return 'panels'
+  return state.cutPlan.length > 0 ? 'cutplan' : 'script'
+}
+
+// 확정된 컷을 패널로 옮긴다. 컷이 패널 구성의 근거가 되게 하되,
+// 이미 그린 그림은 파괴하지 않는다 (Spec §22: 조용한 파괴 금지).
+//
+// 매핑 규칙:
+//   1. 이미 이 컷에서 나온 패널(cutPlanItemId 일치)이 있으면 그것을 재사용
+//   2. 없으면 같은 Beat에서 아직 안 쓰인, 그림 있는 패널을 순서대로 물려받음
+//   3. 그래도 없으면 빈 패널을 새로 만듦
+// 이렇게 하면 컷을 추가·재배열해도 기존 그림이 따라 움직인다.
+const applyCutPlanToShots = (cutPlan, existingShots) => {
+  const claimed = new Set()
+
+  const findByCutId = (cutId) => existingShots.find((shot) => (
+    shot.cutPlanItemId === cutId && !claimed.has(shot.id)
+  ))
+
+  const findDrawnInBeat = (beat) => existingShots.find((shot) => (
+    !claimed.has(shot.id)
+    && !shot.cutPlanItemId
+    && (shot.scriptBeat ?? 0) === beat
+    && Boolean(shot.image)
+  ))
+
+  const shots = cutPlan.map((item, index) => {
+    const inherited = findByCutId(item.id) || findDrawnInBeat(item.beat)
+    if (inherited) claimed.add(inherited.id)
+
+    const base = inherited || createFlowShot({
+      index,
+      scriptBeat: item.beat,
+      cir: {},
+    })
+
+    return {
+      ...base,
+      cutPlanItemId: item.id,
+      scriptBeat: item.beat,
+      label: `Shot ${index + 1}`,
+      // 컷의 샷 사이즈가 패널의 CIR이 된다. 사용자가 패널에서 직접 바꾼 값은
+      // 여기서 덮어쓰지 않도록 컷 쪽 값을 우선하되 나머지 CIR은 보존한다.
+      cir: { ...(base.cir || {}), shotSize: item.shotSize },
+      intent: item.purpose || base.intent,
+    }
+  })
+
+  // 컷과 매칭되지 않아 사라지는 패널 중 그림이 있는 것 — 호출부가 알려준다.
+  const orphanedWithImage = existingShots.filter((shot) => (
+    !claimed.has(shot.id) && Boolean(shot.image)
+  ))
+
+  return { shots, orphanedWithImage }
+}
+
+// 초보 창작자가 실제로 주는 것은 대본이 아니라 줄글로 된 이야기다.
+// 대사도 인물 구분도 없고, 전체 흐름만 뭉뚱그려 적혀 있다.
+// 이 상태에서 "대본으로 만들기 → Beat 나누기 → 다듬기"가 왜 필요한지 드러난다.
+const ROUGH_SCREENPLAY = [
+  { type: 'action', text: '밤에 지하철 관제실에 재인이라는 애가 몰래 들어감. 카드를 훔쳐왔음.', beat: 0 },
+  { type: 'action', text: '근데 민호가 이미 알고 기다리고 있었음. 둘이 대치함.', beat: 0 },
+  { type: 'action', text: '민호는 리모컨 같은 걸 들고 있는데 그거 누르면 승강장 사람들이 위험해지는 상황.', beat: 0 },
+  { type: 'action', text: '재인이 카드를 바닥에 던져서 민호 시선을 돌린 다음 달려듦.', beat: 0 },
+]
+
 const useStore = create((set, get) => ({
   viewMode: 'script',
   setViewMode: (mode) => set({ viewMode: mode }),
+  // 줄콘티 상태. draft는 검토 중인 제안, accepted는 확정 여부.
+  cutPlan: [],
+  cutPlanAccepted: false,
+  cutPlanRequestKey: 0,
+  cutPlanShotSizes: CUT_PLAN_SHOT_SIZES,
+  requestCutPlan: () => set((state) => ({
+    cutPlan: createMockCutPlan(state),
+    cutPlanAccepted: false,
+    cutPlanSkipped: false,
+    cutPlanStageOverride: null,
+    cutPlanRequestKey: state.cutPlanRequestKey + 1,
+  })),
+  updateCutPlanItem: (itemId, patch) => set((state) => ({
+    cutPlan: state.cutPlan.map((item) => (
+      // 사용자가 직접 만진 값은 출처가 User로 바뀐다.
+      item.id === itemId ? { ...item, ...patch, provenance: 'User' } : item
+    )),
+  })),
+  setCutPlanItemStatus: (itemId, status) => set((state) => ({
+    // 상태 전환은 출처를 바꾸지 않는다 (Spec §8.2).
+    cutPlan: state.cutPlan.map((item) => (
+      item.id === itemId ? { ...item, status } : item
+    )),
+  })),
+  addCutPlanItem: (afterItemId = null, beat = 0) => set((state) => {
+    const next = [...state.cutPlan]
+    const index = afterItemId
+      ? next.findIndex((item) => item.id === afterItemId)
+      : next.length - 1
+    const anchorBeat = index >= 0 ? next[index].beat : beat
+    next.splice(index + 1, 0, createCutPlanItem({
+      beat: anchorBeat,
+      content: '',
+      purpose: '',
+      provenance: 'User',
+    }))
+    return { cutPlan: reorderCutPlan(next) }
+  }),
+  removeCutPlanItem: (itemId) => set((state) => ({
+    cutPlan: reorderCutPlan(state.cutPlan.filter((item) => item.id !== itemId)),
+  })),
+  moveCutPlanItem: (itemId, direction) => set((state) => {
+    const index = state.cutPlan.findIndex((item) => item.id === itemId)
+    const target = index + direction
+    if (index < 0 || target < 0 || target >= state.cutPlan.length) return {}
+    const next = [...state.cutPlan]
+    const [moved] = next.splice(index, 1)
+    next.splice(target, 0, moved)
+    return { cutPlan: reorderCutPlan(next) }
+  }),
+  // 컷을 버린다. 되돌릴 수 없으므로 명시적 Discard에만 쓴다.
+  dismissCutPlan: () => set({ cutPlan: [], cutPlanAccepted: false, cutPlanSkipped: false }),
+  // 대본으로 돌아가되 컷은 보존한다. 단계 이동은 작업을 지우지 않는다.
+  backToScript: () => set({ cutPlanStageOverride: 'script' }),
+  // 단계 이동으로 잠시 대본을 보고 있는 상태. 컷 자체와는 무관하다.
+  cutPlanStageOverride: null,
+  clearCutPlanStageOverride: () => set({ cutPlanStageOverride: null }),
+  // 확정 = 컷 구성을 패널에 반영한다. 여기서 비로소 줄콘티가 패널의 근거가 된다.
+  acceptCutPlan: () => set((state) => {
+    if (state.cutPlan.length === 0) {
+      return { cutPlanAccepted: true, cutPlanSkipped: false, cutPlanStageOverride: null }
+    }
+
+    let orphaned = []
+    const next = updateActiveBranchShots(state, (shots) => {
+      const result = applyCutPlanToShots(state.cutPlan, shots)
+      orphaned = result.orphanedWithImage
+      return result.shots
+    })
+
+    return {
+      ...next,
+      cutPlanAccepted: true,
+      cutPlanSkipped: false,
+      cutPlanStageOverride: null,
+      // 그림이 있는데 컷과 매칭되지 않은 패널. 사용자에게 알리고 판단을 맡긴다.
+      cutPlanOrphanedShots: orphaned,
+    }
+  }),
+  cutPlanOrphanedShots: [],
+  clearCutPlanOrphanWarning: () => set({ cutPlanOrphanedShots: [] }),
+  // 줄콘티를 다시 열어 수정한다. accept를 되돌리되 컷 자체는 지우지 않는다.
+  reopenCutPlan: () => set({ cutPlanAccepted: false, cutPlanStageOverride: null }),
+  // 건너뛰기는 막지 않되 기록한다. 자동 생성된 컷은 전부 Tentative로 남아
+  // "검토되지 않은 채 넘어간 컷 분해"가 나중에 드러난다.
+  cutPlanSkipped: false,
+  skipCutPlan: () => set((state) => ({
+    cutPlan: state.cutPlan.length > 0 ? state.cutPlan : createMockCutPlan(state),
+    cutPlanAccepted: true,
+    cutPlanSkipped: true,
+    cutPlanStageOverride: null,
+  })),
   overviewTab: 'spatial',
   setOverviewTab: (tab) => set({ overviewTab: tab }),
   isScriptOpen: false,
@@ -330,7 +689,20 @@ const useStore = create((set, get) => ({
   setDrawerTab: (tab) => set({ drawerTab: tab }),
   toggleScript: () => set((state) => ({ isScriptOpen: !state.isScriptOpen })),
   setScriptOpen: (val) => set({ isScriptOpen: val }),
-  screenplay: SCREENPLAY,
+  // 대본은 빈 상태에서 시작한다. 사용자가 자기 장면을 쓰는 것이 첫 단계다.
+  screenplay: [],
+  // 개발·데모용 예시 대본. 입력 화면에서 한 번에 채운다.
+  // variant: 'rough'는 Beat가 나뉘지 않은 투박한 초안,
+  // 'formatted'는 이미 Beat까지 정리된 대본이다.
+  loadExampleScreenplay: (variant = 'rough') => set((state) => {
+    const script = variant === 'formatted' ? SCREENPLAY : ROUGH_SCREENPLAY
+    const maxBeat = Math.max(0, ...script.map((line) => line.beat ?? 0))
+    const next = updateActiveBranchShots(state, (shots) => shots.map((shot) => ({
+      ...shot,
+      scriptBeat: Math.max(0, Math.min(shot.scriptBeat ?? 0, maxBeat)),
+    })))
+    return { ...next, screenplay: script, narrativeSuggestions: [], activeBeat: 0 }
+  }),
   sceneIntention: '',
   setSceneIntention: (sceneIntention) => set({ sceneIntention }),
   setScreenplay: (script) => set((state) => {
@@ -349,6 +721,35 @@ const useStore = create((set, get) => ({
     })
     return { ...next, screenplay: script, narrativeSuggestions: [] }
   }),
+  // --- 대본 인라인 편집 -------------------------------------------------
+  // 전체 텍스트를 다시 붙여넣지 않고 줄 단위로 고친다. beat는 보존한다.
+  // setScreenplay와 달리 narrativeSuggestions를 지우지 않는다 —
+  // 타이핑 한 번에 검토 중인 제안이 사라지면 안 되기 때문이다.
+  updateScreenplayLine: (index, text) => set((state) => ({
+    screenplay: state.screenplay.map((element, i) => (
+      i === index ? { ...element, text } : element
+    )),
+  })),
+  setScreenplayLineType: (index, type) => set((state) => ({
+    screenplay: state.screenplay.map((element, i) => (
+      i === index ? { ...element, type } : element
+    )),
+  })),
+  // 새 줄은 앞줄의 beat를 물려받아 beat 구조가 깨지지 않게 한다.
+  insertScreenplayLine: (afterIndex, type = 'action') => set((state) => {
+    const next = [...state.screenplay]
+    const anchor = next[afterIndex]
+    next.splice(afterIndex + 1, 0, {
+      type,
+      text: '',
+      beat: anchor?.beat ?? 0,
+    })
+    return { screenplay: next }
+  }),
+  removeScreenplayLine: (index) => set((state) => {
+    if (state.screenplay.length <= 1) return {}
+    return { screenplay: state.screenplay.filter((_, i) => i !== index) }
+  }),
   scriptEditorRequestKey: 0,
   requestScriptEditor: () => set((state) => ({ scriptEditorRequestKey: state.scriptEditorRequestKey + 1 })),
   narrativeSuggestionRequestKey: 0,
@@ -358,6 +759,31 @@ const useStore = create((set, get) => ({
     return {
       narrativeSuggestionRequestKey: requestKey,
       narrativeSuggestions: createMockNarrativeSuggestions(state, requestKey, input),
+    }
+  }),
+  // 줄글을 대본 형식으로 세우는 제안. 요청 문구 없이 호출한다.
+  requestScreenplayFormatting: () => set((state) => {
+    const requestKey = state.narrativeSuggestionRequestKey + 1
+    return {
+      narrativeSuggestionRequestKey: requestKey,
+      narrativeSuggestions: createMockScreenplaySuggestions(state, requestKey),
+    }
+  }),
+  // 한 줄을 여러 줄(지문 + 대사)로 교체한다. beat는 원래 줄의 것을 물려준다.
+  expandScreenplayLine: (elementIndex, newElements) => set((state) => {
+    const target = state.screenplay[elementIndex]
+    if (!target) return {}
+    const beat = target.beat ?? 0
+    const next = [...state.screenplay]
+    next.splice(elementIndex, 1, ...newElements.map((element) => ({ ...element, beat })))
+    return { screenplay: next }
+  }),
+  // 요청 문구 없이 Beat 경계만 제안한다.
+  requestBeatSplit: () => set((state) => {
+    const requestKey = state.narrativeSuggestionRequestKey + 1
+    return {
+      narrativeSuggestionRequestKey: requestKey,
+      narrativeSuggestions: createMockBeatSplitSuggestions(state, requestKey),
     }
   }),
   dismissNarrativeSuggestion: (suggestionId) => set((state) => ({

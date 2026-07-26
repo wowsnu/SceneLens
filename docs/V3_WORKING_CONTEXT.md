@@ -5,6 +5,8 @@
 - 구현 기준 커밋: `0865aee`
 - 관련 설계: [`SCENELENS_DECISION_SYSTEM_SPEC.md`](./SCENELENS_DECISION_SYSTEM_SPEC.md)
 - 코드 감사: [`V3_AGENT_ARCHITECTURE_AUDIT.md`](./V3_AGENT_ARCHITECTURE_AUDIT.md)
+- 서사 렌즈 재프레이밍: [`NARRATIVE_LENS_AS_JULCONTI.md`](./NARRATIVE_LENS_AS_JULCONTI.md)
+  (서사 렌즈 = 줄콘티의 계산적 구현. Narrative rail에 `Propose Cut Plan` 추가 제안)
 
 이 문서는 대화를 다시 읽지 않아도 SceneLens v3 작업을 이어갈 수 있도록 만든
 현재 맥락 문서다. 장기적인 개념 명세는 Decision System Spec에, 실제 코드와
