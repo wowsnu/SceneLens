@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import useStore, { selectCutStage } from '../store/useStore'
 import './StoryboardView.css'
 
@@ -56,7 +56,10 @@ const SCRIPT_LINE_TYPES = [
 
 // Script 단계에서 대본을 그 자리에서 고친다. 별도 raw 편집기를 열고
 // 전체를 다시 붙여넣지 않아도 되고, beat 구조가 유지된다.
-function ScriptLineEditor({ element, index, onChange, onChangeType, onInsertAfter, onRemove, canRemove }) {
+function ScriptLineEditor({
+  element, index, onChange, onChangeType, onInsertAfter, onRemove, canRemove, showTools,
+  autoFocus, focusCaret, onFocused, onMoveFocus,
+}) {
   const textareaRef = useRef(null)
 
   // 내용에 맞춰 높이를 맞춰야 대본처럼 읽힌다.
@@ -69,19 +72,33 @@ function ScriptLineEditor({ element, index, onChange, onChangeType, onInsertAfte
 
   useEffect(resize, [element.text])
 
+  // Enter로 만든 줄이나 위아래 이동으로 지목된 줄에 커서를 옮긴다.
+  // 이게 없으면 새 줄이 생겨도 계속 이전 줄에 타이핑하게 된다.
+  useEffect(() => {
+    if (!autoFocus) return
+    const node = textareaRef.current
+    if (!node) return
+    node.focus()
+    const caret = focusCaret === 'end' ? node.value.length : Math.min(focusCaret ?? 0, node.value.length)
+    node.setSelectionRange(caret, caret)
+    onFocused?.()
+  }, [autoFocus, focusCaret, onFocused])
+
   return (
     <div className="script-line-editor" onClick={(event) => event.stopPropagation()}>
-      <select
-        className="script-line-type"
-        value={element.type}
-        onChange={(event) => onChangeType(index, event.target.value)}
-        aria-label={`Line ${index + 1} type`}
-        title="Line type"
-      >
-        {SCRIPT_LINE_TYPES.map((option) => (
-          <option key={option.value} value={option.value}>{option.label}</option>
-        ))}
-      </select>
+      {showTools && (
+        <select
+          className="script-line-type"
+          value={element.type}
+          onChange={(event) => onChangeType(index, event.target.value)}
+          aria-label={`Line ${index + 1} type`}
+          title="Line type"
+        >
+          {SCRIPT_LINE_TYPES.map((option) => (
+            <option key={option.value} value={option.value}>{option.label}</option>
+          ))}
+        </select>
+      )}
       <textarea
         ref={textareaRef}
         className={`script-line-input sb-script-${element.type}`}
@@ -94,27 +111,57 @@ function ScriptLineEditor({ element, index, onChange, onChangeType, onInsertAfte
           resize()
         }}
         onKeyDown={(event) => {
-          // Enter로 다음 줄, Backspace로 빈 줄 삭제 — 대본 편집기의 기본 동작.
+          const node = event.currentTarget
+          const caret = node.selectionStart
+          const atStart = caret === 0 && node.selectionEnd === 0
+          const atEnd = caret === node.value.length && node.selectionEnd === node.value.length
+
+          // Enter: 커서 뒤 내용을 새 줄로 넘긴다. textarea에서 줄바꿈하듯 쓰인다.
           if (event.key === 'Enter' && !event.shiftKey) {
             event.preventDefault()
-            const nextType = element.type === 'character' ? 'dialogue' : 'action'
-            onInsertAfter(index, nextType)
-          } else if (event.key === 'Backspace' && element.text === '' && canRemove) {
+            const before = node.value.slice(0, caret)
+            const after = node.value.slice(node.selectionEnd)
+            // 인물 이름 다음 줄은 대사로 이어지는 것이 자연스럽다.
+            const nextType = element.type === 'character' ? 'dialogue' : element.type
+            onInsertAfter(index, nextType, { before, after })
+            return
+          }
+
+          // 줄 맨 앞에서 Backspace: 앞 줄과 합친다.
+          if (event.key === 'Backspace' && atStart && index > 0) {
+            event.preventDefault()
+            onRemove(index, { mergeIntoPrevious: true })
+            return
+          }
+
+          if (event.key === 'Backspace' && element.text === '' && canRemove) {
             event.preventDefault()
             onRemove(index)
+            return
+          }
+
+          // 줄 경계에서 위아래 화살표는 다음 줄로 넘어간다.
+          if (event.key === 'ArrowUp' && atStart) {
+            event.preventDefault()
+            onMoveFocus?.(index - 1, 'end')
+          } else if (event.key === 'ArrowDown' && atEnd) {
+            event.preventDefault()
+            onMoveFocus?.(index + 1, 0)
           }
         }}
       />
-      <button
-        type="button"
-        className="script-line-remove"
-        onClick={() => onRemove(index)}
-        disabled={!canRemove}
-        aria-label={`Delete line ${index + 1}`}
-        title="Delete line"
-      >
-        ×
-      </button>
+      {showTools && (
+        <button
+          type="button"
+          className="script-line-remove"
+          onClick={() => onRemove(index)}
+          disabled={!canRemove}
+          aria-label={`Delete line ${index + 1}`}
+          title="Delete line"
+        >
+          ×
+        </button>
+      )}
     </div>
   )
 }
@@ -140,20 +187,6 @@ function NarrativeSuggestionCard({ suggestion, onAccept, onDismiss }) {
         <em>{suggestionMeta.label} · B{(suggestion.beat ?? 0) + 1}</em>
       </header>
       <p>{suggestion.reason}</p>
-      {suggestion.type === 'expand-to-screenplay' && (
-        <div className="narrative-script-patch">
-          <div className="script-patch-line removed">
-            <span>−</span>
-            <p>{suggestion.originalText}</p>
-          </div>
-          {suggestion.proposedElements.map((element, index) => (
-            <div key={`${element.type}-${index}`} className="script-patch-line added">
-              <span>+</span>
-              <p className={`patch-type-${element.type}`}>{element.text}</p>
-            </div>
-          ))}
-        </div>
-      )}
       {(suggestion.type === 'insert-script-line' || suggestion.type === 'replace-script-line') && (
         <div className="narrative-script-patch">
           {suggestion.originalText && (
@@ -235,9 +268,12 @@ export default function StoryboardView() {
   const cutPlanOrphanedShots = useStore((s) => s.cutPlanOrphanedShots)
   const clearCutPlanOrphanWarning = useStore((s) => s.clearCutPlanOrphanWarning)
   const cutStage = useStore(selectCutStage)
+  const addBeatAfter = useStore((s) => s.addBeatAfter)
   const requestBeatSplit = useStore((s) => s.requestBeatSplit)
   const requestScreenplayFormatting = useStore((s) => s.requestScreenplayFormatting)
-  const expandScreenplayLine = useStore((s) => s.expandScreenplayLine)
+  const screenplayDraft = useStore((s) => s.screenplayDraft)
+  const acceptScreenplayDraft = useStore((s) => s.acceptScreenplayDraft)
+  const dismissScreenplayDraft = useStore((s) => s.dismissScreenplayDraft)
   const loadExampleScreenplay = useStore((s) => s.loadExampleScreenplay)
   const updateScreenplayLine = useStore((s) => s.updateScreenplayLine)
   const setScreenplayLineType = useStore((s) => s.setScreenplayLineType)
@@ -260,6 +296,12 @@ export default function StoryboardView() {
   const [rawSceneIntention, setRawSceneIntention] = useState('')
   const [narrativeRequest, setNarrativeRequest] = useState('')
   const [narrativeRailOpen, setNarrativeRailOpen] = useState(true)
+  // 줄 종류·삭제 버튼은 Beat 단위로 켠다. 평소엔 대본만 보이게 한다.
+  const [editingBeat, setEditingBeat] = useState(null)
+  // Enter나 화살표로 옮겨갈 줄. { index, caret } 형태.
+  const [pendingFocus, setPendingFocus] = useState(null)
+  // 접어둔 컷 플랜 Beat 번호.
+  const [collapsedCutBeats, setCollapsedCutBeats] = useState([])
   const [generationScope, setGenerationScope] = useState('all')
   const [panelCandidates, setPanelCandidates] = useState({})
   const handledScriptEditorRequestKey = useRef(0)
@@ -315,6 +357,18 @@ export default function StoryboardView() {
     }
   })
   if (currentBeat.length > 0) beats.push({ beat: beatIdx, elements: currentBeat })
+
+  // 컷을 Beat별로 묶는다. index는 전체 기준이어야 이동·삭제가 맞는다.
+  const cutPlanBeatGroups = []
+  cutPlan.forEach((item, index) => {
+    const last = cutPlanBeatGroups[cutPlanBeatGroups.length - 1]
+    if (last && last.beat === item.beat) last.items.push({ item, index })
+    else cutPlanBeatGroups.push({ beat: item.beat, items: [{ item, index }] })
+  })
+
+  const toggleCutBeat = (beat) => setCollapsedCutBeats((current) => (
+    current.includes(beat) ? current.filter((b) => b !== beat) : [...current, beat]
+  ))
 
   // 줄글로 들어온 이야기는 대사도 인물 구분도 없다. 대본으로 세우는 것이
   // Beat 나누기보다 먼저다.
@@ -451,13 +505,41 @@ export default function StoryboardView() {
     setPendingCanvasImage(candidate.image)
   }
 
-  const handleAcceptNarrativeSuggestion = (suggestion) => {
-    if (suggestion.type === 'expand-to-screenplay') {
-      expandScreenplayLine(suggestion.elementIndex, suggestion.proposedElements)
-      dismissNarrativeSuggestion(suggestion.id)
+  // 포커스를 옮기고 나면 즉시 비운다. 남겨두면 다른 줄을 클릭해도 계속
+  // 이 줄로 커서가 되돌아온다.
+  const clearPendingFocus = useCallback(() => setPendingFocus(null), [])
+
+  const handleMoveFocus = useCallback((index, caret) => {
+    if (index < 0 || index >= screenplay.length) return
+    setPendingFocus({ index, caret })
+  }, [screenplay.length])
+
+  // 새 Beat의 첫 줄은 비어 있으므로 커서를 거기로 보낸다.
+  const handleAddBeatAfter = (beatGroup) => {
+    const lastIdx = beatGroup.elements[beatGroup.elements.length - 1].globalIdx
+    addBeatAfter(beatGroup.beat)
+    setPendingFocus({ index: lastIdx + 1, caret: 0 })
+  }
+
+  // 줄을 새로 만들거나 합친 뒤 커서가 따라가게 한다.
+  const handleInsertLine = (afterIndex, type, split) => {
+    insertScreenplayLine(afterIndex, type, split)
+    setPendingFocus({ index: afterIndex + 1, caret: 0 })
+  }
+
+  const handleRemoveLine = (index, options = {}) => {
+    if (options.mergeIntoPrevious && index > 0) {
+      // 합쳐진 지점(앞 줄의 원래 끝)에 커서를 둔다.
+      const caret = screenplay[index - 1].text.length
+      removeScreenplayLine(index, options)
+      setPendingFocus({ index: index - 1, caret })
       return
     }
+    removeScreenplayLine(index, options)
+    setPendingFocus({ index: Math.max(0, index - 1), caret: 'end' })
+  }
 
+  const handleAcceptNarrativeSuggestion = (suggestion) => {
     if (suggestion.type === 'split-beat') {
       splitBeat(suggestion.elementIndex)
       return
@@ -663,54 +745,42 @@ export default function StoryboardView() {
             </div>
           )}
 
-          {cutStage === 'script' && isExpanded && !drawingWorkspaceOpen && !showWriteScene && (
-            <section className="cut-plan-gate" aria-label="Cut plan required">
-              <span className="script-draft-mark" aria-hidden="true">N</span>
-              <div className="cut-plan-gate-copy">
-                <span>줄콘티 · Cut plan</span>
-                <strong>
-                  {cutPlan.length === 0
-                    ? '그림 전에 컷을 먼저 나눕니다'
-                    : cutPlanAccepted
-                      ? '컷 구성이 확정되어 있습니다'
-                      : '작업 중인 컷 구성이 있습니다'}
-                </strong>
-                <p>
-                  {cutPlan.length === 0
-                    ? '이 장면을 몇 개의 컷으로 나눌지, 각 컷에 무엇을 담을지 텍스트로 정합니다. 그림보다 고치기 쉽고, 컷 수와 순서가 그림 생성에 묻히지 않습니다.'
-                    : cutPlanAccepted
-                      ? `${cutPlan.length}개의 컷이 확정되어 있습니다. 대본을 확인했으면 패널로 돌아가세요.`
-                      : `${cutPlan.length}개의 컷을 검토하던 중입니다. 대본을 확인했으면 이어서 진행하세요.`}
-                </p>
-              </div>
-              <div className="cut-plan-gate-actions">
-                {cutPlan.length > 0 ? (
-                  <>
-                    <button
-                      type="button"
-                      className="skip"
-                      onClick={cutPlanAccepted ? reopenCutPlan : dismissCutPlan}
-                    >
-                      {cutPlanAccepted ? 'Edit cuts' : 'Discard cuts'}
-                    </button>
-                    <button
-                      type="button"
-                      className="use-draft"
-                      onClick={clearCutPlanStageOverride}
-                    >
-                      {cutPlanAccepted ? 'Back to panels' : 'Continue cut plan'}
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    <button type="button" className="skip" onClick={skipCutPlan}>
-                      Skip for now
-                    </button>
-                    <button type="button" className="use-draft" onClick={requestCutPlan}>
-                      Propose cuts
-                    </button>
-                  </>
-                )}
+          {/* 줄글에서 세운 대본 초안. 원문은 수락 전까지 그대로 둔다. */}
+          {screenplayDraft && cutStage === 'script' && isExpanded && !drawingWorkspaceOpen && !showWriteScene && (
+            <section className="screenplay-draft-review" aria-label="Screenplay draft">
+              <header>
+                <span className="script-draft-mark" aria-hidden="true">N</span>
+                <div>
+                  <span>Narrative · Mock</span>
+                  <strong>대본 초안</strong>
+                  <p>
+                    {screenplayDraft.sourceCount}개의 서술을 지문과 대사로 풀고
+                    Beat {screenplayDraft.beatCount}개로 나눴습니다. 현재 대본은 아직 바뀌지 않았습니다.
+                  </p>
+                </div>
+                <div className="script-draft-actions">
+                  <button type="button" onClick={dismissScreenplayDraft}>Dismiss</button>
+                  <button type="button" onClick={requestScreenplayFormatting}>Again</button>
+                  <button type="button" className="use-draft" onClick={acceptScreenplayDraft}>
+                    Use draft
+                  </button>
+                </div>
+              </header>
+              <div className="screenplay-draft-body">
+                {screenplayDraft.screenplay.map((element, index) => {
+                  const previous = screenplayDraft.screenplay[index - 1]
+                  const startsBeat = !previous || previous.beat !== element.beat
+                  return (
+                    <div key={`${element.type}-${index}`}>
+                      {startsBeat && (
+                        <div className="screenplay-draft-beat">
+                          Beat {String(element.beat + 1).padStart(2, '0')}
+                        </div>
+                      )}
+                      <div className={`sb-script-${element.type}`}>{element.text}</div>
+                    </div>
+                  )
+                })}
               </div>
             </section>
           )}
@@ -733,122 +803,169 @@ export default function StoryboardView() {
                 <div className="script-draft-actions">
                   <button type="button" onClick={backToScript}>Back to script</button>
                   <button type="button" onClick={requestCutPlan}>Again</button>
+                  {/* 컷 삭제는 컷 플랜 화면 안에서만. rail의 보조 버튼과
+                      역할이 섞이지 않게 한다. */}
+                  <button type="button" onClick={dismissCutPlan}>Discard</button>
                   <button type="button" className="use-draft" onClick={acceptCutPlan}>
                     Accept cut plan
                   </button>
                 </div>
               </header>
 
-              <ol className="cut-plan-list">
-                {cutPlan.map((item, index) => (
-                  <li key={item.id} className={`cut-plan-item status-${item.status.toLowerCase()}`}>
-                    <div className="cut-plan-item-head">
-                      <span className="cut-plan-order">{String(item.order).padStart(2, '0')}</span>
-                      <span className="cut-plan-beat">B{item.beat + 1}</span>
-                      <span className={`cut-plan-provenance provenance-${item.provenance.toLowerCase()}`}>
-                        {item.provenance}
-                      </span>
-                      <div className="cut-plan-status-group" role="group" aria-label={`Cut ${item.order} status`}>
-                        {['Fixed', 'Tentative', 'Open'].map((status) => (
-                          <button
-                            key={status}
-                            type="button"
-                            className={item.status === status ? 'active' : ''}
-                            onClick={() => setCutPlanItemStatus(item.id, status)}
-                          >
-                            {status}
-                          </button>
+              <div className="cut-plan-table-wrap">
+                <table className="cut-plan-table">
+                  <thead>
+                    <tr>
+                      <th className="col-cut">컷</th>
+                      <th className="col-time">시간</th>
+                      <th className="col-place">장소</th>
+                      <th className="col-content">내용</th>
+                      <th className="col-purpose">중요한 것</th>
+                      <th className="col-cast">인물</th>
+                      <th className="col-shot">샷</th>
+                      <th className="col-status">상태</th>
+                      <th className="col-tools" aria-label="Actions" />
+                    </tr>
+                  </thead>
+                  {cutPlanBeatGroups.map((group) => {
+                    const collapsed = collapsedCutBeats.includes(group.beat)
+                    return (
+                      <tbody key={group.beat} className="cut-plan-beat-group">
+                        <tr className="cut-plan-beat-row">
+                          <th colSpan={9}>
+                            <button
+                              type="button"
+                              onClick={() => toggleCutBeat(group.beat)}
+                              aria-expanded={!collapsed}
+                            >
+                              <span className="cut-plan-beat-caret">{collapsed ? '▸' : '▾'}</span>
+                              Beat {String(group.beat + 1).padStart(2, '0')}
+                              <em>{group.items.length} cuts</em>
+                            </button>
+                          </th>
+                        </tr>
+                        {!collapsed && group.items.map(({ item, index }) => (
+                        <tr key={item.id} className={`status-${item.status.toLowerCase()}`}>
+                          <td className="col-cut">
+                            <span className="cut-plan-number">
+                              {item.beat + 1}-{item.beatOrder}
+                            </span>
+                            <span className={`cut-plan-provenance provenance-${item.provenance.toLowerCase()}`}>
+                              {item.provenance}
+                            </span>
+                          </td>
+                          <td className="col-time">
+                            <input
+                              type="text"
+                              value={item.time}
+                              onChange={(event) => updateCutPlanItem(item.id, { time: event.target.value })}
+                              aria-label={`Cut ${item.order} time`}
+                            />
+                          </td>
+                          <td className="col-place">
+                            <input
+                              type="text"
+                              value={item.place}
+                              onChange={(event) => updateCutPlanItem(item.id, { place: event.target.value })}
+                              aria-label={`Cut ${item.order} place`}
+                            />
+                          </td>
+                          <td className="col-content">
+                            <input
+                              type="text"
+                              value={item.content}
+                              onChange={(event) => updateCutPlanItem(item.id, { content: event.target.value })}
+                              placeholder="이 컷에서 무엇이 일어나는가"
+                              aria-label={`Cut ${item.order} content`}
+                            />
+                          </td>
+                          <td className="col-purpose">
+                            <input
+                              type="text"
+                              value={item.purpose}
+                              onChange={(event) => updateCutPlanItem(item.id, { purpose: event.target.value })}
+                              placeholder="이 컷이 존재하는 이유"
+                              aria-label={`Cut ${item.order} purpose`}
+                            />
+                          </td>
+                          <td className="col-cast">
+                            <input
+                              type="text"
+                              value={item.characters}
+                              onChange={(event) => updateCutPlanItem(item.id, { characters: event.target.value })}
+                              aria-label={`Cut ${item.order} characters`}
+                            />
+                          </td>
+                          <td className="col-shot">
+                            <select
+                              value={item.shotSize}
+                              onChange={(event) => updateCutPlanItem(item.id, { shotSize: event.target.value })}
+                              aria-label={`Cut ${item.order} shot size`}
+                            >
+                              {cutPlanShotSizes.map((size) => (
+                                <option key={size} value={size}>{size}</option>
+                              ))}
+                            </select>
+                          </td>
+                          <td className="col-status">
+                            <select
+                              className={`cut-plan-status-select status-${item.status.toLowerCase()}`}
+                              value={item.status}
+                              onChange={(event) => setCutPlanItemStatus(item.id, event.target.value)}
+                              aria-label={`Cut ${item.order} status`}
+                            >
+                              <option value="Fixed">Fixed</option>
+                              <option value="Tentative">Tentative</option>
+                              <option value="Open">Open</option>
+                            </select>
+                          </td>
+                          <td className="col-tools">
+                            <div className="cut-plan-row-tools">
+                              <button
+                                type="button"
+                                onClick={() => moveCutPlanItem(item.id, -1)}
+                                disabled={index === 0}
+                                aria-label="Move cut up"
+                                title="위로"
+                              >
+                                ↑
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => moveCutPlanItem(item.id, 1)}
+                                disabled={index === cutPlan.length - 1}
+                                aria-label="Move cut down"
+                                title="아래로"
+                              >
+                                ↓
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => addCutPlanItem(item.id, item.beat)}
+                                aria-label="Add cut after"
+                                title="아래에 컷 추가"
+                              >
+                                +
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => removeCutPlanItem(item.id)}
+                                disabled={cutPlan.length === 1}
+                                aria-label="Remove cut"
+                                title="삭제"
+                              >
+                                ×
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
                         ))}
-                      </div>
-                      <div className="cut-plan-item-tools">
-                        <button
-                          type="button"
-                          onClick={() => moveCutPlanItem(item.id, -1)}
-                          disabled={index === 0}
-                          aria-label="Move cut up"
-                          title="Move up"
-                        >
-                          ↑
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => moveCutPlanItem(item.id, 1)}
-                          disabled={index === cutPlan.length - 1}
-                          aria-label="Move cut down"
-                          title="Move down"
-                        >
-                          ↓
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => addCutPlanItem(item.id, item.beat)}
-                          aria-label="Add cut after"
-                          title="Add cut after"
-                        >
-                          +
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => removeCutPlanItem(item.id)}
-                          disabled={cutPlan.length === 1}
-                          aria-label="Remove cut"
-                          title="Remove cut"
-                        >
-                          ×
-                        </button>
-                      </div>
-                    </div>
-                    <textarea
-                      className="cut-plan-content"
-                      value={item.content}
-                      onChange={(event) => updateCutPlanItem(item.id, { content: event.target.value })}
-                      placeholder="이 컷에서 무엇이 일어나는가"
-                      aria-label={`Cut ${item.order} content`}
-                      rows={2}
-                    />
-                    <div className="cut-plan-fields">
-                      <label>
-                        <span>Shot</span>
-                        <select
-                          value={item.shotSize}
-                          onChange={(event) => updateCutPlanItem(item.id, { shotSize: event.target.value })}
-                        >
-                          {cutPlanShotSizes.map((size) => (
-                            <option key={size} value={size}>{size}</option>
-                          ))}
-                        </select>
-                      </label>
-                      <label>
-                        <span>Camera</span>
-                        <input
-                          type="text"
-                          value={item.cameraMovement}
-                          onChange={(event) => updateCutPlanItem(item.id, { cameraMovement: event.target.value })}
-                          placeholder="Fixed / Pan / Dolly in"
-                        />
-                      </label>
-                      <label>
-                        <span>Reveals</span>
-                        <input
-                          type="text"
-                          value={item.reveals}
-                          onChange={(event) => updateCutPlanItem(item.id, { reveals: event.target.value })}
-                          placeholder="이 컷이 새로 알려주는 것"
-                        />
-                      </label>
-                      <label>
-                        <span>Purpose</span>
-                        <input
-                          type="text"
-                          value={item.purpose}
-                          onChange={(event) => updateCutPlanItem(item.id, { purpose: event.target.value })}
-                          placeholder="이 컷이 존재하는 이유"
-                        />
-                      </label>
-                    </div>
-                  </li>
-                ))}
-              </ol>
+                      </tbody>
+                    )
+                  })}
+                </table>
+              </div>
+
               <footer className="cut-plan-footer">
                 <button type="button" onClick={() => addCutPlanItem(null, activeBeat)}>
                   + Add cut
@@ -986,7 +1103,7 @@ export default function StoryboardView() {
                 className={`sb-item ${showStoryboardPanels ? 'layout-expanded' : isExpanded ? 'layout-script-focus' : 'layout-sidebar'} ${beatGroup.beat === activeBeat ? 'active-beat' : ''}`}
                 onClick={() => selectBeat(beatGroup.beat)}
               >
-                {i > 0 && (
+                {i > 0 && !isScriptStage && (
                   <button
                     className="merge-beat-btn"
                     onClick={(e) => {
@@ -1000,6 +1117,51 @@ export default function StoryboardView() {
                 )}
 
                 <div className="sb-text-col">
+                  {/* Beat 경계 표시이자 이 Beat의 조작 지점. 줄마다 버튼을
+                      띄우지 않고 여기로 모은다. */}
+                  {(beats.length > 1 || isScriptStage) && (
+                    <div className="sb-beat-label">
+                      <span>Beat {String(beatGroup.beat + 1).padStart(2, '0')}</span>
+                      <em>{beatGroup.elements.length} lines</em>
+                      {isScriptStage && (
+                        <div className="sb-beat-tools">
+                          <button
+                            type="button"
+                            className={editingBeat === beatGroup.beat ? 'active' : ''}
+                            onClick={(event) => {
+                              event.stopPropagation()
+                              setEditingBeat(editingBeat === beatGroup.beat ? null : beatGroup.beat)
+                            }}
+                            title="줄 종류와 삭제를 표시"
+                          >
+                            {editingBeat === beatGroup.beat ? '완료' : '줄 편집'}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={(event) => {
+                              event.stopPropagation()
+                              handleAddBeatAfter(beatGroup)
+                            }}
+                            title="이 Beat 다음에 새 Beat 추가"
+                          >
+                            + Beat
+                          </button>
+                          {i > 0 && (
+                            <button
+                              type="button"
+                              onClick={(event) => {
+                                event.stopPropagation()
+                                mergeBeat(beatGroup.elements[0].globalIdx)
+                              }}
+                              title="위 Beat와 합치기"
+                            >
+                              ↑ 합치기
+                            </button>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
                   {beatGroup.elements.map((el) => {
                     const inlineSuggestions = beatSuggestions.filter((suggestion) => (
                       (suggestion.type === 'split-beat' && suggestion.elementIndex === el.globalIdx + 1)
@@ -1016,17 +1178,24 @@ export default function StoryboardView() {
                             index={el.globalIdx}
                             onChange={updateScreenplayLine}
                             onChangeType={setScreenplayLineType}
-                            onInsertAfter={insertScreenplayLine}
-                            onRemove={removeScreenplayLine}
+                            onInsertAfter={handleInsertLine}
+                            onRemove={handleRemoveLine}
                             canRemove={screenplay.length > 1}
+                            showTools={editingBeat === beatGroup.beat}
+                            autoFocus={pendingFocus?.index === el.globalIdx}
+                            focusCaret={pendingFocus?.caret}
+                            onFocused={clearPendingFocus}
+                            onMoveFocus={handleMoveFocus}
                           />
                         ) : (
                           <div className={`sb-script-${el.type}`}>
                             {el.text}
                           </div>
                         )}
+                        {/* Beat 나누기는 줄 편집 모드에서만. 평소 hover마다
+                            버튼이 튀어나오면 대본 읽기를 방해한다. */}
                         <button
-                          className="split-beat-btn"
+                          className={`split-beat-btn${editingBeat === beatGroup.beat ? ' always-on' : ''}`}
                           onClick={(e) => {
                             e.stopPropagation()
                             splitBeat(el.globalIdx + 1)
@@ -1047,20 +1216,6 @@ export default function StoryboardView() {
                     </div>
                     )
                   })}
-                  {isScriptStage && beatGroup.elements.length > 0 && (
-                    <button
-                      type="button"
-                      className="script-line-add"
-                      onClick={(event) => {
-                        event.stopPropagation()
-                        insertScreenplayLine(
-                          beatGroup.elements[beatGroup.elements.length - 1].globalIdx,
-                        )
-                      }}
-                    >
-                      + Add line
-                    </button>
-                  )}
                   {nonBoundarySuggestions.map((suggestion) => (
                     <NarrativeSuggestionCard
                       key={suggestion.id}
@@ -1268,33 +1423,24 @@ export default function StoryboardView() {
 
           {narrativeRailOpen ? (
             <>
-              <section className="narrative-rail-context">
-                <div className="narrative-rail-section-label">
-                  <span>Working context</span>
-                  <em>Live</em>
-                </div>
-                <strong>
-                  {needsScreenplayFormatting
-                    ? '줄거리 상태의 이야기'
-                    : needsBeatSplit
-                      ? '아직 나뉘지 않은 장면'
-                      : `Beat ${String(activeBeat + 1).padStart(2, '0')} · 전체 ${beats.length}`}
-                </strong>
-                <p>
-                  {sceneIntention
-                    || 'Scene intention이 없습니다. 현재 대본과 Beat만 기준으로 제안합니다.'}
-                </p>
-              </section>
+              {/* Scene intention은 있을 때만 보여준다. 나머지 상태는 대본의
+                  Beat 라벨과 상단 단계 표시에 이미 드러나 있다. */}
+              {sceneIntention && (
+                <section className="narrative-rail-context">
+                  <span>Scene intention</span>
+                  <p>{sceneIntention}</p>
+                </section>
+              )}
 
               <section className="narrative-rail-guidance">
                 <span>Next step</span>
                 {/* 사용자가 무엇을 물어야 할지 몰라도 다음 단계가 보이게 한다.
-                    대본이 한 덩어리면 Beat 나누기가 먼저다. */}
+                    줄글 → 대본 → Beat → 컷 순서로 이어진다. */}
                 {needsScreenplayFormatting ? (
                   <>
                     <p>
-                      아직 줄거리 설명에 가깝습니다. 화면에 보이는 지문과 대사로
-                      바꾸면 이후 Beat와 컷을 나눌 수 있습니다.
+                      아직 줄거리 설명에 가깝습니다. 지문과 대사로 풀고 Beat까지
+                      나눈 초안을 만듭니다.
                     </p>
                     <button
                       type="button"
@@ -1318,13 +1464,36 @@ export default function StoryboardView() {
                       Beat 나누기 제안
                     </button>
                   </>
+                ) : cutStage === 'script' ? (
+                  <>
+                    <p>
+                      대본이 준비됐습니다. 그림 전에 이 장면을 몇 개의 컷으로
+                      나눌지 텍스트로 정합니다.
+                    </p>
+                    <button
+                      type="button"
+                      className="narrative-rail-primary"
+                      onClick={cutPlan.length > 0 ? clearCutPlanStageOverride : requestCutPlan}
+                    >
+                      {cutPlan.length > 0 ? '컷 플랜 이어서' : '컷 플랜 만들기'}
+                    </button>
+                    {/* 보조 동작은 언제나 '건너뛰기'로 고정한다. 상황에 따라
+                        삭제로 바뀌면 같은 자리의 버튼이 다른 일을 하게 된다. */}
+                    <button
+                      type="button"
+                      className="narrative-rail-secondary"
+                      onClick={skipCutPlan}
+                    >
+                      건너뛰고 패널로
+                    </button>
+                  </>
                 ) : (
                   <p>
                     Beat {activeBeat + 1}을(를) 보고 있습니다. 이 Beat의 행동과
                     대사를 조금씩 고쳐 나가세요.
                   </p>
                 )}
-                {narrativeSuggestions.length > 0 ? (
+                {narrativeSuggestions.length > 0 && (
                   <div className="narrative-rail-proposal-status">
                     <span>{narrativeSuggestions.length}</span>
                     <div>
@@ -1332,13 +1501,11 @@ export default function StoryboardView() {
                       <p>대본 안의 관련 위치에 표시했습니다.</p>
                     </div>
                   </div>
-                ) : (
-                  <div className="narrative-rail-empty">
-                    제안은 대본 위에 직접 표시되며 자동으로 원문을 바꾸지 않습니다.
-                  </div>
                 )}
               </section>
 
+              {/* Next step 바로 아래에 둔다. 제시된 다음 단계와 직접
+                  이어지는 입력이기 때문이다. */}
               <div className="narrative-rail-composer">
                 <label htmlFor="narrative-screenplay-request">Request</label>
                 <textarea
@@ -1347,7 +1514,7 @@ export default function StoryboardView() {
                   onChange={(event) => setNarrativeRequest(event.target.value)}
                   placeholder="예: 이 Beat를 둘로 나누고 대사를 덜 설명적으로 바꿔줘."
                   aria-label={`Narrative request for Beat ${activeBeat + 1}`}
-                  rows={4}
+                  rows={3}
                 />
                 <div>
                   <span>{`Beat ${activeBeat + 1}에 적용`}</span>
@@ -1363,6 +1530,7 @@ export default function StoryboardView() {
                   </button>
                 </div>
               </div>
+
             </>
           ) : (
             <button
