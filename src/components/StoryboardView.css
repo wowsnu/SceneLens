@@ -3121,45 +3121,38 @@
   color: rgba(255, 255, 255, 0.8);
 }
 
-/* 프롬프트의 '고정: ...'은 선언의 결과다. 눌러서 그 선언으로 되돌아간다. */
-.shot-inspector-shared.expandable {
-  display: flex;
-  align-items: baseline;
-  gap: 6px;
-  padding: 5px 7px;
-  margin-top: 7px;
-  border: 1px solid transparent;
-  border-radius: 6px;
-  cursor: pointer;
-}
 
-.shot-inspector-shared.expandable:hover {
-  border-color: rgba(255, 255, 255, 0.12);
-  background: rgba(255, 255, 255, 0.03);
-  color: rgba(255, 255, 255, 0.6);
-}
-
-.shared-caret {
-  margin-left: auto;
-  color: rgba(255, 255, 255, 0.3);
-  font-size: 10px;
-}
-
-.shared-declaration-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  margin: 6px 0 0;
-  padding: 8px;
-  border: 1px solid rgba(255, 255, 255, 0.09);
-  border-radius: 7px;
-  background: rgba(0, 0, 0, 0.22);
-  list-style: none;
-}
-
-.shared-declaration-list li {
-  padding: 8px 9px;
-  border: 1px solid rgba(126, 200, 160, 0.2);
-  border-radius: 6px;
+/* 판정한 선언은 목록에 남되 물러나 보인다. 미정이 먼저 눈에 들어와야 한다. */
+.shot-inspector-deferred li.is-decided {
+  border-color: rgba(126, 200, 160, 0.22);
   background: rgba(126, 200, 160, 0.03);
+}
+
+.deferred-mark {
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: rgba(216, 170, 98, 0.16);
+  color: rgba(216, 170, 98, 0.92);
+  font-size: 9.5px;
+  font-weight: 750;
+}
+
+.shot-inspector-deferred h4 em {
+  background: rgba(216, 170, 98, 0.18);
+  color: rgba(216, 170, 98, 0.92);
+}
+
+/* AI가 제안한 값 — 눌러서 확정하기 전까지는 확정된 선택과 달라 보여야 한다. */
+.deferred-chips.is-proposed button.active {
+  border-style: dashed;
+  border-color: rgba(126, 200, 160, 0.4);
+  background: transparent;
+  color: rgba(150, 220, 185, 0.7);
+}
+
+.declaration-chips.is-proposed button.active {
+  border-style: dashed;
+  border-color: rgba(126, 200, 160, 0.4);
+  background: transparent;
+  color: rgba(150, 220, 185, 0.7);
 }
