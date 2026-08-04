@@ -847,6 +847,46 @@ export const diagnoseCoverage = (cutPlan = []) => {
   return findings
 }
 
+// --- 이음새(seam): 컷과 컷 사이 -----------------------------------------
+// design_goal.md DG2 P1: "이음새에는 두 컷 사이에서 생략된 것, 연결 방식,
+// 흐른 시간, 그리고 추가 컷의 필요성이 담긴다."
+//
+// 넷 중 '추가 컷의 필요성'은 편집 렌즈의 진단이 이미 맡고 있으므로 셋만 둔다.
+// 이음새는 컷이 아니라 컷 사이에 붙는다. 그래서 앞 컷의 속성이 아니라
+// 독립된 객체다 — 컷이 병합·분할되어도 사이에 무엇이 있었는지가 남아야 한다.
+//
+// 세 항목이 서로 다른 것을 묻는다:
+//   elision — 무엇을 건너뛰었나. 화면에 없는 것을 기록한다.
+//   join    — 어떻게 이어지나. 컷/디졸브/매치컷은 관객이 읽는 방식이 다르다.
+//   elapsed — 얼마나 흘렀나. 같은 두 컷도 3초와 3시간은 다른 장면이 된다.
+export const SEAM_JOINS = [
+  { id: 'cut', label: '컷', hint: '바로 이어진다' },
+  { id: 'match', label: '매치컷', hint: '형태나 동작이 이어진다' },
+  { id: 'dissolve', label: '디졸브', hint: '겹치며 넘어간다 — 시간 경과' },
+  { id: 'fade', label: '페이드', hint: '끊고 다시 연다 — 단락 전환' },
+]
+
+export const SEAM_ELAPSED = [
+  { id: 'continuous', label: '연속', hint: '앞 컷에서 바로 이어진다' },
+  { id: 'moments', label: '잠시', hint: '몇 초에서 몇 분' },
+  { id: 'later', label: '경과', hint: '뚜렷한 시간이 흘렀다' },
+]
+
+const createSeam = ({ join = 'cut', elapsed = 'continuous', elision = '' } = {}) => ({
+  join,
+  elapsed,
+  elision,
+})
+
+// 이음새는 앞 컷의 id로 식별한다. 컷이 지워지면 그 이음새도 의미를 잃는다.
+export const seamKeyFor = (shotId) => `seam-${shotId}`
+
+// 기본값과 다른 것만 화면에 표시한다. 전부 '컷 · 연속'이면 표시가 무의미하고,
+// 감독이 실제로 정한 것만 눈에 띄어야 한다.
+export const isSeamMarked = (seam) => Boolean(
+  seam && (seam.join !== 'cut' || seam.elapsed !== 'continuous' || seam.elision),
+)
+
 // --- 편집 렌즈: 이음새 진단 ---------------------------------------------
 // 컷 사이(이음새)를 본다. 컷 하나하나는 멀쩡해도 이어 붙이면 문제가 되는
 // 것들이다 — 대본의 사건이 컷으로 안 나뉘었거나, 두 컷이 같은 일을 하거나,
@@ -1297,6 +1337,25 @@ const useStore = create((set, get) => ({
   // 조명·그림체처럼 장면 전체에 걸리는 지시. 컷마다 반복하지 않는다.
   scenePromptNote: '',
   setScenePromptNote: (scenePromptNote) => set({ scenePromptNote }),
+
+  // 컷과 컷 사이. 앞 컷의 id로 식별한다 (DG2 P1).
+  // 컷의 속성이 아니라 별도 객체인 이유: 컷이 병합·분할되어도 사이에 무엇이
+  // 있었는지가 남아야 한다.
+  seams: {},
+  updateSeam: (shotId, patch) => set((state) => {
+    const key = seamKeyFor(shotId)
+    return {
+      seams: {
+        ...state.seams,
+        [key]: { ...createSeam(), ...state.seams[key], ...patch },
+      },
+    }
+  }),
+  clearSeam: (shotId) => set((state) => {
+    const next = { ...state.seams }
+    delete next[seamKeyFor(shotId)]
+    return { seams: next }
+  }),
 
   // 컷을 가로지르는 기준. 여기를 고치면 모든 컷의 프롬프트가 함께 바뀐다.
   sceneState: SCENE_STATE,

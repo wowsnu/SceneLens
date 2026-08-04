@@ -1,5 +1,10 @@
 import { useState } from 'react'
-import useStore from '../store/useStore'
+import useStore, {
+  SEAM_JOINS,
+  SEAM_ELAPSED,
+  seamKeyFor,
+  isSeamMarked,
+} from '../store/useStore'
 import { GapGhostCell } from './GapFillPanel'
 import './GridView.css'
 
@@ -33,6 +38,9 @@ export default function GridView({
   const openGapFill = useStore((s) => s.openGapFill)
   const openAutoFill = useStore((s) => s.openAutoFill)
   const gapFills = useStore((s) => s.gapFills)
+  const seams = useStore((s) => s.seams)
+  const updateSeam = useStore((s) => s.updateSeam)
+  const clearSeam = useStore((s) => s.clearSeam)
   const autoFill = useStore((s) => s.autoFill)
 
   // Build shotId → preview insertions map (when a version is being previewed)
@@ -71,6 +79,8 @@ export default function GridView({
   }
 
   const [hoveredIdx, setHoveredIdx] = useState(null)
+  // 열려 있는 이음새 편집기. 한 번에 하나만 연다.
+  const [openSeamId, setOpenSeamId] = useState(null)
   const [rangeMode, setRangeMode] = useState(false)   // true = waiting for second tap
   const [rangeAnchor, setRangeAnchor] = useState(null) // first tap index
 
@@ -192,6 +202,98 @@ export default function GridView({
                   </svg>
                 </button>
               )}
+
+              {/* 이음새 — 앞 컷과 이 컷 사이 (DG2 P1). 컷을 추가하는 것과
+                  사이에 무엇이 있는지 기록하는 것은 다른 일이라 자리를 나눈다.
+                  정해진 것이 없으면 hover에서만 나타나 그리드를 어지럽히지 않는다. */}
+              {!compact && i > 0 && (() => {
+                const prevShot = shots[i - 1]
+                const seam = seams[seamKeyFor(prevShot.id)]
+                const marked = isSeamMarked(seam)
+                const open = openSeamId === prevShot.id
+                return (
+                  <div className={`grid-seam${marked ? ' marked' : ''}${open ? ' open' : ''}`}>
+                    <button
+                      type="button"
+                      className="grid-seam-btn"
+                      title={marked
+                        ? `${SEAM_JOINS.find((j) => j.id === seam.join)?.label} · ${SEAM_ELAPSED.find((e) => e.id === seam.elapsed)?.label}`
+                        : '이음새 — 사이에 무엇이 있는지 기록'}
+                      aria-expanded={open}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setOpenSeamId(open ? null : prevShot.id)
+                      }}
+                    >
+                      {marked ? (
+                        <span className="grid-seam-mark">
+                          {SEAM_JOINS.find((j) => j.id === seam.join)?.label}
+                          {seam.elapsed !== 'continuous' && (
+                            <em>{SEAM_ELAPSED.find((el) => el.id === seam.elapsed)?.label}</em>
+                          )}
+                        </span>
+                      ) : (
+                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round">
+                          <path d="M8 5v14M16 5v14" />
+                        </svg>
+                      )}
+                    </button>
+
+                    {open && (
+                      <div className="grid-seam-editor" onClick={(e) => e.stopPropagation()}>
+                        <header>
+                          <strong>S{i} → S{i + 1}</strong>
+                          <button
+                            type="button"
+                            onClick={() => { clearSeam(prevShot.id); setOpenSeamId(null) }}
+                          >
+                            지우기
+                          </button>
+                        </header>
+
+                        <label>연결 방식</label>
+                        <div className="grid-seam-chips">
+                          {SEAM_JOINS.map((option) => (
+                            <button
+                              key={option.id}
+                              type="button"
+                              className={(seam?.join || 'cut') === option.id ? 'active' : ''}
+                              title={option.hint}
+                              onClick={() => updateSeam(prevShot.id, { join: option.id })}
+                            >
+                              {option.label}
+                            </button>
+                          ))}
+                        </div>
+
+                        <label>흐른 시간</label>
+                        <div className="grid-seam-chips">
+                          {SEAM_ELAPSED.map((option) => (
+                            <button
+                              key={option.id}
+                              type="button"
+                              className={(seam?.elapsed || 'continuous') === option.id ? 'active' : ''}
+                              title={option.hint}
+                              onClick={() => updateSeam(prevShot.id, { elapsed: option.id })}
+                            >
+                              {option.label}
+                            </button>
+                          ))}
+                        </div>
+
+                        {/* 생략한 것을 적어두지 않으면 나중에 누락과 구분되지 않는다. */}
+                        <label htmlFor={`elision-${prevShot.id}`}>생략된 것</label>
+                        <input
+                          id={`elision-${prevShot.id}`}
+                          value={seam?.elision || ''}
+                          placeholder="예: 재인이 방을 가로지르는 동안"
+                          onChange={(e) => updateSeam(prevShot.id, { elision: e.target.value })}
+                        />
+                      </div>
+                    )}
+                  </div>
+                )
+              })()}
 
               <div
                 className={`grid-cell ${isActive ? 'active' : ''} ${inRange ? 'in-range' : ''} ${isAnchor ? 'range-anchor' : ''} ${inDecisionRange ? 'decision-range' : ''} ${isDecisionRangeEdge ? 'decision-range-edge' : ''} ${activeLensPreview ? 'lens-preview' : ''}`}
