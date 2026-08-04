@@ -1731,8 +1731,9 @@
   border-color: rgba(216, 170, 98, 0.45);
 }
 
+/* 프롬프트에 함께 걸리는 지시이므로 붙여 둔다. */
 .shot-inspector-shared {
-  margin: 8px 0 0;
+  margin: 4px 0 0;
   color: rgba(255, 255, 255, 0.34);
   font-size: 11.5px;
   line-height: 1.5;
@@ -2689,10 +2690,18 @@
 }
 
 /* --- Shot Inspector: 이 컷이 책임지지 않는 것 -------------------------- */
-.shot-inspector-delegated,
+/* 프롬프트에서 떼어 놓는다. '고정:'은 프롬프트의 일부지만 이것은 별개다. */
+.shot-inspector-delegated {
+  margin-top: 16px;
+  padding: 10px 11px;
+  border: 1px dashed rgba(255, 255, 255, 0.14);
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.02);
+}
+
 .shot-inspector-delegated strong {
   display: block;
-  margin-bottom: 6px;
+  margin-bottom: 7px;
   color: rgba(255, 255, 255, 0.62);
   font-size: 11px;
   font-weight: 750;
@@ -2717,14 +2726,6 @@
   background: rgba(255, 255, 255, 0.06);
   color: rgba(255, 255, 255, 0.68);
   font-size: 11.5px;
-}
-
-.shot-inspector-delegated small {
-  display: block;
-  margin-top: 7px;
-  color: rgba(255, 255, 255, 0.4);
-  font-size: 11px;
-  line-height: 1.45;
 }
 
 /* --- 방향만 표시: 방향(정함) + 채널(어디에 남기나) --------------------- */

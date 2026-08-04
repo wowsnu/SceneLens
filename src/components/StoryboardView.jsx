@@ -280,9 +280,6 @@ function ShotInspector({
                 <li key={element}>{element}</li>
               ))}
             </ul>
-            <small>
-              그림에 보이더라도 확정된 결정이 아닙니다. 후속 공정이 정합니다.
-            </small>
           </div>
         )}
 
