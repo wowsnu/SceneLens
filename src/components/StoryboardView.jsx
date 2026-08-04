@@ -625,6 +625,7 @@ export default function StoryboardView() {
   const decideDeclaration = useStore((s) => s.decideDeclaration)
   const rejectDeclaration = useStore((s) => s.rejectDeclaration)
   const sceneState = useStore((s) => s.sceneState)
+  const setSceneFact = useStore((s) => s.setSceneFact)
   const setShotNote = useStore((s) => s.setShotNote)
   const addShotArrow = useStore((s) => s.addShotArrow)
   const removeShotArrow = useStore((s) => s.removeShotArrow)
@@ -1935,7 +1936,7 @@ export default function StoryboardView() {
       {isExpanded && !drawingWorkspaceOpen && cutStage !== 'panels' && (
         <aside
           className={`storyboard-narrative-rail ${narrativeRailOpen ? 'open' : 'collapsed'}`}
-          aria-label="Narrative Agent"
+          aria-label={cutStage === 'cutplan' ? 'Agents' : 'Narrative Agent'}
         >
           <header className="narrative-rail-header">
             {narrativeRailOpen && (
@@ -2072,6 +2073,77 @@ export default function StoryboardView() {
                   </button>
                 </div>
               </div>
+
+              {/* 컷 플랜부터는 Narrative 혼자가 아니다. 촬영 구도 컬럼을
+                  서사 에이전트가 정하는 것이 이상하듯, 씬 기준은 미장센이
+                  세운다. 파이프라인의 `에이전트 진단·공백 질의`가 이 자리다. */}
+              {cutStage === 'cutplan' && (
+                <section className="rail-lens-block">
+                  <header>
+                    <span className="lens-agent-mark" aria-hidden="true">M</span>
+                    <div>
+                      <strong>Mise-en-scène</strong>
+                      <span>Scene state</span>
+                    </div>
+                  </header>
+                  <p className="rail-lens-lead">
+                    여러 컷에 같은 인물과 공간이 나옵니다. 컷마다 따로 해석되지
+                    않도록 기준을 여기서 정합니다.
+                  </p>
+
+                  <ul className="rail-scene-state">
+                    {sceneState.characters.map((character) => {
+                      const open = character.facts.filter((fact) => fact.open)
+                      return (
+                        <li key={character.id}>
+                          <div className="rail-scene-head">
+                            <strong>{character.name}</strong>
+                            <em>{character.summary}</em>
+                          </div>
+                          {character.facts.filter((fact) => !fact.open).map((fact) => (
+                            <p key={fact.label}>
+                              <span>{fact.label}</span>
+                              {fact.value}
+                            </p>
+                          ))}
+                          {/* 미정은 프롬프트에 들어가지 않는다. 비워둔 것이
+                              보이지 않으면 누락과 구분되지 않는다. */}
+                          {open.map((fact) => (
+                            <label key={fact.label} className="rail-scene-open">
+                              <span>{fact.label}</span>
+                              <input
+                                type="text"
+                                placeholder="아직 지정되지 않음"
+                                onBlur={(event) => {
+                                  const value = event.target.value.trim()
+                                  if (value) {
+                                    setSceneFact('character', fact.label, value, {
+                                      characterId: character.id,
+                                    })
+                                  }
+                                }}
+                              />
+                            </label>
+                          ))}
+                        </li>
+                      )
+                    })}
+
+                    <li>
+                      <div className="rail-scene-head">
+                        <strong>{sceneState.location.name}</strong>
+                        <em>공간</em>
+                      </div>
+                      {sceneState.location.facts.map((fact) => (
+                        <p key={fact.label}>
+                          <span>{fact.label}</span>
+                          {fact.value}
+                        </p>
+                      ))}
+                    </li>
+                  </ul>
+                </section>
+              )}
 
             </>
           ) : (
