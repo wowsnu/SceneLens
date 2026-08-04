@@ -7,6 +7,7 @@ import useStore, {
   buildPanelMarks,
   diagnoseCoverage,
   diagnoseSeams,
+  PROBLEM_LAYERS,
 } from '../store/useStore'
 import './StoryboardView.css'
 
@@ -68,6 +69,38 @@ const SEAM_ACTION_LABEL = {
   split: '나눌 컷 보기',
   merge: '두 컷 보기',
   insert: '넣을 자리 보기',
+}
+
+// 촬영·편집의 진단 카드. 문제의 층위를 밝힌다 (design_goal.md DG2:
+// 원인이 속성·컷의 존재·컷 간 관계·씬 범위 중 어디인지 진단하고 해당
+// 층위에서 개입한다). 고치는 것은 표에서 하므로 버튼은 데려다주기만 한다.
+function DiagnosisList({ findings, emptyLabel, onGoTo }) {
+  if (findings.length === 0) {
+    return <p className="rail-coverage-clear">{emptyLabel}</p>
+  }
+
+  return (
+    <ul className="rail-coverage">
+      {findings.map((finding) => {
+        const layer = PROBLEM_LAYERS[finding.layer]
+        return (
+          <li key={finding.id}>
+            {layer && (
+              <span className={`rail-layer-tag layer-${finding.layer}`} title={layer.hint}>
+                {layer.label}
+              </span>
+            )}
+            <strong>{finding.title}</strong>
+            <p>{finding.detail}</p>
+            <button type="button" onClick={() => onGoTo(finding)}>
+              {SEAM_ACTION_LABEL[finding.action] || '해당 컷 보기'}
+              {finding.cutIds.length > 1 && ` · ${finding.cutIds.length}`}
+            </button>
+          </li>
+        )
+      })}
+    </ul>
+  )
 }
 
 function ScriptLineEditor({
@@ -714,6 +747,12 @@ export default function StoryboardView() {
   const coverageFindings = diagnoseCoverage(cutPlan)
   // 컷 사이의 문제. 컷 하나만 보면 드러나지 않는다.
   const seamFindings = diagnoseSeams(cutPlan, screenplay)
+  // 진단은 발견이고 수정은 표에서 한다. 지목된 컷으로 데려다주기만 한다.
+  const goToFinding = (finding) => {
+    const target = cutPlan.find((cut) => cut.id === finding.cutIds[0])
+    if (target) setActiveBeat(target.beat)
+    setExpandedPromptCutId(null)
+  }
   // 아직 정하지 않은 씬 기준. 비워둔 것이 보여야 누락과 구분된다.
   const undecidedSceneFacts = sceneState.characters
     .reduce((count, character) => count + character.facts.filter((f) => f.open).length, 0)
@@ -2225,29 +2264,11 @@ export default function StoryboardView() {
                     샷 크기와 앵글은 컷 표에서 고칩니다. 여기서는 여러 컷을
                     함께 읽어야 보이는 것만 짚습니다.
                   </p>
-                  {coverageFindings.length === 0 ? (
-                    <p className="rail-coverage-clear">지금 구성에서 걸리는 것이 없습니다.</p>
-                  ) : (
-                    <ul className="rail-coverage">
-                      {coverageFindings.map((finding) => (
-                        <li key={finding.id}>
-                          <strong>{finding.title}</strong>
-                          <p>{finding.detail}</p>
-                          {/* 지목된 컷으로 보낸다. 판단과 수정은 표에서. */}
-                          <button
-                            type="button"
-                            onClick={() => {
-                              const target = cutPlan.find((cut) => cut.id === finding.cutIds[0])
-                              if (target) setActiveBeat(target.beat)
-                              setExpandedPromptCutId(null)
-                            }}
-                          >
-                            해당 컷 보기 · {finding.cutIds.length}
-                          </button>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
+                  <DiagnosisList
+                    findings={coverageFindings}
+                    emptyLabel="지금 구성에서 걸리는 것이 없습니다."
+                    onGoTo={goToFinding}
+                  />
                 </div>
                 )}
               </section>
@@ -2281,28 +2302,11 @@ export default function StoryboardView() {
                     컷 하나하나는 멀쩡해도 이어 붙이면 문제가 되는 것들입니다.
                     컷을 나누고 합치는 것은 표에서 합니다.
                   </p>
-                  {seamFindings.length === 0 ? (
-                    <p className="rail-coverage-clear">지금 이음새에서 걸리는 것이 없습니다.</p>
-                  ) : (
-                    <ul className="rail-coverage">
-                      {seamFindings.map((finding) => (
-                        <li key={finding.id}>
-                          <strong>{finding.title}</strong>
-                          <p>{finding.detail}</p>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              const target = cutPlan.find((cut) => cut.id === finding.cutIds[0])
-                              if (target) setActiveBeat(target.beat)
-                              setExpandedPromptCutId(null)
-                            }}
-                          >
-                            {SEAM_ACTION_LABEL[finding.action] || '해당 컷 보기'}
-                          </button>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
+                  <DiagnosisList
+                    findings={seamFindings}
+                    emptyLabel="지금 이음새에서 걸리는 것이 없습니다."
+                    onGoTo={goToFinding}
+                  />
                 </div>
                 )}
               </section>

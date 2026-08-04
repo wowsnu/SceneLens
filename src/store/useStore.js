@@ -751,6 +751,17 @@ export const buildCutPrompt = (cut, {
 //
 // 각 진단은 컷을 지목한다. 고치는 것은 표에서 한다 — 진단은 발견이고
 // 처분은 사용자 몫이다 (design_goal.md: 발견과 처분의 분리).
+// 문제의 원인이 어느 층위에 있는가 (design_goal.md DG2).
+// 층위마다 개입 수단이 다르므로, 진단이 층위를 밝혀야 어디를 고쳐야 할지
+// 알 수 있다. 한 층위의 수정이 다른 층위의 결손을 만들지 않게 하는 것이
+// DG2의 요구이기도 하다.
+export const PROBLEM_LAYERS = {
+  attribute: { label: '속성', hint: '컷의 값. 표에서 고칩니다' },
+  existence: { label: '컷의 존재', hint: '컷이 있어야 하거나 없어야 합니다' },
+  relation: { label: '컷 간 관계', hint: '컷 하나가 아니라 사이의 문제입니다' },
+  scope: { label: '씬 범위', hint: '장면 전체가 무엇을 담는지의 문제입니다' },
+}
+
 const SHOT_SIZE_ORDER = ['Wide', 'Full', 'Medium', 'Bust', 'Close-Up', 'ECU']
 
 export const diagnoseCoverage = (cutPlan = []) => {
@@ -767,6 +778,7 @@ export const diagnoseCoverage = (cutPlan = []) => {
         findings.push({
           id: `run-${cutPlan[runStart].id}`,
           type: 'size-run',
+          layer: 'relation',
           title: `${cutPlan[runStart].shotSize} ${run}컷 연속`,
           detail: '크기가 같으면 컷이 바뀐 것이 화면에서 잘 읽히지 않습니다.',
           cutIds: cutPlan.slice(runStart, i).map((cut) => cut.id),
@@ -787,6 +799,7 @@ export const diagnoseCoverage = (cutPlan = []) => {
       findings.push({
         id: `reaction-${beat}`,
         type: 'missing-reaction',
+        layer: 'existence',
         title: `Beat ${beat + 1}에 리액션 컷 없음`,
         detail: '말하는 쪽만 있습니다. 듣는 쪽이 어떻게 반응하는지 보이지 않습니다.',
         cutIds: speech.map((cut) => cut.id),
@@ -803,6 +816,7 @@ export const diagnoseCoverage = (cutPlan = []) => {
     findings.push({
       id: 'no-establishing',
       type: 'no-establishing',
+      layer: 'scope',
       title: '공간을 세우는 컷 없음',
       detail: '전체가 좁은 샷입니다. 관객이 어디인지 파악할 근거가 없습니다.',
       cutIds: [first.id],
@@ -822,6 +836,7 @@ export const diagnoseCoverage = (cutPlan = []) => {
       findings.push({
         id: `jump-${cut.id}`,
         type: 'jump-cut',
+        layer: 'attribute',
         title: `컷 ${prev.beat + 1}-${prev.beatOrder} → ${cut.beat + 1}-${cut.beatOrder} 점프컷 위험`,
         detail: '크기와 앵글이 거의 같습니다. 이어 붙이면 화면이 튑니다.',
         cutIds: [prev.id, cut.id],
@@ -854,6 +869,7 @@ export const diagnoseSeams = (cutPlan = [], screenplay = []) => {
       findings.push({
         id: `dense-${beat}`,
         type: 'compressed',
+        layer: 'existence',
         title: `Beat ${beat + 1} · 행동 ${actions.length}개가 컷 하나에`,
         detail: '대본은 여러 단계로 적혀 있는데 컷이 하나입니다. 나눠야 순서가 보입니다.',
         cutIds: inBeat.map((cut) => cut.id),
@@ -871,6 +887,7 @@ export const diagnoseSeams = (cutPlan = [], screenplay = []) => {
       findings.push({
         id: `dup-${cut.id}`,
         type: 'duplicate',
+        layer: 'relation',
         title: `컷 ${prev.beat + 1}-${prev.beatOrder} · ${cut.beat + 1}-${cut.beatOrder} 내용 같음`,
         detail: '두 컷이 같은 것을 담고 있습니다. 하나로 합치거나 한쪽을 다시 쓰세요.',
         cutIds: [prev.id, cut.id],
@@ -887,6 +904,7 @@ export const diagnoseSeams = (cutPlan = [], screenplay = []) => {
     findings.push({
       id: `gap-${beat}`,
       type: 'skipped-beat',
+      layer: 'existence',
       title: `Beat ${beat + 1}에 컷이 없음`,
       detail: '대본에는 있는데 컷으로 나뉘지 않았습니다. 그대로 두면 화면에서 사라집니다.',
       cutIds: near.map((cut) => cut.id),

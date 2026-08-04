@@ -3113,3 +3113,34 @@
   font-size: 11px;
   font-weight: 800;
 }
+
+/* 문제의 층위 (DG2). 층위마다 개입 수단이 달라서 어디를 고쳐야 할지 알린다. */
+.rail-layer-tag {
+  display: inline-block;
+  margin-bottom: 5px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+}
+
+.rail-layer-tag.layer-attribute {
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.rail-layer-tag.layer-existence {
+  background: rgba(216, 170, 98, 0.16);
+  color: rgba(216, 170, 98, 0.92);
+}
+
+.rail-layer-tag.layer-relation {
+  background: rgba(196, 150, 210, 0.16);
+  color: rgba(212, 172, 226, 0.95);
+}
+
+.rail-layer-tag.layer-scope {
+  background: rgba(126, 168, 214, 0.16);
+  color: rgba(158, 194, 232, 0.95);
+}
