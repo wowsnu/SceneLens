@@ -178,7 +178,7 @@ function ScriptLineEditor({
 function ShotInspector({
   shot, cut, prompt, shotSizes, angles, moves, onChange, onClose,
   // 그림을 보고 정하기로 미뤄둔 선언 (DG1 P4). 여기서 판정한다.
-  deferredDeclarations = [], onDeclarationUpdate, onDeclarationAccept, onDeclarationReject,
+  deferredDeclarations = [], onDeclarationDecide, onDeclarationReject,
 }) {
   if (!shot) {
     return (
@@ -285,24 +285,8 @@ function ShotInspector({
           </div>
         )}
 
-        {/* 방향은 정해졌고 값은 남아 있다. 그림에 없다고 누락이 아니다. */}
-        {prompt?.responsibility?.offImage?.length > 0 && (
-          <div className="shot-inspector-offimage">
-            <strong>방향만 표시 · 값은 후속 공정</strong>
-            <ul>
-              {prompt.responsibility.offImage.map(({ element, channel, direction }) => (
-                <li key={element}>
-                  <span className="offimage-element">{element}</span>
-                  {direction && <span className="offimage-direction">{direction}</span>}
-                  <em>
-                    {OFFIMAGE_CHANNELS.find((entry) => entry.id === channel)?.label
-                      || '채널 미지정'}
-                  </em>
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
+        {/* 방향만 표시한 것은 패널의 화살표가 이미 보여준다.
+            여기서 다시 나열하지 않는다. */}
       </section>
 
       {/* 그림을 보고 정하기로 미뤄둔 것 (DG1 P4).
@@ -315,19 +299,19 @@ function ShotInspector({
               <li key={decl.id}>
                 <div className="deferred-head">
                   <strong>{decl.element}</strong>
-                  <div className="deferred-actions">
-                    <button type="button" onClick={() => onDeclarationReject(decl.id)}>
-                      선언 안 함
-                    </button>
-                    <button
-                      type="button"
-                      className="deferred-accept"
-                      onClick={() => onDeclarationAccept(decl.id)}
-                    >
-                      선언
-                    </button>
-                  </div>
+                  <button
+                    type="button"
+                    className="deferred-dismiss"
+                    title="이 요소는 선언하지 않는다"
+                    aria-label={`${decl.element} 선언하지 않음`}
+                    onClick={() => onDeclarationReject(decl.id)}
+                  >
+                    ×
+                  </button>
                 </div>
+                {/* 칩을 고르는 것이 곧 판정이다. 별도의 '선언' 버튼을 두면
+                    같은 결정을 두 번 누르게 된다. AI 기본값을 그대로 두면
+                    판정하지 않은 것으로 남는다 (DG1 P2). */}
                 <div className="deferred-chips">
                   {RESPONSIBILITY_LEVELS.map((level) => (
                     <button
@@ -335,7 +319,7 @@ function ShotInspector({
                       type="button"
                       className={decl.responsibility === level.id ? 'active' : ''}
                       title={level.hint}
-                      onClick={() => onDeclarationUpdate(decl.id, { responsibility: level.id })}
+                      onClick={() => onDeclarationDecide(decl.id, level.id)}
                     >
                       {level.label}
                     </button>
@@ -523,13 +507,12 @@ function PanelNote({ note, onChange }) {
 }
 
 // 책임 범위 선언 카드 (DG1 P3).
-// 두 축을 나란히 둔다 — 책임(누가 확정하는가)과 구속강도(얼마나 묶는가)는
-// 직교하므로 한 축으로 합치면 표현할 수 없는 조합이 생긴다.
+// 축은 책임 하나다. 칩을 고르는 것이 곧 판정이므로 별도의 수용 버튼이 없다.
 function DeclarationCard({
   declaration,
   cutPlan,
   onUpdate,
-  onAccept,
+  onDecide,
   onReject,
   onRemove,
   settled = false,
@@ -572,7 +555,7 @@ function DeclarationCard({
               aria-checked={declaration.responsibility === level.id}
               className={declaration.responsibility === level.id ? 'active' : ''}
               title={level.hint}
-              onClick={() => onUpdate(declaration.id, { responsibility: level.id })}
+              onClick={() => onDecide(declaration.id, level.id)}
             >
               {level.label}
             </button>
@@ -623,22 +606,12 @@ function DeclarationCard({
       )}
 
       <div className="declaration-actions">
-        {settled ? (
-          <button type="button" onClick={() => onRemove(declaration.id)}>선언 해제</button>
-        ) : (
-          <>
-            <button type="button" onClick={() => onReject(declaration.id)}>
-              선언하지 않음
-            </button>
-            <button
-              type="button"
-              className="declaration-accept"
-              onClick={() => onAccept(declaration.id)}
-            >
-              선언
-            </button>
-          </>
-        )}
+        <button
+          type="button"
+          onClick={() => (settled ? onRemove(declaration.id) : onReject(declaration.id))}
+        >
+          {settled ? '선언 해제' : '선언하지 않음'}
+        </button>
       </div>
     </li>
   )
@@ -752,6 +725,7 @@ export default function StoryboardView() {
   const openDeclarations = useStore((s) => s.openDeclarations)
   const updateDeclaration = useStore((s) => s.updateDeclaration)
   const acceptDeclaration = useStore((s) => s.acceptDeclaration)
+  const decideDeclaration = useStore((s) => s.decideDeclaration)
   const rejectDeclaration = useStore((s) => s.rejectDeclaration)
   const removeDeclaration = useStore((s) => s.removeDeclaration)
   const addDeclaration = useStore((s) => s.addDeclaration)
@@ -1641,7 +1615,7 @@ export default function StoryboardView() {
                         declaration={decl}
                         cutPlan={cutPlan}
                         onUpdate={updateDeclaration}
-                        onAccept={acceptDeclaration}
+                        onDecide={decideDeclaration}
                         onReject={rejectDeclaration}
                       />
                     ))}
@@ -1662,6 +1636,7 @@ export default function StoryboardView() {
                         declaration={decl}
                         cutPlan={cutPlan}
                         onUpdate={updateDeclaration}
+                        onDecide={decideDeclaration}
                         onRemove={removeDeclaration}
                         settled
                       />
@@ -2195,8 +2170,7 @@ export default function StoryboardView() {
           deferredDeclarations={deferredDeclarations.filter((decl) => (
             decl.scope === 'scene' || decl.cutId === inspectedCut?.id
           ))}
-          onDeclarationUpdate={updateDeclaration}
-          onDeclarationAccept={acceptDeclaration}
+          onDeclarationDecide={decideDeclaration}
           onDeclarationReject={rejectDeclaration}
         />
       )}

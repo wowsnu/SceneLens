@@ -1190,6 +1190,16 @@ const useStore = create((set, get) => ({
     }),
   })),
 
+  // 책임을 고르는 것이 곧 판정이다. 축을 골랐다는 것은 이미 검토했다는
+  // 뜻이므로 별도의 수용 버튼을 두면 같은 결정을 두 번 누르게 된다.
+  decideDeclaration: (id, responsibility) => set((state) => ({
+    declarations: state.declarations.map((decl) => (
+      decl.id === id
+        ? { ...decl, responsibility, status: 'Accepted', provenance: 'User' }
+        : decl
+    )),
+  })),
+
   // 판정 — 수용하거나 기각한다. 기각도 기록으로 남긴다.
   // "검토했으나 선언하지 않기로 함"과 "아직 안 봄"은 다르다.
   acceptDeclaration: (id) => set((state) => ({
