@@ -58,6 +58,15 @@
   transform: translateY(-1px) !important;
 }
 
+/* 단계 표시를 스크롤 밖에 두기 위한 세로 컨테이너. */
+.storyboard-main {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
 /* 스크롤 컨테이너 */
 .storyboard-scroll-container {
   flex: 1;
@@ -765,14 +774,20 @@
 /* 대본 → 줄콘티 → 패널. 줄콘티는 선택지가 아니라 경유 단계이므로
    진행 상태를 항상 보이게 둔다. */
 .cut-plan-stages {
-  margin: 0 0 22px;
+  flex-shrink: 0;
+  padding: 14px 40px 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  background: #0c0c0f;
 }
 
+/* 본문과 같은 폭에 맞춘다. 전체 폭으로 늘어나면 대본과 어긋나 보인다. */
 .cut-plan-stages ol {
+  width: 100%;
+  max-width: 1020px;
+  margin: 0 auto;
   display: flex;
   align-items: stretch;
   gap: 8px;
-  margin: 0;
   padding: 0;
   list-style: none;
 }

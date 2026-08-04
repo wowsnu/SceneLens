@@ -762,65 +762,65 @@ export default function StoryboardView() {
 
   return (
     <div className={`storyboard-view ${isExpanded && !drawingWorkspaceOpen ? 'with-narrative-rail' : ''}`}>
+      <div className="storyboard-main">
+        {isExpanded && !drawingWorkspaceOpen && (
+          <nav className="cut-plan-stages" aria-label="Storyboard stages">
+            <ol>
+              <li className={`stage-done${cutStage === 'script' ? ' stage-current' : ''}`}>
+                <button
+                  type="button"
+                  onClick={backToScript}
+                  disabled={cutStage === 'script'}
+                  aria-current={cutStage === 'script' ? 'step' : undefined}
+                >
+                  <span className="stage-index">1</span>
+                  <div>
+                    <strong>Script</strong>
+                    <em>{screenplay.length} lines · {beats.length} beats</em>
+                  </div>
+                </button>
+              </li>
+              <li className={`${cutPlanAccepted ? 'stage-done' : cutPlan.length > 0 ? 'stage-active' : ''}${cutStage === 'cutplan' ? ' stage-current' : ''}`}>
+                <button
+                  type="button"
+                  onClick={cutPlan.length === 0 ? requestCutPlan : reopenCutPlan}
+                  disabled={cutStage === 'cutplan'}
+                  aria-current={cutStage === 'cutplan' ? 'step' : undefined}
+                >
+                <span className="stage-index">2</span>
+                <div>
+                  <strong>Cut plan</strong>
+                  <em>
+                    {cutPlanSkipped
+                      ? '건너뜀 · 전부 Tentative'
+                      : cutPlanAccepted
+                        ? `${cutPlan.length} cuts 확정`
+                        : cutPlan.length > 0
+                          ? `${cutPlan.length} cuts 검토 중`
+                          : '컷 분해 필요'}
+                  </em>
+                </div>
+                </button>
+              </li>
+              <li className={`${cutPlanAccepted ? 'stage-active' : 'stage-locked'}${cutStage === 'panels' ? ' stage-current' : ''}`}>
+                <button
+                  type="button"
+                  onClick={acceptCutPlan}
+                  disabled={!cutPlanAccepted}
+                  aria-current={cutStage === 'panels' ? 'step' : undefined}
+                >
+                  <span className="stage-index">3</span>
+                  <div>
+                    <strong>Panels</strong>
+                    <em>{cutPlanAccepted ? `${flowShots.length} panels` : '컷 확정 후 열림'}</em>
+                  </div>
+                </button>
+              </li>
+            </ol>
+          </nav>
+        )}
       <div className="storyboard-scroll-container">
         <div className="storyboard-list-inner">
-          {isExpanded && !drawingWorkspaceOpen && (
-            <nav className="cut-plan-stages" aria-label="Storyboard stages">
-              <ol>
-                <li className={`stage-done${cutStage === 'script' ? ' stage-current' : ''}`}>
-                  <button
-                    type="button"
-                    onClick={backToScript}
-                    disabled={cutStage === 'script'}
-                    aria-current={cutStage === 'script' ? 'step' : undefined}
-                  >
-                    <span className="stage-index">1</span>
-                    <div>
-                      <strong>Script</strong>
-                      <em>{screenplay.length} lines · {beats.length} beats</em>
-                    </div>
-                  </button>
-                </li>
-                <li className={`${cutPlanAccepted ? 'stage-done' : cutPlan.length > 0 ? 'stage-active' : ''}${cutStage === 'cutplan' ? ' stage-current' : ''}`}>
-                  <button
-                    type="button"
-                    onClick={cutPlan.length === 0 ? requestCutPlan : reopenCutPlan}
-                    disabled={cutStage === 'cutplan'}
-                    aria-current={cutStage === 'cutplan' ? 'step' : undefined}
-                  >
-                  <span className="stage-index">2</span>
-                  <div>
-                    <strong>Cut plan</strong>
-                    <em>
-                      {cutPlanSkipped
-                        ? '건너뜀 · 전부 Tentative'
-                        : cutPlanAccepted
-                          ? `${cutPlan.length} cuts 확정`
-                          : cutPlan.length > 0
-                            ? `${cutPlan.length} cuts 검토 중`
-                            : '컷 분해 필요'}
-                    </em>
-                  </div>
-                  </button>
-                </li>
-                <li className={`${cutPlanAccepted ? 'stage-active' : 'stage-locked'}${cutStage === 'panels' ? ' stage-current' : ''}`}>
-                  <button
-                    type="button"
-                    onClick={acceptCutPlan}
-                    disabled={!cutPlanAccepted}
-                    aria-current={cutStage === 'panels' ? 'step' : undefined}
-                  >
-                    <span className="stage-index">3</span>
-                    <div>
-                      <strong>Panels</strong>
-                      <em>{cutPlanAccepted ? `${flowShots.length} panels` : '컷 확정 후 열림'}</em>
-                    </div>
-                  </button>
-                </li>
-              </ol>
-            </nav>
-          )}
-
           {showWriteScene && (
             <div className="inline-script-editor">
               <div className="editor-header">
@@ -1615,6 +1615,7 @@ export default function StoryboardView() {
             )
           })}
         </div>
+      </div>
       </div>
       {isExpanded && !drawingWorkspaceOpen && cutStage === 'panels' && (
         <ShotInspector
