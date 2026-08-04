@@ -1501,7 +1501,7 @@ const useStore = create((set, get) => ({
   // 사이 이음새는 컷 안이 되므로 사라진다. 다만 거기 적힌 '생략된 것'은
   // 이제 한 컷 안에서 일어나는 일이므로 내용으로 옮긴다 — 그냥 지우면
   // 기록해 둔 것이 조용히 사라진다.
-  mergeCuts: (firstCutId) => set((state) => {
+  mergeCuts: (firstCutId, { content = null } = {}) => set((state) => {
     const index = state.cutPlan.findIndex((item) => item.id === firstCutId)
     if (index < 0 || index >= state.cutPlan.length - 1) return {}
 
@@ -1515,8 +1515,9 @@ const useStore = create((set, get) => ({
 
     const merged = {
       ...first,
-      // 두 컷의 내용을 잇는다. 생략해 둔 것이 있으면 그것도 사이에 넣는다.
-      content: [
+      // 합쳐질 내용은 사용자가 미리보기에서 확정한 것을 쓴다. 자동으로
+      // 이어붙인 문장을 그대로 두면 두 컷이 무엇이 되는지를 AI가 정하게 된다.
+      content: content ?? [
         first.content,
         seam?.elision && `(${seam.elision})`,
         second.content,

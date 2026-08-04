@@ -85,18 +85,29 @@ export default function GridView({
   // 열려 있는 이음새 편집기. 한 번에 하나만 연다.
   const [openSeamId, setOpenSeamId] = useState(null)
 
-  // 병합하면 뒤 컷의 패널이 사라진다. 그림이 있으면 먼저 알린다 —
-  // 되돌릴 수 없는 것을 조용히 지우지 않는다 (Spec §22).
-  const handleMerge = (prevShot, shot, index) => {
-    if (shot.image) {
-      const ok = window.confirm(
-        `S${index + 1}의 그림이 사라집니다. 두 컷을 합칠까요?`,
-      )
-      if (!ok) return
-    }
-    const cut = cutPlan.find((item) => item.id === prevShot.cutPlanItemId)
-    if (cut) mergeCuts(cut.id)
-    setOpenSeamId(null)
+  // 실행 전에 무엇이 바뀌고 무엇이 사라지는지 보여준다 (DG2 P3).
+  // 눌러서 바로 실행하면 사용자는 결과만 받게 된다.
+  const [pendingEdit, setPendingEdit] = useState(null)
+  // 합쳐질 내용. AI가 이어붙인 것을 기본값으로 두되 고칠 수 있게 한다.
+  const [mergeDraft, setMergeDraft] = useState('')
+
+  // 미리보기를 열 때 초안을 만든다. 두 컷 사이에 생략해 둔 것이 있으면
+  // 그것도 넣는다 — 합치면 그 일이 한 컷 안에서 일어나기 때문이다.
+  const openMergePreview = (prevShot, shot, index) => {
+    const cutIndex = cutPlan.findIndex((item) => item.id === prevShot.cutPlanItemId)
+    if (cutIndex < 0 || cutIndex >= cutPlan.length - 1) return
+    const seam = seams[seamKeyFor(prevShot.id)]
+    setMergeDraft([
+      cutPlan[cutIndex].content,
+      seam?.elision && `(${seam.elision})`,
+      cutPlan[cutIndex + 1].content,
+    ].filter(Boolean).join(' '))
+    setPendingEdit({
+      kind: 'merge',
+      cutId: prevShot.cutPlanItemId,
+      index,
+      losesDrawing: Boolean(shot.image),
+    })
   }
   const [rangeMode, setRangeMode] = useState(false)   // true = waiting for second tap
   const [rangeAnchor, setRangeAnchor] = useState(null) // first tap index
@@ -312,7 +323,7 @@ export default function GridView({
                         <button
                           type="button"
                           className="grid-seam-merge"
-                          onClick={() => handleMerge(prevShot, shot, i)}
+                          onClick={() => openMergePreview(prevShot, shot, i)}
                         >
                           두 컷 합치기
                         </button>
@@ -362,7 +373,10 @@ export default function GridView({
                   {isHovered && shot.cutPlanItemId && (
                     <button
                       className="grid-cell-split"
-                      onClick={(e) => { e.stopPropagation(); splitCut(shot.cutPlanItemId) }}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setPendingEdit({ kind: 'split', cutId: shot.cutPlanItemId, index: i })
+                      }}
                       title="이 컷을 둘로 나눕니다"
                     >
                       <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round">
@@ -483,6 +497,89 @@ export default function GridView({
           </div>
         </button>}
       </div>
+
+      {/* 실행 전 영향 미리보기 (DG2 P3). 무엇이 바뀌고 무엇이 사라지는지
+          먼저 보이고, 합쳐질 내용은 그 자리에서 고칠 수 있게 한다 —
+          AI가 이어붙인 문장을 그대로 받게 하지 않는다. */}
+      {pendingEdit && (() => {
+        const cut = cutPlan.find((item) => item.id === pendingEdit.cutId)
+        if (!cut) return null
+        const cutIndex = cutPlan.findIndex((item) => item.id === pendingEdit.cutId)
+        const nextCut = cutPlan[cutIndex + 1]
+        const isMerge = pendingEdit.kind === 'merge'
+
+        return (
+          <div className="grid-edit-preview" role="dialog" aria-label="편집 미리보기">
+            <header>
+              <strong>{isMerge ? '두 컷 합치기' : '컷 나누기'}</strong>
+              <button type="button" onClick={() => setPendingEdit(null)} aria-label="닫기">✕</button>
+            </header>
+
+            <div className="grid-edit-diff">
+              <div className="grid-edit-before">
+                <span>지금</span>
+                <p>{cut.content || '(비어 있음)'}</p>
+                {isMerge && nextCut && <p>{nextCut.content || '(비어 있음)'}</p>}
+              </div>
+              <div className="grid-edit-arrow" aria-hidden="true">→</div>
+              <div className="grid-edit-after">
+                <span>바뀐 뒤</span>
+                {isMerge ? (
+                  <textarea
+                    value={mergeDraft}
+                    rows={3}
+                    onChange={(e) => setMergeDraft(e.target.value)}
+                    aria-label="합쳐진 내용"
+                  />
+                ) : (
+                  <>
+                    <p>{cut.content || '(비어 있음)'}</p>
+                    <p className="grid-edit-new">새 컷 · 내용은 직접 씁니다</p>
+                  </>
+                )}
+              </div>
+            </div>
+
+            {/* 함께 바뀌는 것. 요청한 변경과 구분해 보여준다. */}
+            <ul className="grid-edit-effects">
+              {isMerge ? (
+                <>
+                  <li>컷 {cutPlan.length} → {cutPlan.length - 1}</li>
+                  <li>두 컷 사이의 이음새가 사라집니다</li>
+                  {pendingEdit.losesDrawing && (
+                    <li className="warn">S{pendingEdit.index + 1}의 그림이 사라집니다</li>
+                  )}
+                </>
+              ) : (
+                <>
+                  <li>컷 {cutPlan.length} → {cutPlan.length + 1}</li>
+                  <li>사이에 새 이음새가 생깁니다 · 컷 · 연속</li>
+                  <li>기존 그림은 앞 컷에 남습니다</li>
+                </>
+              )}
+            </ul>
+
+            <div className="grid-edit-actions">
+              <button type="button" onClick={() => setPendingEdit(null)}>취소</button>
+              <button
+                type="button"
+                className="primary"
+                onClick={() => {
+                  if (isMerge) {
+                    mergeCuts(pendingEdit.cutId, { content: mergeDraft })
+                  } else {
+                    splitCut(pendingEdit.cutId)
+                  }
+                  setPendingEdit(null)
+                  setOpenSeamId(null)
+                }}
+              >
+                {isMerge ? '합치기' : '나누기'}
+              </button>
+            </div>
+          </div>
+        )
+      })()}
     </div>
   )
 }

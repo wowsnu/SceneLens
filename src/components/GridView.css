@@ -1,4 +1,5 @@
 .grid-view {
+  position: relative;
   width: 100%;
   height: 100%;
   display: flex;
@@ -848,4 +849,171 @@
 
 .grid-seam-merge:hover {
   background: rgba(196, 150, 210, 0.24);
+}
+
+/* --- 편집 미리보기 (DG2 P3) --------------------------------------------
+   실행 전에 무엇이 바뀌고 무엇이 사라지는지 보인다. 합쳐질 내용은 그
+   자리에서 고친다 — 결과만 받게 하지 않는다. */
+.grid-edit-preview {
+  position: absolute;
+  z-index: 40;
+  left: 50%;
+  bottom: 18px;
+  transform: translateX(-50%);
+  width: min(520px, calc(100% - 32px));
+  padding: 14px 16px;
+  border: 1px solid rgba(196, 150, 210, 0.4);
+  border-radius: 11px;
+  background: #14101a;
+  box-shadow: 0 16px 44px rgba(0, 0, 0, 0.7);
+}
+
+.grid-edit-preview header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 11px;
+}
+
+.grid-edit-preview header strong {
+  color: rgba(255, 255, 255, 0.92);
+  font-size: 13px;
+  font-weight: 750;
+}
+
+.grid-edit-preview header button {
+  width: 22px;
+  height: 22px;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.grid-edit-preview header button:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.grid-edit-diff {
+  display: flex;
+  align-items: stretch;
+  gap: 10px;
+}
+
+.grid-edit-before,
+.grid-edit-after {
+  flex: 1;
+  min-width: 0;
+  padding: 9px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.grid-edit-after {
+  border-color: rgba(196, 150, 210, 0.32);
+  background: rgba(196, 150, 210, 0.05);
+}
+
+.grid-edit-before > span,
+.grid-edit-after > span {
+  display: block;
+  margin-bottom: 6px;
+  color: rgba(255, 255, 255, 0.35);
+  font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+}
+
+.grid-edit-before p,
+.grid-edit-after p {
+  margin: 0 0 5px;
+  color: rgba(255, 255, 255, 0.68);
+  font-size: 11.5px;
+  line-height: 1.5;
+}
+
+.grid-edit-new {
+  color: rgba(212, 172, 226, 0.75) !important;
+  font-style: italic;
+}
+
+.grid-edit-after textarea {
+  width: 100%;
+  padding: 6px 8px;
+  border: 1px solid rgba(196, 150, 210, 0.35);
+  border-radius: 5px;
+  background: rgba(0, 0, 0, 0.32);
+  color: rgba(255, 255, 255, 0.9);
+  font-family: inherit;
+  font-size: 11.5px;
+  line-height: 1.5;
+  resize: vertical;
+}
+
+.grid-edit-after textarea:focus {
+  border-color: rgba(196, 150, 210, 0.7);
+  outline: none;
+}
+
+.grid-edit-arrow {
+  align-self: center;
+  color: rgba(255, 255, 255, 0.28);
+  font-size: 14px;
+}
+
+/* 함께 바뀌는 것. 요청한 변경과 구분해 보여준다. */
+.grid-edit-effects {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin: 11px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.grid-edit-effects li {
+  padding: 3px 8px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.05);
+  color: rgba(255, 255, 255, 0.55);
+  font-size: 10.5px;
+}
+
+.grid-edit-effects li.warn {
+  background: rgba(216, 120, 98, 0.16);
+  color: rgba(240, 160, 140, 0.95);
+  font-weight: 700;
+}
+
+.grid-edit-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 7px;
+  margin-top: 13px;
+}
+
+.grid-edit-actions button {
+  padding: 6px 14px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 6px;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.6);
+  font-family: inherit;
+  font-size: 11.5px;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.grid-edit-actions button.primary {
+  border-color: rgba(196, 150, 210, 0.6);
+  background: rgba(196, 150, 210, 0.18);
+  color: rgba(212, 172, 226, 0.98);
+}
+
+.grid-edit-actions button.primary:hover {
+  background: rgba(196, 150, 210, 0.3);
 }
