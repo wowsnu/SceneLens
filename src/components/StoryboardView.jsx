@@ -1981,6 +1981,11 @@ export default function StoryboardView() {
                         const { marks: panelMarks, notes: panelNotes } = buildPanelMarks(
                           shotPrompt?.responsibility?.offImage || [],
                         )
+                        // 화살표를 그렸으면 그 채널은 이미 화면에 있다.
+                        const hasArrows = (shot.arrows || []).length > 0
+                        const visibleNotes = panelNotes.filter(
+                          (note) => !(note.needsArrow && hasArrows),
+                        )
 
                         return (
                           <div
@@ -2104,62 +2109,46 @@ export default function StoryboardView() {
                                 </div>
                               </div>
                             )}
+                            {/* 메타 줄은 패널을 식별하는 최소한만 남긴다.
+                                샷 사이즈·출처·프롬프트는 인스펙터에 다 있고,
+                                열두 패널마다 반복되면 그림이 안 보인다. */}
                             <div className="sb-shot-meta">
                               <span>{beatShotLabel}</span>
-                              {/* 이 패널이 어느 컷에서 나왔는지 보인다. */}
-                              {shotCut && (
-                                <span
-                                  className={`sb-shot-cut-origin provenance-row-${shotCut.provenance.toLowerCase()}`}
-                                  title={`Cut ${shotCut.order} · ${shotCut.shotSize} · ${shotCut.provenance}`}
-                                >
-                                  C{String(shotCut.order).padStart(2, '0')} · {shotCut.shotSize}
-                                </span>
-                              )}
-                              {/* 빈 패널은 그 자리가 이미 비었다고 말한다.
-                                  뱃지로 한 번 더 말할 필요가 없다. */}
-                              {(candidate || committedImage) && (
-                                <span className="sb-shot-source">
-                                  {candidate
-                                    ? 'Candidate'
-                                    : shot.isAIGenerated ? 'AI' : 'Drawn'}
-                                </span>
-                              )}
 
                               {/* 화살표는 그림을 고치는 것이 아니라 그림 밖
                                   채널이다. Draw와 섞이지 않게 패널 밖에 둔다. */}
-                              {committedImage && (
-                                <button
-                                  type="button"
-                                  className={`sb-arrow-toggle${arrowDrawingShotId === shot.id ? ' active' : ''}`}
-                                  aria-pressed={arrowDrawingShotId === shot.id}
-                                  title="끌어서 그리고, 그린 화살표를 클릭하면 지웁니다"
-                                  onClick={(event) => {
-                                    event.stopPropagation()
-                                    setArrowDrawingShotId(
-                                      arrowDrawingShotId === shot.id ? null : shot.id,
-                                    )
-                                  }}
-                                >
-                                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round">
-                                    <path d="M5 12h13M13 6l6 6-6 6" />
-                                  </svg>
-                                  {arrowDrawingShotId === shot.id ? '완료' : '화살표'}
-                                </button>
-                              )}
+                              <button
+                                type="button"
+                                className={`sb-arrow-toggle${arrowDrawingShotId === shot.id ? ' active' : ''}`}
+                                aria-pressed={arrowDrawingShotId === shot.id}
+                                aria-label="화살표 그리기"
+                                title="끌어서 그리고, 그린 화살표를 클릭하면 지웁니다"
+                                onClick={(event) => {
+                                  event.stopPropagation()
+                                  setArrowDrawingShotId(
+                                    arrowDrawingShotId === shot.id ? null : shot.id,
+                                  )
+                                }}
+                              >
+                                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round">
+                                  <path d="M5 12h13M13 6l6 6-6 6" />
+                                </svg>
+                                {arrowDrawingShotId === shot.id && '완료'}
+                              </button>
                             </div>
 
-                            {/* 화살표나 배지로 그릴 수 없는 것. 갈 곳이 없으면
-                                결국 누락되므로 패널 아래에 남긴다. */}
-                            {panelNotes.length > 0 && (
+                            {/* 아직 그리지 않은 그림 밖 채널만 남긴다.
+                                이미 그렸으면 화살표가 그 자리에 있으므로
+                                칩으로 한 번 더 말하지 않는다. */}
+                            {visibleNotes.length > 0 && (
                               <ul className="sb-shot-offimage-notes">
-                                {panelNotes.map((note, index) => (
+                                {visibleNotes.map((note, index) => (
                                   <li
                                     key={`${note.element}-${index}`}
-                                    className={[
-                                      note.pending ? 'pending' : '',
-                                      note.needsArrow && !(shot.arrows || []).length ? 'needs-arrow' : '',
-                                    ].filter(Boolean).join(' ')}
-                                    title={note.needsArrow ? '화살표로 표시하세요' : undefined}
+                                    className={note.needsArrow ? 'needs-arrow' : ''}
+                                    title={note.needsArrow
+                                      ? '화살표 버튼을 눌러 표시하세요'
+                                      : note.element}
                                   >
                                     <em>{note.element}</em>
                                     {note.label !== note.element && <span>{note.label}</span>}

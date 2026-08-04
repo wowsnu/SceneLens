@@ -674,7 +674,6 @@
 .sb-shot-delete:hover:not(:disabled) { border-color: rgba(248, 113, 113, 0.68); color: #fecaca; }
 .sb-shot-delete:disabled { cursor: not-allowed; opacity: 0.14; }
 .sb-shot-meta { display: flex; justify-content: space-between; align-items: center; margin-top: 8px; color: #a1a1aa; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em; }
-.sb-shot-source { padding: 2px 7px; border-radius: 999px; background: rgba(255, 255, 255, 0.06); color: #8b8b94; font-size: 10px; }
 .sb-img-wrapper { background: #000; border-radius: 12px; overflow: hidden; border: 1px solid rgba(255, 255, 255, 0.12); aspect-ratio: 16/9; cursor: pointer; position: relative; }
 .sb-img-wrapper img { width: 100%; height: 100%; object-fit: cover; }
 .sb-add-shot { aspect-ratio: 16/9; display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(255, 255, 255, 0.02); border: 1px dashed rgba(255, 255, 255, 0.2); border-radius: 12px; color: #71717a; cursor: pointer; }
@@ -1024,28 +1023,6 @@
 }
 
 /* 패널이 어느 컷에서 나왔는지 카드에 남긴다. */
-.sb-shot-cut-origin {
-  padding: 1px 5px;
-  border-radius: 4px;
-  background: rgba(255, 255, 255, 0.05);
-  color: rgba(255, 255, 255, 0.42);
-  font-family: 'Courier Prime', ui-monospace, monospace;
-  font-size: 9.5px;
-  font-weight: 700;
-  white-space: nowrap;
-}
-
-/* 아직 확인하지 않은 컷에서 나온 패널임을 표시한다. */
-.sb-shot-cut-origin.provenance-row-ai {
-  background: rgba(126, 168, 214, 0.14);
-  color: rgba(158, 194, 232, 0.95);
-}
-
-.sb-shot-cut-origin.provenance-row-user {
-  background: rgba(216, 170, 98, 0.14);
-  color: #e1bd85;
-}
-
 /* 줄콘티 표: 컷을 나란히 놓아 흐름이 한눈에 읽히게 한다.
    카드로 쌓으면 컷 간 비교가 되지 않는다. */
 .cut-plan-table-wrap {
@@ -3158,7 +3135,7 @@
   align-items: center;
   gap: 3px;
   margin-left: auto;
-  padding: 2px 7px;
+  padding: 3px 6px;
   border: 1px solid rgba(255, 255, 255, 0.14);
   border-radius: 999px;
   background: transparent;
