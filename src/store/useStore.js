@@ -739,13 +739,71 @@ export const RESPONSIBILITY_LEVELS = [
 
 // 위임한 요소는 그림에 그리지 않는 대신 이미지 밖 채널에 기록한다.
 // (design_goal.md DG1 P3: "액팅 메모, 움직임 화살표, 카메라 이동, 타임코드")
+//
+// `mark`는 패널 위에 어떤 형태로 그려지는지다. 화살표는 화살표로 그려져야
+// 하고, 타임코드는 모서리 숫자여야 한다 — 목록의 글자로만 있으면 "그림 밖
+// 채널에 기록한다"가 성립하지 않는다.
+//   arrow  → 패널 위 방향 화살표
+//   corner → 모서리 배지
+//   note   → 패널 아래 텍스트 메모 (그릴 수 없는 것들의 기본값)
 export const OFFIMAGE_CHANNELS = [
-  { id: 'acting-note', label: '액팅 메모' },
-  { id: 'movement-arrow', label: '움직임 화살표' },
-  { id: 'camera-move', label: '카메라 이동' },
-  { id: 'timecode', label: '타임코드' },
-  { id: 'copy', label: '카피' },
+  { id: 'acting-note', label: '액팅 메모', mark: 'note' },
+  { id: 'movement-arrow', label: '움직임 화살표', mark: 'arrow' },
+  { id: 'camera-move', label: '카메라 이동', mark: 'arrow' },
+  { id: 'timecode', label: '타임코드', mark: 'corner' },
+  { id: 'copy', label: '카피', mark: 'note' },
 ]
+
+// 방향 문구에서 화살표 각도를 읽는다. 못 읽으면 화살표를 그리지 않고
+// 메모로 떨어뜨린다 — 방향을 모르면서 화살표를 그리면 거짓말이 된다.
+const ARROW_HINTS = [
+  [['왼쪽', '좌', 'left', 'Pan left'], 180],
+  [['오른쪽', '우', 'right', 'Pan right'], 0],
+  [['위로', '위', 'up', 'Tilt up', '상승'], -90],
+  [['아래', '하강', 'down', 'Tilt down'], 90],
+  [['들어간다', '전진', 'in', 'Push in', 'Dolly in', 'Zoom in'], 0],
+  [['빠진다', '후퇴', 'out', 'Pull out', 'Dolly out', 'Zoom out'], 180],
+]
+
+export const readArrowAngle = (text = '') => {
+  const source = text.toLowerCase()
+  const hit = ARROW_HINTS.find(([hints]) => (
+    hints.some((hint) => source.includes(hint.toLowerCase()))
+  ))
+  return hit ? hit[1] : null
+}
+
+// 선언을 패널이 그릴 수 있는 마크로 바꾼다.
+// 그릴 수 없으면(방향을 못 읽거나 채널이 note면) 메모로 남긴다.
+export const buildPanelMarks = (offImage = []) => {
+  const marks = []
+  const notes = []
+
+  offImage.forEach(({ element, channel, direction }) => {
+    const spec = OFFIMAGE_CHANNELS.find((entry) => entry.id === channel)
+    const label = direction || element
+
+    if (spec?.mark === 'arrow') {
+      const angle = readArrowAngle(direction || '')
+      if (angle !== null) {
+        marks.push({ type: 'arrow', angle, element, label })
+        return
+      }
+      // 방향을 못 읽었다. 화살표 대신 메모로.
+      notes.push({ element, label, reason: 'unreadable-direction' })
+      return
+    }
+
+    if (spec?.mark === 'corner') {
+      marks.push({ type: 'corner', element, label })
+      return
+    }
+
+    notes.push({ element, label })
+  })
+
+  return { marks, notes }
+}
 
 const createDeclarationId = () => `decl-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
 
@@ -1159,6 +1217,13 @@ const useStore = create((set, get) => ({
     cutPlanAccepted: true,
     cutPlanStageOverride: null,
   }),
+
+  // 패널 메모. 오버레이로 그릴 수 없는 것을 적어두는 자리다 —
+  // 화살표나 배지로 표현되지 않는 지시가 갈 곳이 없으면 결국 누락된다.
+  setShotNote: (shotId, note) => set((state) => updateActiveBranchShots(
+    state,
+    (shots) => shots.map((shot) => (shot.id === shotId ? { ...shot, note } : shot)),
+  )),
 
   // 선언 단계에서 컷으로 되돌아간다. 선언도 컷 확정도 지우지 않는다 —
   // 단계 이동은 작업을 파괴하지 않는다.

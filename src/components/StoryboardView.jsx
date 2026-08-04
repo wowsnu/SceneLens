@@ -4,6 +4,7 @@ import useStore, {
   selectCutStage,
   RESPONSIBILITY_LEVELS,
   OFFIMAGE_CHANNELS,
+  buildPanelMarks,
 } from '../store/useStore'
 import './StoryboardView.css'
 
@@ -364,6 +365,46 @@ function ShotInspector({
   )
 }
 
+// 이미지 밖 채널을 패널 위에 그린다 (DG1 P3).
+// 목록의 글자로만 두면 "그림 밖 채널에 기록한다"가 성립하지 않는다 —
+// 화살표는 화살표여야 의도적으로 남긴 것이 누락으로 보이지 않는다.
+function PanelOverlay({ marks }) {
+  if (marks.length === 0) return null
+
+  const arrows = marks.filter((mark) => mark.type === 'arrow')
+  const corners = marks.filter((mark) => mark.type === 'corner')
+
+  return (
+    <div className="sb-panel-overlay" aria-hidden="true">
+      {arrows.map((mark, index) => (
+        <div
+          key={`${mark.element}-${index}`}
+          className="sb-overlay-arrow"
+          style={{
+            transform: `rotate(${mark.angle}deg)`,
+            top: `${48 + index * 18}%`,
+          }}
+        >
+          <svg viewBox="0 0 64 16" preserveAspectRatio="none">
+            <path d="M2 8 H54" strokeWidth="2.5" strokeLinecap="round" />
+            <path d="M46 2 L56 8 L46 14" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+          </svg>
+          {/* 각도를 되돌려 글자는 항상 바로 읽히게 한다. */}
+          <span style={{ transform: `rotate(${-mark.angle}deg)` }}>{mark.label}</span>
+        </div>
+      ))}
+
+      {corners.length > 0 && (
+        <div className="sb-overlay-corner">
+          {corners.map((mark) => (
+            <span key={mark.element} title={mark.element}>{mark.label}</span>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 // 책임 범위 선언 카드 (DG1 P3).
 // 두 축을 나란히 둔다 — 책임(누가 확정하는가)과 구속강도(얼마나 묶는가)는
 // 직교하므로 한 축으로 합치면 표현할 수 없는 조합이 생긴다.
@@ -599,6 +640,7 @@ export default function StoryboardView() {
   const addDeclaration = useStore((s) => s.addDeclaration)
   const commitDeclarations = useStore((s) => s.commitDeclarations)
   const backToCutPlan = useStore((s) => s.backToCutPlan)
+  const setShotNote = useStore((s) => s.setShotNote)
   const addBeatAfter = useStore((s) => s.addBeatAfter)
   const requestBeatSplit = useStore((s) => s.requestBeatSplit)
   const requestScreenplayFormatting = useStore((s) => s.requestScreenplayFormatting)
@@ -1806,6 +1848,18 @@ export default function StoryboardView() {
                         const candidate = panelCandidates[shot.id]
                         const displayImage = candidate?.image || committedImage
                         const isSelected = selectedShotIds.includes(shot.id)
+                        // 이 패널이 그려야 할 그림 밖 채널 (DG1 P3).
+                        const shotCut = cutPlan.find((item) => item.id === shot.cutPlanItemId)
+                        const shotPrompt = shotCut
+                          ? buildCutPrompt(shotCut, {
+                            sceneIntention,
+                            sceneNote: scenePromptNote,
+                            declarations,
+                          })
+                          : null
+                        const { marks: panelMarks, notes: panelNotes } = buildPanelMarks(
+                          shotPrompt?.responsibility?.offImage || [],
+                        )
 
                         return (
                           <div
@@ -1871,6 +1925,7 @@ export default function StoryboardView() {
                             ) : committedImage ? (
                               <div className="sb-img-wrapper">
                                 <img src={displayImage} alt={beatShotLabel} />
+                                <PanelOverlay marks={panelMarks} />
                                 <div className="sb-hover-actions">
                                   <button
                                     className="sb-action-btn"
@@ -1921,18 +1976,14 @@ export default function StoryboardView() {
                             <div className="sb-shot-meta">
                               <span>{beatShotLabel}</span>
                               {/* 이 패널이 어느 컷에서 나왔는지 보인다. */}
-                              {(() => {
-                                const originCut = cutPlan.find((item) => item.id === shot.cutPlanItemId)
-                                if (!originCut) return null
-                                return (
-                                  <span
-                                    className={`sb-shot-cut-origin provenance-row-${originCut.provenance.toLowerCase()}`}
-                                    title={`Cut ${originCut.order} · ${originCut.shotSize} · ${originCut.provenance}`}
-                                  >
-                                    C{String(originCut.order).padStart(2, '0')} · {originCut.shotSize}
-                                  </span>
-                                )
-                              })()}
+                              {shotCut && (
+                                <span
+                                  className={`sb-shot-cut-origin provenance-row-${shotCut.provenance.toLowerCase()}`}
+                                  title={`Cut ${shotCut.order} · ${shotCut.shotSize} · ${shotCut.provenance}`}
+                                >
+                                  C{String(shotCut.order).padStart(2, '0')} · {shotCut.shotSize}
+                                </span>
+                              )}
                               <span className="sb-shot-source">
                                 {candidate
                                   ? 'Candidate'
@@ -1941,6 +1992,29 @@ export default function StoryboardView() {
                                     : 'Blank'}
                               </span>
                             </div>
+
+                            {/* 화살표나 배지로 그릴 수 없는 것. 갈 곳이 없으면
+                                결국 누락되므로 패널 아래에 남긴다. */}
+                            {panelNotes.length > 0 && (
+                              <ul className="sb-shot-offimage-notes">
+                                {panelNotes.map((note, index) => (
+                                  <li key={`${note.element}-${index}`}>
+                                    <em>{note.element}</em>
+                                    {note.label !== note.element && <span>{note.label}</span>}
+                                  </li>
+                                ))}
+                              </ul>
+                            )}
+
+                            {/* 자유 메모. 선언으로 잡히지 않는 지시가 갈 자리. */}
+                            <textarea
+                              className="sb-shot-note"
+                              value={shot.note || ''}
+                              rows={1}
+                              placeholder="메모"
+                              onClick={(event) => event.stopPropagation()}
+                              onChange={(event) => setShotNote(shot.id, event.target.value)}
+                            />
                           </div>
                         )
                       })}
