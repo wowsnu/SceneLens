@@ -3120,3 +3120,46 @@
   background: rgba(255, 255, 255, 0.08);
   color: rgba(255, 255, 255, 0.8);
 }
+
+/* 프롬프트의 '고정: ...'은 선언의 결과다. 눌러서 그 선언으로 되돌아간다. */
+.shot-inspector-shared.expandable {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 5px 7px;
+  margin-top: 7px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.shot-inspector-shared.expandable:hover {
+  border-color: rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.03);
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.shared-caret {
+  margin-left: auto;
+  color: rgba(255, 255, 255, 0.3);
+  font-size: 10px;
+}
+
+.shared-declaration-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 6px 0 0;
+  padding: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 7px;
+  background: rgba(0, 0, 0, 0.22);
+  list-style: none;
+}
+
+.shared-declaration-list li {
+  padding: 8px 9px;
+  border: 1px solid rgba(126, 200, 160, 0.2);
+  border-radius: 6px;
+  background: rgba(126, 200, 160, 0.03);
+}

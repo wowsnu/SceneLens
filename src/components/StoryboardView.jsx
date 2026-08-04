@@ -173,6 +173,70 @@ function ScriptLineEditor({
 }
 
 // Panels 단계의 오른쪽. 선택한 패널이 어느 컷에서 왔고 무엇이 정해져
+// 프롬프트에 걸린 장면 공통 지시. '고정: ...'은 선언의 결과이므로
+// 펼쳐서 그 자리에서 다시 판정할 수 있어야 한다 (DG1 P4: 제약 해제).
+function SharedPromptLine({ shared, declarations, onDecide, onReject }) {
+  const [open, setOpen] = useState(false)
+  const canOpen = declarations.length > 0
+
+  return (
+    <div className="shot-inspector-shared-block">
+      <p
+        className={`shot-inspector-shared${canOpen ? ' expandable' : ''}`}
+        {...(canOpen ? {
+          role: 'button',
+          tabIndex: 0,
+          title: '펼쳐서 다시 정하기',
+          onClick: () => setOpen(!open),
+          onKeyDown: (event) => {
+            if (event.key === 'Enter' || event.key === ' ') {
+              event.preventDefault()
+              setOpen(!open)
+            }
+          },
+        } : {})}
+      >
+        {shared}
+        {canOpen && <span className="shared-caret">{open ? '⌃' : '⌄'}</span>}
+      </p>
+
+      {open && (
+        <ul className="shared-declaration-list">
+          {declarations.map((decl) => (
+            <li key={decl.id}>
+              <div className="deferred-head">
+                <strong>{decl.element}</strong>
+                <button
+                  type="button"
+                  className="deferred-dismiss"
+                  title="이 요소는 선언하지 않는다"
+                  aria-label={`${decl.element} 선언하지 않음`}
+                  onClick={() => onReject(decl.id)}
+                >
+                  ×
+                </button>
+              </div>
+              <div className="deferred-chips">
+                {RESPONSIBILITY_LEVELS.map((level) => (
+                  <button
+                    key={level.id}
+                    type="button"
+                    className={decl.responsibility === level.id ? 'active' : ''}
+                    title={level.hint}
+                    onClick={() => onDecide(decl.id, level.id)}
+                  >
+                    {level.label}
+                  </button>
+                ))}
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  )
+}
+
 // 있는지 보여주고 그 자리에서 고친다. 값의 출처는 컷이므로 컷을 고친다.
 // 설계 근거: docs/PANEL_GENERATION_DESIGN.md §3.3
 function ShotInspector({
@@ -267,7 +331,14 @@ function ShotInspector({
           onChange={(event) => onChange(cut.id, { promptOverride: event.target.value })}
           placeholder="컷 내용이 비어 있습니다."
         />
-        {prompt?.shared && <p className="shot-inspector-shared">{prompt.shared}</p>}
+        {prompt?.shared && (
+          <SharedPromptLine
+            shared={prompt.shared}
+            declarations={prompt.responsibility?.constrainedDeclarations || []}
+            onDecide={onDeclarationDecide}
+            onReject={onDeclarationReject}
+          />
+        )}
 
         {/* 이 컷이 무엇을 그림에 맡기지 않았는지 (DG1 P3).
             생성된 그림에 그 요소가 보이더라도 결정이 아니라는 표시다. */}

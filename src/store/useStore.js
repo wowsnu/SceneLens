@@ -671,9 +671,10 @@ export const buildCutPrompt = (cut, {
   const applicable = scoped.filter((decl) => decl.status === 'Accepted')
 
   // 엄격히 고정한 요소는 명시적 제약이 된다 (Spec §22.12).
-  const constraints = applicable
-    .filter((decl) => decl.responsibility === 'image')
-    .map((decl) => decl.element)
+  // id를 함께 넘긴다 — 프롬프트에 나온 결과에서 그 선언으로 되돌아갈 수
+  // 있어야 한다. 판정은 언제든 다시 열 수 있어야 하기 때문이다 (DG1 P4).
+  const constrained = applicable.filter((decl) => decl.responsibility === 'image')
+  const constraints = constrained.map((decl) => decl.element)
 
   // 위임한 요소는 그리지 말라고 지시하는 대신 프롬프트에서 다루지 않는다.
   // 모델은 어차피 무언가를 그리지만, 그것이 결정으로 굳지 않게 하는 것은
@@ -722,7 +723,13 @@ export const buildCutPrompt = (cut, {
     parts: { opening, action, castLine, emphasis },
     // 이 컷이 무엇을 책임지고 무엇을 넘겼는지. 화면 표시와 DG3의 평가 범위가
     // 이 값을 읽는다 — 위임한 것은 전달 실패로 보고되면 안 된다.
-    responsibility: { constraints, delegated, offImage },
+    responsibility: {
+      constraints,
+      delegated,
+      offImage,
+      // 프롬프트의 '고정:' 줄을 눌러 그 선언을 다시 여는 데 쓴다.
+      constrainedDeclarations: constrained,
+    },
   }
 }
 
