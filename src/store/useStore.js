@@ -832,6 +832,71 @@ export const diagnoseCoverage = (cutPlan = []) => {
   return findings
 }
 
+// --- 편집 렌즈: 이음새 진단 ---------------------------------------------
+// 컷 사이(이음새)를 본다. 컷 하나하나는 멀쩡해도 이어 붙이면 문제가 되는
+// 것들이다 — 대본의 사건이 컷으로 안 나뉘었거나, 두 컷이 같은 일을 하거나,
+// 컷 없이 시간이 건너뛰는 경우.
+//
+// 삽입·삭제는 표에 이미 있다(행마다 `+`). 그래서 여기서도 고치지 않고
+// 어느 이음새에 무엇이 있는지만 짚는다 (발견과 처분의 분리).
+export const diagnoseSeams = (cutPlan = [], screenplay = []) => {
+  if (cutPlan.length === 0) return []
+  const findings = []
+
+  // 1. 한 컷에 사건이 여러 개 압축돼 있다. 대본의 액션 줄 수와 그 Beat의
+  //    컷 수를 견준다 — 행동이 여러 단계인데 컷이 하나면 화면이 그것을
+  //    한 장에 담을 수 없다.
+  const beats = [...new Set(cutPlan.map((cut) => cut.beat))]
+  beats.forEach((beat) => {
+    const inBeat = cutPlan.filter((cut) => cut.beat === beat)
+    const actions = screenplay.filter((el) => (el.beat ?? 0) === beat && el.type === 'action')
+    if (actions.length >= 3 && inBeat.length === 1) {
+      findings.push({
+        id: `dense-${beat}`,
+        type: 'compressed',
+        title: `Beat ${beat + 1} · 행동 ${actions.length}개가 컷 하나에`,
+        detail: '대본은 여러 단계로 적혀 있는데 컷이 하나입니다. 나눠야 순서가 보입니다.',
+        cutIds: inBeat.map((cut) => cut.id),
+        action: 'split',
+      })
+    }
+  })
+
+  // 2. 붙어 있는 두 컷이 같은 내용을 담고 있다. 컷을 나눈 값이 없다.
+  cutPlan.forEach((cut, index) => {
+    if (index === 0) return
+    const prev = cutPlan[index - 1]
+    if (!cut.content || !prev.content) return
+    if (cut.content.trim() === prev.content.trim()) {
+      findings.push({
+        id: `dup-${cut.id}`,
+        type: 'duplicate',
+        title: `컷 ${prev.beat + 1}-${prev.beatOrder} · ${cut.beat + 1}-${cut.beatOrder} 내용 같음`,
+        detail: '두 컷이 같은 것을 담고 있습니다. 하나로 합치거나 한쪽을 다시 쓰세요.',
+        cutIds: [prev.id, cut.id],
+        action: 'merge',
+      })
+    }
+  })
+
+  // 3. Beat가 통째로 컷 없이 넘어갔다. 대본에 있는데 화면에 없는 것이다.
+  const scriptBeats = [...new Set(screenplay.map((el) => el.beat ?? 0))]
+  scriptBeats.forEach((beat) => {
+    if (cutPlan.some((cut) => cut.beat === beat)) return
+    const near = cutPlan.filter((cut) => cut.beat < beat).slice(-1)
+    findings.push({
+      id: `gap-${beat}`,
+      type: 'skipped-beat',
+      title: `Beat ${beat + 1}에 컷이 없음`,
+      detail: '대본에는 있는데 컷으로 나뉘지 않았습니다. 그대로 두면 화면에서 사라집니다.',
+      cutIds: near.map((cut) => cut.id),
+      action: 'insert',
+    })
+  })
+
+  return findings
+}
+
 // --- Scene state: 컷을 가로지르는 기준 ----------------------------------
 // 여러 컷에 같은 인물과 공간이 나온다. 컷마다 프롬프트를 따로 조립하면
 // 컷 1의 '관제실'과 컷 5의 '관제실'이 각자 해석되어 다른 방이 된다.

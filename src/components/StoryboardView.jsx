@@ -6,6 +6,7 @@ import useStore, {
   OFFIMAGE_CHANNELS,
   buildPanelMarks,
   diagnoseCoverage,
+  diagnoseSeams,
 } from '../store/useStore'
 import './StoryboardView.css'
 
@@ -63,6 +64,12 @@ const SCRIPT_LINE_TYPES = [
 
 // Script 단계에서 대본을 그 자리에서 고친다. 별도 raw 편집기를 열고
 // 전체를 다시 붙여넣지 않아도 되고, beat 구조가 유지된다.
+const SEAM_ACTION_LABEL = {
+  split: '나눌 컷 보기',
+  merge: '두 컷 보기',
+  insert: '넣을 자리 보기',
+}
+
 function ScriptLineEditor({
   element, index, onChange, onChangeType, onInsertAfter, onRemove, canRemove, showTools,
   autoFocus, focusCaret, onFocused, onMoveFocus,
@@ -705,6 +712,8 @@ export default function StoryboardView() {
   // 판정은 전부 패널의 인스펙터에서 한다 (DG1 P4).
   // 여러 컷을 함께 읽어야 보이는 문제. 컷 표는 한 행씩만 보여준다.
   const coverageFindings = diagnoseCoverage(cutPlan)
+  // 컷 사이의 문제. 컷 하나만 보면 드러나지 않는다.
+  const seamFindings = diagnoseSeams(cutPlan, screenplay)
   // 아직 정하지 않은 씬 기준. 비워둔 것이 보여야 누락과 구분된다.
   const undecidedSceneFacts = sceneState.characters
     .reduce((count, character) => count + character.facts.filter((f) => f.open).length, 0)
@@ -2234,6 +2243,61 @@ export default function StoryboardView() {
                             }}
                           >
                             해당 컷 보기 · {finding.cutIds.length}
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+                )}
+              </section>
+            )}
+
+            {/* 컷 사이를 본다. 삽입·삭제는 표에 이미 있으므로 여기서는
+                어느 이음새에 무엇이 있는지만 짚는다. */}
+            {cutStage === 'cutplan' && (
+              <section className={`rail-agent${openAgent === 'editing' ? ' open' : ''}`}>
+                <button
+                  type="button"
+                  className="rail-agent-head"
+                  aria-expanded={openAgent === 'editing'}
+                  onClick={() => setOpenAgent(openAgent === 'editing' ? null : 'editing')}
+                >
+                  <span className="editing-agent-mark" aria-hidden="true">E</span>
+                  <div>
+                    <strong>Editing</strong>
+                    <span>Seams</span>
+                  </div>
+                  {seamFindings.length > 0 && (
+                    <em className="rail-agent-badge is-open">{seamFindings.length}</em>
+                  )}
+                  <svg className="rail-agent-caret" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="m6 9 6 6 6-6" />
+                  </svg>
+                </button>
+                {openAgent === 'editing' && (
+                <div className="rail-agent-body">
+                  <p className="rail-lens-lead">
+                    컷 하나하나는 멀쩡해도 이어 붙이면 문제가 되는 것들입니다.
+                    컷을 나누고 합치는 것은 표에서 합니다.
+                  </p>
+                  {seamFindings.length === 0 ? (
+                    <p className="rail-coverage-clear">지금 이음새에서 걸리는 것이 없습니다.</p>
+                  ) : (
+                    <ul className="rail-coverage">
+                      {seamFindings.map((finding) => (
+                        <li key={finding.id}>
+                          <strong>{finding.title}</strong>
+                          <p>{finding.detail}</p>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const target = cutPlan.find((cut) => cut.id === finding.cutIds[0])
+                              if (target) setActiveBeat(target.beat)
+                              setExpandedPromptCutId(null)
+                            }}
+                          >
+                            {SEAM_ACTION_LABEL[finding.action] || '해당 컷 보기'}
                           </button>
                         </li>
                       ))}
