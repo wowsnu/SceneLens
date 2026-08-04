@@ -41,6 +41,9 @@ export default function GridView({
   const seams = useStore((s) => s.seams)
   const updateSeam = useStore((s) => s.updateSeam)
   const clearSeam = useStore((s) => s.clearSeam)
+  const cutPlan = useStore((s) => s.cutPlan)
+  const mergeCuts = useStore((s) => s.mergeCuts)
+  const splitCut = useStore((s) => s.splitCut)
   const autoFill = useStore((s) => s.autoFill)
 
   // Build shotId → preview insertions map (when a version is being previewed)
@@ -81,6 +84,20 @@ export default function GridView({
   const [hoveredIdx, setHoveredIdx] = useState(null)
   // 열려 있는 이음새 편집기. 한 번에 하나만 연다.
   const [openSeamId, setOpenSeamId] = useState(null)
+
+  // 병합하면 뒤 컷의 패널이 사라진다. 그림이 있으면 먼저 알린다 —
+  // 되돌릴 수 없는 것을 조용히 지우지 않는다 (Spec §22).
+  const handleMerge = (prevShot, shot, index) => {
+    if (shot.image) {
+      const ok = window.confirm(
+        `S${index + 1}의 그림이 사라집니다. 두 컷을 합칠까요?`,
+      )
+      if (!ok) return
+    }
+    const cut = cutPlan.find((item) => item.id === prevShot.cutPlanItemId)
+    if (cut) mergeCuts(cut.id)
+    setOpenSeamId(null)
+  }
   const [rangeMode, setRangeMode] = useState(false)   // true = waiting for second tap
   const [rangeAnchor, setRangeAnchor] = useState(null) // first tap index
 
@@ -289,6 +306,16 @@ export default function GridView({
                           placeholder="예: 재인이 방을 가로지르는 동안"
                           onChange={(e) => updateSeam(prevShot.id, { elision: e.target.value })}
                         />
+
+                        {/* 이음새를 없애는 개입. 두 컷이 하나가 되므로
+                            이 이음새는 컷 안이 된다 (DG2 P1 병합). */}
+                        <button
+                          type="button"
+                          className="grid-seam-merge"
+                          onClick={() => handleMerge(prevShot, shot, i)}
+                        >
+                          두 컷 합치기
+                        </button>
                       </div>
                     )}
                   </div>
@@ -322,12 +349,26 @@ export default function GridView({
                   )}
                   {shot.isAIGenerated && <span className="grid-cell-ai-badge">AI</span>}
 
-                  {!compact && isHovered && shots.length > 1 && (
+                  {isHovered && shots.length > 1 && (
                     <button
                       className="grid-cell-delete"
                       onClick={(e) => { e.stopPropagation(); removeShot(activeBranch, i) }}
                       title="Delete shot"
                     >×</button>
+                  )}
+
+                  {/* 분할은 이음새가 아니라 컷 하나의 일이다. 이음새 편집기에
+                      두면 어느 컷을 쪼갤지 모호해진다 (DG2 P1 분할). */}
+                  {isHovered && shot.cutPlanItemId && (
+                    <button
+                      className="grid-cell-split"
+                      onClick={(e) => { e.stopPropagation(); splitCut(shot.cutPlanItemId) }}
+                      title="이 컷을 둘로 나눕니다"
+                    >
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round">
+                        <path d="M12 3v18M6 8 3 12l3 4M18 8l3 4-3 4" />
+                      </svg>
+                    </button>
                   )}
                 </div>
 

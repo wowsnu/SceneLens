@@ -1493,6 +1493,109 @@ const useStore = create((set, get) => ({
   removeCutPlanItem: (itemId) => set((state) => ({
     cutPlan: reorderCutPlan(state.cutPlan.filter((item) => item.id !== itemId)),
   })),
+  // --- 이음새 수준의 개입 (DG2 P1) --------------------------------------
+  // 병합·분할은 컷만 바꾸는 것이 아니다. 패널과 이음새가 함께 움직여야
+  // 한다 — 컷 하나를 지우면 그 패널과 이음새도 갈 곳을 잃는다.
+
+  // 병합: 두 컷이 수행하던 기능을 하나의 컷 안에서 다시 구성한다.
+  // 사이 이음새는 컷 안이 되므로 사라진다. 다만 거기 적힌 '생략된 것'은
+  // 이제 한 컷 안에서 일어나는 일이므로 내용으로 옮긴다 — 그냥 지우면
+  // 기록해 둔 것이 조용히 사라진다.
+  mergeCuts: (firstCutId) => set((state) => {
+    const index = state.cutPlan.findIndex((item) => item.id === firstCutId)
+    if (index < 0 || index >= state.cutPlan.length - 1) return {}
+
+    const first = state.cutPlan[index]
+    const second = state.cutPlan[index + 1]
+
+    const shots = state.scenes[state.activeScene]
+      ?.branches[state.scenes[state.activeScene].activeBranch ?? 0]?.shots || []
+    const firstShot = shots.find((shot) => shot.cutPlanItemId === first.id)
+    const seam = firstShot ? state.seams[seamKeyFor(firstShot.id)] : null
+
+    const merged = {
+      ...first,
+      // 두 컷의 내용을 잇는다. 생략해 둔 것이 있으면 그것도 사이에 넣는다.
+      content: [
+        first.content,
+        seam?.elision && `(${seam.elision})`,
+        second.content,
+      ].filter(Boolean).join(' '),
+      characters: [...new Set([
+        ...(first.characters || '').split(',').map((n) => n.trim()).filter(Boolean),
+        ...(second.characters || '').split(',').map((n) => n.trim()).filter(Boolean),
+      ])].join(', '),
+      // 사용자가 구조를 바꿨다.
+      provenance: 'User',
+      // 조립된 프롬프트를 다시 만들게 한다. 합쳐진 내용을 반영해야 한다.
+      promptOverride: '',
+    }
+
+    const nextCutPlan = reorderCutPlan([
+      ...state.cutPlan.slice(0, index),
+      merged,
+      ...state.cutPlan.slice(index + 2),
+    ])
+
+    // 뒤 컷의 패널을 없앤다. 앞 컷의 패널이 병합된 컷을 맡는다.
+    const secondShot = shots.find((shot) => shot.cutPlanItemId === second.id)
+    const next = updateActiveBranchShots(state, (current) => (
+      current.filter((shot) => shot.id !== secondShot?.id)
+    ))
+
+    // 사이 이음새는 컷 안이 되었으므로 지운다.
+    const nextSeams = { ...state.seams }
+    if (firstShot) delete nextSeams[seamKeyFor(firstShot.id)]
+    // 없어진 패널에 붙어 있던 이음새는 앞 패널로 옮긴다 — 그 이음새는
+    // 병합된 컷과 다음 컷 사이를 가리키므로 여전히 유효하다.
+    if (secondShot && nextSeams[seamKeyFor(secondShot.id)] && firstShot) {
+      nextSeams[seamKeyFor(firstShot.id)] = nextSeams[seamKeyFor(secondShot.id)]
+      delete nextSeams[seamKeyFor(secondShot.id)]
+    }
+
+    return { ...next, cutPlan: nextCutPlan, seams: nextSeams }
+  }),
+
+  // 분할: 하나의 컷에 압축된 사건을 둘 이상의 단계로 나눈다.
+  // 새로 생기는 이음새는 '컷 · 연속'이 기본이다 — 한 컷을 쪼갠 것이므로
+  // 그 사이에 시간이 흐르지 않았다.
+  splitCut: (cutId) => set((state) => {
+    const index = state.cutPlan.findIndex((item) => item.id === cutId)
+    if (index < 0) return {}
+    const source = state.cutPlan[index]
+
+    const second = createCutPlanItem({
+      ...source,
+      // 내용은 사용자가 나눈다. AI가 자르면 어디서 끊을지를 대신 정하게 된다.
+      content: '',
+      promptOverride: '',
+      provenance: 'User',
+    })
+
+    const nextCutPlan = reorderCutPlan([
+      ...state.cutPlan.slice(0, index + 1),
+      second,
+      ...state.cutPlan.slice(index + 1),
+    ])
+
+    // 패널도 함께 만든다. 컷과 패널이 어긋나면 프롬프트가 붙지 않는다.
+    const next = updateActiveBranchShots(state, (shots) => {
+      const shotIndex = shots.findIndex((shot) => shot.cutPlanItemId === cutId)
+      if (shotIndex < 0) return shots
+      const copy = [...shots]
+      copy.splice(shotIndex + 1, 0, {
+        ...createFlowShot({
+          index: shots.length,
+          scriptBeat: source.beat,
+        }),
+        cutPlanItemId: second.id,
+      })
+      return copy
+    })
+
+    return { ...next, cutPlan: nextCutPlan }
+  }),
+
   moveCutPlanItem: (itemId, direction) => set((state) => {
     const index = state.cutPlan.findIndex((item) => item.id === itemId)
     const target = index + direction

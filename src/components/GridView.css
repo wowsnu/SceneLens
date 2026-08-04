@@ -797,3 +797,55 @@
   left: 0;
   transform: none;
 }
+
+/* 컷 분할 — 삭제 옆에 둔다. 둘 다 이 컷 하나에 대한 일이다. */
+.grid-cell-split {
+  position: absolute;
+  top: 6px;
+  right: 32px;
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  border: none;
+  background: rgba(0, 0, 0, 0.65);
+  color: rgba(255, 255, 255, 0.8);
+  cursor: pointer;
+}
+
+.grid-cell-split:hover {
+  background: rgba(196, 150, 210, 0.85);
+  color: #fff;
+}
+
+/* compact는 셀이 작아 버튼을 조금 줄인다. */
+.grid-view.compact .grid-cell-split,
+.grid-view.compact .grid-cell-delete {
+  width: 19px;
+  height: 19px;
+  top: 5px;
+}
+
+.grid-view.compact .grid-cell-delete { right: 5px; }
+.grid-view.compact .grid-cell-split { right: 28px; }
+
+/* 두 컷 합치기 — 이음새를 없애는 개입이므로 편집기 안에 둔다. */
+.grid-seam-merge {
+  width: 100%;
+  margin-top: 10px;
+  padding: 6px;
+  border: 1px solid rgba(196, 150, 210, 0.45);
+  border-radius: 6px;
+  background: rgba(196, 150, 210, 0.12);
+  color: rgba(212, 172, 226, 0.98);
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.grid-seam-merge:hover {
+  background: rgba(196, 150, 210, 0.24);
+}
