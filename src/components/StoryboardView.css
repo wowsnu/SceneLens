@@ -2629,16 +2629,8 @@
   line-height: 1.5;
 }
 
-.declaration-axes {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 18px;
-  margin-top: 12px;
-}
-
 .declaration-axis {
-  flex: 1;
-  min-width: 240px;
+  margin-top: 12px;
 }
 
 .declaration-axis > label {
@@ -2681,17 +2673,10 @@
   color: rgba(255, 255, 255, 0.8);
 }
 
-/* 두 축의 색을 다르게 둔다. 그림 문서의 초록/보라 구분을 따른다. */
 .declaration-chips button.active {
   border-color: rgba(126, 200, 160, 0.55);
   background: rgba(126, 200, 160, 0.14);
   color: rgba(150, 220, 185, 0.98);
-}
-
-.declaration-chips.is-binding button.active {
-  border-color: rgba(150, 145, 225, 0.55);
-  background: rgba(150, 145, 225, 0.14);
-  color: rgba(180, 175, 240, 0.98);
 }
 
 .declaration-channel {

@@ -662,7 +662,7 @@ export const buildCutPrompt = (cut, {
 
   // 엄격히 고정한 요소는 명시적 제약이 된다 (Spec §22.12).
   const constraints = applicable
-    .filter((decl) => decl.responsibility === 'image' && decl.binding === 'strict')
+    .filter((decl) => decl.responsibility === 'image')
     .map((decl) => decl.element)
 
   // 위임한 요소는 그리지 말라고 지시하는 대신 프롬프트에서 다루지 않는다.
@@ -713,8 +713,9 @@ export const buildCutPrompt = (cut, {
 // 후속 공정에 맡긴 위임인지 구분하기 위한 상태다.
 // 설계 근거: docs/design_goal.md DG1 P3, docs/shared_decision_state_revised.png
 //
-// 두 축은 직교한다. 하나로 합치면 표현할 수 없는 조합이 생긴다.
-//   책임 × 구속강도 = "촬영에 위임하지만 역광은 반드시" (delegate + strict)
+// 축은 책임 하나다. 구속 강도(고정/범주/자유)는 두지 않는다 — 무엇을 얼마나
+// 묶을지는 결과를 보기 전에 정할 수 있는 것이 아니라 결과를 보고 승격하거나
+// 해제하는 것이다 (DG1 P4). '이미지에서 확정'이 곧 이후 생성의 제약이 된다.
 //
 // 컷의 필드가 아니라 별도 레지스트리인 이유: 이 선언은 컷보다 오래 산다.
 // 의도 입력부터 관객 검토(DG3)까지 유지되어야 컷이 병합·분할되어도(DG2)
@@ -731,12 +732,6 @@ export const RESPONSIBILITY_LEVELS = [
     hint: '방향은 정하고 값은 후속 공정에 남긴다',
   },
   { id: 'delegate', label: '후속 공정 위임', hint: '스토리보드가 정하지 않는다' },
-]
-
-export const BINDING_LEVELS = [
-  { id: 'strict', label: '엄격히 고정', hint: '재생성해도 유지' },
-  { id: 'category', label: '범주 내 허용', hint: '범주 안에서 변주 가능' },
-  { id: 'free', label: '자유', hint: '묶지 않는다' },
 ]
 
 // 위임한 요소는 그림에 그리지 않는 대신 이미지 밖 채널에 기록한다.
@@ -758,7 +753,6 @@ const createDeclaration = ({
   cutId = null,
   lens = 'mise-en-scene',
   responsibility = 'image',
-  binding = 'category',
   channel = null,
   // responsibility가 'direction'일 때 스토리보드가 정하는 쪽.
   // 값이 아니라 방향이다 — "왼쪽으로"는 여기, "얼마나 빠르게"는 후속 공정.
@@ -778,7 +772,6 @@ const createDeclaration = ({
   cutId,
   lens,
   responsibility,
-  binding,
   channel,
   direction,
   affectsDraft,
@@ -806,7 +799,6 @@ const proposeDeclarations = (cutPlan, { sceneIntention = '' } = {}) => {
     element: '의상 · 헤어',
     lens: 'mise-en-scene',
     responsibility: 'delegate',
-    binding: 'free',
     affectsDraft: true,
     rationale: '스토리보드가 정하지 않는 것이 일반적이다. 위임하면 관객 검토에서 제외된다.',
   })
@@ -814,7 +806,6 @@ const proposeDeclarations = (cutPlan, { sceneIntention = '' } = {}) => {
     element: '미술 · 질감',
     lens: 'mise-en-scene',
     responsibility: 'delegate',
-    binding: 'free',
     affectsDraft: true,
     rationale: '이미지 모델은 어떻게든 질감을 그린다. 그것이 감독의 결정으로 굳으면 안 된다.',
   })
@@ -827,8 +818,7 @@ const proposeDeclarations = (cutPlan, { sceneIntention = '' } = {}) => {
       element: '인물 외형 일관성',
       lens: 'mise-en-scene',
       responsibility: 'image',
-      binding: 'strict',
-      affectsDraft: true,
+        affectsDraft: true,
       rationale: '여러 컷에 같은 인물이 나온다. 컷마다 다르게 그려지면 다른 사람으로 읽힌다.',
     })
   }
@@ -840,7 +830,6 @@ const proposeDeclarations = (cutPlan, { sceneIntention = '' } = {}) => {
     element: '조명 · 톤',
     lens: 'cinematography',
     responsibility: 'direction',
-    binding: 'category',
     channel: 'acting-note',
     rationale: '컷 플랜은 샷 크기와 앵글만 담는다. 조명은 어느 컷에도 적혀 있지 않다.',
   })
@@ -856,8 +845,7 @@ const proposeDeclarations = (cutPlan, { sceneIntention = '' } = {}) => {
         cutId: cut.id,
         lens: 'cinematography',
         responsibility: 'direction',
-        binding: 'strict',
-        channel: 'camera-move',
+            channel: 'camera-move',
         direction: cut.cameraMove,
         rationale: '한 장의 정지 이미지는 이동을 담을 수 없다. 방향만 표시하고 속도와 거리는 남긴다.',
       })
@@ -870,8 +858,7 @@ const proposeDeclarations = (cutPlan, { sceneIntention = '' } = {}) => {
       scope: 'scene',
       lens: 'narrative',
       responsibility: 'image',
-      binding: 'category',
-      rationale: '아직 선언되지 않았다. 관객 검토(DG3)의 기준이 되므로 비워두면 대조할 것이 없다.',
+        rationale: '아직 선언되지 않았다. 관객 검토(DG3)의 기준이 되므로 비워두면 대조할 것이 없다.',
     })
   }
 
@@ -1132,7 +1119,7 @@ const useStore = create((set, get) => ({
     declarations: state.declarations.map((decl) => {
       if (decl.id !== id) return decl
       // 사용자가 축을 건드리면 그 선언은 더 이상 AI 제안이 아니다.
-      const touchesAxis = ['responsibility', 'binding', 'channel', 'element']
+      const touchesAxis = ['responsibility', 'channel', 'direction', 'element']
         .some((key) => key in patch)
       return {
         ...decl,

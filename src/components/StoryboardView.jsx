@@ -3,7 +3,6 @@ import useStore, {
   buildCutPrompt,
   selectCutStage,
   RESPONSIBILITY_LEVELS,
-  BINDING_LEVELS,
   OFFIMAGE_CHANNELS,
 } from '../store/useStore'
 import './StoryboardView.css'
@@ -413,43 +412,24 @@ function DeclarationCard({
         <p className="declaration-rationale">{declaration.rationale}</p>
       )}
 
-      <div className="declaration-axes">
-        <div className="declaration-axis">
-          <label>책임<small>그 결정을 누가 확정하는가</small></label>
-          <div className="declaration-chips" role="radiogroup" aria-label="책임">
-            {RESPONSIBILITY_LEVELS.map((level) => (
-              <button
-                key={level.id}
-                type="button"
-                role="radio"
-                aria-checked={declaration.responsibility === level.id}
-                className={declaration.responsibility === level.id ? 'active' : ''}
-                title={level.hint}
-                onClick={() => onUpdate(declaration.id, { responsibility: level.id })}
-              >
-                {level.label}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div className="declaration-axis">
-          <label>구속 강도<small>얼마나 묶어두는가</small></label>
-          <div className="declaration-chips is-binding" role="radiogroup" aria-label="구속 강도">
-            {BINDING_LEVELS.map((level) => (
-              <button
-                key={level.id}
-                type="button"
-                role="radio"
-                aria-checked={declaration.binding === level.id}
-                className={declaration.binding === level.id ? 'active' : ''}
-                title={level.hint}
-                onClick={() => onUpdate(declaration.id, { binding: level.id })}
-              >
-                {level.label}
-              </button>
-            ))}
-          </div>
+      {/* 축은 책임 하나다. '이미지에서 확정'이 곧 이후 생성의 제약이 되므로
+          구속 강도를 따로 두지 않는다 (DG1 P3·P4). */}
+      <div className="declaration-axis">
+        <label>책임<small>그 결정을 누가 확정하는가</small></label>
+        <div className="declaration-chips" role="radiogroup" aria-label="책임">
+          {RESPONSIBILITY_LEVELS.map((level) => (
+            <button
+              key={level.id}
+              type="button"
+              role="radio"
+              aria-checked={declaration.responsibility === level.id}
+              className={declaration.responsibility === level.id ? 'active' : ''}
+              title={level.hint}
+              onClick={() => onUpdate(declaration.id, { responsibility: level.id })}
+            >
+              {level.label}
+            </button>
+          ))}
         </div>
       </div>
 
