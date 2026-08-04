@@ -364,7 +364,8 @@ function PanelOverlay({ marks }) {
       {arrows.map((mark, index) => (
         <div
           key={`${mark.element}-${index}`}
-          className="sb-overlay-arrow"
+          className={`sb-overlay-arrow${mark.pending ? ' pending' : ''}`}
+          title={mark.pending ? `${mark.element} · 아직 판정하지 않음` : mark.element}
           style={{
             transform: `rotate(${mark.angle}deg)`,
             top: `${48 + index * 18}%`,
@@ -382,7 +383,13 @@ function PanelOverlay({ marks }) {
       {corners.length > 0 && (
         <div className="sb-overlay-corner">
           {corners.map((mark) => (
-            <span key={mark.element} title={mark.element}>{mark.label}</span>
+            <span
+              key={mark.element}
+              className={mark.pending ? 'pending' : ''}
+              title={mark.pending ? `${mark.element} · 아직 판정하지 않음` : mark.element}
+            >
+              {mark.label}
+            </span>
           ))}
         </div>
       )}
@@ -2050,7 +2057,10 @@ export default function StoryboardView() {
                             {panelNotes.length > 0 && (
                               <ul className="sb-shot-offimage-notes">
                                 {panelNotes.map((note, index) => (
-                                  <li key={`${note.element}-${index}`}>
+                                  <li
+                                    key={`${note.element}-${index}`}
+                                    className={note.pending ? 'pending' : ''}
+                                  >
                                     <em>{note.element}</em>
                                     {note.label !== note.element && <span>{note.label}</span>}
                                   </li>

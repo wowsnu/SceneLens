@@ -435,7 +435,11 @@ const createMockNarrativeSuggestions = (state, requestKey, input = {}) => {
 // 설계 근거: docs/NARRATIVE_LENS_AS_JULCONTI.md
 const CUT_PLAN_SHOT_SIZES = ['Wide', 'Full', 'Medium', 'Bust', 'Close-Up', 'ECU']
 const CUT_PLAN_ANGLES = ['Eye level', 'High angle', 'Low angle', 'Over the shoulder', 'POV', 'Bird eye']
-const CUT_PLAN_MOVES = ['Fixed', 'Pan', 'Tilt', 'Dolly in', 'Dolly out', 'Handheld']
+// Pan/Tilt는 방향이 없으면 화살표로 그릴 수 없다. 좌우·상하를 나눠 둔다.
+const CUT_PLAN_MOVES = [
+  'Fixed', 'Pan left', 'Pan right', 'Tilt up', 'Tilt down',
+  'Dolly in', 'Dolly out', 'Handheld',
+]
 
 const createCutPlanItemId = () => `cut-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
 
@@ -548,11 +552,14 @@ const createMockCutPlan = (state) => {
     }
 
     // 공간을 세우는 컷: scene heading이 있는 Beat에서만.
+    // 공간을 훑는 컷이므로 카메라가 움직인다 — 정지 이미지가 담을 수 없는
+    // 정보라 책임 선언과 패널 화살표의 대상이 된다 (DG1 P3).
     if (heading) {
       push({
         content: shortenNarrativeText(actions[0]?.text || heading.text, 60),
         purpose: '공간 설정',
         shotSize: 'Wide',
+        cameraMove: 'Pan right',
       })
     }
 
@@ -658,10 +665,10 @@ export const buildCutPrompt = (cut, {
   const auto = [opening, action, castLine, emphasis].filter(Boolean).join(' ')
 
   // 이 컷에 걸리는 선언만 고른다. 씬 범위이거나 이 컷을 지목한 것.
-  const applicable = declarations.filter((decl) => (
-    decl.status === 'Accepted'
-    && (decl.scope === 'scene' || decl.cutId === cut.id)
+  const scoped = declarations.filter((decl) => (
+    decl.scope === 'scene' || decl.cutId === cut.id
   ))
+  const applicable = scoped.filter((decl) => decl.status === 'Accepted')
 
   // 엄격히 고정한 요소는 명시적 제약이 된다 (Spec §22.12).
   const constraints = applicable
@@ -677,11 +684,19 @@ export const buildCutPrompt = (cut, {
 
   // 방향만 표시하는 요소는 그림 밖 채널로 간다.
   // 방향은 스토리보드가 정한 값이므로 함께 넘긴다 — 패널이 이것을 그린다.
-  const offImage = applicable
-    .filter((decl) => decl.responsibility === 'direction')
+  //
+  // 아직 판정하지 않은 것도 포함한다. 방향은 대개 컷이 이미 말한 것을
+  // (카메라 이동 같은) 옮겨 적은 것이라, 판정 전이라고 감추면 컷에 있는
+  // 정보가 패널에서 사라진다. 대신 pending으로 표시해 확정과 구분한다.
+  const offImage = scoped
+    .filter((decl) => (
+      decl.responsibility === 'direction'
+      && (decl.status === 'Accepted' || decl.status === 'Proposed')
+    ))
     .map((decl) => ({
       element: decl.element,
       channel: decl.channel,
+      pending: decl.status === 'Proposed',
       direction: decl.direction,
     }))
 
@@ -779,27 +794,27 @@ export const buildPanelMarks = (offImage = []) => {
   const marks = []
   const notes = []
 
-  offImage.forEach(({ element, channel, direction }) => {
+  offImage.forEach(({ element, channel, direction, pending }) => {
     const spec = OFFIMAGE_CHANNELS.find((entry) => entry.id === channel)
     const label = direction || element
 
     if (spec?.mark === 'arrow') {
       const angle = readArrowAngle(direction || '')
       if (angle !== null) {
-        marks.push({ type: 'arrow', angle, element, label })
+        marks.push({ type: 'arrow', angle, element, label, pending })
         return
       }
       // 방향을 못 읽었다. 화살표 대신 메모로.
-      notes.push({ element, label, reason: 'unreadable-direction' })
+      notes.push({ element, label, pending, reason: 'unreadable-direction' })
       return
     }
 
     if (spec?.mark === 'corner') {
-      marks.push({ type: 'corner', element, label })
+      marks.push({ type: 'corner', element, label, pending })
       return
     }
 
-    notes.push({ element, label })
+    notes.push({ element, label, pending })
   })
 
   return { marks, notes }
