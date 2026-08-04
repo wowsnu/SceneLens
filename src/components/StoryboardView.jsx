@@ -624,6 +624,7 @@ export default function StoryboardView() {
   const declarations = useStore((s) => s.declarations)
   const decideDeclaration = useStore((s) => s.decideDeclaration)
   const rejectDeclaration = useStore((s) => s.rejectDeclaration)
+  const sceneState = useStore((s) => s.sceneState)
   const setShotNote = useStore((s) => s.setShotNote)
   const addShotArrow = useStore((s) => s.addShotArrow)
   const removeShotArrow = useStore((s) => s.removeShotArrow)
@@ -750,6 +751,7 @@ export default function StoryboardView() {
       sceneIntention,
       sceneNote: scenePromptNote,
       declarations,
+      sceneState,
     })
     : null
 
@@ -1351,6 +1353,7 @@ export default function StoryboardView() {
                             sceneIntention,
                             sceneNote: scenePromptNote,
                             declarations,
+                            sceneState,
                           })
                           return (
                             <tr className="cut-plan-prompt-row">
@@ -1701,6 +1704,7 @@ export default function StoryboardView() {
                             sceneIntention,
                             sceneNote: scenePromptNote,
                             declarations,
+                            sceneState,
                           })
                           : null
                         const { marks: panelMarks, notes: panelNotes } = buildPanelMarks(

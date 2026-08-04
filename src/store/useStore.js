@@ -614,6 +614,8 @@ const PURPOSE_PHRASES = {
 export const buildCutPrompt = (cut, {
   sceneIntention = '',
   sceneNote = '',
+  // 컷을 가로지르는 기준. 같은 인물과 공간이 컷마다 달라지지 않게 한다.
+  sceneState = null,
   // 이 컷에 걸리는 책임 선언 (DG1 P3). 위임한 요소는 프롬프트에서 빼고,
   // 엄격히 고정한 요소는 제약으로 넣는다.
   declarations = [],
@@ -662,6 +664,18 @@ export const buildCutPrompt = (cut, {
       ? `${cut.purpose}${hasFinalConsonant(cut.purpose) ? '이' : '가'} 드러나도록 잡는다.`
       : '')
 
+  // 씬 기준을 컷 문장에 섞는다. 컷마다 같은 문구가 들어가야 같은 인물과
+  // 같은 방으로 그려진다. 아직 정하지 않은 항목(open)은 넣지 않는다 —
+  // 미정을 문장으로 만들면 모델이 그것을 정해버린다.
+  const reference = selectSceneReference(sceneState, cut)
+  const referenceLine = [
+    reference.location && `공간 기준: ${reference.location}`,
+    reference.characters.length > 0 && reference.characters
+      .map((entry) => `${entry.name}: ${entry.detail}`)
+      .join(' / '),
+    reference.environment && `환경: ${reference.environment}`,
+  ].filter(Boolean).join(' · ')
+
   const auto = [opening, action, castLine, emphasis].filter(Boolean).join(' ')
 
   // 이 컷에 걸리는 선언만 고른다. 씬 범위이거나 이 컷을 지목한 것.
@@ -704,6 +718,7 @@ export const buildCutPrompt = (cut, {
   const shared = [
     sceneIntention && `장면 의도: ${sceneIntention}`,
     sceneNote,
+    referenceLine,
     constraints.length > 0 && `고정: ${constraints.join(', ')}`,
   ]
     .filter(Boolean)
@@ -723,6 +738,82 @@ export const buildCutPrompt = (cut, {
     // 이 컷이 무엇을 책임지고 무엇을 넘겼는지. 화면 표시와 DG3의 평가 범위가
     // 이 값을 읽는다 — 위임한 것은 전달 실패로 보고되면 안 된다.
     responsibility: { constraints, delegated, offImage },
+    // 이 컷에 걸린 씬 기준. 어디서 온 문구인지 화면에서 밝힐 때 쓴다.
+    reference,
+  }
+}
+
+// --- Scene state: 컷을 가로지르는 기준 ----------------------------------
+// 여러 컷에 같은 인물과 공간이 나온다. 컷마다 프롬프트를 따로 조립하면
+// 컷 1의 '관제실'과 컷 5의 '관제실'이 각자 해석되어 다른 방이 된다.
+// 생성 단위가 컷이어도 기준은 씬에 있어야 한다 (DG2 P2: 여러 컷을 가로지르는
+// 것은 개별 이미지가 아니라 편집 가능한 구조로 표현한다).
+//
+// 모양은 DecisionBoard의 MOCK_MISE_SCENE_STATE를 따른다. 지금 그 화면은
+// 로컬 useState로 같은 정보를 들고 있어 프롬프트에 닿지 않는다. 나중에
+// useState를 이 슬라이스로 바꾸면 미장센에서 고친 것이 곧 생성 기준이 된다.
+//
+// `open: true`인 항목은 아직 정하지 않은 것이다. 프롬프트에 넣지 않는다 —
+// 미정을 문장으로 만들면 모델이 그것을 정해버린다.
+const SCENE_STATE = {
+  characters: [
+    {
+      id: 'jaein',
+      name: '재인',
+      summary: '20대 후반 · 침입자',
+      facts: [
+        { label: '외형 기준', value: '비에 흠뻑 젖은 상태' },
+        { label: '헤어', value: '아직 지정되지 않음', open: true },
+      ],
+    },
+    {
+      id: 'minho',
+      name: '민호',
+      summary: '40대 초반 · 역무 총괄',
+      facts: [
+        { label: '외형 기준', value: '지친 눈빛, 차분한 인상' },
+        { label: '헤어·수염', value: '아직 지정되지 않음', open: true },
+      ],
+    },
+  ],
+  location: {
+    name: '지하철 관제실',
+    facts: [
+      { label: '장소 정체', value: '좁고 낡은 지하 관제실' },
+      { label: '고정 소품', value: '모니터 벽 · 콘솔 · 잠긴 철제 캐비닛' },
+    ],
+  },
+  environment: {
+    facts: [
+      { label: '시간', value: '밤' },
+      { label: '날씨', value: '비' },
+      { label: '조명 기준', value: '형광등 · 간헐적 깜빡임' },
+      { label: '그림체·렌더 톤', value: '아직 지정되지 않음', open: true },
+    ],
+  },
+}
+
+// 정해진 사실만 한 줄로 잇는다.
+const settledFacts = (facts = []) => facts
+  .filter((fact) => !fact.open && fact.value)
+  .map((fact) => fact.value)
+  .join(', ')
+
+// 이 컷에 걸리는 씬 기준을 뽑는다. 컷에 나오는 인물만 넣는다 —
+// 씬의 모든 인물을 매 컷에 적으면 화면에 없는 사람까지 그리게 된다.
+export const selectSceneReference = (sceneState, cut) => {
+  if (!sceneState || !cut) return { characters: [], location: '', environment: '' }
+
+  const cast = (cut.characters || '').split(',').map((name) => name.trim()).filter(Boolean)
+  const characters = sceneState.characters
+    .filter((character) => cast.some((name) => name.includes(character.name)))
+    .map((character) => ({ name: character.name, detail: settledFacts(character.facts) }))
+    .filter((entry) => entry.detail)
+
+  return {
+    characters,
+    location: settledFacts(sceneState.location?.facts),
+    environment: settledFacts(sceneState.environment?.facts),
   }
 }
 
@@ -1034,6 +1125,46 @@ const useStore = create((set, get) => ({
   // 조명·그림체처럼 장면 전체에 걸리는 지시. 컷마다 반복하지 않는다.
   scenePromptNote: '',
   setScenePromptNote: (scenePromptNote) => set({ scenePromptNote }),
+
+  // 컷을 가로지르는 기준. 여기를 고치면 모든 컷의 프롬프트가 함께 바뀐다.
+  sceneState: SCENE_STATE,
+  updateSceneCharacter: (characterId, patch) => set((state) => ({
+    sceneState: {
+      ...state.sceneState,
+      characters: state.sceneState.characters.map((character) => (
+        character.id === characterId ? { ...character, ...patch } : character
+      )),
+    },
+  })),
+  // 미정으로 남은 항목을 채운다. open을 지우는 것이 곧 결정이다.
+  setSceneFact: (group, label, value, { characterId = null } = {}) => set((state) => {
+    const patchFacts = (facts = []) => facts.map((fact) => (
+      fact.label === label ? { ...fact, value, open: !value } : fact
+    ))
+
+    if (group === 'character') {
+      return {
+        sceneState: {
+          ...state.sceneState,
+          characters: state.sceneState.characters.map((character) => (
+            character.id === characterId
+              ? { ...character, facts: patchFacts(character.facts) }
+              : character
+          )),
+        },
+      }
+    }
+
+    return {
+      sceneState: {
+        ...state.sceneState,
+        [group]: {
+          ...state.sceneState[group],
+          facts: patchFacts(state.sceneState[group]?.facts),
+        },
+      },
+    }
+  }),
   requestCutPlan: () => set((state) => ({
     cutPlan: createMockCutPlan(state),
     cutPlanAccepted: false,
