@@ -5,6 +5,7 @@ import useStore, {
   RESPONSIBILITY_LEVELS,
   OFFIMAGE_CHANNELS,
   buildPanelMarks,
+  seamKeyFor,
   diagnoseCoverage,
   diagnoseSeams,
   PROBLEM_LAYERS,
@@ -69,6 +70,7 @@ const SEAM_ACTION_LABEL = {
   split: '나눌 컷 보기',
   merge: '두 컷 보기',
   insert: '넣을 자리 보기',
+  seam: '이음새 보기',
 }
 
 // 촬영·편집의 진단 카드. 문제의 층위를 밝힌다 (design_goal.md DG2:
@@ -666,6 +668,7 @@ export default function StoryboardView() {
   const decideDeclaration = useStore((s) => s.decideDeclaration)
   const rejectDeclaration = useStore((s) => s.rejectDeclaration)
   const sceneState = useStore((s) => s.sceneState)
+  const seams = useStore((s) => s.seams)
   const setSceneFact = useStore((s) => s.setSceneFact)
   const setShotNote = useStore((s) => s.setShotNote)
   const addShotArrow = useStore((s) => s.addShotArrow)
@@ -745,8 +748,6 @@ export default function StoryboardView() {
   // 판정은 전부 패널의 인스펙터에서 한다 (DG1 P4).
   // 여러 컷을 함께 읽어야 보이는 문제. 컷 표는 한 행씩만 보여준다.
   const coverageFindings = diagnoseCoverage(cutPlan)
-  // 컷 사이의 문제. 컷 하나만 보면 드러나지 않는다.
-  const seamFindings = diagnoseSeams(cutPlan, screenplay)
   // 진단은 발견이고 수정은 표에서 한다. 지목된 컷으로 데려다주기만 한다.
   const goToFinding = (finding) => {
     const target = cutPlan.find((cut) => cut.id === finding.cutIds[0])
@@ -761,6 +762,16 @@ export default function StoryboardView() {
   const activeShot = scene?.activeShot ?? 0
   const branch = scene?.branches?.[activeBranch]
   const flowShots = branch?.shots || []
+  // 컷 사이의 문제. 컷 하나만 보면 드러나지 않는다.
+  // flowShots가 필요하므로 그 뒤에 둔다 — 이음새는 패널 사이에 붙는다.
+  const seamFindings = diagnoseSeams(cutPlan, screenplay, { seams, shots: flowShots })
+
+  // 이 컷 앞의 이음새. 패널 순서 기준이므로 컷이 아니라 패널에서 찾는다.
+  const seamBefore = (cutId) => {
+    const index = flowShots.findIndex((shot) => shot.cutPlanItemId === cutId)
+    if (index <= 0) return null
+    return seams[seamKeyFor(flowShots[index - 1].id)] || null
+  }
 
   useEffect(() => {
     if (scriptEditorRequestKey > handledScriptEditorRequestKey.current) {
@@ -809,6 +820,7 @@ export default function StoryboardView() {
       sceneNote: scenePromptNote,
       declarations,
       sceneState,
+      seam: seamBefore(inspectedCut.id),
     })
     : null
 
@@ -1411,6 +1423,7 @@ export default function StoryboardView() {
                             sceneNote: scenePromptNote,
                             declarations,
                             sceneState,
+                            seam: seamBefore(item.id),
                           })
                           return (
                             <tr className="cut-plan-prompt-row">
@@ -1762,6 +1775,7 @@ export default function StoryboardView() {
                             sceneNote: scenePromptNote,
                             declarations,
                             sceneState,
+                            seam: seamBefore(shotCut.id),
                           })
                           : null
                         const { marks: panelMarks, notes: panelNotes } = buildPanelMarks(

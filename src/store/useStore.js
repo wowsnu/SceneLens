@@ -616,6 +616,8 @@ export const buildCutPrompt = (cut, {
   sceneNote = '',
   // 컷을 가로지르는 기준. 같은 인물과 공간이 컷마다 달라지지 않게 한다.
   sceneState = null,
+  // 앞 컷과의 이음새. 시간이 흘렀으면 그 컷은 앞 컷의 연속이 아니다.
+  seam = null,
   // 이 컷에 걸리는 책임 선언 (DG1 P3). 위임한 요소는 프롬프트에서 빼고,
   // 엄격히 고정한 요소는 제약으로 넣는다.
   declarations = [],
@@ -664,6 +666,14 @@ export const buildCutPrompt = (cut, {
       ? `${cut.purpose}${hasFinalConsonant(cut.purpose) ? '이' : '가'} 드러나도록 잡는다.`
       : '')
 
+  // 이음새가 앞 컷과의 관계를 정한다. 경과가 있으면 앞 컷 직후가 아니므로
+  // 인물의 자세나 위치를 그대로 이어 그리면 안 된다.
+  const seamLine = seam && seam.elapsed !== 'continuous'
+    ? (seam.elapsed === 'later'
+      ? '앞 컷에서 시간이 흘렀다. 인물의 자세와 위치가 그대로일 필요는 없다.'
+      : '앞 컷에서 잠시 지났다.')
+    : ''
+
   // 씬 기준을 컷 문장에 섞는다. 컷마다 같은 문구가 들어가야 같은 인물과
   // 같은 방으로 그려진다. 아직 정하지 않은 항목(open)은 넣지 않는다 —
   // 미정을 문장으로 만들면 모델이 그것을 정해버린다.
@@ -676,7 +686,7 @@ export const buildCutPrompt = (cut, {
     reference.environment && `환경: ${reference.environment}`,
   ].filter(Boolean).join(' · ')
 
-  const auto = [opening, action, castLine, emphasis].filter(Boolean).join(' ')
+  const auto = [opening, seamLine, action, castLine, emphasis].filter(Boolean).join(' ')
 
   // 이 컷에 걸리는 선언만 고른다. 씬 범위이거나 이 컷을 지목한 것.
   const scoped = declarations.filter((decl) => (
@@ -894,9 +904,18 @@ export const isSeamMarked = (seam) => Boolean(
 //
 // 삽입·삭제는 표에 이미 있다(행마다 `+`). 그래서 여기서도 고치지 않고
 // 어느 이음새에 무엇이 있는지만 짚는다 (발견과 처분의 분리).
-export const diagnoseSeams = (cutPlan = [], screenplay = []) => {
+export const diagnoseSeams = (cutPlan = [], screenplay = [], {
+  // 컷 → 패널 → 이음새. 이음새는 패널 사이에 붙으므로 컷에서 바로 찾을 수 없다.
+  seams = {},
+  shots = [],
+} = {}) => {
   if (cutPlan.length === 0) return []
   const findings = []
+
+  const seamForCut = (cutId) => {
+    const shot = shots.find((entry) => entry.cutPlanItemId === cutId)
+    return shot ? seams[seamKeyFor(shot.id)] : undefined
+  }
 
   // 1. 한 컷에 사건이 여러 개 압축돼 있다. 대본의 액션 줄 수와 그 Beat의
   //    컷 수를 견준다 — 행동이 여러 단계인데 컷이 하나면 화면이 그것을
@@ -950,6 +969,45 @@ export const diagnoseSeams = (cutPlan = [], screenplay = []) => {
       cutIds: near.map((cut) => cut.id),
       action: 'insert',
     })
+  })
+
+  // 4. 시간이 흘렀다고 표시했는데 연결은 그냥 컷이다. 관객은 두 컷이
+  //    바로 이어진 것으로 읽는다 — 표시한 경과가 화면에 전달되지 않는다.
+  cutPlan.forEach((cut, index) => {
+    if (index === 0) return
+    const seam = seamForCut(cutPlan[index - 1].id)
+    if (!seam) return
+    if (seam.elapsed === 'later' && seam.join === 'cut') {
+      findings.push({
+        id: `elapsed-${cut.id}`,
+        type: 'unmarked-elapsed',
+        layer: 'relation',
+        title: `컷 ${cutPlan[index - 1].beat + 1}-${cutPlan[index - 1].beatOrder} → ${cut.beat + 1}-${cut.beatOrder} 경과가 안 보임`,
+        detail: '시간이 흘렀다고 적었지만 그냥 컷으로 이어집니다. 관객은 연속으로 읽습니다.',
+        cutIds: [cutPlan[index - 1].id, cut.id],
+        action: 'seam',
+      })
+    }
+  })
+
+  // 5. 생략한 것을 적어두고 아무 표시도 하지 않았다. 생략은 기록만으로
+  //    관객에게 전달되지 않는다 — 화면에 근거가 있어야 한다.
+  cutPlan.forEach((cut, index) => {
+    if (index === 0) return
+    const prev = cutPlan[index - 1]
+    const seam = seamForCut(prev.id)
+    if (!seam?.elision) return
+    if (seam.join === 'cut' && seam.elapsed === 'continuous') {
+      findings.push({
+        id: `elision-${cut.id}`,
+        type: 'unmarked-elision',
+        layer: 'relation',
+        title: `컷 ${prev.beat + 1}-${prev.beatOrder} → ${cut.beat + 1}-${cut.beatOrder} 생략이 안 보임`,
+        detail: `"${seam.elision}"을 건너뛰었지만 화면에는 연속으로 보입니다.`,
+        cutIds: [prev.id, cut.id],
+        action: 'seam',
+      })
+    }
   })
 
   return findings
