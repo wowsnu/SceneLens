@@ -601,7 +601,13 @@ const PURPOSE_PHRASES = {
   '행동 강조': '동작의 방향과 결과가 분명히 보이도록',
 }
 
-export const buildCutPrompt = (cut, { sceneIntention = '', sceneNote = '' } = {}) => {
+export const buildCutPrompt = (cut, {
+  sceneIntention = '',
+  sceneNote = '',
+  // 이 컷에 걸리는 책임 선언 (DG1 P3). 위임한 요소는 프롬프트에서 빼고,
+  // 엄격히 고정한 요소는 제약으로 넣는다.
+  declarations = [],
+} = {}) => {
   if (!cut) return null
 
   // 자동 조립분과 사용자가 덧붙인 지시를 나눠 둔다. provenance가 갈린다.
@@ -647,8 +653,36 @@ export const buildCutPrompt = (cut, { sceneIntention = '', sceneNote = '' } = {}
       : '')
 
   const auto = [opening, action, castLine, emphasis].filter(Boolean).join(' ')
+
+  // 이 컷에 걸리는 선언만 고른다. 씬 범위이거나 이 컷을 지목한 것.
+  const applicable = declarations.filter((decl) => (
+    decl.status === 'Accepted'
+    && (decl.scope === 'scene' || decl.cutId === cut.id)
+  ))
+
+  // 엄격히 고정한 요소는 명시적 제약이 된다 (Spec §22.12).
+  const constraints = applicable
+    .filter((decl) => decl.responsibility === 'image' && decl.binding === 'strict')
+    .map((decl) => decl.element)
+
+  // 위임한 요소는 그리지 말라고 지시하는 대신 프롬프트에서 다루지 않는다.
+  // 모델은 어차피 무언가를 그리지만, 그것이 결정으로 굳지 않게 하는 것은
+  // 프롬프트가 아니라 화면 표시의 몫이다 (Spec §17.5).
+  const delegated = applicable
+    .filter((decl) => decl.responsibility === 'delegate')
+    .map((decl) => decl.element)
+
+  // 방향만 표시하는 요소는 그림 밖 채널로 간다.
+  const offImage = applicable
+    .filter((decl) => decl.responsibility === 'direction')
+    .map((decl) => ({ element: decl.element, channel: decl.channel }))
+
   // 장면 전체에 걸리는 지시는 컷마다 반복하지 않고 따로 둔다.
-  const shared = [sceneIntention && `장면 의도: ${sceneIntention}`, sceneNote]
+  const shared = [
+    sceneIntention && `장면 의도: ${sceneIntention}`,
+    sceneNote,
+    constraints.length > 0 && `고정: ${constraints.join(', ')}`,
+  ]
     .filter(Boolean)
     .join(' / ')
 
@@ -663,7 +697,153 @@ export const buildCutPrompt = (cut, { sceneIntention = '', sceneNote = '' } = {}
     shared,
     // 컷의 어느 값이 프롬프트의 어느 자리로 갔는지 추적 가능하게 남긴다.
     parts: { opening, action, castLine, emphasis },
+    // 이 컷이 무엇을 책임지고 무엇을 넘겼는지. 화면 표시와 DG3의 평가 범위가
+    // 이 값을 읽는다 — 위임한 것은 전달 실패로 보고되면 안 된다.
+    responsibility: { constraints, delegated, offImage },
   }
+}
+
+// --- Responsibility registry (DG1 P3) -----------------------------------
+// "이미지가 책임질 범위를 선언한다." 화면에 없는 것이 보완해야 할 결손인지
+// 후속 공정에 맡긴 위임인지 구분하기 위한 상태다.
+// 설계 근거: docs/design_goal.md DG1 P3, docs/shared_decision_state_revised.png
+//
+// 두 축은 직교한다. 하나로 합치면 표현할 수 없는 조합이 생긴다.
+//   책임 × 구속강도 = "촬영에 위임하지만 역광은 반드시" (delegate + strict)
+//
+// 컷의 필드가 아니라 별도 레지스트리인 이유: 이 선언은 컷보다 오래 산다.
+// 의도 입력부터 관객 검토(DG3)까지 유지되어야 컷이 병합·분할되어도(DG2)
+// 무엇을 위임했는지가 남는다.
+export const RESPONSIBILITY_LEVELS = [
+  { id: 'image', label: '이미지에서 확정', hint: '이 그림이 값을 정한다' },
+  { id: 'direction', label: '방향만 표시', hint: '그림 밖 채널로 방향만 남긴다' },
+  { id: 'delegate', label: '후속 공정 위임', hint: '스토리보드가 정하지 않는다' },
+]
+
+export const BINDING_LEVELS = [
+  { id: 'strict', label: '엄격히 고정', hint: '재생성해도 유지' },
+  { id: 'category', label: '범주 내 허용', hint: '범주 안에서 변주 가능' },
+  { id: 'free', label: '자유', hint: '묶지 않는다' },
+]
+
+// 위임한 요소는 그림에 그리지 않는 대신 이미지 밖 채널에 기록한다.
+// (design_goal.md DG1 P3: "액팅 메모, 움직임 화살표, 카메라 이동, 타임코드")
+export const OFFIMAGE_CHANNELS = [
+  { id: 'acting-note', label: '액팅 메모' },
+  { id: 'movement-arrow', label: '움직임 화살표' },
+  { id: 'camera-move', label: '카메라 이동' },
+  { id: 'timecode', label: '타임코드' },
+  { id: 'copy', label: '카피' },
+]
+
+const createDeclarationId = () => `decl-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+
+const createDeclaration = ({
+  element = '',
+  // 이 선언이 걸리는 범위. 씬 전체이거나 특정 컷이거나.
+  scope = 'scene',
+  cutId = null,
+  lens = 'mise-en-scene',
+  responsibility = 'image',
+  binding = 'category',
+  channel = null,
+  // AI가 왜 이 요소를 후보로 올렸는지. 판정의 근거가 되므로 남긴다.
+  rationale = '',
+  // 사용자가 판정하기 전에는 제안일 뿐이다 (DG1 P2: 제안은 판정 대상).
+  status = 'Proposed',
+  provenance = 'AI',
+} = {}) => ({
+  id: createDeclarationId(),
+  element,
+  scope,
+  cutId,
+  lens,
+  responsibility,
+  binding,
+  channel,
+  rationale,
+  status,
+  provenance,
+})
+
+// 컷 플랜을 읽어 "선언이 필요해 보이는 요소"를 후보로 올리는 Mock.
+// 실제 에이전트 호출로 교체될 자리다. 파이프라인 그림의
+// `결정 미리 확인 — 미결·위임 지점 먼저 선택`에 해당하며 초안 생성보다 앞선다.
+//
+// 후보를 뽑는 기준은 "컷 플랜이 말하지 않은 것"이다. 줄콘티는 컷 수·크기·
+// 앵글은 담지만 조명·의상·질감은 담지 않는다. 그 침묵이 결손인지 위임인지를
+// 사용자가 판정하게 만드는 것이 이 단계의 목적이다.
+const proposeDeclarations = (cutPlan, { sceneIntention = '' } = {}) => {
+  if (cutPlan.length === 0) return []
+
+  const proposals = []
+  const push = (fields) => proposals.push(createDeclaration(fields))
+
+  // 1. 씬 전체에 걸리는 요소 — 줄콘티가 구조적으로 담지 못하는 것들.
+  push({
+    element: '조명 · 톤',
+    lens: 'cinematography',
+    responsibility: 'direction',
+    binding: 'category',
+    channel: 'acting-note',
+    rationale: '컷 플랜은 샷 크기와 앵글만 담는다. 조명은 어느 컷에도 적혀 있지 않다.',
+  })
+  push({
+    element: '의상 · 헤어',
+    lens: 'mise-en-scene',
+    responsibility: 'delegate',
+    binding: 'free',
+    rationale: '스토리보드 단계에서 확정하지 않는 것이 일반적이다. 위임이면 관객 검토에서 제외된다.',
+  })
+  push({
+    element: '미술 · 질감',
+    lens: 'mise-en-scene',
+    responsibility: 'delegate',
+    binding: 'free',
+    rationale: '이미지 모델은 어떻게든 질감을 그리지만, 그것이 감독의 결정으로 굳으면 안 된다.',
+  })
+
+  // 2. 인물이 등장하는 씬이면 외형 일관성이 컷을 가로지른다.
+  const hasCast = cutPlan.some((cut) => (cut.characters || '').trim().length > 0)
+  if (hasCast) {
+    push({
+      element: '인물 외형 일관성',
+      lens: 'mise-en-scene',
+      responsibility: 'image',
+      binding: 'strict',
+      rationale: '여러 컷에 같은 인물이 나온다. 컷마다 다르게 그려지면 다른 사람으로 읽힌다.',
+    })
+  }
+
+  // 3. 카메라 이동이 지정된 컷 — 정지 이미지가 표현할 수 없는 것.
+  cutPlan
+    .filter((cut) => cut.cameraMove && cut.cameraMove !== 'Fixed')
+    .forEach((cut) => {
+      push({
+        element: `카메라 이동 (${cut.cameraMove})`,
+        scope: 'cut',
+        cutId: cut.id,
+        lens: 'cinematography',
+        responsibility: 'direction',
+        binding: 'strict',
+        channel: 'camera-move',
+        rationale: '한 장의 정지 이미지는 이동을 담을 수 없다. 그림 밖 채널이 필요하다.',
+      })
+    })
+
+  // 4. 장면 의도가 비어 있으면 그 자체가 미결이다.
+  if (!sceneIntention.trim()) {
+    push({
+      element: '장면 의도',
+      scope: 'scene',
+      lens: 'narrative',
+      responsibility: 'image',
+      binding: 'category',
+      rationale: '아직 선언되지 않았다. 관객 검토(DG3)의 기준이 되므로 비워두면 대조할 것이 없다.',
+    })
+  }
+
+  return proposals
 }
 
 // 순서가 바뀌면 전체 번호와 Beat 안 번호를 함께 다시 매긴다.
@@ -681,11 +861,27 @@ const reorderCutPlan = (items) => {
 //   script  → 대본만
 //   cutplan → 컷 리스트만
 //   panels  → 대본 + 패널
+//   declare → 책임 범위 선언 (초안 생성 전)
 export const selectCutStage = (state) => {
   if (state.cutPlanStageOverride) return state.cutPlanStageOverride
+  // 선언 단계가 열려 있으면 확정 여부보다 우선한다. 그래야 그림 단계에서
+  // 선언으로 되돌아올 수 있다 — 선언은 언제든 갱신 대상이다 (DG3 → DG1).
+  // (design_goal.md DG1→DG3: 무엇을 담지 않을지 먼저 선언해야
+  //  관객 검토가 실제 결손만 가리킨다.)
+  if (state.declarationsOpen) return 'declare'
   if (state.cutPlanAccepted) return 'panels'
   return state.cutPlan.length > 0 ? 'cutplan' : 'script'
 }
+
+// 아직 판정하지 않은 제안. 남은 채로 생성에 들어가면 그 요소는
+// "확인되지 않은 AI 가정"으로 그림에 굳는다.
+export const selectPendingDeclarations = (state) =>
+  state.declarations.filter((decl) => decl.status === 'Proposed')
+
+// 프롬프트에서 빼야 할 요소. 위임한 것을 그림에 확정하면 P3가 무의미해진다.
+export const selectDelegatedDeclarations = (state) =>
+  state.declarations.filter((decl) =>
+    decl.status === 'Accepted' && decl.responsibility === 'delegate')
 
 // 확정된 컷을 패널로 옮긴다. 컷이 패널 구성의 근거가 되게 하되,
 // 이미 그린 그림은 파괴하지 않는다 (Spec §22: 조용한 파괴 금지).
@@ -824,6 +1020,7 @@ const useStore = create((set, get) => ({
   cutPlanStageOverride: null,
   clearCutPlanStageOverride: () => set({ cutPlanStageOverride: null }),
   // 확정 = 컷 구성을 패널에 반영한다. 여기서 비로소 줄콘티가 패널의 근거가 된다.
+  // 단, 패널로 바로 넘어가지 않고 선언 단계를 먼저 거친다 (DG1 P3).
   acceptCutPlan: () => set((state) => {
     if (state.cutPlan.length === 0) {
       return { cutPlanAccepted: true, cutPlanSkipped: false, cutPlanStageOverride: null }
@@ -836,27 +1033,121 @@ const useStore = create((set, get) => ({
       return result.shots
     })
 
+    // 선언을 아직 한 번도 검토하지 않았으면 그림 전에 선언 단계로 보낸다.
+    // 이미 검토했으면(되돌아온 경우) 다시 붙잡지 않는다.
+    const needsDeclaration = !state.declarationsReviewed
+    const judged = state.declarations.filter((decl) => decl.status !== 'Proposed')
+    const judgedElements = new Set(judged.map((decl) => decl.element))
+    const proposed = needsDeclaration
+      ? proposeDeclarations(state.cutPlan, { sceneIntention: state.sceneIntention || '' })
+        .filter((decl) => !judgedElements.has(decl.element))
+      : []
+
     return {
       ...next,
+      // 컷은 확정됐다. 다만 declarationsOpen이 켜져 있으면 화면은 아직
+      // 선언 단계에 머문다 (selectCutStage가 그 순서를 정한다).
       cutPlanAccepted: true,
       cutPlanSkipped: false,
       cutPlanStageOverride: null,
+      declarationsOpen: needsDeclaration,
+      declarations: needsDeclaration ? [...judged, ...proposed] : state.declarations,
       // 그림이 있는데 컷과 매칭되지 않은 패널. 사용자에게 알리고 판단을 맡긴다.
       cutPlanOrphanedShots: orphaned,
     }
   }),
   cutPlanOrphanedShots: [],
   clearCutPlanOrphanWarning: () => set({ cutPlanOrphanedShots: [] }),
+
+  // --- Responsibility registry (DG1 P3) ---------------------------------
+  declarations: [],
+  declarationsOpen: false,
+  // 한 번이라도 선언 단계를 거쳤는지. 건너뛴 것과 안 만든 것을 구분한다.
+  declarationsReviewed: false,
+
+  // 컷에서 선언 후보를 뽑는다. 이미 판정한 것은 덮어쓰지 않는다.
+  proposeDeclarations: () => set((state) => {
+    const judged = state.declarations.filter((decl) => decl.status !== 'Proposed')
+    // 이미 판정한 요소를 다시 후보로 올리지 않는다.
+    const judgedElements = new Set(judged.map((decl) => decl.element))
+    const fresh = proposeDeclarations(state.cutPlan, {
+      sceneIntention: state.sceneIntention || '',
+    }).filter((decl) => !judgedElements.has(decl.element))
+
+    return {
+      declarations: [...judged, ...fresh],
+      declarationsOpen: true,
+      cutPlanStageOverride: null,
+    }
+  }),
+
+  openDeclarations: () => set({ declarationsOpen: true, cutPlanStageOverride: null }),
+  closeDeclarations: () => set({ declarationsOpen: false }),
+
+  updateDeclaration: (id, patch) => set((state) => ({
+    declarations: state.declarations.map((decl) => {
+      if (decl.id !== id) return decl
+      // 사용자가 축을 건드리면 그 선언은 더 이상 AI 제안이 아니다.
+      const touchesAxis = ['responsibility', 'binding', 'channel', 'element']
+        .some((key) => key in patch)
+      return {
+        ...decl,
+        ...patch,
+        provenance: touchesAxis ? 'User' : decl.provenance,
+      }
+    }),
+  })),
+
+  // 판정 — 수용하거나 기각한다. 기각도 기록으로 남긴다.
+  // "검토했으나 선언하지 않기로 함"과 "아직 안 봄"은 다르다.
+  acceptDeclaration: (id) => set((state) => ({
+    declarations: state.declarations.map((decl) => (
+      decl.id === id ? { ...decl, status: 'Accepted' } : decl
+    )),
+  })),
+  rejectDeclaration: (id) => set((state) => ({
+    declarations: state.declarations.map((decl) => (
+      decl.id === id ? { ...decl, status: 'Rejected' } : decl
+    )),
+  })),
+
+  addDeclaration: (fields = {}) => set((state) => ({
+    declarations: [
+      ...state.declarations,
+      createDeclaration({ ...fields, status: 'Accepted', provenance: 'User' }),
+    ],
+  })),
+
+  removeDeclaration: (id) => set((state) => ({
+    declarations: state.declarations.filter((decl) => decl.id !== id),
+  })),
+
+  // 선언을 마치고 그림 단계로. 판정하지 않은 제안이 남아도 막지 않되,
+  // 남았다는 사실은 기록한다 (DG1 P2: 막지 않고 드러낸다).
+  commitDeclarations: () => set({
+    declarationsOpen: false,
+    declarationsReviewed: true,
+    // 선언을 마쳐야 비로소 패널 단계다.
+    cutPlanAccepted: true,
+    cutPlanStageOverride: null,
+  }),
+
+  // 선언 단계에서 컷으로 되돌아간다. 선언도 컷 확정도 지우지 않는다 —
+  // 단계 이동은 작업을 파괴하지 않는다.
+  backToCutPlan: () => set({ declarationsOpen: false, cutPlanStageOverride: 'cutplan' }),
   // 줄콘티를 다시 열어 수정한다. accept를 되돌리되 컷 자체는 지우지 않는다.
   reopenCutPlan: () => set({ cutPlanAccepted: false, cutPlanStageOverride: null }),
   // 건너뛰기는 막지 않되 기록한다. 자동 생성된 컷은 전부 Tentative로 남아
   // "검토되지 않은 채 넘어간 컷 분해"가 나중에 드러난다.
   cutPlanSkipped: false,
+  // 선언 단계도 함께 건너뛴다. declarationsReviewed는 false로 남겨
+  // "선언 없이 넘어간 씬"이 나중에 드러나게 한다.
   skipCutPlan: () => set((state) => ({
     cutPlan: state.cutPlan.length > 0 ? state.cutPlan : createMockCutPlan(state),
     cutPlanAccepted: true,
     cutPlanSkipped: true,
     cutPlanStageOverride: null,
+    declarationsOpen: false,
   })),
   overviewTab: 'spatial',
   setOverviewTab: (tab) => set({ overviewTab: tab }),

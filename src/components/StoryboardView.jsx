@@ -1,5 +1,11 @@
 import { Fragment, useCallback, useEffect, useRef, useState } from 'react'
-import useStore, { buildCutPrompt, selectCutStage } from '../store/useStore'
+import useStore, {
+  buildCutPrompt,
+  selectCutStage,
+  RESPONSIBILITY_LEVELS,
+  BINDING_LEVELS,
+  OFFIMAGE_CHANNELS,
+} from '../store/useStore'
 import './StoryboardView.css'
 
 const MOCK_PANEL_PALETTES = [
@@ -286,8 +292,165 @@ function ShotInspector({
           placeholder="컷 내용이 비어 있습니다."
         />
         {prompt?.shared && <p className="shot-inspector-shared">{prompt.shared}</p>}
+
+        {/* 이 컷이 무엇을 그림에 맡기지 않았는지 (DG1 P3).
+            생성된 그림에 그 요소가 보이더라도 결정이 아니라는 표시다. */}
+        {prompt?.responsibility?.delegated?.length > 0 && (
+          <div className="shot-inspector-delegated">
+            <strong>이 그림이 정하지 않는 것</strong>
+            <ul>
+              {prompt.responsibility.delegated.map((element) => (
+                <li key={element}>{element}</li>
+              ))}
+            </ul>
+            <small>
+              그림에 보이더라도 확정된 결정이 아닙니다. 후속 공정이 정합니다.
+            </small>
+          </div>
+        )}
+
+        {prompt?.responsibility?.offImage?.length > 0 && (
+          <div className="shot-inspector-offimage">
+            <strong>그림 밖 채널</strong>
+            <ul>
+              {prompt.responsibility.offImage.map(({ element, channel }) => (
+                <li key={element}>
+                  {element}
+                  <em>
+                    {OFFIMAGE_CHANNELS.find((entry) => entry.id === channel)?.label
+                      || '채널 미지정'}
+                  </em>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
       </section>
     </aside>
+  )
+}
+
+// 책임 범위 선언 카드 (DG1 P3).
+// 두 축을 나란히 둔다 — 책임(누가 확정하는가)과 구속강도(얼마나 묶는가)는
+// 직교하므로 한 축으로 합치면 표현할 수 없는 조합이 생긴다.
+function DeclarationCard({
+  declaration,
+  cutPlan,
+  onUpdate,
+  onAccept,
+  onReject,
+  onRemove,
+  settled = false,
+}) {
+  const cut = declaration.cutId
+    ? cutPlan.find((item) => item.id === declaration.cutId)
+    : null
+
+  return (
+    <li className={`declaration-card${settled ? ' is-settled' : ''}`}>
+      <div className="declaration-head">
+        <input
+          className="declaration-element"
+          value={declaration.element}
+          onChange={(event) => onUpdate(declaration.id, { element: event.target.value })}
+          placeholder="요소 이름 (예: 조명 · 톤)"
+        />
+        <span className={`declaration-scope scope-${declaration.scope}`}>
+          {cut ? `컷 ${cut.beat + 1}-${cut.beatOrder}` : '씬 전체'}
+        </span>
+        <span className={`declaration-provenance prov-${declaration.provenance.toLowerCase()}`}>
+          {declaration.provenance}
+        </span>
+      </div>
+
+      {declaration.rationale && (
+        <p className="declaration-rationale">{declaration.rationale}</p>
+      )}
+
+      <div className="declaration-axes">
+        <div className="declaration-axis">
+          <label>책임<small>그 결정을 누가 확정하는가</small></label>
+          <div className="declaration-chips" role="radiogroup" aria-label="책임">
+            {RESPONSIBILITY_LEVELS.map((level) => (
+              <button
+                key={level.id}
+                type="button"
+                role="radio"
+                aria-checked={declaration.responsibility === level.id}
+                className={declaration.responsibility === level.id ? 'active' : ''}
+                title={level.hint}
+                onClick={() => onUpdate(declaration.id, { responsibility: level.id })}
+              >
+                {level.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="declaration-axis">
+          <label>구속 강도<small>얼마나 묶어두는가</small></label>
+          <div className="declaration-chips is-binding" role="radiogroup" aria-label="구속 강도">
+            {BINDING_LEVELS.map((level) => (
+              <button
+                key={level.id}
+                type="button"
+                role="radio"
+                aria-checked={declaration.binding === level.id}
+                className={declaration.binding === level.id ? 'active' : ''}
+                title={level.hint}
+                onClick={() => onUpdate(declaration.id, { binding: level.id })}
+              >
+                {level.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* 그림이 확정하지 않는 요소는 어디에 기록할지 정해야 한다.
+          기록할 곳이 없으면 위임이 아니라 그냥 누락이다. */}
+      {declaration.responsibility === 'direction' && (
+        <div className="declaration-channel">
+          <label htmlFor={`channel-${declaration.id}`}>이미지 밖 채널</label>
+          <select
+            id={`channel-${declaration.id}`}
+            value={declaration.channel || ''}
+            onChange={(event) => onUpdate(declaration.id, {
+              channel: event.target.value || null,
+            })}
+          >
+            <option value="">선택 안 함</option>
+            {OFFIMAGE_CHANNELS.map((channel) => (
+              <option key={channel.id} value={channel.id}>{channel.label}</option>
+            ))}
+          </select>
+          {!declaration.channel && (
+            <small className="declaration-hint">
+              채널을 정하지 않으면 방향이 어디에도 남지 않습니다.
+            </small>
+          )}
+        </div>
+      )}
+
+      <div className="declaration-actions">
+        {settled ? (
+          <button type="button" onClick={() => onRemove(declaration.id)}>선언 해제</button>
+        ) : (
+          <>
+            <button type="button" onClick={() => onReject(declaration.id)}>
+              선언하지 않음
+            </button>
+            <button
+              type="button"
+              className="declaration-accept"
+              onClick={() => onAccept(declaration.id)}
+            >
+              선언
+            </button>
+          </>
+        )}
+      </div>
+    </li>
   )
 }
 
@@ -393,6 +556,17 @@ export default function StoryboardView() {
   const cutPlanOrphanedShots = useStore((s) => s.cutPlanOrphanedShots)
   const clearCutPlanOrphanWarning = useStore((s) => s.clearCutPlanOrphanWarning)
   const cutStage = useStore(selectCutStage)
+  // 책임 범위 선언 (DG1 P3)
+  const declarations = useStore((s) => s.declarations)
+  const declarationsReviewed = useStore((s) => s.declarationsReviewed)
+  const openDeclarations = useStore((s) => s.openDeclarations)
+  const updateDeclaration = useStore((s) => s.updateDeclaration)
+  const acceptDeclaration = useStore((s) => s.acceptDeclaration)
+  const rejectDeclaration = useStore((s) => s.rejectDeclaration)
+  const removeDeclaration = useStore((s) => s.removeDeclaration)
+  const addDeclaration = useStore((s) => s.addDeclaration)
+  const commitDeclarations = useStore((s) => s.commitDeclarations)
+  const backToCutPlan = useStore((s) => s.backToCutPlan)
   const addBeatAfter = useStore((s) => s.addBeatAfter)
   const requestBeatSplit = useStore((s) => s.requestBeatSplit)
   const requestScreenplayFormatting = useStore((s) => s.requestScreenplayFormatting)
@@ -458,6 +632,12 @@ export default function StoryboardView() {
   //   panels  → 대본 + 패널
   // 패널은 확정 여부가 아니라 "지금 어느 단계를 보고 있는가"를 따른다.
   const showStoryboardPanels = isExpanded && storyboardPanelsVisible && cutStage === 'panels'
+  const isDeclareStage = cutStage === 'declare' && isExpanded && !drawingWorkspaceOpen && !showWriteScene
+  // 아직 판정하지 않은 제안과 이미 선언된 것을 나눈다.
+  // 판정하지 않은 채 넘어가면 그 요소는 확인되지 않은 AI 가정으로 굳는다.
+  const pendingDeclarations = declarations.filter((decl) => decl.status === 'Proposed')
+  const acceptedDeclarations = declarations.filter((decl) => decl.status === 'Accepted')
+  const rejectedDeclarations = declarations.filter((decl) => decl.status === 'Rejected')
   const activeBranch = scene?.activeBranch ?? 0
   const activeShot = scene?.activeShot ?? 0
   const branch = scene?.branches?.[activeBranch]
@@ -505,7 +685,11 @@ export default function StoryboardView() {
     ? cutPlan.find((item) => item.id === inspectedShot.cutPlanItemId) || null
     : null
   const inspectedPrompt = inspectedCut
-    ? buildCutPrompt(inspectedCut, { sceneIntention, sceneNote: scenePromptNote })
+    ? buildCutPrompt(inspectedCut, {
+      sceneIntention,
+      sceneNote: scenePromptNote,
+      declarations,
+    })
     : null
 
   const toggleCutBeat = (beat) => setCollapsedCutBeats((current) => (
@@ -802,6 +986,28 @@ export default function StoryboardView() {
                 </div>
                 </button>
               </li>
+              <li className={`${declarationsReviewed ? 'stage-done' : cutStage === 'declare' ? 'stage-active' : 'stage-locked'}${cutStage === 'declare' ? ' stage-current' : ''}`}>
+                <button
+                  type="button"
+                  onClick={openDeclarations}
+                  disabled={cutPlan.length === 0 || cutStage === 'declare'}
+                  aria-current={cutStage === 'declare' ? 'step' : undefined}
+                >
+                  <span className="stage-index">3</span>
+                  <div>
+                    <strong>책임 범위</strong>
+                    <em>
+                      {cutPlanSkipped && !declarationsReviewed
+                        ? '건너뜀 · 선언 없음'
+                        : pendingDeclarations.length > 0
+                          ? `${pendingDeclarations.length}건 판정 대기`
+                          : declarationsReviewed
+                            ? `${acceptedDeclarations.length}건 선언됨`
+                            : '컷 확정 후 열림'}
+                    </em>
+                  </div>
+                </button>
+              </li>
               <li className={`${cutPlanAccepted ? 'stage-active' : 'stage-locked'}${cutStage === 'panels' ? ' stage-current' : ''}`}>
                 <button
                   type="button"
@@ -809,7 +1015,7 @@ export default function StoryboardView() {
                   disabled={!cutPlanAccepted}
                   aria-current={cutStage === 'panels' ? 'step' : undefined}
                 >
-                  <span className="stage-index">3</span>
+                  <span className="stage-index">4</span>
                   <div>
                     <strong>Panels</strong>
                     <em>{cutPlanAccepted ? `${flowShots.length} panels` : '컷 확정 후 열림'}</em>
@@ -1118,6 +1324,7 @@ export default function StoryboardView() {
                           const prompt = buildCutPrompt(item, {
                             sceneIntention,
                             sceneNote: scenePromptNote,
+                            declarations,
                           })
                           return (
                             <tr className="cut-plan-prompt-row">
@@ -1197,6 +1404,112 @@ export default function StoryboardView() {
                   {cutPlan.filter((item) => item.status === 'Tentative').length} Tentative ·{' '}
                   {cutPlan.filter((item) => item.status === 'Open').length} Open
                 </span>
+              </footer>
+            </section>
+          )}
+
+          {/* 책임 범위 선언 (DG1 P3). 그림보다 먼저 온다 —
+              무엇을 담지 않을지 선언해야 관객 검토가 실제 결손만 가리킨다. */}
+          {isDeclareStage && (
+            <section className="declaration-review" aria-label="책임 범위 선언">
+              <header>
+                <span className="script-draft-mark" aria-hidden="true">R</span>
+                <div>
+                  <span>책임 범위 · Responsibility · Mock</span>
+                  <strong>이 스토리보드가 무엇까지 책임집니까</strong>
+                  <p>
+                    그림이 정할 것과 후속 공정에 넘길 것을 먼저 나눕니다.
+                    위임한 요소는 나중에 관객 검토에서 결손으로 보고되지 않습니다.
+                  </p>
+                </div>
+                <div className="script-draft-actions">
+                  <button type="button" onClick={backToCutPlan}>Back to cuts</button>
+                  <button
+                    type="button"
+                    className="use-draft"
+                    onClick={commitDeclarations}
+                  >
+                    선언 마치고 그림으로
+                  </button>
+                </div>
+              </header>
+
+              {pendingDeclarations.length > 0 && (
+                <div className="declaration-group">
+                  <h4>
+                    판정 대기 <em>{pendingDeclarations.length}건</em>
+                    <small>AI가 올린 후보입니다. 수용하거나 기각하세요.</small>
+                  </h4>
+                  <ul className="declaration-list">
+                    {pendingDeclarations.map((decl) => (
+                      <DeclarationCard
+                        key={decl.id}
+                        declaration={decl}
+                        cutPlan={cutPlan}
+                        onUpdate={updateDeclaration}
+                        onAccept={acceptDeclaration}
+                        onReject={rejectDeclaration}
+                      />
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {acceptedDeclarations.length > 0 && (
+                <div className="declaration-group">
+                  <h4>
+                    선언됨 <em>{acceptedDeclarations.length}건</em>
+                    <small>생성과 관객 검토가 이 선언을 따릅니다.</small>
+                  </h4>
+                  <ul className="declaration-list">
+                    {acceptedDeclarations.map((decl) => (
+                      <DeclarationCard
+                        key={decl.id}
+                        declaration={decl}
+                        cutPlan={cutPlan}
+                        onUpdate={updateDeclaration}
+                        onRemove={removeDeclaration}
+                        settled
+                      />
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {rejectedDeclarations.length > 0 && (
+                <div className="declaration-group declaration-rejected">
+                  <h4>
+                    선언하지 않음 <em>{rejectedDeclarations.length}건</em>
+                    <small>
+                      검토한 뒤 선언하지 않기로 한 것입니다. 아직 보지 않은 것과 다릅니다.
+                    </small>
+                  </h4>
+                  <ul className="declaration-list">
+                    {rejectedDeclarations.map((decl) => (
+                      <li key={decl.id} className="declaration-card is-rejected">
+                        <strong>{decl.element}</strong>
+                        <button type="button" onClick={() => acceptDeclaration(decl.id)}>
+                          되돌리기
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              <footer className="declaration-footer">
+                <button
+                  type="button"
+                  onClick={() => addDeclaration({ element: '', rationale: '' })}
+                >
+                  + 직접 선언 추가
+                </button>
+                {pendingDeclarations.length > 0 && (
+                  <span className="declaration-warning">
+                    판정하지 않은 {pendingDeclarations.length}건은 확인되지 않은 채
+                    그림에 반영됩니다.
+                  </span>
+                )}
               </footer>
             </section>
           )}
