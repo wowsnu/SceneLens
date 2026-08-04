@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { GraphView, CardView, FillShotPicker } from './FlowTab'
 import GridView from './GridView'
 import FilmOverview from './FilmOverview'
@@ -5,7 +6,89 @@ import { GapFillPicker } from './GapFillPanel'
 import useStore from '../store/useStore'
 import './SceneOverview.css'
 
-export default function SceneOverview() {
+function SplitShotFocus({ shotIndex, shotPreview, onClose, onNavigate }) {
+  const scene = useStore((s) => s.scenes[s.activeScene])
+  const setActiveShot = useStore((s) => s.setFlowActiveShot)
+  const activeBranch = scene?.activeBranch ?? 0
+  const shots = scene?.branches?.[activeBranch]?.shots || []
+  const shot = shots[shotIndex]
+
+  if (!shot) return null
+
+  const preview = shotPreview?.shotId === shot.id ? shotPreview : null
+  const image = preview?.image ?? shot.image
+  const cir = preview?.cir ?? shot.cir ?? {}
+  const details = [
+    ['Beat', `Beat ${(shot.scriptBeat ?? 0) + 1}`],
+    ['샷 크기', cir.shotSize],
+    ['관계', cir.relation],
+    ['앵글', cir.angle || cir.horizontalAngle || cir.verticalLevel],
+    ['프레이밍', cir.framing || cir.viewpointFraming],
+    ['움직임', cir.motionHint],
+  ].filter(([, value]) => Boolean(value))
+
+  const moveTo = (nextIndex) => {
+    if (nextIndex < 0 || nextIndex >= shots.length) return
+    setActiveShot(nextIndex)
+    onNavigate(nextIndex)
+  }
+
+  return (
+    <section className="split-shot-focus" aria-label={`S${shotIndex + 1} 확대 보기`}>
+      <header>
+        <div>
+          <span>S{shotIndex + 1}</span>
+          <strong>{shot.label}</strong>
+        </div>
+        <button type="button" onClick={onClose} aria-label="확대 보기 닫기">✕</button>
+      </header>
+
+      <div className="split-shot-focus-frame">
+        {image ? (
+          <img src={image} alt={shot.label} />
+        ) : (
+          <span>S{shotIndex + 1}</span>
+        )}
+        {preview && <em>촬영 미리보기</em>}
+      </div>
+
+      <dl>
+        {details.map(([label, value]) => (
+          <div key={label}>
+            <dt>{label}</dt>
+            <dd>{value}</dd>
+          </div>
+        ))}
+      </dl>
+
+      <footer>
+        <button
+          type="button"
+          disabled={shotIndex === 0}
+          onClick={() => moveTo(shotIndex - 1)}
+        >
+          ← 이전 Shot
+        </button>
+        <span>{shotIndex + 1} / {shots.length}</span>
+        <button
+          type="button"
+          disabled={shotIndex === shots.length - 1}
+          onClick={() => moveTo(shotIndex + 1)}
+        >
+          다음 Shot →
+        </button>
+      </footer>
+    </section>
+  )
+}
+
+export default function SceneOverview({
+  shotPreview = null,
+  compact = false,
+  decisionScope = null,
+  sequencePreview = null,
+}) {
+  const [focusedShotIndex, setFocusedShotIndex] = useState(null)
   const flowView = useStore((s) => s.flowView)
   const setFlowView = useStore((s) => s.setFlowView)
   const scenes = useStore((s) => s.scenes)
@@ -17,8 +100,8 @@ export default function SceneOverview() {
   const setOverviewMode = useStore((s) => s.setOverviewMode)
 
   return (
-    <div className="scene-overview">
-      <div className="scene-bar">
+    <div className={`scene-overview ${compact ? 'compact' : ''}`}>
+      {!compact && <div className="scene-bar">
         <div className="scene-mode-toggle">
           <button
             className={`scene-mode-btn ${overviewMode === 'film' ? 'active' : ''}`}
@@ -56,8 +139,8 @@ export default function SceneOverview() {
             </button>
           </div>
         )}
-      </div>
-      {overviewMode === 'scene' && (
+      </div>}
+      {!compact && overviewMode === 'scene' && (
       <div className="scene-overview-toolbar">
         <div className="scene-overview-view-toggle">
           <button
@@ -110,11 +193,32 @@ export default function SceneOverview() {
       </div>
       )}
       <div className="scene-overview-body">
-        {overviewMode === 'film' ? (
+        {compact && focusedShotIndex !== null ? (
+          <SplitShotFocus
+            shotIndex={focusedShotIndex}
+            shotPreview={shotPreview}
+            onClose={() => setFocusedShotIndex(null)}
+            onNavigate={setFocusedShotIndex}
+          />
+        ) : compact ? (
+          <GridView
+            shotPreview={shotPreview}
+            compact
+            onOpenShot={setFocusedShotIndex}
+            decisionScope={decisionScope}
+            sequencePreview={sequencePreview}
+          />
+        ) : overviewMode === 'film' ? (
           <FilmOverview />
         ) : (
           <>
-            {flowView === 'grid' && <GridView />}
+            {flowView === 'grid' && (
+              <GridView
+                shotPreview={shotPreview}
+                decisionScope={decisionScope}
+                sequencePreview={sequencePreview}
+              />
+            )}
             {flowView === 'graph' && <GraphView />}
             {flowView === 'card' && <CardView />}
           </>

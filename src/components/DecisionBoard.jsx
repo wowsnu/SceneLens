@@ -10,6 +10,7 @@ import './DecisionBoard.css'
 const NARRATIVE_AGENT = {
   id: 'narrative',
   role: 'Narrative Agent',
+  displayName: '서사',
   lens: '정보/서사',
   glyph: '📖',
   tagline: '언제 알게 할 것인가',
@@ -104,6 +105,15 @@ const MOCK_OPTIONS = [
     ],
     theory: 'Establishing Shot · Size for Importance',
     viewerCheck: 'viewer가 장소 설명이 아니라 압박감으로 읽는지 확인',
+    mockShotChange: {
+      image: '/img/wide_establishing.png',
+      cir: {
+        shotSize: 'Wide',
+        relation: 'Master',
+        angle: 'Eye-level',
+        framing: 'Space-led',
+      },
+    },
   },
   {
     id: 'opt-tight-face',
@@ -122,6 +132,15 @@ const MOCK_OPTIONS = [
     ],
     theory: 'Close-up · Hitchcock’s Rule',
     viewerCheck: 'viewer가 불안을 읽는지, 단순 놀람이나 공포로 읽는지 확인',
+    mockShotChange: {
+      image: '/img/closeup_woman.png',
+      cir: {
+        shotSize: 'Close-Up',
+        relation: 'Single',
+        angle: 'Eye-level',
+        framing: 'Face-led',
+      },
+    },
   },
   {
     id: 'opt-obstructed-view',
@@ -140,6 +159,15 @@ const MOCK_OPTIONS = [
     ],
     theory: 'Frame within a Frame · Restricted View',
     viewerCheck: 'viewer가 이 가림을 의도된 감시감으로 받아들이는지 확인',
+    mockShotChange: {
+      image: '/img/heavy_occlusion.png',
+      cir: {
+        shotSize: 'Medium',
+        relation: 'Restricted view',
+        angle: 'Oblique',
+        framing: 'Foreground occlusion',
+      },
+    },
   },
   {
     id: 'opt-reaction-first',
@@ -200,7 +228,7 @@ const MOCK_CAMERA_RANGE_OPTIONS = [
     cost: '시점 변화가 빠르면 공간 축과 시선 관계가 불안정해질 수 있음',
     tags: ['Range', 'OTS', '주관 시점'],
     sequencePattern: 'subjective',
-    theory: 'OTS / Subjective Shot · Viewpoint Alignment',
+    theory: 'OTS',
     viewerCheck: 'viewer가 시점 변화를 혼란이 아니라 재인에게 가까워지는 과정으로 읽는지 확인',
   },
 ]
@@ -277,7 +305,7 @@ const MOCK_CAMERA_ANALYSIS = {
   ],
   observation: '관제실의 모니터, 출구, 캐비닛과 인물의 위치 관계를 한 프레임 안에서 먼저 설명하는 촬영안입니다.',
   interpretation: '공간과 위험 단서는 명확하지만, 인물의 미세한 불안과 판단 순간은 상대적으로 약하게 읽힐 수 있습니다.',
-  theory: 'The Filmmaker’s Eye · Establishing Shot / Size for Importance',
+  theory: 'The Filmmaker’s Eye · Establishing Shot',
 }
 
 const MOCK_MISE_SCENE_STATE = {
@@ -427,7 +455,7 @@ function getMockMiseShotStaging(shotIndex) {
 const MOCK_MISE_STAGING_MOVE_TYPES = [
   {
     id: 'blocking',
-    approach: '인물 배치 / Blocking',
+    approach: '인물 배치',
     titles: [
       '문과 콘솔 사이에 진입선 만들기',
       '철문 앞에 재인 고정하기',
@@ -451,7 +479,7 @@ const MOCK_MISE_STAGING_MOVE_TYPES = [
   },
   {
     id: 'performance',
-    approach: '연기 동작 / Performance',
+    approach: '연기 동작',
     titles: [
       '손잡이를 놓지 못하는 재인',
       '정지와 무반응 대비하기',
@@ -475,7 +503,7 @@ const MOCK_MISE_STAGING_MOVE_TYPES = [
   },
   {
     id: 'eyeline',
-    approach: '시선 설계 / Eyeline',
+    approach: '시선 설계',
     titles: [
       '직접 보지 않고 반사로 확인하기',
       '민호의 손을 먼저 보게 하기',
@@ -499,7 +527,7 @@ const MOCK_MISE_STAGING_MOVE_TYPES = [
   },
   {
     id: 'prop',
-    approach: '소품 동선 / Prop choreography',
+    approach: '소품 동선',
     titles: [
       '젖은 소매 안에 카드 숨기기',
       '카드 모서리만 만지작거리기',
@@ -523,7 +551,7 @@ const MOCK_MISE_STAGING_MOVE_TYPES = [
   },
   {
     id: 'set',
-    approach: '세트 활용 / Set interaction',
+    approach: '세트 활용',
     titles: [
       '젖은 침입 흔적 남기기',
       '철문이 스스로 닫히게 하기',
@@ -569,7 +597,7 @@ const MOCK_EDITING_SINGLE_CUES = [
 const MOCK_EDITING_SINGLE_OPERATIONS = [
   {
     id: 'trim-head',
-    operation: '앞부분 줄이기 / Trim head',
+    operation: '앞부분 줄이기',
     titles: [
       '철문이 거의 닫힌 순간부터 시작',
       '민호의 첫 대사에 바로 진입',
@@ -593,7 +621,7 @@ const MOCK_EDITING_SINGLE_OPERATIONS = [
   },
   {
     id: 'split',
-    operation: '샷 나누기 / Split shot',
+    operation: '샷 나누기',
     titles: [
       '철문이 닫힌 뒤 민호로 분리',
       '재인이 얼어붙는 순간 분할',
@@ -617,7 +645,7 @@ const MOCK_EDITING_SINGLE_OPERATIONS = [
   },
   {
     id: 'hold-tail',
-    operation: '끝 반응 유지 / Hold tail',
+    operation: '끝 반응 유지',
     titles: [
       '민호가 돌아보지 않는 시간을 유지',
       '재인의 정지를 한 박자 더',
@@ -641,7 +669,7 @@ const MOCK_EDITING_SINGLE_OPERATIONS = [
   },
   {
     id: 'pickup',
-    operation: '연결 컷·지점 / Pickup · Cut point',
+    operation: '연결 컷·지점',
     titles: [
       '젖은 손과 출입카드 Detail',
       '카드를 쥔 손을 반응 연결점으로',
@@ -669,37 +697,37 @@ const MOCK_EDITING_INCOMING_BOUNDARIES = [
   null,
   {
     kind: 'retime',
-    operation: '연결 지점 조정 / Retime cut',
+    operation: '연결 지점 조정',
     title: '철문 닫힘에서 민호의 대사로 연결',
     proposal: 'S1은 철문이 완전히 닫히는 순간 끝내고, S2는 민호의 “생각보다 오래 걸렸네”로 바로 시작합니다.',
   },
   {
     kind: 'retime',
-    operation: '행동 연결 / Cut on action',
+    operation: '행동 연결',
     title: '재인의 대답에서 의자 회전으로',
     proposal: 'S2는 재인의 대답이 끝나는 순간 자르고, S3는 민호의 의자가 움직이기 시작하는 순간부터 시작합니다.',
   },
   {
     kind: 'retime',
-    operation: '시선 연결 / Eyeline cut',
+    operation: '시선 연결',
     title: '민호의 시선을 모니터로 연결',
     proposal: 'S3는 민호의 시선이 재인에게서 벗어나는 순간 끝내고, S4는 그가 바라본 모니터 화면으로 시작합니다.',
   },
   {
     kind: 'retime',
-    operation: '행동 연결 / Cut on action',
+    operation: '행동 연결',
     title: '대사 끝에서 의자 움직임으로',
     proposal: 'S4는 민호의 마지막 대사 직후 끝내고, S5는 의자가 뒤로 밀리기 시작하는 움직임으로 시작합니다.',
   },
   {
     kind: 'retime',
-    operation: '시선 연결 / Eyeline cut',
+    operation: '시선 연결',
     title: '재인의 시선을 아이 화면으로',
     proposal: 'S5는 재인이 모니터로 시선을 돌리는 순간 끝내고, S6는 노란 우비 아이가 보이는 화면으로 시작합니다.',
   },
   {
     kind: 'retime',
-    operation: '행동 연결 / Cut on action',
+    operation: '행동 연결',
     title: '카드를 쥔 손에서 투척으로',
     proposal: 'S6는 재인이 출입카드를 세게 쥐는 순간 끝내고, S7는 그 손이 카드를 던지는 동작으로 시작합니다.',
   },
@@ -708,37 +736,37 @@ const MOCK_EDITING_INCOMING_BOUNDARIES = [
 const MOCK_EDITING_OUTGOING_BOUNDARIES = [
   {
     kind: 'insert',
-    operation: '새 샷 추가 / Insert shot',
+    operation: '새 샷 추가',
     title: '출입카드 Shot을 S1 뒤에 추가',
     proposal: 'S1과 S2 사이에 임시 Shot을 추가합니다. 새 패널에는 재인의 오른손에 쥔 출입카드만 표시합니다.',
   },
   {
     kind: 'insert',
-    operation: '새 샷 추가 / Insert reaction',
+    operation: '새 샷 추가',
     title: '재인의 정지 반응을 S2 뒤에 추가',
     proposal: 'S2와 S3 사이에 임시 Shot을 추가합니다. 새 패널에는 민호의 말을 듣고 움직임을 멈춘 재인의 반응을 표시합니다.',
   },
   {
     kind: 'insert',
-    operation: '새 샷 추가 / Insert shot',
+    operation: '새 샷 추가',
     title: '모니터 화면을 S3 뒤에 추가',
     proposal: 'S3와 S4 사이에 임시 Shot을 추가합니다. 새 패널에는 민호가 바라본 승강장과 터널 모니터를 표시합니다.',
   },
   {
     kind: 'insert',
-    operation: '새 샷 추가 / Insert detail',
+    operation: '새 샷 추가',
     title: '감춰진 오른손 Shot을 S4 뒤에 추가',
     proposal: 'S4와 S5 사이에 임시 Shot을 추가합니다. 새 패널에는 콘솔 아래 감춰진 민호의 오른손을 표시합니다.',
   },
   {
     kind: 'insert',
-    operation: '새 샷 추가 / Insert reaction',
+    operation: '새 샷 추가',
     title: '리모컨을 본 재인 Shot을 S5 뒤에 추가',
     proposal: 'S5와 S6 사이에 임시 Shot을 추가합니다. 새 패널에는 공개된 리모컨을 확인하는 재인의 반응을 표시합니다.',
   },
   {
     kind: 'insert',
-    operation: '새 샷 추가 / Insert detail',
+    operation: '새 샷 추가',
     title: '카드를 쥔 손 Shot을 S6 뒤에 추가',
     proposal: 'S6와 S7 사이에 임시 Shot을 추가합니다. 새 패널에는 힘이 들어간 재인의 손과 출입카드를 표시합니다.',
   },
@@ -873,7 +901,10 @@ export default function DecisionBoard({ boardView = 'split' }) {
   const [reviewOpen, setReviewOpen] = useState(false)
   const [debateOpen, setDebateOpen] = useState(false)
   const [selectedOptionIds, setSelectedOptionIds] = useState([])
-  const [directorNote, setDirectorNote] = useState('')
+  const [cameraPreview, setCameraPreview] = useState(null)
+  const [cameraApplyHistory, setCameraApplyHistory] = useState([])
+  const [editingSequencePreview, setEditingSequencePreview] = useState(null)
+  const [viewerSnapshot, setViewerSnapshot] = useState(null)
   const [primaryLensId, setPrimaryLensId] = useState('camera')
   const [miseWorkspace, setMiseWorkspace] = useState('scene')
   const [miseCharacters, setMiseCharacters] = useState(() => (
@@ -899,22 +930,14 @@ export default function DecisionBoard({ boardView = 'split' }) {
   const [lensIntentSubmitted, setLensIntentSubmitted] = useState(() => (
     CREATIVE_LENSES.reduce((acc, lens) => ({ ...acc, [lens.id]: false }), {})
   ))
-  const [rounds, setRounds] = useState([
-    {
-      id: 'round-1',
-      label: 'Round 1',
-      note: 'Initial option spread',
-      selectedOptionIds: [],
-      directorNote: '',
-    },
-  ])
   const [lensIntents, setLensIntents] = useState(() => (
     CREATIVE_LENSES.reduce((acc, lens) => ({ ...acc, [lens.id]: '' }), {})
   ))
   const scenes = useStore((s) => s.scenes)
   const activeScene = useStore((s) => s.activeScene)
   const setFlowActiveShot = useStore((s) => s.setFlowActiveShot)
-  const sceneIntention = useStore((s) => s.sceneIntention)
+  const setFlowView = useStore((s) => s.setFlowView)
+  const updateFlowShotById = useStore((s) => s.updateFlowShotById)
   const scene = scenes[activeScene]
   const activeShot = scene?.activeShot ?? 0
   const activeBranch = scene?.activeBranch ?? 0
@@ -948,6 +971,22 @@ export default function DecisionBoard({ boardView = 'split' }) {
     ...getMockEditingBoundaries(activeShot, shots.length),
   ]
   const currentShot = shots[activeShot]
+  const cameraPreviewOption = allOptions.find((option) => option.id === cameraPreview?.optionId)
+  const cameraPreviewShot = shots.find((shot) => shot.id === cameraPreview?.shotId)
+  const cameraPreviewShotIndex = shots.findIndex((shot) => shot.id === cameraPreview?.shotId)
+  const storyboardShotPreview = cameraPreviewOption?.mockShotChange && cameraPreviewShot
+    ? {
+        shotId: cameraPreviewShot.id,
+        optionId: cameraPreviewOption.id,
+        title: cameraPreviewOption.title,
+        image: cameraPreviewOption.mockShotChange.image,
+        cir: {
+          ...(cameraPreviewShot.cir || {}),
+          ...cameraPreviewOption.mockShotChange.cir,
+        },
+      }
+    : null
+  const lastCameraApply = cameraApplyHistory[cameraApplyHistory.length - 1] || null
 
   // Narrative 아래의 세 관점만 Creative Lens lane으로 렌더한다.
   // 현재 option 내용은 모두 prototype MOCK_OPTIONS이다.
@@ -963,10 +1002,6 @@ export default function DecisionBoard({ boardView = 'split' }) {
   const connectedRelations = availableRelations.filter(
     (relation) => relation.from === selectedOption.id || relation.to === selectedOption.id
   )
-  const selectedOptions = allOptions.filter((option) => selectedOptionIds.includes(option.id))
-  const selectedRelations = availableRelations.filter(
-    (relation) => selectedOptionIds.includes(relation.from) && selectedOptionIds.includes(relation.to)
-  )
 
   const updateLensIntent = (lensId, value) => {
     setLensIntents((prev) => ({ ...prev, [lensId]: value }))
@@ -980,6 +1015,8 @@ export default function DecisionBoard({ boardView = 'split' }) {
 
   const choosePrimaryLens = (lensId) => {
     setPrimaryLensId(lensId)
+    if (lensId !== 'camera') setCameraPreview(null)
+    if (lensId !== 'editing') setEditingSequencePreview(null)
     if (lensId === 'editing') {
       setScopeMode('single')
       setRangeStart(activeShot)
@@ -1039,6 +1076,7 @@ export default function DecisionBoard({ boardView = 'split' }) {
       setFlowActiveShot(shotIdx)
       setRangeStart(shotIdx)
       setRangeEnd(shotIdx)
+      setEditingSequencePreview(null)
       return
     }
 
@@ -1080,23 +1118,59 @@ export default function DecisionBoard({ boardView = 'split' }) {
     setReviewOpen(true)
   }
 
-  const startNextRound = () => {
-    if (selectedOptionIds.length === 0) return
-    const nextIndex = rounds.length + 1
-    setRounds((prev) => [
-      ...prev,
+  const previewCameraOption = (option) => {
+    if (!currentShot || scopeMode !== 'single' || !option.mockShotChange) return
+    setReviewOpen(false)
+    setSelectedOptionId(option.id)
+    setCameraPreview({
+      optionId: option.id,
+      shotId: currentShot.id,
+    })
+    setFlowView('grid')
+  }
+
+  const applyCameraOption = (option) => {
+    if (!currentShot || scopeMode !== 'single' || !option.mockShotChange) return
+
+    const before = {
+      image: currentShot.image ?? null,
+      cir: { ...(currentShot.cir || {}) },
+      source: currentShot.source,
+      lensApplication: currentShot.lensApplication,
+    }
+    const after = {
+      image: option.mockShotChange.image,
+      cir: {
+        ...(currentShot.cir || {}),
+        ...option.mockShotChange.cir,
+      },
+      source: 'camera-lens',
+      lensApplication: {
+        lensId: 'camera',
+        optionId: option.id,
+        title: option.title,
+      },
+    }
+
+    updateFlowShotById(currentShot.id, after)
+    setCameraApplyHistory((history) => [
+      ...history,
       {
-        id: `round-${nextIndex}`,
-        label: `Round ${nextIndex}`,
-        note: 'Director response round',
-        selectedOptionIds: [...selectedOptionIds],
-        directorNote,
-        lensBriefs: { ...lensIntents },
-        intentionBrief: sceneIntention,
-        scope,
+        shotId: currentShot.id,
+        shotNumber: activeShot + 1,
+        optionId: option.id,
+        title: option.title,
+        before,
       },
     ])
-    setDirectorNote('')
+    setCameraPreview(null)
+  }
+
+  const undoLastCameraApply = () => {
+    if (!lastCameraApply) return
+    updateFlowShotById(lastCameraApply.shotId, lastCameraApply.before)
+    setCameraApplyHistory((history) => history.slice(0, -1))
+    setCameraPreview(null)
   }
 
   const getOptionTitle = (optionId) => (
@@ -1106,6 +1180,76 @@ export default function DecisionBoard({ boardView = 'split' }) {
   const getLens = (lensId) => (
     PERSPECTIVES.find((lens) => lens.id === lensId) || PERSPECTIVES[0]
   )
+
+  const openViewerReflection = () => {
+    if (shots.length === 0) return
+    setCameraPreview(null)
+    setReviewOpen(false)
+    setDebateOpen(false)
+    setViewerSnapshot({
+      sceneId: scene?.id,
+      sceneLabel: scene?.label || 'Current scene',
+      shots: shots.map((shot, index) => ({
+        id: shot.id,
+        order: index + 1,
+        label: shot.label || `Shot ${index + 1}`,
+        image: shot.image ?? null,
+        cir: { ...(shot.cir || {}) },
+        scriptBeat: shot.scriptBeat ?? 0,
+      })),
+    })
+  }
+
+  const snapshotShots = viewerSnapshot?.shots || []
+  const readableShots = snapshotShots.filter((shot) => Boolean(shot.image))
+  const firstSnapshotShot = snapshotShots[0]?.order || 1
+  const lastSnapshotShot = snapshotShots[snapshotShots.length - 1]?.order || firstSnapshotShot
+
+  const viewerReflectionPane = viewerSnapshot ? (
+    <div className="viewer-reflection-shell" aria-label="새 눈으로 보기">
+      <header className="viewer-reflection-heading">
+        <div>
+          <span>새 눈으로 보기</span>
+          <h2>처음 보는 눈에는 이렇게 보여요</h2>
+          <p>만든 의도는 잠시 내려두고, 지금 보이는 패널의 흐름만 따라가 봅니다.</p>
+        </div>
+        <button type="button" onClick={() => setViewerSnapshot(null)}>
+          렌즈로 돌아가기
+        </button>
+      </header>
+
+      <section className="viewer-snapshot-card">
+        <div>
+          <span>지금 보고 있는 장면</span>
+          <strong>{viewerSnapshot.sceneLabel}</strong>
+        </div>
+        <dl>
+          <div>
+            <dt>범위</dt>
+            <dd>S{firstSnapshotShot}–S{lastSnapshotShot}</dd>
+          </div>
+          <div>
+            <dt>보이는 패널</dt>
+            <dd>{readableShots.length} / {snapshotShots.length}</dd>
+          </div>
+        </dl>
+      </section>
+
+      <section className="viewer-reflection-placeholder">
+        <span>새 눈의 메모</span>
+        <strong>어떤 흐름이 먼저 보였는지 이곳에 모일 거예요.</strong>
+        <p>
+          먼저 읽힌 흐름과 잠깐 멈칫한 곳,
+          다르게 보일 수 있는 지점을 차례로 보여줍니다.
+        </p>
+        <div className="viewer-placeholder-rows" aria-hidden="true">
+          <span />
+          <span />
+          <span />
+        </div>
+      </section>
+    </div>
+  ) : null
 
   const selectedOptionReview = (
     <div className="selected-review-panel">
@@ -1220,35 +1364,53 @@ export default function DecisionBoard({ boardView = 'split' }) {
             })}
           </div>
           <button type="button" className="scope-generate-btn">
-            Generate Options
+            {primaryLens.displayName} 렌즈로 살펴보기
           </button>
         </div>
       </section>
 
       <div className={`decision-board-main view-${boardView}`}>
         <section className="decision-board-storyboard" aria-label="Storyboard scope">
-          <SceneOverview />
+          <SceneOverview
+            shotPreview={storyboardShotPreview}
+            compact={boardView === 'split'}
+            decisionScope={scope}
+            sequencePreview={editingSequencePreview}
+          />
         </section>
 
         <section className="decision-board-options" aria-label="Option cards and tradeoffs">
-          {reviewOpen && selectedOptionReview}
+          {viewerSnapshot ? viewerReflectionPane : (
+            <>
+              {reviewOpen && selectedOptionReview}
 
-          <div className="primary-lens-control">
+              <div className="primary-lens-control">
             <div className="primary-lens-heading">
               <div className="primary-lens-heading-copy">
                 <strong>주 렌즈 / Primary Lens</strong>
                 <span>지금 먼저 살펴볼 관점</span>
               </div>
-              <button
-                type="button"
-                className={`lens-overlap-button ${debateOpen ? 'active' : ''}`}
-                onClick={() => setDebateOpen((open) => !open)}
-                aria-pressed={debateOpen}
-              >
-                <span aria-hidden="true">◎</span>
-                {debateOpen ? '렌즈 비교 닫기' : '렌즈 비교 / Overlap'}
-                <em>{MOCK_DEBATE_TURNS.length}</em>
-              </button>
+              <div className="primary-lens-actions">
+                <button
+                  type="button"
+                  className={`lens-overlap-button ${debateOpen ? 'active' : ''}`}
+                  onClick={() => setDebateOpen((open) => !open)}
+                  aria-pressed={debateOpen}
+                >
+                  <span aria-hidden="true">◎</span>
+                  {debateOpen ? '렌즈 비교 닫기' : '렌즈 비교'}
+                  <em>{MOCK_DEBATE_TURNS.length}</em>
+                </button>
+                <button
+                  type="button"
+                  className="viewer-entry-button"
+                  onClick={openViewerReflection}
+                  disabled={shots.length === 0}
+                >
+                  <span className="fresh-eyes-icon" aria-hidden="true" />
+                  새 눈으로 보기
+                </button>
+              </div>
             </div>
             <div className="primary-lens-tabs" aria-label="Primary creative lens">
               {CREATIVE_LENSES.map((lens) => (
@@ -1260,7 +1422,7 @@ export default function DecisionBoard({ boardView = 'split' }) {
                   onClick={() => choosePrimaryLens(lens.id)}
                   aria-pressed={primaryLensId === lens.id}
                 >
-                  <span aria-hidden="true">{lens.glyph}</span>
+                  <span className="lens-glass lens-glass-sm" aria-hidden="true" />
                   <strong>{lens.displayName}</strong>
                 </button>
               ))}
@@ -1274,10 +1436,11 @@ export default function DecisionBoard({ boardView = 'split' }) {
               style={{ '--lens-color': primaryLens.accent }}
             >
               <div className="option-lane-header">
-                <span className="option-lane-glyph" aria-hidden="true">{primaryLens.glyph}</span>
+                <span className="lens-glass lens-glass-lg" aria-hidden="true" />
+
                 <div className="option-lane-titleblock">
                   <span className="option-lane-role">
-                    {primaryLens.displayName} / {primaryLens.role}
+                    {primaryLens.displayName}
                     <em className="option-lane-tagline">{primaryLens.tagline}</em>
                   </span>
                   <p>{primaryLens.brief}</p>
@@ -1296,7 +1459,7 @@ export default function DecisionBoard({ boardView = 'split' }) {
                     className={miseWorkspace === 'scene' ? 'active' : ''}
                     onClick={() => setMiseWorkspace('scene')}
                   >
-                    씬 기준 / Scene State
+                    Scene State
                   </button>
                   <button
                     type="button"
@@ -1306,7 +1469,7 @@ export default function DecisionBoard({ boardView = 'split' }) {
                       switchScopeMode('single')
                     }}
                   >
-                    샷 미장센 / Shot Staging
+                    Shot Staging
                   </button>
                 </div>
               )}
@@ -1379,7 +1542,7 @@ export default function DecisionBoard({ boardView = 'split' }) {
                     </div>
                     <p className="camera-analysis-theory">
                       {scopeMode === 'range'
-                        ? 'The Filmmaker’s Eye · Shot-size Progression / Spatial Continuity'
+                        ? 'The Filmmaker’s Eye · Shot-size Progression'
                         : MOCK_CAMERA_ANALYSIS.theory}
                     </p>
                   </section>
@@ -1392,20 +1555,51 @@ export default function DecisionBoard({ boardView = 'split' }) {
                       </div>
                       <em>Theory-grounded</em>
                     </div>
+                    {scopeMode === 'single' && storyboardShotPreview && (
+                      <div className="camera-preview-status" role="status">
+                        <span>
+                          <em>미리보기</em>
+                          <strong>S{cameraPreviewShotIndex + 1} · {cameraPreviewOption.title}</strong>
+                        </span>
+                        <button type="button" onClick={() => setCameraPreview(null)}>
+                          미리보기 닫기
+                        </button>
+                      </div>
+                    )}
+                    {scopeMode === 'single' && lastCameraApply && (
+                      <div className="camera-apply-status" role="status">
+                        <span>
+                          <em>Storyboard에 적용됨</em>
+                          <strong>S{lastCameraApply.shotNumber} · {lastCameraApply.title}</strong>
+                        </span>
+                        <button type="button" onClick={undoLastCameraApply}>
+                          Undo
+                        </button>
+                      </div>
+                    )}
                     <div className="camera-proposal-list">
                       {(scopeMode === 'range' ? MOCK_CAMERA_RANGE_OPTIONS : primaryLens.options).map((option) => {
                         const rangePlan = scopeMode === 'range'
                           ? buildMockRangePlan(option.sequencePattern, scopedCameraShots)
                           : []
+                        const isPreviewing = scopeMode === 'single'
+                          && cameraPreview?.optionId === option.id
+                          && cameraPreview?.shotId === currentShot?.id
+                        const isApplied = scopeMode === 'single'
+                          && currentShot?.lensApplication?.optionId === option.id
                         return (
                           <article
                             key={option.id}
-                            className={`camera-proposal-card ${option.id === selectedOption.id ? 'selected' : ''} ${selectedOptionIds.includes(option.id) ? 'chosen' : ''}`}
+                            className={`camera-proposal-card ${option.id === selectedOption.id ? 'selected' : ''} ${selectedOptionIds.includes(option.id) ? 'chosen' : ''} ${isPreviewing ? 'previewing' : ''} ${isApplied ? 'applied' : ''}`}
                           >
                             <button
                               type="button"
                               className="camera-proposal-review"
-                              onClick={() => openOptionReview(option.id)}
+                              onClick={() => (
+                                scopeMode === 'single'
+                                  ? previewCameraOption(option)
+                                  : openOptionReview(option.id)
+                              )}
                             >
                               <span className="camera-proposal-heading">
                                 <span>
@@ -1441,14 +1635,35 @@ export default function DecisionBoard({ boardView = 'split' }) {
                               </span>
                               <span className="camera-proposal-theory">{option.theory}</span>
                             </button>
-                            <button
-                              type="button"
-                              className={`camera-proposal-select ${selectedOptionIds.includes(option.id) ? 'picked' : ''}`}
-                              onClick={() => toggleOptionSelection(option.id)}
-                              aria-pressed={selectedOptionIds.includes(option.id)}
-                            >
-                              {selectedOptionIds.includes(option.id) ? 'Selected' : 'Select this direction'}
-                            </button>
+                            {scopeMode === 'single' ? (
+                              <div className="camera-proposal-actions">
+                                <button
+                                  type="button"
+                                  className={isPreviewing ? 'active' : ''}
+                                  onClick={() => previewCameraOption(option)}
+                                  aria-pressed={isPreviewing}
+                                >
+                                  {isPreviewing ? '미리보는 중' : '왼쪽에서 미리보기'}
+                                </button>
+                                <button
+                                  type="button"
+                                  className="apply"
+                                  onClick={() => applyCameraOption(option)}
+                                  disabled={isApplied}
+                                >
+                                  {isApplied ? `S${activeShot + 1}에 적용됨` : `S${activeShot + 1}에 적용`}
+                                </button>
+                              </div>
+                            ) : (
+                              <button
+                                type="button"
+                                className={`camera-proposal-select ${selectedOptionIds.includes(option.id) ? 'picked' : ''}`}
+                                onClick={() => toggleOptionSelection(option.id)}
+                                aria-pressed={selectedOptionIds.includes(option.id)}
+                              >
+                                {selectedOptionIds.includes(option.id) ? 'Selected' : 'Select this direction'}
+                              </button>
+                            )}
                           </article>
                         )
                       })}
@@ -1472,7 +1687,11 @@ export default function DecisionBoard({ boardView = 'split' }) {
 
                   <div className="editing-operation-list">
                     {currentEditingSuggestions.map((operation) => {
-                      const isSelected = selectedEditingOperationIds.includes(operation.id)
+                      const isInsertPreview = operation.kind === 'insert'
+                        && editingSequencePreview?.operationId === operation.id
+                      const isSelected = operation.kind === 'insert'
+                        ? isInsertPreview
+                        : selectedEditingOperationIds.includes(operation.id)
                       return (
                         <article
                           key={operation.id}
@@ -1492,15 +1711,32 @@ export default function DecisionBoard({ boardView = 'split' }) {
                           </div>
                           <button
                             type="button"
-                            onClick={() => setSelectedEditingOperationIds((current) => (
-                              isSelected
-                                ? current.filter((id) => id !== operation.id)
-                                : [...current, operation.id]
-                            ))}
+                            onClick={() => {
+                              if (operation.kind === 'insert') {
+                                setEditingSequencePreview((current) => (
+                                  current?.operationId === operation.id
+                                    ? null
+                                    : {
+                                        type: 'insert',
+                                        operationId: operation.id,
+                                        afterShotId: currentShot?.id,
+                                        title: operation.title,
+                                        proposal: operation.proposal,
+                                      }
+                                ))
+                                return
+                              }
+
+                              setSelectedEditingOperationIds((current) => (
+                                isSelected
+                                  ? current.filter((id) => id !== operation.id)
+                                  : [...current, operation.id]
+                              ))
+                            }}
                             aria-pressed={isSelected}
                           >
                             {operation.kind === 'insert'
-                              ? isSelected ? '새 Shot 제안 추가됨' : '새 Shot 제안 추가'
+                              ? isSelected ? '흐름 미리보기 닫기' : '흐름에서 미리보기'
                               : isSelected ? '편집안에 추가됨' : '편집안에 추가'}
                           </button>
                         </article>
@@ -1515,7 +1751,7 @@ export default function DecisionBoard({ boardView = 'split' }) {
                 <section className="mise-shot-staging" aria-label="Current shot staging analysis">
                   <div className="lens-section-heading">
                     <div>
-                      <span>샷 미장센 제안 / Shot Staging</span>
+                      <span>Shot Staging</span>
                       <strong>S{activeShot + 1} · {currentShot?.label || 'Current shot'}</strong>
                     </div>
                     <em>{currentMiseStagingMoves.length}개 제안</em>
@@ -1822,61 +2058,8 @@ export default function DecisionBoard({ boardView = 'split' }) {
               </div>
             </section>
           )}
-
-          <div className="director-round-panel">
-            <div className="provisional-choice">
-              <span className="tradeoff-eyebrow">Provisional Choice</span>
-              {selectedOptions.length === 0 ? (
-                <p className="empty-relations">카드의 Select를 눌러 이번 라운드의 잠정 조합을 만드세요.</p>
-              ) : (
-                <div className="choice-chip-list">
-                  {selectedOptions.map((option) => (
-                    <button key={option.id} type="button" onClick={() => toggleOptionSelection(option.id)}>
-                      {option.title}
-                    </button>
-                  ))}
-                </div>
-              )}
-              {selectedRelations.length > 0 && (
-                <div className="selected-relations">
-                  {selectedRelations.map((relation) => (
-                    <div key={relation.id} className={`relation-item ${relation.type}`}>
-                      <span>{relation.type === 'trade-off' ? 'Trade-off in selection' : 'Complement in selection'}</span>
-                      <p>{relation.label}</p>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            <label className="director-note-field">
-              <span>Director response to selected cards</span>
-              <textarea
-                value={directorNote}
-                onChange={(e) => setDirectorNote(e.target.value)}
-                placeholder="예: 이 조합은 좋은데 단서는 더 숨기고, 재인의 불안은 더 분명하게 읽혔으면 좋겠어."
-                rows={3}
-              />
-            </label>
-
-            <div className="round-actions">
-              <div className="round-stack">
-                {rounds.map((round) => (
-                  <span key={round.id} className={round.id === rounds[rounds.length - 1].id ? 'active' : ''}>
-                    {round.label}
-                  </span>
-                ))}
-              </div>
-              <button
-                type="button"
-                className="decision-board-primary"
-                onClick={startNextRound}
-                disabled={selectedOptionIds.length === 0}
-              >
-                Start Next Round
-              </button>
-            </div>
-          </div>
+            </>
+          )}
         </section>
       </div>
       {spatialEditorOpen && (

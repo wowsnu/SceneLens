@@ -13,7 +13,13 @@ const TECHNIQUE_LABEL = {
   line_crossing: '선넘기',
 }
 
-export default function GridView() {
+export default function GridView({
+  shotPreview = null,
+  compact = false,
+  onOpenShot = null,
+  decisionScope = null,
+  sequencePreview = null,
+}) {
   const scene = useStore((s) => s.scenes[s.activeScene])
   const branches = scene?.branches || []
   const activeBranch = scene?.activeBranch ?? 0
@@ -114,9 +120,9 @@ export default function GridView() {
   }
 
   return (
-    <div className="grid-view">
+    <div className={`grid-view ${compact ? 'compact' : ''}`}>
       {/* Branch bar + auto-fill toolbar */}
-      <div className="grid-view-topbar">
+      {!compact && <div className="grid-view-topbar">
         <div className="grid-view-branch-bar">
           {branches.map((b, i) => (
             <button
@@ -152,7 +158,7 @@ export default function GridView() {
             ✦ Auto-fill Range
           </button>
         )}
-      </div>
+      </div>}
 
       <div
         className="grid-view-grid"
@@ -163,12 +169,19 @@ export default function GridView() {
           const isHovered = hoveredIdx === i
           const inRange = rangeFrom !== null && i >= rangeFrom && i <= rangeTo
           const isAnchor = i === rangeAnchor
+          const inDecisionRange = decisionScope?.mode === 'range'
+            && decisionScope.shotIds?.includes(shot.id)
+          const isDecisionRangeEdge = inDecisionRange
+            && (i === decisionScope.from || i === decisionScope.to)
+          const activeLensPreview = shotPreview?.shotId === shot.id ? shotPreview : null
+          const displayImage = activeLensPreview?.image ?? shot.image
+          const displayCir = activeLensPreview?.cir ?? shot.cir
 
           const gapKey = `${activeBranch}-${i}`
           const shotEl = (
             <div key={shot.id} className={`grid-cell-wrapper ${isActive ? 'selected' : ''}`}>
               {/* Gap fill button — left edge (gap before this cell) */}
-              {i > 0 && (
+              {!compact && i > 0 && (
                 <button
                   className="grid-gap-btn before"
                   onClick={(e) => { e.stopPropagation(); openGapFill(activeBranch, i - 1) }}
@@ -181,22 +194,33 @@ export default function GridView() {
               )}
 
               <div
-                className={`grid-cell ${isActive ? 'active' : ''} ${inRange ? 'in-range' : ''} ${isAnchor ? 'range-anchor' : ''}`}
+                className={`grid-cell ${isActive ? 'active' : ''} ${inRange ? 'in-range' : ''} ${isAnchor ? 'range-anchor' : ''} ${inDecisionRange ? 'decision-range' : ''} ${isDecisionRangeEdge ? 'decision-range-edge' : ''} ${activeLensPreview ? 'lens-preview' : ''}`}
                 onClick={() => handleCellClick(i)}
-                onDoubleClick={() => { setActiveShot(i); setFlowView('card') }}
+                onDoubleClick={() => {
+                  setActiveShot(i)
+                  if (compact) {
+                    onOpenShot?.(i)
+                  } else {
+                    setFlowView('card')
+                  }
+                }}
                 onMouseEnter={() => setHoveredIdx(i)}
+                title={compact ? '더블클릭하여 크게 보기' : undefined}
               >
                 <div className="grid-cell-frame">
-                  {shot.image ? (
-                    <img src={shot.image} alt={shot.label} />
+                  {displayImage ? (
+                    <img src={displayImage} alt={shot.label} />
                   ) : (
                     <div className="grid-cell-empty">
                       <span className="grid-cell-num">{i + 1}</span>
                     </div>
                   )}
+                  {activeLensPreview && (
+                    <span className="grid-cell-lens-preview-badge">촬영 미리보기</span>
+                  )}
                   {shot.isAIGenerated && <span className="grid-cell-ai-badge">AI</span>}
 
-                  {isHovered && shots.length > 1 && (
+                  {!compact && isHovered && shots.length > 1 && (
                     <button
                       className="grid-cell-delete"
                       onClick={(e) => { e.stopPropagation(); removeShot(activeBranch, i) }}
@@ -209,16 +233,16 @@ export default function GridView() {
                   <span className="grid-cell-idx">S{i + 1}</span>
                   <span className="grid-cell-label">{shot.label}</span>
                 </div>
-                {shot.cir && (
+                {displayCir && (
                   <div className="grid-cell-chips">
-                    {shot.cir.shotSize && <span className="grid-chip">{shot.cir.shotSize}</span>}
-                    {shot.cir.relation && <span className="grid-chip">{shot.cir.relation}</span>}
+                    {displayCir.shotSize && <span className="grid-chip">{displayCir.shotSize}</span>}
+                    {displayCir.relation && <span className="grid-chip">{displayCir.relation}</span>}
                   </div>
                 )}
               </div>
 
               {/* Gap fill button — right edge (gap after this cell) */}
-              {i < shots.length - 1 && (
+              {!compact && i < shots.length - 1 && (
                 <button
                   className="grid-gap-btn after"
                   onClick={(e) => { e.stopPropagation(); openGapFill(activeBranch, i) }}
@@ -233,6 +257,28 @@ export default function GridView() {
           )
           const ghostEl = gapFills[gapKey]
             ? <GapGhostCell key={`ghost-${gapKey}`} gapKey={gapKey} />
+            : null
+          const editingInsertPreviewEl = sequencePreview?.type === 'insert'
+            && sequencePreview.afterShotId === shot.id
+            ? (
+                <div
+                  key={`editing-preview-${sequencePreview.operationId}`}
+                  className="grid-cell-wrapper editing-insert-preview-wrapper"
+                >
+                  <div className="grid-cell editing-insert-preview-cell">
+                    <div className="grid-cell-frame editing-insert-preview-frame">
+                      <span className="editing-insert-preview-badge">편집 미리보기</span>
+                      <span className="editing-insert-preview-plus" aria-hidden="true">＋</span>
+                      <strong>임시 Shot</strong>
+                      <p>{sequencePreview.title}</p>
+                    </div>
+                    <div className="grid-cell-meta">
+                      <span className="grid-cell-idx editing-insert-preview-idx">NEW</span>
+                      <span className="grid-cell-label">{sequencePreview.title}</span>
+                    </div>
+                  </div>
+                </div>
+              )
             : null
 
           // AutoFill preview ghost cells — inserted after this shot
@@ -276,12 +322,13 @@ export default function GridView() {
           ))
 
           const result = [shotEl]
+          if (editingInsertPreviewEl) result.push(editingInsertPreviewEl)
           if (ghostEl) result.push(ghostEl)
           result.push(...previewEls)
           return result
         })}
 
-        <button className="grid-cell grid-cell-add" onClick={handleAdd} title="Add shot">
+        {!compact && <button className="grid-cell grid-cell-add" onClick={handleAdd} title="Add shot">
           <div className="grid-cell-frame grid-cell-add-frame">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
               <line x1="12" y1="5" x2="12" y2="19" />
@@ -291,7 +338,7 @@ export default function GridView() {
           <div className="grid-cell-meta">
             <span className="grid-cell-idx">Add shot</span>
           </div>
-        </button>
+        </button>}
       </div>
     </div>
   )

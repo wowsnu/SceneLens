@@ -735,6 +735,81 @@
   gap: 10px;
 }
 
+.primary-lens-actions {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.viewer-entry-button {
+  min-height: 32px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 0 12px 0 8px;
+  border: 1px solid rgba(165, 180, 252, 0.34);
+  border-radius: 999px;
+  background:
+    linear-gradient(135deg, rgba(129, 140, 248, 0.14), rgba(96, 165, 250, 0.08));
+  color: rgba(238, 242, 255, 0.88);
+  font-size: 11px;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  transition:
+    transform 150ms ease,
+    border-color 150ms ease,
+    background 150ms ease,
+    box-shadow 150ms ease;
+}
+
+.fresh-eyes-icon {
+  position: relative;
+  width: 24px;
+  height: 17px;
+  flex: 0 0 auto;
+  border: 1px solid rgba(199, 210, 254, 0.38);
+  border-radius: 999px;
+  background: rgba(224, 231, 255, 0.11);
+}
+
+.fresh-eyes-icon::before,
+.fresh-eyes-icon::after {
+  content: '';
+  position: absolute;
+  top: 5px;
+  width: 5px;
+  height: 6px;
+  border-radius: 50%;
+  background: #c7d2fe;
+  box-shadow: 0 0 7px rgba(165, 180, 252, 0.5);
+}
+
+.fresh-eyes-icon::before {
+  left: 5px;
+}
+
+.fresh-eyes-icon::after {
+  right: 5px;
+}
+
+.viewer-entry-button:hover {
+  transform: translateY(-1px);
+  border-color: rgba(165, 180, 252, 0.62);
+  background:
+    linear-gradient(135deg, rgba(129, 140, 248, 0.22), rgba(96, 165, 250, 0.13));
+  color: #fff;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 6px 16px rgba(67, 56, 202, 0.14);
+}
+
+.viewer-entry-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.42;
+}
+
 .primary-lens-heading-copy {
   min-width: 0;
   display: flex;
@@ -942,20 +1017,88 @@
 }
 
 /* 렌즈 아이콘: accent 링을 두른 원형 배지 */
-.option-lane-glyph {
+/* ───────────────────────────────────────────────
+   Lens Glass — 각 에이전트를 실제 카메라 렌즈로 표현.
+   var(--lens-color)로 유리가 물들고, 조리개 배럴 +
+   무지개빛 코팅 반사 + 좌상단 빛 반사로 구성한다.
+   ─────────────────────────────────────────────── */
+.lens-glass {
+  --glass: var(--lens-color, #7dd3fc);
   flex: 0 0 auto;
-  display: grid;
-  place-items: center;
-  width: 30px;
-  height: 30px;
+  position: relative;
+  display: inline-block;
+  width: 34px;
+  height: 34px;
   border-radius: 50%;
-  font-size: 15px;
-  line-height: 1;
-  background: color-mix(in srgb, var(--lens-color), transparent 86%);
+  /* 바깥 금속 배럴 */
+  background:
+    radial-gradient(circle at 50% 50%,
+      rgba(10, 10, 14, 0) 52%,
+      rgba(0, 0, 0, 0.55) 60%,
+      #17171c 66%,
+      #26262e 74%,
+      #101014 82%,
+      #050507 100%);
   box-shadow:
-    inset 0 0 0 1.5px color-mix(in srgb, var(--lens-color), transparent 45%),
-    0 0 0 3px color-mix(in srgb, var(--lens-color), transparent 92%);
+    0 1px 3px rgba(0, 0, 0, 0.6),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+  transition: transform 200ms ease, filter 200ms ease;
 }
+
+/* 유리 자체 — 축 색으로 물든 돔 */
+.lens-glass::before {
+  content: '';
+  position: absolute;
+  inset: 16%;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 34% 30%,
+      color-mix(in srgb, var(--glass), white 55%) 0%,
+      color-mix(in srgb, var(--glass), white 8%) 26%,
+      color-mix(in srgb, var(--glass), black 30%) 58%,
+      color-mix(in srgb, var(--glass), black 68%) 100%);
+  box-shadow:
+    inset 0 0 6px color-mix(in srgb, var(--glass), black 55%),
+    inset 0 0 0 1px color-mix(in srgb, var(--glass), white 24%);
+}
+
+/* 코팅 반사 + 좌상단 빛 하이라이트 */
+.lens-glass::after {
+  content: '';
+  position: absolute;
+  inset: 16%;
+  border-radius: 50%;
+  background:
+    /* 우하단 무지개빛 코팅 글린트 */
+    radial-gradient(circle at 70% 74%,
+      color-mix(in srgb, var(--glass), white 60%) 0%,
+      transparent 22%),
+    /* 좌상단 선명한 빛 반사 */
+    radial-gradient(circle at 32% 26%,
+      rgba(255, 255, 255, 0.92) 0%,
+      rgba(255, 255, 255, 0.35) 7%,
+      transparent 20%);
+  mix-blend-mode: screen;
+  opacity: 0.9;
+  transition: transform 220ms ease, opacity 200ms ease;
+}
+
+/* hover: 초점 맞추듯 살짝 확대되고 반사가 이동 */
+.lens-glass:hover,
+button:hover .lens-glass,
+button.active .lens-glass {
+  transform: scale(1.06);
+  filter: brightness(1.12);
+}
+
+button:hover .lens-glass::after,
+button.active .lens-glass::after {
+  transform: translate(1px, -1px);
+  opacity: 1;
+}
+
+.lens-glass-sm { width: 20px; height: 20px; }
+.lens-glass-lg { width: 36px; height: 36px; }
 
 .option-lane-titleblock {
   min-width: 0;
@@ -2087,20 +2230,52 @@
 }
 
 .mise-staging-proposal-card {
+  position: relative;
+  overflow: hidden;
   min-width: 0;
   min-height: 0;
   display: flex;
   flex-direction: column;
   gap: 11px;
-  padding: 15px 16px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 15px 16px 15px 18px;
+  border: 1px solid color-mix(in srgb, var(--lens-color), transparent 74%);
   border-radius: 9px;
-  background: rgba(255, 255, 255, 0.025);
+  /* "렌즈를 통해 본 뷰" — 왼쪽 위에서 렌즈 색이 번져 든다 (상시) */
+  background:
+    radial-gradient(120% 80% at 0% 0%,
+      color-mix(in srgb, var(--lens-color), transparent 88%) 0%,
+      transparent 46%),
+    rgba(255, 255, 255, 0.025);
+  transition: border-color 160ms ease, background 160ms ease, box-shadow 160ms ease;
+}
+
+.mise-staging-proposal-card::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  pointer-events: none;
+  background: var(--lens-color);
+  box-shadow: 0 0 10px color-mix(in srgb, var(--lens-color), transparent 45%);
+  opacity: 0.85;
+  transition: width 160ms ease, opacity 160ms ease;
+}
+
+.mise-staging-proposal-card:hover::before,
+.mise-staging-proposal-card.selected::before {
+  width: 5px;
+  opacity: 1;
 }
 
 .mise-staging-proposal-card.selected {
-  border-color: rgba(16, 185, 129, 0.48);
-  background: rgba(16, 185, 129, 0.075);
+  border-color: color-mix(in srgb, var(--lens-color), transparent 34%);
+  background:
+    radial-gradient(120% 80% at 0% 0%,
+      color-mix(in srgb, var(--lens-color), transparent 80%) 0%,
+      transparent 50%),
+    rgba(16, 185, 129, 0.075);
   box-shadow: inset 0 0 0 1px rgba(16, 185, 129, 0.12);
 }
 
@@ -2224,25 +2399,60 @@
 }
 
 .editing-operation-card {
+  position: relative;
+  overflow: hidden;
   min-width: 0;
   display: flex;
   flex-direction: column;
   gap: 11px;
-  padding: 15px 16px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 15px 16px 15px 18px;
+  border: 1px solid color-mix(in srgb, var(--lens-color), transparent 74%);
   border-radius: 9px;
-  background: rgba(255, 255, 255, 0.025);
-  transition: border-color 160ms ease, background 160ms ease;
+  /* "렌즈를 통해 본 뷰" — 왼쪽 위에서 렌즈 색이 번져 든다 (상시) */
+  background:
+    radial-gradient(120% 80% at 0% 0%,
+      color-mix(in srgb, var(--lens-color), transparent 88%) 0%,
+      transparent 46%),
+    rgba(255, 255, 255, 0.025);
+  transition: border-color 160ms ease, background 160ms ease, box-shadow 160ms ease;
+}
+
+.editing-operation-card::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  pointer-events: none;
+  background: var(--lens-color);
+  box-shadow: 0 0 10px color-mix(in srgb, var(--lens-color), transparent 45%);
+  opacity: 0.85;
+  transition: width 160ms ease, opacity 160ms ease;
+}
+
+.editing-operation-card:hover::before,
+.editing-operation-card.selected::before {
+  width: 5px;
+  opacity: 1;
 }
 
 .editing-operation-card:hover {
-  border-color: rgba(248, 113, 113, 0.3);
-  background: rgba(255, 255, 255, 0.04);
+  border-color: color-mix(in srgb, var(--lens-color), transparent 50%);
+  background:
+    radial-gradient(120% 80% at 0% 0%,
+      color-mix(in srgb, var(--lens-color), transparent 82%) 0%,
+      transparent 48%),
+    rgba(255, 255, 255, 0.04);
 }
 
 .editing-operation-card.selected {
-  border-color: rgba(248, 113, 113, 0.48);
-  background: rgba(239, 68, 68, 0.07);
+  border-color: color-mix(in srgb, var(--lens-color), transparent 34%);
+  background:
+    radial-gradient(120% 80% at 0% 0%,
+      color-mix(in srgb, var(--lens-color), transparent 80%) 0%,
+      transparent 50%),
+    rgba(239, 68, 68, 0.07);
   box-shadow: inset 0 0 0 1px rgba(239, 68, 68, 0.1);
 }
 
@@ -2523,22 +2733,62 @@
 }
 
 .camera-proposal-card {
+  position: relative;
   overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid color-mix(in srgb, var(--lens-color), transparent 74%);
   border-radius: 7px;
-  background: rgba(15, 15, 20, 0.78);
-  transition: border-color 160ms ease, background 160ms ease;
+  /* "렌즈를 통해 본 뷰" — 왼쪽 위에서 렌즈 색이 은은하게 번져 든다 (상시) */
+  background:
+    radial-gradient(120% 80% at 0% 0%,
+      color-mix(in srgb, var(--lens-color), transparent 86%) 0%,
+      transparent 46%),
+    rgba(15, 15, 20, 0.78);
+  transition: border-color 160ms ease, background 160ms ease, box-shadow 160ms ease;
+}
+
+/* 왼쪽 렌즈 색 띠 (상시, 두껍고 은은한 글로우) */
+.camera-proposal-card::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  pointer-events: none;
+  background: var(--lens-color);
+  box-shadow: 0 0 10px color-mix(in srgb, var(--lens-color), transparent 45%);
+  opacity: 0.85;
+  transition: width 160ms ease, opacity 160ms ease;
 }
 
 .camera-proposal-card:hover,
 .camera-proposal-card.selected {
-  border-color: color-mix(in srgb, var(--lens-color), transparent 42%);
-  background: rgba(255, 255, 255, 0.045);
+  border-color: color-mix(in srgb, var(--lens-color), transparent 34%);
+  background:
+    radial-gradient(120% 80% at 0% 0%,
+      color-mix(in srgb, var(--lens-color), transparent 78%) 0%,
+      transparent 50%),
+    rgba(255, 255, 255, 0.045);
+}
+
+.camera-proposal-card:hover::before,
+.camera-proposal-card.selected::before {
+  width: 5px;
+  opacity: 1;
 }
 
 .camera-proposal-card.chosen {
   border-color: color-mix(in srgb, var(--lens-color), transparent 24%);
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--lens-color), transparent 78%);
+}
+
+.camera-proposal-card.previewing {
+  border-color: rgba(96, 165, 250, 0.76);
+  box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.2);
+}
+
+.camera-proposal-card.applied {
+  border-color: rgba(52, 211, 153, 0.62);
 }
 
 .camera-proposal-review {
@@ -2694,6 +2944,108 @@
   color: color-mix(in srgb, var(--lens-color), white 28%);
 }
 
+.camera-preview-status,
+.camera-apply-status {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+  padding: 9px 10px;
+  border: 1px solid rgba(96, 165, 250, 0.34);
+  border-radius: 7px;
+  background: rgba(37, 99, 235, 0.08);
+}
+
+.camera-apply-status {
+  border-color: rgba(52, 211, 153, 0.3);
+  background: rgba(16, 185, 129, 0.07);
+}
+
+.camera-preview-status > span,
+.camera-apply-status > span {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.camera-preview-status em,
+.camera-apply-status em {
+  color: rgba(148, 163, 184, 0.76);
+  font-size: 10.5px;
+  font-style: normal;
+  font-weight: 750;
+}
+
+.camera-preview-status strong,
+.camera-apply-status strong {
+  overflow: hidden;
+  color: rgba(241, 245, 249, 0.9);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.camera-preview-status button,
+.camera-apply-status button {
+  flex: 0 0 auto;
+  min-height: 30px;
+  padding: 0 10px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.04);
+  color: rgba(226, 232, 240, 0.78);
+  font-size: 11px;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.camera-preview-status button:hover,
+.camera-apply-status button:hover {
+  border-color: rgba(255, 255, 255, 0.24);
+  color: #fff;
+}
+
+.camera-proposal-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.camera-proposal-actions button {
+  min-height: 38px;
+  border: 0;
+  background: rgba(255, 255, 255, 0.025);
+  color: rgba(203, 213, 225, 0.74);
+  font-size: 11.5px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.camera-proposal-actions button + button {
+  border-left: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.camera-proposal-actions button:hover,
+.camera-proposal-actions button.active {
+  background: rgba(59, 130, 246, 0.12);
+  color: #bfdbfe;
+}
+
+.camera-proposal-actions button.apply {
+  color: rgba(167, 243, 208, 0.84);
+}
+
+.camera-proposal-actions button.apply:hover {
+  background: rgba(16, 185, 129, 0.12);
+  color: #d1fae5;
+}
+
+.camera-proposal-actions button:disabled {
+  cursor: default;
+  opacity: 0.62;
+}
+
 .option-card {
   width: 100%;
   display: flex;
@@ -2725,15 +3077,68 @@
     linear-gradient(135deg, color-mix(in srgb, var(--lens-color), transparent 90%), rgba(15, 15, 20, 0.8));
 }
 
-/* 압축 카드: 제목 + 태그만, 상세는 클릭 시 좌측 review 패널에서 */
+/* 압축 카드: "렌즈를 통해 본 뷰".
+   왼쪽에 렌즈 색 띠 + 카드 전체에 은은한 축 색 — 조작 없이 평소에도 보인다. */
 .option-card.compact {
+  position: relative;
   gap: 5px;
-  padding: 7px 9px 7px 11px;
-  border-left: 2px solid color-mix(in srgb, var(--lens-color), transparent 55%);
+  padding: 7px 9px 7px 14px;
+  border: 1px solid color-mix(in srgb, var(--lens-color), transparent 78%);
+  /* 왼쪽에서 오른쪽으로 옅어지는 렌즈 색 틴트 (상시) */
+  background:
+    linear-gradient(90deg,
+      color-mix(in srgb, var(--lens-color), transparent 88%) 0%,
+      color-mix(in srgb, var(--lens-color), transparent 96%) 32%,
+      rgba(15, 15, 20, 0.76) 70%);
+  overflow: hidden;
+}
+
+/* 왼쪽 렌즈 색 띠 (상시, 두껍고 선명) */
+.option-card.compact::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  pointer-events: none;
+  background: var(--lens-color);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--lens-color), transparent 40%);
+  opacity: 0.9;
+  transition: width 0.18s ease, opacity 0.18s ease;
 }
 
 .option-card.compact:hover {
-  border-left-color: var(--lens-color);
+  transform: translateY(-1px);
+  border-color: color-mix(in srgb, var(--lens-color), transparent 55%);
+  background:
+    linear-gradient(90deg,
+      color-mix(in srgb, var(--lens-color), transparent 80%) 0%,
+      color-mix(in srgb, var(--lens-color), transparent 94%) 40%,
+      rgba(255, 255, 255, 0.05) 78%);
+}
+
+.option-card.compact:hover::before {
+  width: 6px;
+  opacity: 1;
+}
+
+.option-card.compact.selected {
+  border-color: color-mix(in srgb, var(--lens-color), transparent 40%);
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--lens-color), transparent 60%),
+    inset 0 0 16px color-mix(in srgb, var(--lens-color), transparent 86%);
+}
+
+.option-card.compact.selected::before {
+  width: 6px;
+  opacity: 1;
+}
+
+.option-card.compact .option-card-head,
+.option-card.compact .option-card-tags {
+  position: relative;
+  z-index: 1;
 }
 
 .option-card.compact .option-card-title {
@@ -3197,6 +3602,178 @@
 .round-actions .decision-board-primary:disabled {
   cursor: not-allowed;
   opacity: 0.42;
+}
+
+.viewer-reflection-shell {
+  flex: 1;
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+  padding: 14px;
+  gap: 12px;
+  background:
+    radial-gradient(circle at top right, rgba(129, 140, 248, 0.12), transparent 310px),
+    rgba(5, 5, 7, 0.72);
+}
+
+.viewer-reflection-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding-bottom: 13px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.viewer-reflection-heading > div {
+  min-width: 0;
+}
+
+.viewer-reflection-heading span {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  padding: 0 10px;
+  border: 1px solid rgba(165, 180, 252, 0.24);
+  border-radius: 999px;
+  background: rgba(129, 140, 248, 0.08);
+  color: #c7d2fe;
+  font-size: 11px;
+  font-weight: 850;
+}
+
+.viewer-reflection-heading h2 {
+  margin: 5px 0 0;
+  color: #f8fafc;
+  font-size: 20px;
+  line-height: 1.18;
+}
+
+.viewer-reflection-heading p {
+  margin: 7px 0 0;
+  color: rgba(203, 213, 225, 0.64);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.viewer-reflection-heading button {
+  flex: 0 0 auto;
+  min-height: 32px;
+  padding: 0 10px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.04);
+  color: rgba(226, 232, 240, 0.76);
+  font-size: 11px;
+  font-weight: 760;
+  cursor: pointer;
+}
+
+.viewer-reflection-heading button:hover {
+  border-color: rgba(255, 255, 255, 0.24);
+  color: #fff;
+}
+
+.viewer-snapshot-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 12px;
+  border: 1px solid rgba(96, 165, 250, 0.2);
+  border-radius: 8px;
+  background: rgba(59, 130, 246, 0.06);
+}
+
+.viewer-snapshot-card > div {
+  display: grid;
+  gap: 3px;
+}
+
+.viewer-snapshot-card span,
+.viewer-snapshot-card dt {
+  color: rgba(148, 163, 184, 0.68);
+  font-size: 10px;
+  font-weight: 760;
+}
+
+.viewer-snapshot-card strong,
+.viewer-snapshot-card dd {
+  color: rgba(241, 245, 249, 0.9);
+  font-size: 12px;
+}
+
+.viewer-snapshot-card dl {
+  display: flex;
+  gap: 18px;
+  margin: 0;
+}
+
+.viewer-snapshot-card dl > div {
+  display: grid;
+  gap: 3px;
+}
+
+.viewer-snapshot-card dd {
+  margin: 0;
+}
+
+.viewer-reflection-placeholder {
+  flex: 1;
+  min-height: 260px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 24px;
+  border: 1px dashed rgba(148, 163, 184, 0.2);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.018);
+}
+
+.viewer-reflection-placeholder > span {
+  color: #93c5fd;
+  font-size: 10.5px;
+  font-weight: 850;
+}
+
+.viewer-reflection-placeholder > strong {
+  margin-top: 7px;
+  color: rgba(241, 245, 249, 0.9);
+  font-size: 17px;
+  line-height: 1.3;
+}
+
+.viewer-reflection-placeholder > p {
+  max-width: 480px;
+  margin: 8px 0 0;
+  color: rgba(203, 213, 225, 0.58);
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.viewer-placeholder-rows {
+  display: grid;
+  gap: 8px;
+  margin-top: 22px;
+}
+
+.viewer-placeholder-rows span {
+  display: block;
+  height: 10px;
+  border-radius: 999px;
+  background: rgba(148, 163, 184, 0.09);
+}
+
+.viewer-placeholder-rows span:nth-child(1) {
+  width: 82%;
+}
+
+.viewer-placeholder-rows span:nth-child(2) {
+  width: 66%;
+}
+
+.viewer-placeholder-rows span:nth-child(3) {
+  width: 74%;
 }
 
 @media (max-width: 1180px) {

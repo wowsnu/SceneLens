@@ -769,24 +769,19 @@ export const OFFIMAGE_CHANNELS = [
   { id: 'copy', label: '카피', mark: 'note' },
 ]
 
-// 방향 문구에서 화살표 각도를 읽는다. 못 읽으면 화살표를 그리지 않고
-// 메모로 떨어뜨린다 — 방향을 모르면서 화살표를 그리면 거짓말이 된다.
-const ARROW_HINTS = [
-  [['왼쪽', '좌', 'left', 'Pan left'], 180],
-  [['오른쪽', '우', 'right', 'Pan right'], 0],
-  [['위로', '위', 'up', 'Tilt up', '상승'], -90],
-  [['아래', '하강', 'down', 'Tilt down'], 90],
-  [['들어간다', '전진', 'in', 'Push in', 'Dolly in', 'Zoom in'], 0],
-  [['빠진다', '후퇴', 'out', 'Pull out', 'Dolly out', 'Zoom out'], 180],
-]
-
-export const readArrowAngle = (text = '') => {
-  const source = text.toLowerCase()
-  const hit = ARROW_HINTS.find(([hints]) => (
-    hints.some((hint) => source.includes(hint.toLowerCase()))
-  ))
-  return hit ? hit[1] : null
-}
+// 화살표는 사용자가 패널 위에 직접 그린다. 방향을 문구에서 유추하면
+// 창작자가 말하지 않은 것을 화면이 주장하게 된다 — 카메라가 어느 쪽으로
+// 움직이는지는 감독이 화면을 보고 정하는 것이다.
+// 좌표는 패널 크기에 무관하도록 0~1 비율로 저장한다.
+export const createPanelArrow = ({ x1, y1, x2, y2, channel = 'camera-move', label = '' }) => ({
+  id: `arrow-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+  x1,
+  y1,
+  x2,
+  y2,
+  channel,
+  label,
+})
 
 // 선언을 패널이 그릴 수 있는 마크로 바꾼다.
 // 그릴 수 없으면(방향을 못 읽거나 채널이 note면) 메모로 남긴다.
@@ -798,14 +793,10 @@ export const buildPanelMarks = (offImage = []) => {
     const spec = OFFIMAGE_CHANNELS.find((entry) => entry.id === channel)
     const label = direction || element
 
+    // 화살표 채널은 사용자가 직접 그린다. 여기서는 아직 안 그렸다는 것만
+    // 알린다 — 선언해 놓고 그리지 않으면 그 지시는 어디에도 남지 않는다.
     if (spec?.mark === 'arrow') {
-      const angle = readArrowAngle(direction || '')
-      if (angle !== null) {
-        marks.push({ type: 'arrow', angle, element, label, pending })
-        return
-      }
-      // 방향을 못 읽었다. 화살표 대신 메모로.
-      notes.push({ element, label, pending, reason: 'unreadable-direction' })
+      notes.push({ element, label, pending, needsArrow: true })
       return
     }
 
@@ -1238,6 +1229,20 @@ const useStore = create((set, get) => ({
   setShotNote: (shotId, note) => set((state) => updateActiveBranchShots(
     state,
     (shots) => shots.map((shot) => (shot.id === shotId ? { ...shot, note } : shot)),
+  )),
+
+  // 패널 위 화살표. 사용자가 그림 위에 직접 그린다 (DG1 P3).
+  addShotArrow: (shotId, arrow) => set((state) => updateActiveBranchShots(
+    state,
+    (shots) => shots.map((shot) => (shot.id === shotId
+      ? { ...shot, arrows: [...(shot.arrows || []), createPanelArrow(arrow)] }
+      : shot)),
+  )),
+  removeShotArrow: (shotId, arrowId) => set((state) => updateActiveBranchShots(
+    state,
+    (shots) => shots.map((shot) => (shot.id === shotId
+      ? { ...shot, arrows: (shot.arrows || []).filter((arrow) => arrow.id !== arrowId) }
+      : shot)),
   )),
 
   // 선언 단계에서 컷으로 되돌아간다. 선언도 컷 확정도 지우지 않는다 —

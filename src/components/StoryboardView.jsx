@@ -351,33 +351,97 @@ function ShotInspector({
 }
 
 // 이미지 밖 채널을 패널 위에 그린다 (DG1 P3).
-// 목록의 글자로만 두면 "그림 밖 채널에 기록한다"가 성립하지 않는다 —
-// 화살표는 화살표여야 의도적으로 남긴 것이 누락으로 보이지 않는다.
-function PanelOverlay({ marks }) {
-  if (marks.length === 0) return null
+// 화살표는 사용자가 직접 끌어서 그린다 — 카메라가 어느 쪽으로 움직이는지는
+// 감독이 화면을 보고 정하는 것이지 텍스트에서 유추할 것이 아니다.
+function PanelOverlay({ marks, arrows, drawing, onDrawArrow, onRemoveArrow }) {
+  const [draft, setDraft] = useState(null)
+  const surfaceRef = useRef(null)
 
-  const arrows = marks.filter((mark) => mark.type === 'arrow')
   const corners = marks.filter((mark) => mark.type === 'corner')
+  if (marks.length === 0 && arrows.length === 0 && !drawing) return null
+
+  // 패널 크기와 무관하게 저장하려면 0~1 비율로 바꿔야 한다.
+  const toRatio = (event) => {
+    const rect = surfaceRef.current.getBoundingClientRect()
+    return {
+      x: Math.min(1, Math.max(0, (event.clientX - rect.left) / rect.width)),
+      y: Math.min(1, Math.max(0, (event.clientY - rect.top) / rect.height)),
+    }
+  }
+
+  const handleDown = (event) => {
+    if (!drawing) return
+    event.stopPropagation()
+    event.preventDefault()
+    const point = toRatio(event)
+    setDraft({ x1: point.x, y1: point.y, x2: point.x, y2: point.y })
+  }
+
+  const handleMove = (event) => {
+    if (!draft) return
+    const point = toRatio(event)
+    setDraft((prev) => ({ ...prev, x2: point.x, y2: point.y }))
+  }
+
+  const handleUp = (event) => {
+    if (!draft) return
+    event.stopPropagation()
+    // 점을 찍은 정도는 화살표가 아니다.
+    const far = Math.hypot(draft.x2 - draft.x1, draft.y2 - draft.y1) > 0.06
+    if (far) onDrawArrow(draft)
+    setDraft(null)
+  }
+
+  const line = (arrow, key, className, onClick) => {
+    const angle = Math.atan2(arrow.y2 - arrow.y1, arrow.x2 - arrow.x1)
+    // 화살촉은 선 끝에서 각도만큼 되돌아온 두 점으로 만든다.
+    const head = 3.2
+    const spread = 0.42
+    const hx = (offset) => arrow.x2 * 100 - head * Math.cos(angle + offset)
+    const hy = (offset) => arrow.y2 * 100 - head * Math.sin(angle + offset) * (16 / 9)
+    return (
+      <g key={key} className={className} onClick={onClick}>
+        <line x1={arrow.x1 * 100} y1={arrow.y1 * 100} x2={arrow.x2 * 100} y2={arrow.y2 * 100} />
+        <polyline
+          points={`${hx(spread)},${hy(spread)} ${arrow.x2 * 100},${arrow.y2 * 100} ${hx(-spread)},${hy(-spread)}`}
+          fill="none"
+        />
+      </g>
+    )
+  }
 
   return (
-    <div className="sb-panel-overlay" aria-hidden="true">
-      {arrows.map((mark, index) => (
-        <div
-          key={`${mark.element}-${index}`}
-          className={`sb-overlay-arrow${mark.pending ? ' pending' : ''}`}
-          title={mark.pending ? `${mark.element} · 아직 판정하지 않음` : mark.element}
-          style={{
-            transform: `rotate(${mark.angle}deg)`,
-            top: `${48 + index * 18}%`,
-          }}
+    <div
+      ref={surfaceRef}
+      className={`sb-panel-overlay${drawing ? ' drawing' : ''}`}
+      onPointerDown={handleDown}
+      onPointerMove={handleMove}
+      onPointerUp={handleUp}
+      onPointerLeave={() => setDraft(null)}
+    >
+      <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="sb-overlay-svg">
+        {arrows.map((arrow) => line(
+          arrow,
+          arrow.id,
+          'sb-arrow',
+          (event) => {
+            if (!drawing) return
+            event.stopPropagation()
+            onRemoveArrow(arrow.id)
+          },
+        ))}
+        {draft && line(draft, 'draft', 'sb-arrow draft')}
+      </svg>
+
+      {/* 화살표에 붙은 이름은 SVG 밖에 둔다. 비율 스케일 때문에 글자가 늘어난다. */}
+      {arrows.filter((arrow) => arrow.label).map((arrow) => (
+        <span
+          key={`${arrow.id}-label`}
+          className="sb-arrow-label"
+          style={{ left: `${arrow.x2 * 100}%`, top: `${arrow.y2 * 100}%` }}
         >
-          <svg viewBox="0 0 64 16" preserveAspectRatio="none">
-            <path d="M2 8 H54" strokeWidth="2.5" strokeLinecap="round" />
-            <path d="M46 2 L56 8 L46 14" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" fill="none" />
-          </svg>
-          {/* 각도를 되돌려 글자는 항상 바로 읽히게 한다. */}
-          <span style={{ transform: `rotate(${-mark.angle}deg)` }}>{mark.label}</span>
-        </div>
+          {arrow.label}
+        </span>
       ))}
 
       {corners.length > 0 && (
@@ -694,6 +758,8 @@ export default function StoryboardView() {
   const commitDeclarations = useStore((s) => s.commitDeclarations)
   const backToCutPlan = useStore((s) => s.backToCutPlan)
   const setShotNote = useStore((s) => s.setShotNote)
+  const addShotArrow = useStore((s) => s.addShotArrow)
+  const removeShotArrow = useStore((s) => s.removeShotArrow)
   const addBeatAfter = useStore((s) => s.addBeatAfter)
   const requestBeatSplit = useStore((s) => s.requestBeatSplit)
   const requestScreenplayFormatting = useStore((s) => s.requestScreenplayFormatting)
@@ -735,6 +801,8 @@ export default function StoryboardView() {
   const [expandedPromptCutId, setExpandedPromptCutId] = useState(null)
   // Panels 단계에서 인스펙터에 띄운 패널.
   const [inspectedShotId, setInspectedShotId] = useState(null)
+  // 화살표를 그리는 중인 패널. 한 번에 하나만 그린다.
+  const [arrowDrawingShotId, setArrowDrawingShotId] = useState(null)
   const [generationScope, setGenerationScope] = useState('all')
   const [panelCandidates, setPanelCandidates] = useState({})
   const handledScriptEditorRequestKey = useRef(0)
@@ -1978,7 +2046,13 @@ export default function StoryboardView() {
                             ) : committedImage ? (
                               <div className="sb-img-wrapper">
                                 <img src={displayImage} alt={beatShotLabel} />
-                                <PanelOverlay marks={panelMarks} />
+                                <PanelOverlay
+                                  marks={panelMarks}
+                                  arrows={shot.arrows || []}
+                                  drawing={arrowDrawingShotId === shot.id}
+                                  onDrawArrow={(arrow) => addShotArrow(shot.id, arrow)}
+                                  onRemoveArrow={(arrowId) => removeShotArrow(shot.id, arrowId)}
+                                />
                                 <PanelNote
                                   note={shot.note || ''}
                                   onChange={(value) => setShotNote(shot.id, value)}
@@ -2050,6 +2124,28 @@ export default function StoryboardView() {
                                     : shot.isAIGenerated ? 'AI' : 'Drawn'}
                                 </span>
                               )}
+
+                              {/* 화살표는 그림을 고치는 것이 아니라 그림 밖
+                                  채널이다. Draw와 섞이지 않게 패널 밖에 둔다. */}
+                              {committedImage && (
+                                <button
+                                  type="button"
+                                  className={`sb-arrow-toggle${arrowDrawingShotId === shot.id ? ' active' : ''}`}
+                                  aria-pressed={arrowDrawingShotId === shot.id}
+                                  title="끌어서 그리고, 그린 화살표를 클릭하면 지웁니다"
+                                  onClick={(event) => {
+                                    event.stopPropagation()
+                                    setArrowDrawingShotId(
+                                      arrowDrawingShotId === shot.id ? null : shot.id,
+                                    )
+                                  }}
+                                >
+                                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round">
+                                    <path d="M5 12h13M13 6l6 6-6 6" />
+                                  </svg>
+                                  {arrowDrawingShotId === shot.id ? '완료' : '화살표'}
+                                </button>
+                              )}
                             </div>
 
                             {/* 화살표나 배지로 그릴 수 없는 것. 갈 곳이 없으면
@@ -2059,7 +2155,11 @@ export default function StoryboardView() {
                                 {panelNotes.map((note, index) => (
                                   <li
                                     key={`${note.element}-${index}`}
-                                    className={note.pending ? 'pending' : ''}
+                                    className={[
+                                      note.pending ? 'pending' : '',
+                                      note.needsArrow && !(shot.arrows || []).length ? 'needs-arrow' : '',
+                                    ].filter(Boolean).join(' ')}
+                                    title={note.needsArrow ? '화살표로 표시하세요' : undefined}
                                   >
                                     <em>{note.element}</em>
                                     {note.label !== note.element && <span>{note.label}</span>}
