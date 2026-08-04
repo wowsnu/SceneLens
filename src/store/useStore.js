@@ -618,6 +618,8 @@ export const buildCutPrompt = (cut, {
   sceneState = null,
   // 앞 컷과의 이음새. 시간이 흘렀으면 그 컷은 앞 컷의 연속이 아니다.
   seam = null,
+  // 이 컷이 씬에서 몇 번째인가. 인물·공간 상태가 변하므로 시점이 필요하다.
+  cutIndex = null,
   // 이 컷에 걸리는 책임 선언 (DG1 P3). 위임한 요소는 프롬프트에서 빼고,
   // 엄격히 고정한 요소는 제약으로 넣는다.
   declarations = [],
@@ -677,7 +679,7 @@ export const buildCutPrompt = (cut, {
   // 씬 기준을 컷 문장에 섞는다. 컷마다 같은 문구가 들어가야 같은 인물과
   // 같은 방으로 그려진다. 아직 정하지 않은 항목(open)은 넣지 않는다 —
   // 미정을 문장으로 만들면 모델이 그것을 정해버린다.
-  const reference = selectSceneReference(sceneState, cut)
+  const reference = selectSceneReference(sceneState, cut, cutIndex)
   const referenceLine = [
     reference.location && `공간 기준: ${reference.location}`,
     reference.characters.length > 0 && reference.characters
@@ -1069,29 +1071,59 @@ const SCENE_STATE = {
   },
 }
 
-// 정해진 사실만 한 줄로 잇는다.
-const settledFacts = (facts = []) => facts
+// 인물과 공간은 씬 안에서 변한다. 젖은 채로 들어와 굳어가고, 형광등은
+// 깜빡이다 꺼진다. 값 하나로 두면 열두 컷 전부에 같은 문구가 들어간다.
+// (design_goal.md DG2 P2: 여러 컷을 가로지르는 것은 편집 가능한 구조로
+//  표현하고, 구조를 바꾸면 관련 패널에 반영되게 한다.)
+//
+// `changes`는 "이 컷부터 이렇게 바뀐다"의 목록이다. 없으면 씬 내내 `value`다.
+//   { at: 6, value: '젖은 채 굳어 있음' }   ← 7번째 컷(0-based 6)부터
+//
+// 값 자체를 바꾸는 것이 아니라 구간을 더하는 이유: 처음 상태가 지워지면
+// 앞 컷들이 무엇이었는지 알 수 없게 된다.
+const factValueAt = (fact, cutIndex) => {
+  if (!fact.changes?.length || cutIndex == null) return fact.value
+  // 이 시점까지 일어난 변화 중 마지막 것.
+  const applied = fact.changes
+    .filter((change) => change.at <= cutIndex)
+    .sort((a, b) => a.at - b.at)
+    .slice(-1)[0]
+  return applied ? applied.value : fact.value
+}
+
+// 정해진 사실만 한 줄로 잇는다. 컷 시점이 주어지면 그 시점의 값을 쓴다.
+const settledFacts = (facts = [], cutIndex = null) => facts
   .filter((fact) => !fact.open && fact.value)
-  .map((fact) => fact.value)
+  .map((fact) => factValueAt(fact, cutIndex))
+  .filter(Boolean)
   .join(', ')
 
 // 이 컷에 걸리는 씬 기준을 뽑는다. 컷에 나오는 인물만 넣는다 —
 // 씬의 모든 인물을 매 컷에 적으면 화면에 없는 사람까지 그리게 된다.
-export const selectSceneReference = (sceneState, cut) => {
+export const selectSceneReference = (sceneState, cut, cutIndex = null) => {
   if (!sceneState || !cut) return { characters: [], location: '', environment: '' }
 
   const cast = (cut.characters || '').split(',').map((name) => name.trim()).filter(Boolean)
   const characters = sceneState.characters
     .filter((character) => cast.some((name) => name.includes(character.name)))
-    .map((character) => ({ name: character.name, detail: settledFacts(character.facts) }))
+    .map((character) => ({
+      name: character.name,
+      detail: settledFacts(character.facts, cutIndex),
+    }))
     .filter((entry) => entry.detail)
 
   return {
     characters,
-    location: settledFacts(sceneState.location?.facts),
-    environment: settledFacts(sceneState.environment?.facts),
+    location: settledFacts(sceneState.location?.facts, cutIndex),
+    environment: settledFacts(sceneState.environment?.facts, cutIndex),
   }
 }
+
+// 이 사실이 씬 안에서 언제 바뀌는가. 편집 화면이 구간을 보여줄 때 쓴다.
+export const factTimeline = (fact) => [
+  { at: 0, value: fact.value },
+  ...(fact.changes || []).slice().sort((a, b) => a.at - b.at),
+]
 
 // --- Responsibility registry (DG1 P3) -----------------------------------
 // "이미지가 책임질 범위를 선언한다." 화면에 없는 것이 보완해야 할 결손인지
@@ -1431,6 +1463,61 @@ const useStore = create((set, get) => ({
       )),
     },
   })),
+  // 상태 변화를 더한다. 처음 값은 남기고 구간만 얹는다 —
+  // 값을 덮어쓰면 앞 컷들이 무엇이었는지 알 수 없게 된다.
+  addFactChange: (group, label, at, value, { characterId = null } = {}) => set((state) => {
+    const patchFacts = (facts = []) => facts.map((fact) => {
+      if (fact.label !== label) return fact
+      const changes = (fact.changes || []).filter((change) => change.at !== at)
+      return { ...fact, changes: [...changes, { at, value }].sort((a, b) => a.at - b.at) }
+    })
+
+    if (group === 'character') {
+      return {
+        sceneState: {
+          ...state.sceneState,
+          characters: state.sceneState.characters.map((character) => (
+            character.id === characterId
+              ? { ...character, facts: patchFacts(character.facts) }
+              : character
+          )),
+        },
+      }
+    }
+    return {
+      sceneState: {
+        ...state.sceneState,
+        [group]: { ...state.sceneState[group], facts: patchFacts(state.sceneState[group]?.facts) },
+      },
+    }
+  }),
+
+  removeFactChange: (group, label, at, { characterId = null } = {}) => set((state) => {
+    const patchFacts = (facts = []) => facts.map((fact) => (
+      fact.label === label
+        ? { ...fact, changes: (fact.changes || []).filter((change) => change.at !== at) }
+        : fact
+    ))
+    if (group === 'character') {
+      return {
+        sceneState: {
+          ...state.sceneState,
+          characters: state.sceneState.characters.map((character) => (
+            character.id === characterId
+              ? { ...character, facts: patchFacts(character.facts) }
+              : character
+          )),
+        },
+      }
+    }
+    return {
+      sceneState: {
+        ...state.sceneState,
+        [group]: { ...state.sceneState[group], facts: patchFacts(state.sceneState[group]?.facts) },
+      },
+    }
+  }),
+
   // 미정으로 남은 항목을 채운다. open을 지우는 것이 곧 결정이다.
   setSceneFact: (group, label, value, { characterId = null } = {}) => set((state) => {
     const patchFacts = (facts = []) => facts.map((fact) => (

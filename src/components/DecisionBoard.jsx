@@ -869,6 +869,10 @@ export default function DecisionBoard({ boardView = 'split' }) {
   // 로컬 state로 두면 프롬프트에 닿지 않는다.
   const sceneState = useStore((s) => s.sceneState)
   const updateSceneCharacter = useStore((s) => s.updateSceneCharacter)
+  const addFactChange = useStore((s) => s.addFactChange)
+  const removeFactChange = useStore((s) => s.removeFactChange)
+  // 어느 컷부터 무엇으로 바뀌는지 입력받는 중.
+  const [changeDraft, setChangeDraft] = useState(null)
   const miseCharacters = sceneState.characters
   const [editingCharacterId, setEditingCharacterId] = useState(null)
   const [characterDraft, setCharacterDraft] = useState(null)
@@ -1851,14 +1855,53 @@ export default function DecisionBoard({ boardView = 'split' }) {
                                     />
                                   </label>
                                   {detail.facts.map((fact) => (
-                                    <label key={fact.label}>
-                                      <span>{fact.label}</span>
-                                      <input
-                                        value={fact.value}
-                                        disabled={!isEditing}
-                                        onChange={(event) => updateCharacterFactDraft(fact.label, event.target.value)}
-                                      />
-                                    </label>
+                                    <div key={fact.label} className="mise-fact-field">
+                                      <label>
+                                        <span>{fact.label}</span>
+                                        <input
+                                          value={fact.value}
+                                          disabled={!isEditing}
+                                          onChange={(event) => updateCharacterFactDraft(fact.label, event.target.value)}
+                                        />
+                                      </label>
+
+                                      {/* 인물은 씬 안에서 변한다. 값 하나로 두면
+                                          모든 컷에 같은 문구가 들어간다 (DG2 P2).
+                                          처음 값은 남기고 구간만 얹는다. */}
+                                      {!fact.open && (
+                                        <div className="mise-fact-timeline">
+                                          {(fact.changes || []).map((change) => (
+                                            <span key={change.at} className="mise-fact-change">
+                                              <em>S{change.at + 1}~</em>
+                                              {change.value}
+                                              <button
+                                                type="button"
+                                                disabled={!isEditing}
+                                                aria-label={`S${change.at + 1} 변화 삭제`}
+                                                onClick={() => removeFactChange(
+                                                  'character', fact.label, change.at,
+                                                  { characterId: character.id },
+                                                )}
+                                              >✕</button>
+                                            </span>
+                                          ))}
+                                          <button
+                                            type="button"
+                                            className="mise-fact-add-change"
+                                            disabled={!isEditing}
+                                            onClick={() => setChangeDraft({
+                                              group: 'character',
+                                              characterId: character.id,
+                                              label: fact.label,
+                                              at: Math.min(1, Math.max(0, shots.length - 1)),
+                                              value: '',
+                                            })}
+                                          >
+                                            + 변화
+                                          </button>
+                                        </div>
+                                      )}
+                                    </div>
                                   ))}
                                 </div>
                                 <div className="mise-character-edit-actions">
@@ -1884,6 +1927,61 @@ export default function DecisionBoard({ boardView = 'split' }) {
                         )
                       })}
                     </div>
+
+                    {/* 어느 컷부터 바뀌는지 정한다. 컷을 고르는 것이므로
+                        자유 입력이 아니라 목록에서 고른다. */}
+                    {changeDraft && (
+                      <div className="mise-change-form">
+                        <header>
+                          <strong>{changeDraft.label} · 변화 추가</strong>
+                          <button type="button" onClick={() => setChangeDraft(null)}>✕</button>
+                        </header>
+                        <label>
+                          <span>어느 컷부터</span>
+                          <select
+                            value={changeDraft.at}
+                            onChange={(event) => setChangeDraft({
+                              ...changeDraft,
+                              at: Number(event.target.value),
+                            })}
+                          >
+                            {shots.map((shot, index) => (
+                              <option key={shot.id} value={index}>
+                                S{index + 1} · {shot.label}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                        <label>
+                          <span>이렇게 바뀐다</span>
+                          <input
+                            value={changeDraft.value}
+                            placeholder="예: 젖은 채 굳어 있음"
+                            onChange={(event) => setChangeDraft({
+                              ...changeDraft,
+                              value: event.target.value,
+                            })}
+                          />
+                        </label>
+                        <button
+                          type="button"
+                          className="mise-change-save"
+                          disabled={!changeDraft.value.trim()}
+                          onClick={() => {
+                            addFactChange(
+                              changeDraft.group,
+                              changeDraft.label,
+                              changeDraft.at,
+                              changeDraft.value.trim(),
+                              { characterId: changeDraft.characterId },
+                            )
+                            setChangeDraft(null)
+                          }}
+                        >
+                          추가
+                        </button>
+                      </div>
+                    )}
                   </section>
 
                   <div className="mise-place-grid">

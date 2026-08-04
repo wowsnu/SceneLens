@@ -821,6 +821,7 @@ export default function StoryboardView() {
       declarations,
       sceneState,
       seam: seamBefore(inspectedCut.id),
+      cutIndex: cutPlan.findIndex((item) => item.id === inspectedCut.id),
     })
     : null
 
@@ -1424,6 +1425,7 @@ export default function StoryboardView() {
                             declarations,
                             sceneState,
                             seam: seamBefore(item.id),
+                            cutIndex: index,
                           })
                           return (
                             <tr className="cut-plan-prompt-row">
@@ -1776,6 +1778,7 @@ export default function StoryboardView() {
                             declarations,
                             sceneState,
                             seam: seamBefore(shotCut.id),
+                            cutIndex: cutPlan.findIndex((item) => item.id === shotCut.id),
                           })
                           : null
                         const { marks: panelMarks, notes: panelNotes } = buildPanelMarks(

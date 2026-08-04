@@ -3861,3 +3861,160 @@ button.active .lens-glass::after {
     gap: 3px;
   }
 }
+
+/* --- 씬 안의 상태 변화 (DG2 P2) ----------------------------------------
+   인물과 공간은 씬 내내 고정이 아니다. 젖은 채 들어와 굳어가고, 형광등은
+   깜빡이다 꺼진다. 값 하나로 두면 모든 컷에 같은 문구가 들어간다. */
+.mise-fact-field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.mise-fact-timeline {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 5px;
+  padding-left: 2px;
+}
+
+.mise-fact-change {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 5px 2px 7px;
+  border: 1px solid rgba(126, 200, 160, 0.32);
+  border-radius: 999px;
+  background: rgba(126, 200, 160, 0.07);
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 10.5px;
+}
+
+.mise-fact-change em {
+  color: rgba(150, 220, 185, 0.95);
+  font-style: normal;
+  font-weight: 800;
+}
+
+.mise-fact-change button {
+  width: 14px;
+  height: 14px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.35);
+  font-size: 9px;
+  cursor: pointer;
+}
+
+.mise-fact-change button:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.12);
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.mise-fact-add-change {
+  padding: 2px 8px;
+  border: 1px dashed rgba(255, 255, 255, 0.22);
+  border-radius: 999px;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.45);
+  font-family: inherit;
+  font-size: 10px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.mise-fact-add-change:hover:not(:disabled) {
+  border-color: rgba(126, 200, 160, 0.5);
+  color: rgba(150, 220, 185, 0.9);
+}
+
+.mise-fact-add-change:disabled,
+.mise-fact-change button:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.mise-change-form {
+  margin-top: 12px;
+  padding: 12px 13px;
+  border: 1px solid rgba(126, 200, 160, 0.35);
+  border-radius: 9px;
+  background: rgba(126, 200, 160, 0.05);
+}
+
+.mise-change-form header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 9px;
+}
+
+.mise-change-form header strong {
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.mise-change-form header button {
+  width: 20px;
+  height: 20px;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.4);
+  cursor: pointer;
+}
+
+.mise-change-form label {
+  display: block;
+  margin-bottom: 8px;
+}
+
+.mise-change-form label span {
+  display: block;
+  margin-bottom: 4px;
+  color: rgba(255, 255, 255, 0.42);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.mise-change-form select,
+.mise-change-form input {
+  width: 100%;
+  padding: 6px 8px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.3);
+  color: rgba(255, 255, 255, 0.9);
+  font-family: inherit;
+  font-size: 11.5px;
+}
+
+.mise-change-form select:focus,
+.mise-change-form input:focus {
+  border-color: rgba(126, 200, 160, 0.55);
+  outline: none;
+}
+
+.mise-change-save {
+  width: 100%;
+  margin-top: 3px;
+  padding: 7px;
+  border: 1px solid rgba(126, 200, 160, 0.5);
+  border-radius: 6px;
+  background: rgba(126, 200, 160, 0.16);
+  color: rgba(150, 220, 185, 0.98);
+  font-family: inherit;
+  font-size: 11.5px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.mise-change-save:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
