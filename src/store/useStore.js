@@ -743,6 +743,95 @@ export const buildCutPrompt = (cut, {
   }
 }
 
+// --- 촬영 렌즈: 커버리지 진단 -------------------------------------------
+// 촬영이 담당하는 shotSize·angle·cameraMove는 이미 컷 표의 컬럼이다.
+// 그래서 rail에서는 값을 또 편집하지 않고, 표가 보여주지 못하는 것을 짚는다 —
+// 한 컷만 봐서는 알 수 없고 여러 컷을 함께 읽어야 드러나는 문제들이다.
+// (DG1 P2: 보이는 것은 판정으로, 보이지 않는 공백은 질문으로 다룬다.)
+//
+// 각 진단은 컷을 지목한다. 고치는 것은 표에서 한다 — 진단은 발견이고
+// 처분은 사용자 몫이다 (design_goal.md: 발견과 처분의 분리).
+const SHOT_SIZE_ORDER = ['Wide', 'Full', 'Medium', 'Bust', 'Close-Up', 'ECU']
+
+export const diagnoseCoverage = (cutPlan = []) => {
+  if (cutPlan.length === 0) return []
+  const findings = []
+
+  // 1. 같은 샷 크기가 이어지면 컷을 나눈 의미가 화면에 드러나지 않는다.
+  let runStart = 0
+  for (let i = 1; i <= cutPlan.length; i += 1) {
+    const ended = i === cutPlan.length || cutPlan[i].shotSize !== cutPlan[runStart].shotSize
+    if (ended) {
+      const run = i - runStart
+      if (run >= 3) {
+        findings.push({
+          id: `run-${cutPlan[runStart].id}`,
+          type: 'size-run',
+          title: `${cutPlan[runStart].shotSize} ${run}컷 연속`,
+          detail: '크기가 같으면 컷이 바뀐 것이 화면에서 잘 읽히지 않습니다.',
+          cutIds: cutPlan.slice(runStart, i).map((cut) => cut.id),
+        })
+      }
+      runStart = i
+    }
+  }
+
+  // 2. 대사를 주고받는데 리액션 컷이 없다. 말하는 쪽만 보이면 듣는 쪽의
+  //    반응은 후속 공정에서도 되살릴 수 없다.
+  const beats = [...new Set(cutPlan.map((cut) => cut.beat))]
+  beats.forEach((beat) => {
+    const inBeat = cutPlan.filter((cut) => cut.beat === beat)
+    const speech = inBeat.filter((cut) => cut.purpose === '발화')
+    const reaction = inBeat.filter((cut) => cut.purpose === '리액션')
+    if (speech.length > 0 && reaction.length === 0) {
+      findings.push({
+        id: `reaction-${beat}`,
+        type: 'missing-reaction',
+        title: `Beat ${beat + 1}에 리액션 컷 없음`,
+        detail: '말하는 쪽만 있습니다. 듣는 쪽이 어떻게 반응하는지 보이지 않습니다.',
+        cutIds: speech.map((cut) => cut.id),
+      })
+    }
+  })
+
+  // 3. 공간을 세우는 컷 없이 클로즈업으로 시작하면 관객은 어디인지 모른다.
+  const first = cutPlan[0]
+  const establishing = cutPlan.some((cut) => (
+    SHOT_SIZE_ORDER.indexOf(cut.shotSize) <= 1
+  ))
+  if (!establishing) {
+    findings.push({
+      id: 'no-establishing',
+      type: 'no-establishing',
+      title: '공간을 세우는 컷 없음',
+      detail: '전체가 좁은 샷입니다. 관객이 어디인지 파악할 근거가 없습니다.',
+      cutIds: [first.id],
+    })
+  }
+
+  // 4. 크기 차이가 너무 작으면 컷이 튄다(점프컷). 한 단계 차이는 같은
+  //    구도를 조금 당긴 것처럼 보인다.
+  cutPlan.forEach((cut, index) => {
+    if (index === 0) return
+    const prev = cutPlan[index - 1]
+    if (prev.beat !== cut.beat) return
+    const gap = Math.abs(
+      SHOT_SIZE_ORDER.indexOf(cut.shotSize) - SHOT_SIZE_ORDER.indexOf(prev.shotSize),
+    )
+    if (gap === 1 && prev.angle === cut.angle && (cut.characters || '') === (prev.characters || '')) {
+      findings.push({
+        id: `jump-${cut.id}`,
+        type: 'jump-cut',
+        title: `컷 ${prev.beat + 1}-${prev.beatOrder} → ${cut.beat + 1}-${cut.beatOrder} 점프컷 위험`,
+        detail: '크기와 앵글이 거의 같습니다. 이어 붙이면 화면이 튑니다.',
+        cutIds: [prev.id, cut.id],
+      })
+    }
+  })
+
+  return findings
+}
+
 // --- Scene state: 컷을 가로지르는 기준 ----------------------------------
 // 여러 컷에 같은 인물과 공간이 나온다. 컷마다 프롬프트를 따로 조립하면
 // 컷 1의 '관제실'과 컷 5의 '관제실'이 각자 해석되어 다른 방이 된다.

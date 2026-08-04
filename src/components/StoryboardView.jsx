@@ -5,6 +5,7 @@ import useStore, {
   RESPONSIBILITY_LEVELS,
   OFFIMAGE_CHANNELS,
   buildPanelMarks,
+  diagnoseCoverage,
 } from '../store/useStore'
 import './StoryboardView.css'
 
@@ -702,6 +703,8 @@ export default function StoryboardView() {
   const pendingDeclarations = declarations.filter((decl) => decl.status === 'Proposed')
   const acceptedDeclarations = declarations.filter((decl) => decl.status === 'Accepted')
   // 판정은 전부 패널의 인스펙터에서 한다 (DG1 P4).
+  // 여러 컷을 함께 읽어야 보이는 문제. 컷 표는 한 행씩만 보여준다.
+  const coverageFindings = diagnoseCoverage(cutPlan)
   // 아직 정하지 않은 씬 기준. 비워둔 것이 보여야 누락과 구분된다.
   const undecidedSceneFacts = sceneState.characters
     .reduce((count, character) => count + character.facts.filter((f) => f.open).length, 0)
@@ -2179,6 +2182,63 @@ export default function StoryboardView() {
                       ))}
                     </li>
                   </ul>
+                </div>
+                )}
+              </section>
+            )}
+
+            {/* 촬영이 담당하는 값(shotSize·angle·카메라)은 이미 컷 표의
+                컬럼이다. 여기서 또 편집하지 않고, 한 컷만 봐서는 알 수 없는
+                것을 짚는다. 고치는 것은 표에서 한다 — 발견과 처분은 다르다. */}
+            {cutStage === 'cutplan' && (
+              <section className={`rail-agent${openAgent === 'camera' ? ' open' : ''}`}>
+                <button
+                  type="button"
+                  className="rail-agent-head"
+                  aria-expanded={openAgent === 'camera'}
+                  onClick={() => setOpenAgent(openAgent === 'camera' ? null : 'camera')}
+                >
+                  <span className="camera-agent-mark" aria-hidden="true">C</span>
+                  <div>
+                    <strong>Cinematography</strong>
+                    <span>Coverage</span>
+                  </div>
+                  {coverageFindings.length > 0 && (
+                    <em className="rail-agent-badge is-open">{coverageFindings.length}</em>
+                  )}
+                  <svg className="rail-agent-caret" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="m6 9 6 6 6-6" />
+                  </svg>
+                </button>
+                {openAgent === 'camera' && (
+                <div className="rail-agent-body">
+                  <p className="rail-lens-lead">
+                    샷 크기와 앵글은 컷 표에서 고칩니다. 여기서는 여러 컷을
+                    함께 읽어야 보이는 것만 짚습니다.
+                  </p>
+                  {coverageFindings.length === 0 ? (
+                    <p className="rail-coverage-clear">지금 구성에서 걸리는 것이 없습니다.</p>
+                  ) : (
+                    <ul className="rail-coverage">
+                      {coverageFindings.map((finding) => (
+                        <li key={finding.id}>
+                          <strong>{finding.title}</strong>
+                          <p>{finding.detail}</p>
+                          {/* 지목된 컷으로 보낸다. 판단과 수정은 표에서. */}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const target = cutPlan.find((cut) => cut.id === finding.cutIds[0])
+                              if (target) setActiveBeat(target.beat)
+                              setExpandedPromptCutId(null)
+                            }}
+                          >
+                            해당 컷 보기 · {finding.cutIds.length}
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
                 </div>
                 )}
               </section>

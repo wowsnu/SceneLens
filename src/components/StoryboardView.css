@@ -3026,3 +3026,74 @@
 .rail-agent-body > .rail-scene-state {
   padding-bottom: 14px;
 }
+
+/* 촬영 렌즈 — 미장센(초록)과 구분되는 색. */
+.camera-agent-mark {
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(126, 168, 214, 0.45);
+  border-radius: 7px;
+  background: rgba(126, 168, 214, 0.1);
+  color: rgba(158, 194, 232, 0.95);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.rail-coverage {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  margin: 0;
+  padding: 0 14px 14px;
+  list-style: none;
+}
+
+.rail-coverage > li {
+  padding: 10px 11px;
+  border: 1px solid rgba(216, 170, 98, 0.24);
+  border-radius: 7px;
+  background: rgba(216, 170, 98, 0.03);
+}
+
+.rail-coverage strong {
+  display: block;
+  color: rgba(255, 255, 255, 0.88);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.rail-coverage p {
+  margin: 4px 0 8px;
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 11px;
+  line-height: 1.55;
+}
+
+/* 진단은 발견이고 수정은 표에서 한다. 버튼은 데려다주기만 한다. */
+.rail-coverage button {
+  padding: 4px 9px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 5px;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.65);
+  font-family: inherit;
+  font-size: 10.5px;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.rail-coverage button:hover {
+  border-color: rgba(255, 255, 255, 0.3);
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.rail-coverage-clear {
+  margin: 0;
+  padding: 0 14px 16px;
+  color: rgba(255, 255, 255, 0.36);
+  font-size: 11.5px;
+}
