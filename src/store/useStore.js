@@ -824,9 +824,9 @@ const createDeclaration = ({
   // responsibility가 'direction'일 때 스토리보드가 정하는 쪽.
   // 값이 아니라 방향이다 — "왼쪽으로"는 여기, "얼마나 빠르게"는 후속 공정.
   direction = '',
-  // 이 선언이 초안 생성 자체를 바꾸는가. 그렇다면 그림 전에 물어야 한다.
-  // 아니라면 패널을 보고 나서 정해도 늦지 않다 (DG1 P4: reactive authorship).
-  affectsDraft = false,
+  // 여러 컷에 걸치는 요소인가. 나중에 정하면 이미 그려진 패널들이 서로
+  // 어긋나 있으므로 생성 직전에 묻는다. 되돌릴 수 없는 것만 여기 해당한다.
+  crossCut = false,
   // AI가 왜 이 요소를 후보로 올렸는지. 판정의 근거가 되므로 남긴다.
   rationale = '',
   // 사용자가 판정하기 전에는 제안일 뿐이다 (DG1 P2: 제안은 판정 대상).
@@ -841,7 +841,7 @@ const createDeclaration = ({
   responsibility,
   channel,
   direction,
-  affectsDraft,
+  crossCut,
   rationale,
   status,
   provenance,
@@ -860,20 +860,17 @@ const proposeDeclarations = (cutPlan, { sceneIntention = '' } = {}) => {
   const proposals = []
   const push = (fields) => proposals.push(createDeclaration(fields))
 
-  // --- 초안 생성을 바꾸는 것 (affectsDraft) -----------------------------
-  // 이것만 그림 전에 묻는다. 씬 전체에 걸리고, 답에 따라 첫 장이 달라진다.
+  // 씬 전체에 걸리는 요소 — 줄콘티가 구조적으로 담지 못하는 것들.
   push({
     element: '의상 · 헤어',
     lens: 'mise-en-scene',
     responsibility: 'delegate',
-    affectsDraft: true,
     rationale: '스토리보드가 정하지 않는 것이 일반적이다. 위임하면 관객 검토에서 제외된다.',
   })
   push({
     element: '미술 · 질감',
     lens: 'mise-en-scene',
     responsibility: 'delegate',
-    affectsDraft: true,
     rationale: '이미지 모델은 어떻게든 질감을 그린다. 그것이 감독의 결정으로 굳으면 안 된다.',
   })
 
@@ -885,14 +882,11 @@ const proposeDeclarations = (cutPlan, { sceneIntention = '' } = {}) => {
       element: '인물 외형 일관성',
       lens: 'mise-en-scene',
       responsibility: 'image',
-        affectsDraft: true,
+      crossCut: true,
       rationale: '여러 컷에 같은 인물이 나온다. 컷마다 다르게 그려지면 다른 사람으로 읽힌다.',
     })
   }
 
-  // --- 그림을 보고 정해도 되는 것 (affectsDraft: false) -----------------
-  // 초안을 바꾸지 않으므로 게이트에 올리지 않는다. 패널에서 판정한다.
-  // (DG1 P4: 창작자는 결과를 보기 전에 무엇을 원하는지 다 알지 못한다.)
   push({
     element: '조명 · 톤',
     lens: 'cinematography',
@@ -947,14 +941,8 @@ const reorderCutPlan = (items) => {
 //   script  → 대본만
 //   cutplan → 컷 리스트만
 //   panels  → 대본 + 패널
-//   declare → 책임 범위 선언 (초안 생성 전)
 export const selectCutStage = (state) => {
   if (state.cutPlanStageOverride) return state.cutPlanStageOverride
-  // 선언 단계가 열려 있으면 확정 여부보다 우선한다. 그래야 그림 단계에서
-  // 선언으로 되돌아올 수 있다 — 선언은 언제든 갱신 대상이다 (DG3 → DG1).
-  // (design_goal.md DG1→DG3: 무엇을 담지 않을지 먼저 선언해야
-  //  관객 검토가 실제 결손만 가리킨다.)
-  if (state.declarationsOpen) return 'declare'
   if (state.cutPlanAccepted) return 'panels'
   return state.cutPlan.length > 0 ? 'cutplan' : 'script'
 }
@@ -964,15 +952,17 @@ export const selectCutStage = (state) => {
 export const selectPendingDeclarations = (state) =>
   state.declarations.filter((decl) => decl.status === 'Proposed')
 
-// 그림 전에 물을 것 — 초안 생성 자체를 바꾸는 것만.
-// 나머지를 앞으로 몰면 아무것도 보지 못한 상태에서 판정을 강요하게 되고,
-// 이는 P4(reactive authorship)와 정면으로 부딪힌다.
-export const selectGateDeclarations = (state) =>
-  state.declarations.filter((decl) => decl.status === 'Proposed' && decl.affectsDraft)
-
-// 패널에서 판정할 것. 그림을 보고 정해도 늦지 않은 것들이다.
+// 판정은 전부 패널에서 한다. 별도의 선언 단계를 두지 않는 이유는 P4다 —
+// 아무것도 보지 못한 상태에서 무엇을 남겨둘지 정할 수는 없다.
+// DG1 → DG3 연결은 "선언이 생성보다 앞설 것"을 요구하지 그것이 별도 화면일
+// 것을 요구하지 않는다.
 export const selectDeferredDeclarations = (state) =>
-  state.declarations.filter((decl) => decl.status === 'Proposed' && !decl.affectsDraft)
+  state.declarations.filter((decl) => decl.status === 'Proposed')
+
+// 생성 직전에 묻는 것 — 여러 컷에 걸쳐 되돌릴 수 없는 선언만.
+// 단계를 따로 두지 않고 생성 버튼 옆에 붙인다.
+export const selectPreGenerationDeclarations = (state) =>
+  state.declarations.filter((decl) => decl.status === 'Proposed' && decl.crossCut)
 
 // 프롬프트에서 빼야 할 요소. 위임한 것을 그림에 확정하면 P3가 무의미해진다.
 export const selectDelegatedDeclarations = (state) =>
@@ -1125,25 +1115,20 @@ const useStore = create((set, get) => ({
       return result.shots
     })
 
-    // 선언을 아직 한 번도 검토하지 않았으면 그림 전에 선언 단계로 보낸다.
-    // 이미 검토했으면(되돌아온 경우) 다시 붙잡지 않는다.
-    const needsDeclaration = !state.declarationsReviewed
+    // 컷이 정해졌으니 선언 후보를 뽑아 둔다. 별도 화면으로 붙잡지 않고
+    // 패널의 인스펙터에서 그림을 보며 판정한다 (DG1 P4).
     const judged = state.declarations.filter((decl) => decl.status !== 'Proposed')
     const judgedElements = new Set(judged.map((decl) => decl.element))
-    const proposed = needsDeclaration
-      ? proposeDeclarations(state.cutPlan, { sceneIntention: state.sceneIntention || '' })
-        .filter((decl) => !judgedElements.has(decl.element))
-      : []
+    const proposed = proposeDeclarations(state.cutPlan, {
+      sceneIntention: state.sceneIntention || '',
+    }).filter((decl) => !judgedElements.has(decl.element))
 
     return {
       ...next,
-      // 컷은 확정됐다. 다만 declarationsOpen이 켜져 있으면 화면은 아직
-      // 선언 단계에 머문다 (selectCutStage가 그 순서를 정한다).
       cutPlanAccepted: true,
       cutPlanSkipped: false,
       cutPlanStageOverride: null,
-      declarationsOpen: needsDeclaration,
-      declarations: needsDeclaration ? [...judged, ...proposed] : state.declarations,
+      declarations: [...judged, ...proposed],
       // 그림이 있는데 컷과 매칭되지 않은 패널. 사용자에게 알리고 판단을 맡긴다.
       cutPlanOrphanedShots: orphaned,
     }
@@ -1153,9 +1138,6 @@ const useStore = create((set, get) => ({
 
   // --- Responsibility registry (DG1 P3) ---------------------------------
   declarations: [],
-  declarationsOpen: false,
-  // 한 번이라도 선언 단계를 거쳤는지. 건너뛴 것과 안 만든 것을 구분한다.
-  declarationsReviewed: false,
 
   // 컷에서 선언 후보를 뽑는다. 이미 판정한 것은 덮어쓰지 않는다.
   proposeDeclarations: () => set((state) => {
@@ -1166,15 +1148,8 @@ const useStore = create((set, get) => ({
       sceneIntention: state.sceneIntention || '',
     }).filter((decl) => !judgedElements.has(decl.element))
 
-    return {
-      declarations: [...judged, ...fresh],
-      declarationsOpen: true,
-      cutPlanStageOverride: null,
-    }
+    return { declarations: [...judged, ...fresh] }
   }),
-
-  openDeclarations: () => set({ declarationsOpen: true, cutPlanStageOverride: null }),
-  closeDeclarations: () => set({ declarationsOpen: false }),
 
   updateDeclaration: (id, patch) => set((state) => ({
     declarations: state.declarations.map((decl) => {
@@ -1224,16 +1199,6 @@ const useStore = create((set, get) => ({
     declarations: state.declarations.filter((decl) => decl.id !== id),
   })),
 
-  // 선언을 마치고 그림 단계로. 판정하지 않은 제안이 남아도 막지 않되,
-  // 남았다는 사실은 기록한다 (DG1 P2: 막지 않고 드러낸다).
-  commitDeclarations: () => set({
-    declarationsOpen: false,
-    declarationsReviewed: true,
-    // 선언을 마쳐야 비로소 패널 단계다.
-    cutPlanAccepted: true,
-    cutPlanStageOverride: null,
-  }),
-
   // 패널 메모. 오버레이로 그릴 수 없는 것을 적어두는 자리다 —
   // 화살표나 배지로 표현되지 않는 지시가 갈 곳이 없으면 결국 누락된다.
   setShotNote: (shotId, note) => set((state) => updateActiveBranchShots(
@@ -1255,22 +1220,16 @@ const useStore = create((set, get) => ({
       : shot)),
   )),
 
-  // 선언 단계에서 컷으로 되돌아간다. 선언도 컷 확정도 지우지 않는다 —
-  // 단계 이동은 작업을 파괴하지 않는다.
-  backToCutPlan: () => set({ declarationsOpen: false, cutPlanStageOverride: 'cutplan' }),
   // 줄콘티를 다시 열어 수정한다. accept를 되돌리되 컷 자체는 지우지 않는다.
   reopenCutPlan: () => set({ cutPlanAccepted: false, cutPlanStageOverride: null }),
   // 건너뛰기는 막지 않되 기록한다. 자동 생성된 컷은 provenance가 'AI'로 남아
   // "검토되지 않은 채 넘어간 컷 분해"가 나중에 드러난다.
   cutPlanSkipped: false,
-  // 선언 단계도 함께 건너뛴다. declarationsReviewed는 false로 남겨
-  // "선언 없이 넘어간 씬"이 나중에 드러나게 한다.
   skipCutPlan: () => set((state) => ({
     cutPlan: state.cutPlan.length > 0 ? state.cutPlan : createMockCutPlan(state),
     cutPlanAccepted: true,
     cutPlanSkipped: true,
     cutPlanStageOverride: null,
-    declarationsOpen: false,
   })),
   overviewTab: 'spatial',
   setOverviewTab: (tab) => set({ overviewTab: tab }),

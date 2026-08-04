@@ -518,122 +518,6 @@ function PanelNote({ note, onChange }) {
   )
 }
 
-// 책임 범위 선언 카드 (DG1 P3).
-// 축은 책임 하나다. 칩을 고르는 것이 곧 판정이므로 별도의 수용 버튼이 없다.
-function DeclarationCard({
-  declaration,
-  cutPlan,
-  onUpdate,
-  onDecide,
-  onReject,
-  onRemove,
-  settled = false,
-}) {
-  const cut = declaration.cutId
-    ? cutPlan.find((item) => item.id === declaration.cutId)
-    : null
-
-  return (
-    <li className={`declaration-card${settled ? ' is-settled' : ''}`}>
-      <div className="declaration-head">
-        <input
-          className="declaration-element"
-          value={declaration.element}
-          onChange={(event) => onUpdate(declaration.id, { element: event.target.value })}
-          placeholder="요소 이름 (예: 조명 · 톤)"
-        />
-        <span className={`declaration-scope scope-${declaration.scope}`}>
-          {cut ? `컷 ${cut.beat + 1}-${cut.beatOrder}` : '씬 전체'}
-        </span>
-        <span className={`declaration-provenance prov-${declaration.provenance.toLowerCase()}`}>
-          {declaration.provenance}
-        </span>
-      </div>
-
-      {declaration.rationale && (
-        <p className="declaration-rationale">{declaration.rationale}</p>
-      )}
-
-      {/* 축은 책임 하나다. '이미지에서 확정'이 곧 이후 생성의 제약이 되므로
-          구속 강도를 따로 두지 않는다 (DG1 P3·P4). */}
-      <div className="declaration-axis">
-        <label>책임<small>그 결정을 누가 확정하는가</small></label>
-        {/* 판정 전 AI 제안값은 확정과 달라 보여야 한다 (DG1 P2). */}
-        <div
-          className={`declaration-chips${settled ? '' : ' is-proposed'}`}
-          role="radiogroup"
-          aria-label="책임"
-        >
-          {RESPONSIBILITY_LEVELS.map((level) => (
-            <button
-              key={level.id}
-              type="button"
-              role="radio"
-              aria-checked={declaration.responsibility === level.id}
-              className={declaration.responsibility === level.id ? 'active' : ''}
-              title={level.hint}
-              onClick={() => onDecide(declaration.id, level.id)}
-            >
-              {level.label}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* '방향만 표시'는 결정을 둘로 쪼갠다. 방향은 여기서 정하고 값은
-          후속 공정에 남는다. 기록할 채널이 없으면 위임이 아니라 누락이다. */}
-      {declaration.responsibility === 'direction' && (
-        <div className="declaration-direction">
-          <div className="declaration-direction-value">
-            <label htmlFor={`direction-${declaration.id}`}>
-              스토리보드가 정하는 방향
-            </label>
-            <input
-              id={`direction-${declaration.id}`}
-              value={declaration.direction || ''}
-              onChange={(event) => onUpdate(declaration.id, {
-                direction: event.target.value,
-              })}
-              placeholder="예: 왼쪽으로 이동 / 위축된 상태"
-            />
-            <small>속도·거리·강도 같은 값은 후속 공정에 남습니다.</small>
-          </div>
-
-          <div className="declaration-channel">
-            <label htmlFor={`channel-${declaration.id}`}>이미지 밖 채널</label>
-            <select
-              id={`channel-${declaration.id}`}
-              value={declaration.channel || ''}
-              onChange={(event) => onUpdate(declaration.id, {
-                channel: event.target.value || null,
-              })}
-            >
-              <option value="">선택 안 함</option>
-              {OFFIMAGE_CHANNELS.map((channel) => (
-                <option key={channel.id} value={channel.id}>{channel.label}</option>
-              ))}
-            </select>
-            {!declaration.channel && (
-              <small className="declaration-hint">
-                채널을 정하지 않으면 방향이 어디에도 남지 않습니다.
-              </small>
-            )}
-          </div>
-        </div>
-      )}
-
-      <div className="declaration-actions">
-        <button
-          type="button"
-          onClick={() => (settled ? onRemove(declaration.id) : onReject(declaration.id))}
-        >
-          {settled ? '선언 해제' : '선언하지 않음'}
-        </button>
-      </div>
-    </li>
-  )
-}
-
 function NarrativeSuggestionCard({ suggestion, onAccept, onDismiss }) {
   const canAccept = suggestion.type !== 'keep-structure'
   const suggestionMeta = {
@@ -738,16 +622,8 @@ export default function StoryboardView() {
   const cutStage = useStore(selectCutStage)
   // 책임 범위 선언 (DG1 P3)
   const declarations = useStore((s) => s.declarations)
-  const declarationsReviewed = useStore((s) => s.declarationsReviewed)
-  const openDeclarations = useStore((s) => s.openDeclarations)
-  const updateDeclaration = useStore((s) => s.updateDeclaration)
-  const acceptDeclaration = useStore((s) => s.acceptDeclaration)
   const decideDeclaration = useStore((s) => s.decideDeclaration)
   const rejectDeclaration = useStore((s) => s.rejectDeclaration)
-  const removeDeclaration = useStore((s) => s.removeDeclaration)
-  const addDeclaration = useStore((s) => s.addDeclaration)
-  const commitDeclarations = useStore((s) => s.commitDeclarations)
-  const backToCutPlan = useStore((s) => s.backToCutPlan)
   const setShotNote = useStore((s) => s.setShotNote)
   const addShotArrow = useStore((s) => s.addShotArrow)
   const removeShotArrow = useStore((s) => s.removeShotArrow)
@@ -817,16 +693,14 @@ export default function StoryboardView() {
   //   panels  → 대본 + 패널
   // 패널은 확정 여부가 아니라 "지금 어느 단계를 보고 있는가"를 따른다.
   const showStoryboardPanels = isExpanded && storyboardPanelsVisible && cutStage === 'panels'
-  const isDeclareStage = cutStage === 'declare' && isExpanded && !drawingWorkspaceOpen && !showWriteScene
   // 아직 판정하지 않은 제안과 이미 선언된 것을 나눈다.
   // 판정하지 않은 채 넘어가면 그 요소는 확인되지 않은 AI 가정으로 굳는다.
   const pendingDeclarations = declarations.filter((decl) => decl.status === 'Proposed')
   const acceptedDeclarations = declarations.filter((decl) => decl.status === 'Accepted')
-  const rejectedDeclarations = declarations.filter((decl) => decl.status === 'Rejected')
-  // 게이트에는 초안 생성을 바꾸는 것만 올린다. 나머지를 여기 몰면 아무것도
-  // 보지 못한 상태에서 판정을 강요하게 된다 (DG1 P4: reactive authorship).
-  const gateDeclarations = pendingDeclarations.filter((decl) => decl.affectsDraft)
-  const deferredDeclarations = pendingDeclarations.filter((decl) => !decl.affectsDraft)
+  // 판정은 전부 패널의 인스펙터에서 한다 (DG1 P4).
+  const deferredDeclarations = pendingDeclarations
+  // 생성 직전에 묻는 것 — 되돌릴 수 없는 선언만.
+  const preGenerationDeclarations = pendingDeclarations.filter((decl) => decl.crossCut)
   const activeBranch = scene?.activeBranch ?? 0
   const activeShot = scene?.activeShot ?? 0
   const branch = scene?.branches?.[activeBranch]
@@ -1175,28 +1049,6 @@ export default function StoryboardView() {
                 </div>
                 </button>
               </li>
-              <li className={`${declarationsReviewed ? 'stage-done' : cutStage === 'declare' ? 'stage-active' : 'stage-locked'}${cutStage === 'declare' ? ' stage-current' : ''}`}>
-                <button
-                  type="button"
-                  onClick={openDeclarations}
-                  disabled={cutPlan.length === 0 || cutStage === 'declare'}
-                  aria-current={cutStage === 'declare' ? 'step' : undefined}
-                >
-                  <span className="stage-index">3</span>
-                  <div>
-                    <strong>책임 범위</strong>
-                    <em>
-                      {cutPlanSkipped && !declarationsReviewed
-                        ? '건너뜀 · 선언 없음'
-                        : gateDeclarations.length > 0
-                          ? `${gateDeclarations.length}건 판정 대기`
-                          : declarationsReviewed
-                            ? `${acceptedDeclarations.length}건 선언됨`
-                            : '컷 확정 후 열림'}
-                    </em>
-                  </div>
-                </button>
-              </li>
               <li className={`${cutPlanAccepted ? 'stage-active' : 'stage-locked'}${cutStage === 'panels' ? ' stage-current' : ''}`}>
                 <button
                   type="button"
@@ -1204,7 +1056,7 @@ export default function StoryboardView() {
                   disabled={!cutPlanAccepted}
                   aria-current={cutStage === 'panels' ? 'step' : undefined}
                 >
-                  <span className="stage-index">4</span>
+                  <span className="stage-index">3</span>
                   <div>
                     <strong>Panels</strong>
                     <em>{cutPlanAccepted ? `${flowShots.length} panels` : '컷 확정 후 열림'}</em>
@@ -1587,124 +1439,6 @@ export default function StoryboardView() {
             </section>
           )}
 
-          {/* 책임 범위 선언 (DG1 P3). 그림보다 먼저 온다 —
-              무엇을 담지 않을지 선언해야 관객 검토가 실제 결손만 가리킨다. */}
-          {isDeclareStage && (
-            <section className="declaration-review" aria-label="책임 범위 선언">
-              <header>
-                <span className="script-draft-mark" aria-hidden="true">R</span>
-                <div>
-                  <span>책임 범위 · Responsibility · Mock</span>
-                  <strong>초안을 그리기 전에 정할 것</strong>
-                  <p>
-                    첫 장의 결과를 바꾸는 것만 먼저 묻습니다. 나머지는 그림을 보고
-                    패널에서 정합니다 — 결과를 보기 전에 다 알 수는 없습니다.
-                  </p>
-                </div>
-                <div className="script-draft-actions">
-                  <button type="button" onClick={backToCutPlan}>Back to cuts</button>
-                  <button
-                    type="button"
-                    className="use-draft"
-                    onClick={commitDeclarations}
-                  >
-                    선언 마치고 그림으로
-                  </button>
-                </div>
-              </header>
-
-              {gateDeclarations.length === 0 && acceptedDeclarations.length === 0 && (
-                <p className="declaration-empty">
-                  초안을 바꾸는 선언이 없습니다. 그대로 그림으로 넘어가도 됩니다.
-                </p>
-              )}
-
-              {gateDeclarations.length > 0 && (
-                <div className="declaration-group">
-                  <h4>
-                    판정 대기 <em>{gateDeclarations.length}건</em>
-                    <small>답에 따라 초안이 달라집니다.</small>
-                  </h4>
-                  <ul className="declaration-list">
-                    {gateDeclarations.map((decl) => (
-                      <DeclarationCard
-                        key={decl.id}
-                        declaration={decl}
-                        cutPlan={cutPlan}
-                        onUpdate={updateDeclaration}
-                        onDecide={decideDeclaration}
-                        onReject={rejectDeclaration}
-                      />
-                    ))}
-                  </ul>
-                </div>
-              )}
-
-              {acceptedDeclarations.length > 0 && (
-                <div className="declaration-group">
-                  <h4>
-                    선언됨 <em>{acceptedDeclarations.length}건</em>
-                    <small>생성과 관객 검토가 이 선언을 따릅니다.</small>
-                  </h4>
-                  <ul className="declaration-list">
-                    {acceptedDeclarations.map((decl) => (
-                      <DeclarationCard
-                        key={decl.id}
-                        declaration={decl}
-                        cutPlan={cutPlan}
-                        onUpdate={updateDeclaration}
-                        onDecide={decideDeclaration}
-                        onRemove={removeDeclaration}
-                        settled
-                      />
-                    ))}
-                  </ul>
-                </div>
-              )}
-
-              {rejectedDeclarations.length > 0 && (
-                <div className="declaration-group declaration-rejected">
-                  <h4>
-                    선언하지 않음 <em>{rejectedDeclarations.length}건</em>
-                    <small>
-                      검토한 뒤 선언하지 않기로 한 것입니다. 아직 보지 않은 것과 다릅니다.
-                    </small>
-                  </h4>
-                  <ul className="declaration-list">
-                    {rejectedDeclarations.map((decl) => (
-                      <li key={decl.id} className="declaration-card is-rejected">
-                        <strong>{decl.element}</strong>
-                        <button type="button" onClick={() => acceptDeclaration(decl.id)}>
-                          되돌리기
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-
-              <footer className="declaration-footer">
-                <button
-                  type="button"
-                  onClick={() => addDeclaration({ element: '', rationale: '' })}
-                >
-                  + 직접 선언 추가
-                </button>
-                {gateDeclarations.length > 0 && (
-                  <span className="declaration-warning">
-                    판정하지 않은 {gateDeclarations.length}건은 확인되지 않은 채
-                    초안에 반영됩니다.
-                  </span>
-                )}
-                {deferredDeclarations.length > 0 && (
-                  <span className="declaration-deferred">
-                    {deferredDeclarations.length}건은 그림을 보고 패널에서 정합니다.
-                  </span>
-                )}
-              </footer>
-            </section>
-          )}
-
           {cutPlanOrphanedShots.length > 0 && isExpanded && !drawingWorkspaceOpen && (
             <div className="cut-plan-orphan-warning" role="status">
               <div>
@@ -1814,6 +1548,33 @@ export default function StoryboardView() {
                 {eligibleScopeShots.length > 0 ? ` · ${eligibleScopeShots.length}` : ''}
               </button>
             </div>
+
+            {/* 되돌릴 수 없는 선언만 생성 직전에 묻는다. 여러 컷에 걸치는
+                요소는 나중에 정하면 이미 그려진 패널들이 서로 어긋나 있다.
+                나머지 선언은 그림을 보고 인스펙터에서 판정한다 (DG1 P4). */}
+            {preGenerationDeclarations.length > 0 && (
+              <div className="generation-declaration-row">
+                {preGenerationDeclarations.map((decl) => (
+                  <div key={decl.id} className="generation-declaration">
+                    <strong>{decl.element}</strong>
+                    <small>{decl.rationale}</small>
+                    <div className="deferred-chips is-proposed">
+                      {RESPONSIBILITY_LEVELS.map((level) => (
+                        <button
+                          key={level.id}
+                          type="button"
+                          className={decl.responsibility === level.id ? 'active' : ''}
+                          title={`${level.hint} · AI 제안, 눌러서 확정`}
+                          onClick={() => decideDeclaration(decl.id, level.id)}
+                        >
+                          {level.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
             </section>
           )}
 
