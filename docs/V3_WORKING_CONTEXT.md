@@ -101,6 +101,24 @@ P3는 또한 `PANEL_GENERATION_DESIGN.md` §4.3이 미결로 남긴 "비구속�
 외형 일관성이 게이트에 남은 이유는 나중에 정하면 이미 그려진 패널들이 서로 다른
 인물이 되어 있기 때문이다 — 되돌릴 수 없는 것만 앞에 둔다.
 
+**컷에서 Fixed/Tentative/Open을 제거했다.** 책임 축이 생기고 나니 세 값이
+각각 다른 축의 일이었다.
+
+- `Open`("검토 후 의도적으로 열어둠")은 책임 축의 **위임**과 같은 말이었다.
+  둘 다 "일부러 안 정했고 후속 공정이 정하며 누락이 아니다"를 뜻한다.
+- `Fixed`는 프롬프트에 아무 영향도 주지 않고 색만 바꾸고 있었다. 실제 제약은
+  이제 `이미지에서 확정` 선언이 만든다.
+- `Tentative`("미검토, AI가 채운 가정일 수 있음")는 **`provenance`가 이미
+  말하고 있다.** AI가 만든 뒤 사용자가 손대지 않았으면 미확인 컷이다.
+
+그래서 컷에 남은 축은 `provenance`(AI/User) 하나다. 컷 플랜 표의 왼쪽 선과
+푸터의 "미확인 N"이 이것을 표시하고, 프롬프트만 고친 경우에는 출처가 바뀌지
+않는 기존 가드가 그대로 유지된다.
+
+Spec §7은 아직 Decision status를 정의하고 있다. 컷에는 적용하지 않지만
+Decision 객체 자체에는 남아 있으므로 지우지 않았다 — Decision 데이터 구조를
+별도 slice로 만들 때 다시 판단한다.
+
 아직 안 된 것: 채널(`movement-arrow`, `timecode` 등)이 패널 위 오버레이로
 그려지지 않는다. 데이터는 `buildCutPrompt`의 `responsibility.offImage`로
 패널까지 가 있고 Shot Inspector에 목록으로만 뜬다.
@@ -600,8 +618,7 @@ Script / Cut plan / Panels를 화면 단위로 구분했다.
 Panels 단계에서 패널을 클릭하면 rail 자리에 `ShotInspector`가 열린다.
 
 - 샷 사이즈 / 앵글 / 카메라 / 시간 / 장소 / 인물 / 중요한 것
-- 커밋 상태와 출처를 한 자리에서 본다. 상태별 설명이 §17.5의 비구속
-  표시 역할을 한다
+- 출처(AI / User). 컷에 Fixed/Tentative/Open 축은 없다 — §1.1 참조
 - 프롬프트 편집
 - **인스펙터가 고치는 것은 패널이 아니라 컷이다.** 컷 플랜 표와 같은
   데이터를 보므로 한쪽을 고치면 다른 쪽도 바뀐다
@@ -690,8 +707,10 @@ Storyboard 제작 흐름의 실제 이미지 생성 연결은 별도 축으로 �
 2. ~~조립된 프롬프트 + 편집 UI~~ (완료, 6.11)
 3. **조립된 프롬프트를 실제 이미지 생성 호출에 연결한다.** 우선 한 패널의
    생성 → candidate 검토 → Accept를 완성한다.
-4. 상태별 표시를 정한다. Tentative/Open이 확정처럼 보이지 않게 하는 방법을
-   §4.3의 후보 중에서 고른다. 실제 이미지가 나와야 판단이 선다.
+4. 위임·방향만 표시한 요소가 확정처럼 보이지 않게 하는 방법을 정한다.
+   현재는 Shot Inspector의 목록뿐이고, 이미지 밖 채널(움직임 화살표,
+   타임코드 등)이 패널 위 오버레이로 그려지지 않는다. 실제 이미지가
+   나와야 판단이 선다.
 5. Shot Inspector를 Option card로 확장한다. 현재 값 옆에 대안을 효과·비용과
    함께 놓는다(Spec §15).
 6. 같은 계약을 Beat/Selected/All blanks batch로 확장한다.
@@ -704,7 +723,7 @@ Storyboard 제작 흐름의 실제 이미지 생성 연결은 별도 축으로 �
 2. Event Log로 User/AI provenance를 기록한다.
 3. 한 개의 Cinematography Decision에 대해 current choice와 Option Set을 만든다.
 4. Preview와 Apply를 분리한다.
-5. Fixed/Tentative/Open과 한 Round 적용을 연결한다.
+5. 책임 선언과 한 Round 적용을 연결한다.
 6. 같은 프로토콜을 Mise-en-scène과 Editing에 확장한다.
 7. 마지막에 Viewer Reflection을 붙인다.
 

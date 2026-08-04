@@ -1033,15 +1033,15 @@
   white-space: nowrap;
 }
 
-.sb-shot-cut-origin.status-fixed {
-  background: rgba(216, 170, 98, 0.14);
-  color: #e1bd85;
+/* 아직 확인하지 않은 컷에서 나온 패널임을 표시한다. */
+.sb-shot-cut-origin.provenance-row-ai {
+  background: rgba(126, 168, 214, 0.14);
+  color: rgba(158, 194, 232, 0.95);
 }
 
-.sb-shot-cut-origin.status-open {
-  background: rgba(255, 255, 255, 0.04);
-  color: rgba(255, 255, 255, 0.38);
-  font-style: italic;
+.sb-shot-cut-origin.provenance-row-user {
+  background: rgba(216, 170, 98, 0.14);
+  color: #e1bd85;
 }
 
 /* 줄콘티 표: 컷을 나란히 놓아 흐름이 한눈에 읽히게 한다.
@@ -1085,21 +1085,18 @@
   vertical-align: middle;
 }
 
-/* 상태는 행 왼쪽 선으로만 표시해 표를 어지럽히지 않는다. */
+/* 출처는 행 왼쪽 선으로만 표시해 표를 어지럽히지 않는다.
+   아직 확인하지 않은 컷(AI)이 눈에 띄어야 한다. */
 .cut-plan-table tbody tr td:first-child {
   box-shadow: inset 2px 0 0 rgba(255, 255, 255, 0.14);
 }
 
-.cut-plan-table tbody tr.status-fixed td:first-child {
-  box-shadow: inset 2px 0 0 #e1bd85;
-}
-
-.cut-plan-table tbody tr.status-tentative td:first-child {
+.cut-plan-table tbody tr.provenance-row-ai td:first-child {
   box-shadow: inset 2px 0 0 rgba(126, 168, 214, 0.75);
 }
 
-.cut-plan-table tbody tr.status-open td:first-child {
-  box-shadow: inset 2px 0 0 rgba(255, 255, 255, 0.22);
+.cut-plan-table tbody tr.provenance-row-user td:first-child {
+  box-shadow: inset 2px 0 0 #e1bd85;
 }
 
 .cut-plan-table .col-cut {
@@ -1121,7 +1118,6 @@
 .cut-plan-table .col-purpose { width: 132px; }
 .cut-plan-table .col-cast { width: 88px; }
 .cut-plan-table .col-shot { width: 92px; }
-.cut-plan-table .col-status { width: 108px; }
 .cut-plan-table .col-tools { width: 122px; }
 
 /* 입력은 평소 표의 글자처럼 보이고, 다가가야 편집 가능함이 드러난다. */
@@ -1167,14 +1163,6 @@
   text-overflow: ellipsis;
 }
 
-.cut-plan-status-select {
-  font-size: 13px !important;
-  font-weight: 700;
-}
-
-.cut-plan-status-select.status-fixed { color: #e1bd85; }
-.cut-plan-status-select.status-tentative { color: rgba(158, 194, 232, 0.95); }
-.cut-plan-status-select.status-open { color: rgba(255, 255, 255, 0.5); }
 
 .cut-plan-table option {
   background: #18181b;
@@ -1742,46 +1730,6 @@
 
 .shot-inspector-field option {
   background: #18181b;
-}
-
-.shot-inspector-status {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 4px;
-}
-
-.shot-inspector-status button {
-  padding: 7px 4px;
-  border: 1px solid rgba(255, 255, 255, 0.09);
-  border-radius: 6px;
-  background: transparent;
-  color: rgba(255, 255, 255, 0.42);
-  font-size: 11px;
-  font-weight: 700;
-  cursor: pointer;
-}
-
-.shot-inspector-status button:hover {
-  border-color: rgba(255, 255, 255, 0.24);
-  color: #fff;
-}
-
-.shot-inspector-status button.active.status-fixed {
-  border-color: rgba(216, 170, 98, 0.5);
-  background: rgba(216, 170, 98, 0.14);
-  color: #e6c38c;
-}
-
-.shot-inspector-status button.active.status-tentative {
-  border-color: rgba(126, 168, 214, 0.5);
-  background: rgba(126, 168, 214, 0.14);
-  color: rgba(158, 194, 232, 0.95);
-}
-
-.shot-inspector-status button.active.status-open {
-  border-color: rgba(255, 255, 255, 0.3);
-  background: rgba(255, 255, 255, 0.06);
-  color: rgba(255, 255, 255, 0.8);
 }
 
 .shot-inspector-hint {

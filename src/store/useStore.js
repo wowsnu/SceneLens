@@ -456,7 +456,11 @@ const createCutPlanItem = ({
   // 사용자가 조립된 프롬프트를 직접 고친 경우. 비어 있으면 컷에서 조립한
   // 문장을 쓴다. 원문은 언제든 다시 조립할 수 있으므로 되돌리기가 가능하다.
   promptOverride = '',
-  status = 'Tentative',
+  // 컷에 Fixed/Tentative/Open 축은 두지 않는다.
+  //   Open  → 책임 축의 '후속 공정 위임'과 같은 말이었다 (DG1 P3).
+  //   Fixed → '이미지에서 확정' 선언이 제약을 만든다.
+  //   Tentative → provenance가 'AI'로 남아 있는 것이 곧 미검토 상태다.
+  // 검토 여부는 provenance가 말한다. 사용자가 손대면 'User'로 바뀐다.
   provenance = 'AI',
 } = {}) => ({
   id: createCutPlanItemId(),
@@ -472,7 +476,6 @@ const createCutPlanItem = ({
   angle,
   cameraMove,
   promptOverride,
-  status,
   provenance,
 })
 
@@ -1009,12 +1012,6 @@ const useStore = create((set, get) => ({
       }
     }),
   })),
-  setCutPlanItemStatus: (itemId, status) => set((state) => ({
-    // 상태 전환은 출처를 바꾸지 않는다 (Spec §8.2).
-    cutPlan: state.cutPlan.map((item) => (
-      item.id === itemId ? { ...item, status } : item
-    )),
-  })),
   addCutPlanItem: (afterItemId = null, beat = 0) => set((state) => {
     const next = [...state.cutPlan]
     const index = afterItemId
@@ -1168,7 +1165,7 @@ const useStore = create((set, get) => ({
   backToCutPlan: () => set({ declarationsOpen: false, cutPlanStageOverride: 'cutplan' }),
   // 줄콘티를 다시 열어 수정한다. accept를 되돌리되 컷 자체는 지우지 않는다.
   reopenCutPlan: () => set({ cutPlanAccepted: false, cutPlanStageOverride: null }),
-  // 건너뛰기는 막지 않되 기록한다. 자동 생성된 컷은 전부 Tentative로 남아
+  // 건너뛰기는 막지 않되 기록한다. 자동 생성된 컷은 provenance가 'AI'로 남아
   // "검토되지 않은 채 넘어간 컷 분해"가 나중에 드러난다.
   cutPlanSkipped: false,
   // 선언 단계도 함께 건너뛴다. declarationsReviewed는 false로 남겨

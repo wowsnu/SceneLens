@@ -175,7 +175,7 @@ function ScriptLineEditor({
 // 있는지 보여주고 그 자리에서 고친다. 값의 출처는 컷이므로 컷을 고친다.
 // 설계 근거: docs/PANEL_GENERATION_DESIGN.md §3.3
 function ShotInspector({
-  shot, cut, prompt, shotSizes, angles, moves, onChange, onStatusChange, onClose,
+  shot, cut, prompt, shotSizes, angles, moves, onChange, onClose,
   // 그림을 보고 정하기로 미뤄둔 선언 (DG1 P4). 여기서 판정한다.
   deferredDeclarations = [], onDeclarationUpdate, onDeclarationAccept, onDeclarationReject,
 }) {
@@ -246,29 +246,18 @@ function ShotInspector({
         </label>
       </section>
 
+      {/* 컷의 검토 여부는 출처가 말한다. AI가 만든 뒤 손대지 않았으면
+          아직 확인되지 않은 컷이다. 무엇을 고정하고 무엇을 남겨둘지는
+          컷이 아니라 책임 선언이 정한다 (DG1 P3). */}
       <section>
         <h4>
-          커밋 상태
+          출처
           <em className={`provenance-${cut.provenance.toLowerCase()}`}>{cut.provenance}</em>
         </h4>
-        <div className="shot-inspector-status">
-          {['Fixed', 'Tentative', 'Open'].map((status) => (
-            <button
-              key={status}
-              type="button"
-              className={cut.status === status ? `active status-${status.toLowerCase()}` : ''}
-              onClick={() => onStatusChange(cut.id, status)}
-            >
-              {status}
-            </button>
-          ))}
-        </div>
         <p className="shot-inspector-hint">
-          {cut.status === 'Fixed'
-            ? '후속 제작에서 지켜야 할 결정입니다. 재생성해도 유지됩니다.'
-            : cut.status === 'Open'
-              ? '검토 후 의도적으로 열어둔 부분입니다. 바뀌어도 괜찮습니다.'
-              : '아직 검토하지 않았습니다. 그려진 그림은 확정이 아닙니다.'}
+          {cut.provenance === 'AI'
+            ? 'AI가 나눈 컷을 아직 확인하지 않았습니다. 그려진 그림은 확정이 아닙니다.'
+            : '직접 수정한 컷입니다.'}
         </p>
       </section>
 
@@ -630,7 +619,6 @@ export default function StoryboardView() {
   const setScenePromptNote = useStore((s) => s.setScenePromptNote)
   const requestCutPlan = useStore((s) => s.requestCutPlan)
   const updateCutPlanItem = useStore((s) => s.updateCutPlanItem)
-  const setCutPlanItemStatus = useStore((s) => s.setCutPlanItemStatus)
   const addCutPlanItem = useStore((s) => s.addCutPlanItem)
   const removeCutPlanItem = useStore((s) => s.removeCutPlanItem)
   const moveCutPlanItem = useStore((s) => s.moveCutPlanItem)
@@ -1218,7 +1206,6 @@ export default function StoryboardView() {
                       <th className="col-purpose">중요한 것</th>
                       <th className="col-cast">인물</th>
                       <th className="col-shot">샷</th>
-                      <th className="col-status">상태</th>
                       <th className="col-tools" aria-label="Actions" />
                     </tr>
                   </thead>
@@ -1227,7 +1214,7 @@ export default function StoryboardView() {
                     return (
                       <tbody key={group.beat} className="cut-plan-beat-group">
                         <tr className="cut-plan-beat-row">
-                          <th colSpan={9}>
+                          <th colSpan={8}>
                             <button
                               type="button"
                               onClick={() => toggleCutBeat(group.beat)}
@@ -1241,7 +1228,7 @@ export default function StoryboardView() {
                         </tr>
                         {!collapsed && group.items.map(({ item, index }) => (
                         <Fragment key={item.id}>
-                        <tr className={`status-${item.status.toLowerCase()}`}>
+                        <tr className={`provenance-row-${item.provenance.toLowerCase()}`}>
                           <td className="col-cut">
                             <span className="cut-plan-number">
                               {item.beat + 1}-{item.beatOrder}
@@ -1301,18 +1288,6 @@ export default function StoryboardView() {
                               {cutPlanShotSizes.map((size) => (
                                 <option key={size} value={size}>{size}</option>
                               ))}
-                            </select>
-                          </td>
-                          <td className="col-status">
-                            <select
-                              className={`cut-plan-status-select status-${item.status.toLowerCase()}`}
-                              value={item.status}
-                              onChange={(event) => setCutPlanItemStatus(item.id, event.target.value)}
-                              aria-label={`Cut ${item.order} status`}
-                            >
-                              <option value="Fixed">Fixed</option>
-                              <option value="Tentative">Tentative</option>
-                              <option value="Open">Open</option>
                             </select>
                           </td>
                           <td className="col-tools">
@@ -1375,7 +1350,7 @@ export default function StoryboardView() {
                           })
                           return (
                             <tr className="cut-plan-prompt-row">
-                              <td colSpan={9}>
+                              <td colSpan={8}>
                                 <div className="cut-plan-prompt">
                                   <div className="cut-plan-prompt-auto">
                                     <span>
@@ -1446,10 +1421,13 @@ export default function StoryboardView() {
                 <button type="button" onClick={() => addCutPlanItem(null, activeBeat)}>
                   + Add cut
                 </button>
+                {/* 아직 확인하지 않은 컷이 몇 개인지. 전부 확인했으면 굳이
+                    말하지 않는다. */}
                 <span>
-                  {cutPlan.filter((item) => item.status === 'Fixed').length} Fixed ·{' '}
-                  {cutPlan.filter((item) => item.status === 'Tentative').length} Tentative ·{' '}
-                  {cutPlan.filter((item) => item.status === 'Open').length} Open
+                  {cutPlan.length} cuts
+                  {cutPlan.some((item) => item.provenance === 'AI') && (
+                    <> · 미확인 {cutPlan.filter((item) => item.provenance === 'AI').length}</>
+                  )}
                 </span>
               </footer>
             </section>
@@ -1948,8 +1926,8 @@ export default function StoryboardView() {
                                 if (!originCut) return null
                                 return (
                                   <span
-                                    className={`sb-shot-cut-origin status-${originCut.status.toLowerCase()}`}
-                                    title={`Cut ${originCut.order} · ${originCut.shotSize} · ${originCut.status}`}
+                                    className={`sb-shot-cut-origin provenance-row-${originCut.provenance.toLowerCase()}`}
+                                    title={`Cut ${originCut.order} · ${originCut.shotSize} · ${originCut.provenance}`}
                                   >
                                     C{String(originCut.order).padStart(2, '0')} · {originCut.shotSize}
                                   </span>
@@ -1997,7 +1975,6 @@ export default function StoryboardView() {
           angles={cutPlanAngles}
           moves={cutPlanMoves}
           onChange={updateCutPlanItem}
-          onStatusChange={setCutPlanItemStatus}
           onClose={() => setInspectedShotId(null)}
           deferredDeclarations={deferredDeclarations.filter((decl) => (
             decl.scope === 'scene' || decl.cutId === inspectedCut?.id
