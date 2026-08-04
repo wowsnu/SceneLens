@@ -660,6 +660,8 @@ export default function StoryboardView() {
   const [rawSceneIntention, setRawSceneIntention] = useState('')
   const [narrativeRequest, setNarrativeRequest] = useState('')
   const [narrativeRailOpen, setNarrativeRailOpen] = useState(true)
+  // 한 번에 한 에이전트만 펼친다. 둘 다 펼치면 rail이 길어져 스크롤된다.
+  const [openAgent, setOpenAgent] = useState('narrative')
   // 줄 종류·삭제 버튼은 Beat 단위로 켠다. 평소엔 대본만 보이게 한다.
   const [editingBeat, setEditingBeat] = useState(null)
   // Enter나 화살표로 옮겨갈 줄. { index, caret } 형태.
@@ -700,6 +702,9 @@ export default function StoryboardView() {
   const pendingDeclarations = declarations.filter((decl) => decl.status === 'Proposed')
   const acceptedDeclarations = declarations.filter((decl) => decl.status === 'Accepted')
   // 판정은 전부 패널의 인스펙터에서 한다 (DG1 P4).
+  // 아직 정하지 않은 씬 기준. 비워둔 것이 보여야 누락과 구분된다.
+  const undecidedSceneFacts = sceneState.characters
+    .reduce((count, character) => count + character.facts.filter((f) => f.open).length, 0)
   const deferredDeclarations = pendingDeclarations
   const activeBranch = scene?.activeBranch ?? 0
   const activeShot = scene?.activeShot ?? 0
@@ -1936,27 +1941,18 @@ export default function StoryboardView() {
       {isExpanded && !drawingWorkspaceOpen && cutStage !== 'panels' && (
         <aside
           className={`storyboard-narrative-rail ${narrativeRailOpen ? 'open' : 'collapsed'}`}
-          aria-label={cutStage === 'cutplan' ? 'Agents' : 'Narrative Agent'}
+          aria-label="Agents"
         >
-          <header className="narrative-rail-header">
-            {narrativeRailOpen && (
-              <>
-                <span className="narrative-agent-mark" aria-hidden="true">
-                  N
-                  <i />
-                </span>
-                <div>
-                  <strong>Narrative Agent</strong>
-                  <span>Script collaborator</span>
-                </div>
-              </>
-            )}
+          {/* rail 접기와 에이전트 접기는 다른 축이다. rail은 자리를 비우고,
+              에이전트는 지금 누구를 보는지 고른다. */}
+          <header className="rail-header">
+            {narrativeRailOpen && <strong>Agents</strong>}
             <button
               type="button"
               className="narrative-rail-toggle"
               onClick={() => setNarrativeRailOpen((open) => !open)}
-              aria-label={narrativeRailOpen ? 'Collapse Narrative Agent' : 'Open Narrative Agent'}
-              title={narrativeRailOpen ? 'Collapse Narrative Agent' : 'Open Narrative Agent'}
+              aria-label={narrativeRailOpen ? 'Collapse agents' : 'Open agents'}
+              title={narrativeRailOpen ? 'Collapse agents' : 'Open agents'}
             >
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d={narrativeRailOpen ? 'm15 18-6-6 6-6' : 'm9 18 6-6-6-6'} />
@@ -1965,7 +1961,31 @@ export default function StoryboardView() {
           </header>
 
           {narrativeRailOpen ? (
-            <>
+            <div className="rail-agents">
+            <section className={`rail-agent${openAgent === 'narrative' ? ' open' : ''}`}>
+              <button
+                type="button"
+                className="rail-agent-head"
+                aria-expanded={openAgent === 'narrative'}
+                onClick={() => setOpenAgent(openAgent === 'narrative' ? null : 'narrative')}
+              >
+                <span className="narrative-agent-mark" aria-hidden="true">
+                  N
+                  <i />
+                </span>
+                <div>
+                  <strong>Narrative</strong>
+                  <span>Script collaborator</span>
+                </div>
+                {narrativeSuggestions.length > 0 && (
+                  <em className="rail-agent-badge">{narrativeSuggestions.length}</em>
+                )}
+                <svg className="rail-agent-caret" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="m6 9 6 6 6-6" />
+                </svg>
+              </button>
+              {openAgent === 'narrative' && (
+              <div className="rail-agent-body">
               {/* Scene intention은 있을 때만 보여준다. 나머지 상태는 대본의
                   Beat 라벨과 상단 단계 표시에 이미 드러나 있다. */}
               {sceneIntention && (
@@ -2074,18 +2094,35 @@ export default function StoryboardView() {
                 </div>
               </div>
 
-              {/* 컷 플랜부터는 Narrative 혼자가 아니다. 촬영 구도 컬럼을
-                  서사 에이전트가 정하는 것이 이상하듯, 씬 기준은 미장센이
-                  세운다. 파이프라인의 `에이전트 진단·공백 질의`가 이 자리다. */}
-              {cutStage === 'cutplan' && (
-                <section className="rail-lens-block">
-                  <header>
-                    <span className="lens-agent-mark" aria-hidden="true">M</span>
-                    <div>
-                      <strong>Mise-en-scène</strong>
-                      <span>Scene state</span>
-                    </div>
-                  </header>
+              </div>
+              )}
+            </section>
+
+            {/* 컷 플랜부터는 Narrative 혼자가 아니다. 촬영 구도 컬럼을
+                서사 에이전트가 정하는 것이 이상하듯, 씬 기준은 미장센이
+                세운다. 파이프라인의 `에이전트 진단·공백 질의`가 이 자리다. */}
+            {cutStage === 'cutplan' && (
+              <section className={`rail-agent${openAgent === 'mise' ? ' open' : ''}`}>
+                <button
+                  type="button"
+                  className="rail-agent-head"
+                  aria-expanded={openAgent === 'mise'}
+                  onClick={() => setOpenAgent(openAgent === 'mise' ? null : 'mise')}
+                >
+                  <span className="lens-agent-mark" aria-hidden="true">M</span>
+                  <div>
+                    <strong>Mise-en-scène</strong>
+                    <span>Scene state</span>
+                  </div>
+                  {undecidedSceneFacts > 0 && (
+                    <em className="rail-agent-badge is-open">{undecidedSceneFacts}</em>
+                  )}
+                  <svg className="rail-agent-caret" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="m6 9 6 6 6-6" />
+                  </svg>
+                </button>
+                {openAgent === 'mise' && (
+                <div className="rail-agent-body">
                   <p className="rail-lens-lead">
                     여러 컷에 같은 인물과 공간이 나옵니다. 컷마다 따로 해석되지
                     않도록 기준을 여기서 정합니다.
@@ -2142,19 +2179,27 @@ export default function StoryboardView() {
                       ))}
                     </li>
                   </ul>
-                </section>
-              )}
-
-            </>
+                </div>
+                )}
+              </section>
+            )}
+            </div>
           ) : (
             <button
               type="button"
               className="narrative-rail-collapsed-label"
               onClick={() => setNarrativeRailOpen(true)}
             >
-              <span>N</span>
-              <strong>Narrative</strong>
-              {narrativeSuggestions.length > 0 && <em>{narrativeSuggestions.length}</em>}
+              {/* 접혀 있어도 어느 에이전트가 있고 무엇이 남았는지 보인다. */}
+              <span className="narrative-agent-mark">N</span>
+              {cutStage === 'cutplan' && <span className="lens-agent-mark">M</span>}
+              <strong>Agents</strong>
+              {narrativeSuggestions.length + (cutStage === 'cutplan' ? undecidedSceneFacts : 0) > 0 && (
+                <em>
+                  {narrativeSuggestions.length
+                    + (cutStage === 'cutplan' ? undecidedSceneFacts : 0)}
+                </em>
+              )}
             </button>
           )}
         </aside>

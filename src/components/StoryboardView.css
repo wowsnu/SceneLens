@@ -1759,6 +1759,28 @@
   width: 46px;
 }
 
+.rail-header {
+  min-height: 46px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 14px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.065);
+}
+
+.rail-header strong {
+  color: rgba(255, 255, 255, 0.42);
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+.storyboard-narrative-rail.collapsed .rail-header {
+  justify-content: center;
+  padding: 0;
+}
+
 .narrative-rail-header {
   min-height: 62px;
   display: flex;
@@ -2131,13 +2153,12 @@
 }
 
 .narrative-rail-collapsed-label > span {
+  position: static;
   width: 25px;
   height: 25px;
   display: grid;
   place-items: center;
-  border: 1px solid rgba(216, 170, 98, 0.3);
   border-radius: 7px;
-  color: #d9b67f;
   font-family: 'Courier Prime', ui-monospace, monospace;
   font-size: 10px;
   font-weight: 800;
@@ -2790,21 +2811,6 @@
   color: rgba(150, 220, 185, 0.7);
 }
 
-/* --- Rail: 다른 렌즈의 자리 ---------------------------------------------
-   컷 플랜부터는 Narrative 혼자가 아니다. 각 렌즈가 자기 몫을 세운다.
-   Narrative 블록과 색을 달리해 누가 말하는지 구분한다. */
-.rail-lens-block {
-  padding: 17px 15px;
-  border-top: 1px solid rgba(255, 255, 255, 0.075);
-}
-
-.rail-lens-block > header {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  margin-bottom: 9px;
-}
-
 .lens-agent-mark {
   flex-shrink: 0;
   width: 24px;
@@ -2818,18 +2824,6 @@
   color: rgba(150, 220, 185, 0.95);
   font-size: 11px;
   font-weight: 800;
-}
-
-.rail-lens-block > header strong {
-  display: block;
-  color: rgba(255, 255, 255, 0.9);
-  font-size: 12.5px;
-  font-weight: 700;
-}
-
-.rail-lens-block > header span:not(.lens-agent-mark) {
-  color: rgba(255, 255, 255, 0.36);
-  font-size: 10.5px;
 }
 
 .rail-lens-lead {
@@ -2921,4 +2915,114 @@
   border-color: rgba(126, 200, 160, 0.5);
   background: rgba(0, 0, 0, 0.25);
   outline: none;
+}
+
+/* --- Rail: 에이전트별 접기 ---------------------------------------------
+   rail 접기(자리 비우기)와 에이전트 접기(누구를 보나)는 다른 축이다.
+   에이전트마다 자기 헤더를 갖고, 한 번에 하나만 펼친다. */
+.rail-agents {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+
+.rail-agent {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.065);
+}
+
+/* 펼친 에이전트가 남은 세로 공간을 가져간다. */
+.rail-agent.open {
+  flex: 1;
+}
+
+.rail-agent-head {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 12px 14px;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+
+.rail-agent-head:hover {
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.rail-agent-head > div {
+  flex: 1;
+  min-width: 0;
+}
+
+.rail-agent-head strong {
+  display: block;
+  color: rgba(255, 255, 255, 0.88);
+  font-size: 12.5px;
+  font-weight: 700;
+}
+
+.rail-agent-head span:not(.narrative-agent-mark):not(.lens-agent-mark) {
+  color: rgba(255, 255, 255, 0.34);
+  font-size: 10.5px;
+}
+
+.rail-agent-badge {
+  flex-shrink: 0;
+  min-width: 17px;
+  padding: 1px 5px;
+  border-radius: 999px;
+  background: rgba(216, 170, 98, 0.18);
+  color: rgba(216, 170, 98, 0.95);
+  font-size: 9.5px;
+  font-style: normal;
+  font-weight: 800;
+  text-align: center;
+}
+
+/* 아직 정하지 않은 것이 남았다는 표시. */
+.rail-agent-badge.is-open {
+  background: transparent;
+  border: 1px dashed rgba(216, 170, 98, 0.45);
+}
+
+.rail-agent-caret {
+  flex-shrink: 0;
+  color: rgba(255, 255, 255, 0.3);
+  transition: transform 0.16s ease;
+}
+
+.rail-agent.open .rail-agent-caret {
+  transform: rotate(180deg);
+}
+
+.rail-agent-body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+
+/* 에이전트 본문 안에서는 블록 사이 경계선만 남긴다. */
+.rail-agent-body > .narrative-rail-guidance,
+.rail-agent-body > .narrative-rail-context {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.rail-agent-body > .rail-lens-lead,
+.rail-agent-body > .rail-scene-state {
+  padding-left: 14px;
+  padding-right: 14px;
+}
+
+.rail-agent-body > .rail-scene-state {
+  padding-bottom: 14px;
 }
