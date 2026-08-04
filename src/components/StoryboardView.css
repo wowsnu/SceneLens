@@ -1341,16 +1341,6 @@
   text-transform: uppercase;
 }
 
-.cut-plan-provenance.provenance-ai {
-  background: rgba(126, 168, 214, 0.14);
-  color: rgba(158, 194, 232, 0.9);
-}
-
-.cut-plan-provenance.provenance-user {
-  background: rgba(216, 170, 98, 0.14);
-  color: #e1bd85;
-}
-
 /* 프롬프트: 컷에서 조립된 부분과 사용자가 덧붙인 부분을 나눠 보인다.
    provenance가 눈으로 갈린다. */
 .cut-plan-prompt-row td {
@@ -1673,16 +1663,6 @@
   letter-spacing: 0.04em;
 }
 
-.shot-inspector h4 em.provenance-ai {
-  background: rgba(126, 168, 214, 0.14);
-  color: rgba(158, 194, 232, 0.9);
-}
-
-.shot-inspector h4 em.provenance-user {
-  background: rgba(216, 170, 98, 0.14);
-  color: #e1bd85;
-}
-
 .shot-inspector-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -1730,13 +1710,6 @@
 
 .shot-inspector-field option {
   background: #18181b;
-}
-
-.shot-inspector-hint {
-  margin: 8px 0 0;
-  color: rgba(255, 255, 255, 0.36);
-  font-size: 11.5px;
-  line-height: 1.5;
 }
 
 .shot-inspector-revert {
@@ -3066,36 +3039,75 @@
   font-weight: 650;
 }
 
-/* 자유 메모. 비어 있을 때는 눈에 띄지 않다가 쓰면 드러난다. */
-.sb-shot-note {
-  width: 100%;
-  margin-top: 5px;
-  padding: 4px 7px;
-  border: 1px solid transparent;
+/* 패널 메모 — 포스트잇처럼 그림 위에 붙는다. 없으면 자리를 차지하지 않고,
+   추가 버튼은 패널에 마우스를 올렸을 때만 나타난다. */
+.sb-note-add {
+  position: absolute;
+  bottom: 8px;
+  left: 8px;
+  width: 21px;
+  height: 21px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: none;
   border-radius: 5px;
-  background: transparent;
-  color: rgba(255, 255, 255, 0.78);
+  background: rgba(0, 0, 0, 0.62);
+  color: rgba(255, 255, 255, 0.72);
+  opacity: 0;
+  cursor: pointer;
+  transition: opacity 0.12s, background 0.12s;
+}
+
+.sb-img-wrapper:hover .sb-note-add {
+  opacity: 1;
+}
+
+.sb-note-add:hover {
+  background: rgba(0, 0, 0, 0.85);
+  color: #fff;
+}
+
+.sb-note {
+  position: absolute;
+  bottom: 8px;
+  left: 8px;
+  max-width: 62%;
+  padding: 5px 8px;
+  border-radius: 3px;
+  /* 종이 느낌 — 그림 위에 붙인 것이지 그림의 일부가 아니다. */
+  background: #f2e394;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.45);
+  color: #2a2410;
   font-family: Inter, -apple-system, sans-serif;
-  font-size: 11px;
+  font-size: 10.5px;
   line-height: 1.45;
-  resize: vertical;
 }
 
-.sb-shot-note::placeholder {
-  color: rgba(255, 255, 255, 0.24);
+.sb-note.editing {
+  max-width: 78%;
 }
 
-.sb-shot-note:hover {
-  border-color: rgba(255, 255, 255, 0.1);
+.sb-note p {
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+  cursor: text;
 }
 
-.sb-shot-note:focus {
-  border-color: rgba(126, 200, 160, 0.45);
-  background: rgba(0, 0, 0, 0.28);
+.sb-note textarea {
+  display: block;
+  width: 190px;
+  max-width: 100%;
+  border: none;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  resize: none;
   outline: none;
 }
 
-.sb-shot-note:not(:placeholder-shown) {
-  border-color: rgba(255, 255, 255, 0.1);
-  background: rgba(255, 255, 255, 0.03);
+.sb-note textarea::placeholder {
+  color: rgba(42, 36, 16, 0.42);
 }

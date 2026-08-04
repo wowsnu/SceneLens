@@ -247,21 +247,6 @@ function ShotInspector({
         </label>
       </section>
 
-      {/* 컷의 검토 여부는 출처가 말한다. AI가 만든 뒤 손대지 않았으면
-          아직 확인되지 않은 컷이다. 무엇을 고정하고 무엇을 남겨둘지는
-          컷이 아니라 책임 선언이 정한다 (DG1 P3). */}
-      <section>
-        <h4>
-          출처
-          <em className={`provenance-${cut.provenance.toLowerCase()}`}>{cut.provenance}</em>
-        </h4>
-        <p className="shot-inspector-hint">
-          {cut.provenance === 'AI'
-            ? 'AI가 나눈 컷을 아직 확인하지 않았습니다. 그려진 그림은 확정이 아닙니다.'
-            : '직접 수정한 컷입니다.'}
-        </p>
-      </section>
-
       <section>
         <h4>
           프롬프트
@@ -400,6 +385,67 @@ function PanelOverlay({ marks }) {
             <span key={mark.element} title={mark.element}>{mark.label}</span>
           ))}
         </div>
+      )}
+    </div>
+  )
+}
+
+// 패널에 붙이는 메모. 포스트잇처럼 붙어 있다가 없으면 자리를 차지하지 않는다.
+// 그림 위에 상시 입력칸을 두면 패널이 어지러워진다.
+function PanelNote({ note, onChange }) {
+  const [editing, setEditing] = useState(false)
+  const inputRef = useRef(null)
+
+  useEffect(() => {
+    if (editing) inputRef.current?.focus()
+  }, [editing])
+
+  const stop = (event) => event.stopPropagation()
+
+  if (!note && !editing) {
+    return (
+      <button
+        type="button"
+        className="sb-note-add"
+        title="메모 붙이기"
+        aria-label="메모 붙이기"
+        onClick={(event) => {
+          stop(event)
+          setEditing(true)
+        }}
+      >
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round">
+          <path d="M12 5v14M5 12h14" />
+        </svg>
+      </button>
+    )
+  }
+
+  return (
+    <div className={`sb-note${editing ? ' editing' : ''}`} onClick={stop}>
+      {editing ? (
+        <textarea
+          ref={inputRef}
+          value={note}
+          rows={2}
+          placeholder="메모"
+          onChange={(event) => onChange(event.target.value)}
+          onBlur={() => setEditing(false)}
+          onKeyDown={(event) => {
+            if (event.key === 'Escape') setEditing(false)
+          }}
+        />
+      ) : (
+        <p
+          role="button"
+          tabIndex={0}
+          onClick={() => setEditing(true)}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter') setEditing(true)
+          }}
+        >
+          {note}
+        </p>
       )}
     </div>
   )
@@ -1926,6 +1972,10 @@ export default function StoryboardView() {
                               <div className="sb-img-wrapper">
                                 <img src={displayImage} alt={beatShotLabel} />
                                 <PanelOverlay marks={panelMarks} />
+                                <PanelNote
+                                  note={shot.note || ''}
+                                  onChange={(value) => setShotNote(shot.id, value)}
+                                />
                                 <div className="sb-hover-actions">
                                   <button
                                     className="sb-action-btn"
@@ -1984,13 +2034,15 @@ export default function StoryboardView() {
                                   C{String(shotCut.order).padStart(2, '0')} · {shotCut.shotSize}
                                 </span>
                               )}
-                              <span className="sb-shot-source">
-                                {candidate
-                                  ? 'Candidate'
-                                  : committedImage
-                                    ? shot.isAIGenerated ? 'AI' : 'Drawn'
-                                    : 'Blank'}
-                              </span>
+                              {/* 빈 패널은 그 자리가 이미 비었다고 말한다.
+                                  뱃지로 한 번 더 말할 필요가 없다. */}
+                              {(candidate || committedImage) && (
+                                <span className="sb-shot-source">
+                                  {candidate
+                                    ? 'Candidate'
+                                    : shot.isAIGenerated ? 'AI' : 'Drawn'}
+                                </span>
+                              )}
                             </div>
 
                             {/* 화살표나 배지로 그릴 수 없는 것. 갈 곳이 없으면
@@ -2006,15 +2058,6 @@ export default function StoryboardView() {
                               </ul>
                             )}
 
-                            {/* 자유 메모. 선언으로 잡히지 않는 지시가 갈 자리. */}
-                            <textarea
-                              className="sb-shot-note"
-                              value={shot.note || ''}
-                              rows={1}
-                              placeholder="메모"
-                              onClick={(event) => event.stopPropagation()}
-                              onChange={(event) => setShotNote(shot.id, event.target.value)}
-                            />
                           </div>
                         )
                       })}
