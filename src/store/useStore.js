@@ -673,9 +673,14 @@ export const buildCutPrompt = (cut, {
     .map((decl) => decl.element)
 
   // 방향만 표시하는 요소는 그림 밖 채널로 간다.
+  // 방향은 스토리보드가 정한 값이므로 함께 넘긴다 — 패널이 이것을 그린다.
   const offImage = applicable
     .filter((decl) => decl.responsibility === 'direction')
-    .map((decl) => ({ element: decl.element, channel: decl.channel }))
+    .map((decl) => ({
+      element: decl.element,
+      channel: decl.channel,
+      direction: decl.direction,
+    }))
 
   // 장면 전체에 걸리는 지시는 컷마다 반복하지 않고 따로 둔다.
   const shared = [
@@ -714,9 +719,17 @@ export const buildCutPrompt = (cut, {
 // 컷의 필드가 아니라 별도 레지스트리인 이유: 이 선언은 컷보다 오래 산다.
 // 의도 입력부터 관객 검토(DG3)까지 유지되어야 컷이 병합·분할되어도(DG2)
 // 무엇을 위임했는지가 남는다.
+// '방향만 표시'는 중간 강도가 아니라 결정을 둘로 쪼개는 상태다.
+// 방향은 스토리보드가 정하고 값은 후속 공정에 남긴다 —
+// 카메라가 어느 쪽으로 움직이는지는 표시하되 속도와 거리는 정하지 않고,
+// 인물이 어떤 상태인지는 표시하되 연기의 강도는 정하지 않는다.
 export const RESPONSIBILITY_LEVELS = [
   { id: 'image', label: '이미지에서 확정', hint: '이 그림이 값을 정한다' },
-  { id: 'direction', label: '방향만 표시', hint: '그림 밖 채널로 방향만 남긴다' },
+  {
+    id: 'direction',
+    label: '방향만 표시',
+    hint: '방향은 정하고 값은 후속 공정에 남긴다',
+  },
   { id: 'delegate', label: '후속 공정 위임', hint: '스토리보드가 정하지 않는다' },
 ]
 
@@ -747,6 +760,12 @@ const createDeclaration = ({
   responsibility = 'image',
   binding = 'category',
   channel = null,
+  // responsibility가 'direction'일 때 스토리보드가 정하는 쪽.
+  // 값이 아니라 방향이다 — "왼쪽으로"는 여기, "얼마나 빠르게"는 후속 공정.
+  direction = '',
+  // 이 선언이 초안 생성 자체를 바꾸는가. 그렇다면 그림 전에 물어야 한다.
+  // 아니라면 패널을 보고 나서 정해도 늦지 않다 (DG1 P4: reactive authorship).
+  affectsDraft = false,
   // AI가 왜 이 요소를 후보로 올렸는지. 판정의 근거가 되므로 남긴다.
   rationale = '',
   // 사용자가 판정하기 전에는 제안일 뿐이다 (DG1 P2: 제안은 판정 대상).
@@ -761,6 +780,8 @@ const createDeclaration = ({
   responsibility,
   binding,
   channel,
+  direction,
+  affectsDraft,
   rationale,
   status,
   provenance,
@@ -779,7 +800,42 @@ const proposeDeclarations = (cutPlan, { sceneIntention = '' } = {}) => {
   const proposals = []
   const push = (fields) => proposals.push(createDeclaration(fields))
 
-  // 1. 씬 전체에 걸리는 요소 — 줄콘티가 구조적으로 담지 못하는 것들.
+  // --- 초안 생성을 바꾸는 것 (affectsDraft) -----------------------------
+  // 이것만 그림 전에 묻는다. 씬 전체에 걸리고, 답에 따라 첫 장이 달라진다.
+  push({
+    element: '의상 · 헤어',
+    lens: 'mise-en-scene',
+    responsibility: 'delegate',
+    binding: 'free',
+    affectsDraft: true,
+    rationale: '스토리보드가 정하지 않는 것이 일반적이다. 위임하면 관객 검토에서 제외된다.',
+  })
+  push({
+    element: '미술 · 질감',
+    lens: 'mise-en-scene',
+    responsibility: 'delegate',
+    binding: 'free',
+    affectsDraft: true,
+    rationale: '이미지 모델은 어떻게든 질감을 그린다. 그것이 감독의 결정으로 굳으면 안 된다.',
+  })
+
+  // 인물이 여러 컷에 걸치면 외형 일관성은 첫 장부터 걸려야 한다.
+  // 나중에 정하면 이미 그려진 패널들이 서로 다른 사람이 되어 있다.
+  const hasCast = cutPlan.some((cut) => (cut.characters || '').trim().length > 0)
+  if (hasCast && cutPlan.length > 1) {
+    push({
+      element: '인물 외형 일관성',
+      lens: 'mise-en-scene',
+      responsibility: 'image',
+      binding: 'strict',
+      affectsDraft: true,
+      rationale: '여러 컷에 같은 인물이 나온다. 컷마다 다르게 그려지면 다른 사람으로 읽힌다.',
+    })
+  }
+
+  // --- 그림을 보고 정해도 되는 것 (affectsDraft: false) -----------------
+  // 초안을 바꾸지 않으므로 게이트에 올리지 않는다. 패널에서 판정한다.
+  // (DG1 P4: 창작자는 결과를 보기 전에 무엇을 원하는지 다 알지 못한다.)
   push({
     element: '조명 · 톤',
     lens: 'cinematography',
@@ -788,50 +844,26 @@ const proposeDeclarations = (cutPlan, { sceneIntention = '' } = {}) => {
     channel: 'acting-note',
     rationale: '컷 플랜은 샷 크기와 앵글만 담는다. 조명은 어느 컷에도 적혀 있지 않다.',
   })
-  push({
-    element: '의상 · 헤어',
-    lens: 'mise-en-scene',
-    responsibility: 'delegate',
-    binding: 'free',
-    rationale: '스토리보드 단계에서 확정하지 않는 것이 일반적이다. 위임이면 관객 검토에서 제외된다.',
-  })
-  push({
-    element: '미술 · 질감',
-    lens: 'mise-en-scene',
-    responsibility: 'delegate',
-    binding: 'free',
-    rationale: '이미지 모델은 어떻게든 질감을 그리지만, 그것이 감독의 결정으로 굳으면 안 된다.',
-  })
 
-  // 2. 인물이 등장하는 씬이면 외형 일관성이 컷을 가로지른다.
-  const hasCast = cutPlan.some((cut) => (cut.characters || '').trim().length > 0)
-  if (hasCast) {
-    push({
-      element: '인물 외형 일관성',
-      lens: 'mise-en-scene',
-      responsibility: 'image',
-      binding: 'strict',
-      rationale: '여러 컷에 같은 인물이 나온다. 컷마다 다르게 그려지면 다른 사람으로 읽힌다.',
-    })
-  }
-
-  // 3. 카메라 이동이 지정된 컷 — 정지 이미지가 표현할 수 없는 것.
+  // 카메라 이동이 지정된 컷 — 정지 이미지가 담을 수 없는 것.
+  // 방향은 컷 플랜이 이미 말했고, 값(속도·거리)은 후속 공정에 남는다.
   cutPlan
     .filter((cut) => cut.cameraMove && cut.cameraMove !== 'Fixed')
     .forEach((cut) => {
       push({
-        element: `카메라 이동 (${cut.cameraMove})`,
+        element: '카메라 이동',
         scope: 'cut',
         cutId: cut.id,
         lens: 'cinematography',
         responsibility: 'direction',
         binding: 'strict',
         channel: 'camera-move',
-        rationale: '한 장의 정지 이미지는 이동을 담을 수 없다. 그림 밖 채널이 필요하다.',
+        direction: cut.cameraMove,
+        rationale: '한 장의 정지 이미지는 이동을 담을 수 없다. 방향만 표시하고 속도와 거리는 남긴다.',
       })
     })
 
-  // 4. 장면 의도가 비어 있으면 그 자체가 미결이다.
+  // 장면 의도가 비어 있으면 그 자체가 미결이다. 다만 그림을 막지는 않는다.
   if (!sceneIntention.trim()) {
     push({
       element: '장면 의도',
@@ -877,6 +909,16 @@ export const selectCutStage = (state) => {
 // "확인되지 않은 AI 가정"으로 그림에 굳는다.
 export const selectPendingDeclarations = (state) =>
   state.declarations.filter((decl) => decl.status === 'Proposed')
+
+// 그림 전에 물을 것 — 초안 생성 자체를 바꾸는 것만.
+// 나머지를 앞으로 몰면 아무것도 보지 못한 상태에서 판정을 강요하게 되고,
+// 이는 P4(reactive authorship)와 정면으로 부딪힌다.
+export const selectGateDeclarations = (state) =>
+  state.declarations.filter((decl) => decl.status === 'Proposed' && decl.affectsDraft)
+
+// 패널에서 판정할 것. 그림을 보고 정해도 늦지 않은 것들이다.
+export const selectDeferredDeclarations = (state) =>
+  state.declarations.filter((decl) => decl.status === 'Proposed' && !decl.affectsDraft)
 
 // 프롬프트에서 빼야 할 요소. 위임한 것을 그림에 확정하면 P3가 무의미해진다.
 export const selectDelegatedDeclarations = (state) =>
@@ -1020,7 +1062,9 @@ const useStore = create((set, get) => ({
   cutPlanStageOverride: null,
   clearCutPlanStageOverride: () => set({ cutPlanStageOverride: null }),
   // 확정 = 컷 구성을 패널에 반영한다. 여기서 비로소 줄콘티가 패널의 근거가 된다.
-  // 단, 패널로 바로 넘어가지 않고 선언 단계를 먼저 거친다 (DG1 P3).
+  // 단, 패널로 바로 넘어가지 않고 선언 게이트를 먼저 거친다 (DG1 P3).
+  // 게이트에는 초안 생성을 바꾸는 선언만 올라온다. 나머지는 패널로 넘어가
+  // 그림을 보고 판정한다 (DG1 P4).
   acceptCutPlan: () => set((state) => {
     if (state.cutPlan.length === 0) {
       return { cutPlanAccepted: true, cutPlanSkipped: false, cutPlanStageOverride: null }

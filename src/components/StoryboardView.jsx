@@ -177,6 +177,8 @@ function ScriptLineEditor({
 // 설계 근거: docs/PANEL_GENERATION_DESIGN.md §3.3
 function ShotInspector({
   shot, cut, prompt, shotSizes, angles, moves, onChange, onStatusChange, onClose,
+  // 그림을 보고 정하기로 미뤄둔 선언 (DG1 P4). 여기서 판정한다.
+  deferredDeclarations = [], onDeclarationUpdate, onDeclarationAccept, onDeclarationReject,
 }) {
   if (!shot) {
     return (
@@ -309,13 +311,15 @@ function ShotInspector({
           </div>
         )}
 
+        {/* 방향은 정해졌고 값은 남아 있다. 그림에 없다고 누락이 아니다. */}
         {prompt?.responsibility?.offImage?.length > 0 && (
           <div className="shot-inspector-offimage">
-            <strong>그림 밖 채널</strong>
+            <strong>방향만 표시 · 값은 후속 공정</strong>
             <ul>
-              {prompt.responsibility.offImage.map(({ element, channel }) => (
+              {prompt.responsibility.offImage.map(({ element, channel, direction }) => (
                 <li key={element}>
-                  {element}
+                  <span className="offimage-element">{element}</span>
+                  {direction && <span className="offimage-direction">{direction}</span>}
                   <em>
                     {OFFIMAGE_CHANNELS.find((entry) => entry.id === channel)?.label
                       || '채널 미지정'}
@@ -326,6 +330,48 @@ function ShotInspector({
           </div>
         )}
       </section>
+
+      {/* 그림을 보고 정하기로 미뤄둔 것 (DG1 P4).
+          결과를 본 뒤에야 무엇을 남겨둘지 판단할 수 있다. */}
+      {deferredDeclarations.length > 0 && (
+        <section className="shot-inspector-section shot-inspector-deferred">
+          <h4>그림을 보고 정할 것 <em>{deferredDeclarations.length}</em></h4>
+          <ul>
+            {deferredDeclarations.map((decl) => (
+              <li key={decl.id}>
+                <div className="deferred-head">
+                  <strong>{decl.element}</strong>
+                  <div className="deferred-actions">
+                    <button type="button" onClick={() => onDeclarationReject(decl.id)}>
+                      선언 안 함
+                    </button>
+                    <button
+                      type="button"
+                      className="deferred-accept"
+                      onClick={() => onDeclarationAccept(decl.id)}
+                    >
+                      선언
+                    </button>
+                  </div>
+                </div>
+                <div className="deferred-chips">
+                  {RESPONSIBILITY_LEVELS.map((level) => (
+                    <button
+                      key={level.id}
+                      type="button"
+                      className={decl.responsibility === level.id ? 'active' : ''}
+                      title={level.hint}
+                      onClick={() => onDeclarationUpdate(decl.id, { responsibility: level.id })}
+                    >
+                      {level.label}
+                    </button>
+                  ))}
+                </div>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
     </aside>
   )
 }
@@ -407,28 +453,45 @@ function DeclarationCard({
         </div>
       </div>
 
-      {/* 그림이 확정하지 않는 요소는 어디에 기록할지 정해야 한다.
-          기록할 곳이 없으면 위임이 아니라 그냥 누락이다. */}
+      {/* '방향만 표시'는 결정을 둘로 쪼갠다. 방향은 여기서 정하고 값은
+          후속 공정에 남는다. 기록할 채널이 없으면 위임이 아니라 누락이다. */}
       {declaration.responsibility === 'direction' && (
-        <div className="declaration-channel">
-          <label htmlFor={`channel-${declaration.id}`}>이미지 밖 채널</label>
-          <select
-            id={`channel-${declaration.id}`}
-            value={declaration.channel || ''}
-            onChange={(event) => onUpdate(declaration.id, {
-              channel: event.target.value || null,
-            })}
-          >
-            <option value="">선택 안 함</option>
-            {OFFIMAGE_CHANNELS.map((channel) => (
-              <option key={channel.id} value={channel.id}>{channel.label}</option>
-            ))}
-          </select>
-          {!declaration.channel && (
-            <small className="declaration-hint">
-              채널을 정하지 않으면 방향이 어디에도 남지 않습니다.
-            </small>
-          )}
+        <div className="declaration-direction">
+          <div className="declaration-direction-value">
+            <label htmlFor={`direction-${declaration.id}`}>
+              스토리보드가 정하는 방향
+            </label>
+            <input
+              id={`direction-${declaration.id}`}
+              value={declaration.direction || ''}
+              onChange={(event) => onUpdate(declaration.id, {
+                direction: event.target.value,
+              })}
+              placeholder="예: 왼쪽으로 이동 / 위축된 상태"
+            />
+            <small>속도·거리·강도 같은 값은 후속 공정에 남습니다.</small>
+          </div>
+
+          <div className="declaration-channel">
+            <label htmlFor={`channel-${declaration.id}`}>이미지 밖 채널</label>
+            <select
+              id={`channel-${declaration.id}`}
+              value={declaration.channel || ''}
+              onChange={(event) => onUpdate(declaration.id, {
+                channel: event.target.value || null,
+              })}
+            >
+              <option value="">선택 안 함</option>
+              {OFFIMAGE_CHANNELS.map((channel) => (
+                <option key={channel.id} value={channel.id}>{channel.label}</option>
+              ))}
+            </select>
+            {!declaration.channel && (
+              <small className="declaration-hint">
+                채널을 정하지 않으면 방향이 어디에도 남지 않습니다.
+              </small>
+            )}
+          </div>
         </div>
       )}
 
@@ -638,6 +701,10 @@ export default function StoryboardView() {
   const pendingDeclarations = declarations.filter((decl) => decl.status === 'Proposed')
   const acceptedDeclarations = declarations.filter((decl) => decl.status === 'Accepted')
   const rejectedDeclarations = declarations.filter((decl) => decl.status === 'Rejected')
+  // 게이트에는 초안 생성을 바꾸는 것만 올린다. 나머지를 여기 몰면 아무것도
+  // 보지 못한 상태에서 판정을 강요하게 된다 (DG1 P4: reactive authorship).
+  const gateDeclarations = pendingDeclarations.filter((decl) => decl.affectsDraft)
+  const deferredDeclarations = pendingDeclarations.filter((decl) => !decl.affectsDraft)
   const activeBranch = scene?.activeBranch ?? 0
   const activeShot = scene?.activeShot ?? 0
   const branch = scene?.branches?.[activeBranch]
@@ -999,8 +1066,8 @@ export default function StoryboardView() {
                     <em>
                       {cutPlanSkipped && !declarationsReviewed
                         ? '건너뜀 · 선언 없음'
-                        : pendingDeclarations.length > 0
-                          ? `${pendingDeclarations.length}건 판정 대기`
+                        : gateDeclarations.length > 0
+                          ? `${gateDeclarations.length}건 판정 대기`
                           : declarationsReviewed
                             ? `${acceptedDeclarations.length}건 선언됨`
                             : '컷 확정 후 열림'}
@@ -1416,10 +1483,10 @@ export default function StoryboardView() {
                 <span className="script-draft-mark" aria-hidden="true">R</span>
                 <div>
                   <span>책임 범위 · Responsibility · Mock</span>
-                  <strong>이 스토리보드가 무엇까지 책임집니까</strong>
+                  <strong>초안을 그리기 전에 정할 것</strong>
                   <p>
-                    그림이 정할 것과 후속 공정에 넘길 것을 먼저 나눕니다.
-                    위임한 요소는 나중에 관객 검토에서 결손으로 보고되지 않습니다.
+                    첫 장의 결과를 바꾸는 것만 먼저 묻습니다. 나머지는 그림을 보고
+                    패널에서 정합니다 — 결과를 보기 전에 다 알 수는 없습니다.
                   </p>
                 </div>
                 <div className="script-draft-actions">
@@ -1434,14 +1501,20 @@ export default function StoryboardView() {
                 </div>
               </header>
 
-              {pendingDeclarations.length > 0 && (
+              {gateDeclarations.length === 0 && acceptedDeclarations.length === 0 && (
+                <p className="declaration-empty">
+                  초안을 바꾸는 선언이 없습니다. 그대로 그림으로 넘어가도 됩니다.
+                </p>
+              )}
+
+              {gateDeclarations.length > 0 && (
                 <div className="declaration-group">
                   <h4>
-                    판정 대기 <em>{pendingDeclarations.length}건</em>
-                    <small>AI가 올린 후보입니다. 수용하거나 기각하세요.</small>
+                    판정 대기 <em>{gateDeclarations.length}건</em>
+                    <small>답에 따라 초안이 달라집니다.</small>
                   </h4>
                   <ul className="declaration-list">
-                    {pendingDeclarations.map((decl) => (
+                    {gateDeclarations.map((decl) => (
                       <DeclarationCard
                         key={decl.id}
                         declaration={decl}
@@ -1504,10 +1577,15 @@ export default function StoryboardView() {
                 >
                   + 직접 선언 추가
                 </button>
-                {pendingDeclarations.length > 0 && (
+                {gateDeclarations.length > 0 && (
                   <span className="declaration-warning">
-                    판정하지 않은 {pendingDeclarations.length}건은 확인되지 않은 채
-                    그림에 반영됩니다.
+                    판정하지 않은 {gateDeclarations.length}건은 확인되지 않은 채
+                    초안에 반영됩니다.
+                  </span>
+                )}
+                {deferredDeclarations.length > 0 && (
+                  <span className="declaration-deferred">
+                    {deferredDeclarations.length}건은 그림을 보고 패널에서 정합니다.
                   </span>
                 )}
               </footer>
@@ -1941,6 +2019,12 @@ export default function StoryboardView() {
           onChange={updateCutPlanItem}
           onStatusChange={setCutPlanItemStatus}
           onClose={() => setInspectedShotId(null)}
+          deferredDeclarations={deferredDeclarations.filter((decl) => (
+            decl.scope === 'scene' || decl.cutId === inspectedCut?.id
+          ))}
+          onDeclarationUpdate={updateDeclaration}
+          onDeclarationAccept={acceptDeclaration}
+          onDeclarationReject={rejectDeclaration}
         />
       )}
 
