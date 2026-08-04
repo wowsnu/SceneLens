@@ -854,6 +854,43 @@ const MOCK_DEBATE_TURNS = [
   },
 ]
 
+// 씬 안의 상태 변화를 보여주고 더한다 (DG2 P2).
+// 인물·장소·환경이 같은 모양을 쓴다 — 셋 다 컷을 가로지르며 변한다.
+function SceneFactChanges({ fact, group, characterId = null, shots, onAdd, onRemove, disabled = false }) {
+  if (fact.open) return null
+
+  return (
+    <div className="mise-fact-timeline">
+      {(fact.changes || []).map((change) => (
+        <span key={change.at} className="mise-fact-change">
+          <em>S{change.at + 1}~</em>
+          {change.value}
+          <button
+            type="button"
+            disabled={disabled}
+            aria-label={`S${change.at + 1} 변화 삭제`}
+            onClick={() => onRemove(group, fact.label, change.at, { characterId })}
+          >✕</button>
+        </span>
+      ))}
+      <button
+        type="button"
+        className="mise-fact-add-change"
+        disabled={disabled}
+        onClick={() => onAdd({
+          group,
+          characterId,
+          label: fact.label,
+          at: Math.min(1, Math.max(0, shots.length - 1)),
+          value: '',
+        })}
+      >
+        + 변화
+      </button>
+    </div>
+  )
+}
+
 export default function DecisionBoard({ boardView = 'split' }) {
   const [selectedOptionId, setSelectedOptionId] = useState(null)
   const [reviewOpen, setReviewOpen] = useState(false)
@@ -1865,42 +1902,15 @@ export default function DecisionBoard({ boardView = 'split' }) {
                                         />
                                       </label>
 
-                                      {/* 인물은 씬 안에서 변한다. 값 하나로 두면
-                                          모든 컷에 같은 문구가 들어간다 (DG2 P2).
-                                          처음 값은 남기고 구간만 얹는다. */}
-                                      {!fact.open && (
-                                        <div className="mise-fact-timeline">
-                                          {(fact.changes || []).map((change) => (
-                                            <span key={change.at} className="mise-fact-change">
-                                              <em>S{change.at + 1}~</em>
-                                              {change.value}
-                                              <button
-                                                type="button"
-                                                disabled={!isEditing}
-                                                aria-label={`S${change.at + 1} 변화 삭제`}
-                                                onClick={() => removeFactChange(
-                                                  'character', fact.label, change.at,
-                                                  { characterId: character.id },
-                                                )}
-                                              >✕</button>
-                                            </span>
-                                          ))}
-                                          <button
-                                            type="button"
-                                            className="mise-fact-add-change"
-                                            disabled={!isEditing}
-                                            onClick={() => setChangeDraft({
-                                              group: 'character',
-                                              characterId: character.id,
-                                              label: fact.label,
-                                              at: Math.min(1, Math.max(0, shots.length - 1)),
-                                              value: '',
-                                            })}
-                                          >
-                                            + 변화
-                                          </button>
-                                        </div>
-                                      )}
+                                      <SceneFactChanges
+                                        fact={fact}
+                                        group="character"
+                                        characterId={character.id}
+                                        shots={shots}
+                                        onAdd={setChangeDraft}
+                                        onRemove={removeFactChange}
+                                        disabled={!isEditing}
+                                      />
                                     </div>
                                   ))}
                                 </div>
@@ -1928,62 +1938,70 @@ export default function DecisionBoard({ boardView = 'split' }) {
                       })}
                     </div>
 
-                    {/* 어느 컷부터 바뀌는지 정한다. 컷을 고르는 것이므로
-                        자유 입력이 아니라 목록에서 고른다. */}
-                    {changeDraft && (
-                      <div className="mise-change-form">
-                        <header>
-                          <strong>{changeDraft.label} · 변화 추가</strong>
-                          <button type="button" onClick={() => setChangeDraft(null)}>✕</button>
-                        </header>
-                        <label>
-                          <span>어느 컷부터</span>
-                          <select
-                            value={changeDraft.at}
-                            onChange={(event) => setChangeDraft({
-                              ...changeDraft,
-                              at: Number(event.target.value),
-                            })}
-                          >
-                            {shots.map((shot, index) => (
-                              <option key={shot.id} value={index}>
-                                S{index + 1} · {shot.label}
-                              </option>
-                            ))}
-                          </select>
-                        </label>
-                        <label>
-                          <span>이렇게 바뀐다</span>
-                          <input
-                            value={changeDraft.value}
-                            placeholder="예: 젖은 채 굳어 있음"
-                            onChange={(event) => setChangeDraft({
-                              ...changeDraft,
-                              value: event.target.value,
-                            })}
-                          />
-                        </label>
-                        <button
-                          type="button"
-                          className="mise-change-save"
-                          disabled={!changeDraft.value.trim()}
-                          onClick={() => {
-                            addFactChange(
-                              changeDraft.group,
-                              changeDraft.label,
-                              changeDraft.at,
-                              changeDraft.value.trim(),
-                              { characterId: changeDraft.characterId },
-                            )
-                            setChangeDraft(null)
-                          }}
-                        >
-                          추가
-                        </button>
-                      </div>
-                    )}
                   </section>
 
+                  {/* 어느 컷부터 바뀌는지 정한다. 컷을 고르는 것이므로
+                      자유 입력이 아니라 목록에서 고른다. */}
+                  {changeDraft && (
+                    <div className="mise-change-form">
+                      <header>
+                        {/* 셋이 같은 폼을 쓰므로 어느 것의 변화인지 밝힌다. */}
+                        <strong>
+                          {changeDraft.characterId
+                            ? sceneState.characters.find((c) => c.id === changeDraft.characterId)?.name
+                            : changeDraft.group === 'location'
+                              ? sceneState.location.name
+                              : sceneState.environment.name}
+                          {' · '}{changeDraft.label}
+                        </strong>
+                        <button type="button" onClick={() => setChangeDraft(null)}>✕</button>
+                      </header>
+                      <label>
+                        <span>어느 컷부터</span>
+                        <select
+                          value={changeDraft.at}
+                          onChange={(event) => setChangeDraft({
+                            ...changeDraft,
+                            at: Number(event.target.value),
+                          })}
+                        >
+                          {shots.map((shot, index) => (
+                            <option key={shot.id} value={index}>
+                              S{index + 1} · {shot.label}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                      <label>
+                        <span>이렇게 바뀐다</span>
+                        <input
+                          value={changeDraft.value}
+                          placeholder="예: 젖은 채 굳어 있음"
+                          onChange={(event) => setChangeDraft({
+                            ...changeDraft,
+                            value: event.target.value,
+                          })}
+                        />
+                      </label>
+                      <button
+                        type="button"
+                        className="mise-change-save"
+                        disabled={!changeDraft.value.trim()}
+                        onClick={() => {
+                          addFactChange(
+                            changeDraft.group,
+                            changeDraft.label,
+                            changeDraft.at,
+                            changeDraft.value.trim(),
+                            { characterId: changeDraft.characterId },
+                          )
+                          setChangeDraft(null)
+                        }}
+                      >
+                        추가
+                      </button>
+                    </div>
+                  )}
                   <div className="mise-place-grid">
                     <section className="mise-state-group mise-state-card mise-location-card">
                       <div className="mise-state-group-heading">
@@ -2015,7 +2033,18 @@ export default function DecisionBoard({ boardView = 'split' }) {
                         {sceneState.location.facts.map((fact) => (
                           <div key={fact.label} className={fact.open ? 'open' : ''}>
                             <dt>{fact.label}</dt>
-                            <dd>{fact.value}</dd>
+                            <dd>
+                              {fact.value}
+                              {/* 공간도 씬 안에서 변한다 — 문이 닫히고 소품이
+                                  옮겨진다 (DG2 P2). */}
+                              <SceneFactChanges
+                                fact={fact}
+                                group="location"
+                                shots={shots}
+                                onAdd={setChangeDraft}
+                                onRemove={removeFactChange}
+                              />
+                            </dd>
                           </div>
                         ))}
                       </dl>
@@ -2035,6 +2064,13 @@ export default function DecisionBoard({ boardView = 'split' }) {
                             <dd>
                               {fact.value}
                               {fact.shared && <em>Shared</em>}
+                              <SceneFactChanges
+                                fact={fact}
+                                group="environment"
+                                shots={shots}
+                                onAdd={setChangeDraft}
+                                onRemove={removeFactChange}
+                              />
                             </dd>
                           </div>
                         ))}
