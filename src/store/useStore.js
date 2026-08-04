@@ -1026,11 +1026,14 @@ export const diagnoseSeams = (cutPlan = [], screenplay = [], {
 // `open: true`인 항목은 아직 정하지 않은 것이다. 프롬프트에 넣지 않는다 —
 // 미정을 문장으로 만들면 모델이 그것을 정해버린다.
 const SCENE_STATE = {
+  title: '지하철 관제실 · 밤',
+  description: '대본에서 추출한 장면 기준입니다. Shot별 배치는 이 상태를 상속하고, 달라진 부분만 별도로 기록합니다.',
   characters: [
     {
       id: 'jaein',
       name: '재인',
       summary: '20대 후반 · 침입자',
+      image: '/img/closeup_woman.png',
       facts: [
         { label: '외형 기준', value: '비에 흠뻑 젖은 상태' },
         { label: '헤어', value: '아직 지정되지 않음', open: true },
@@ -1040,6 +1043,7 @@ const SCENE_STATE = {
       id: 'minho',
       name: '민호',
       summary: '40대 초반 · 역무 총괄',
+      image: '/img/closeup_man.png',
       facts: [
         { label: '외형 기준', value: '지친 눈빛, 차분한 인상' },
         { label: '헤어·수염', value: '아직 지정되지 않음', open: true },
@@ -1054,11 +1058,13 @@ const SCENE_STATE = {
     ],
   },
   environment: {
+    name: '장면 공통',
     facts: [
       { label: '시간', value: '밤' },
+      { label: '계절', value: '아직 지정되지 않음', open: true },
       { label: '날씨', value: '비' },
-      { label: '조명 기준', value: '형광등 · 간헐적 깜빡임' },
-      { label: '그림체·렌더 톤', value: '아직 지정되지 않음', open: true },
+      { label: '조명 기준', value: '형광등 · 간헐적 깜빡임', shared: true },
+      { label: '그림체·렌더 톤', value: '아직 지정되지 않음', open: true, shared: true },
     ],
   },
 }

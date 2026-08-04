@@ -308,50 +308,8 @@ const MOCK_CAMERA_ANALYSIS = {
   theory: 'The Filmmaker’s Eye · Establishing Shot',
 }
 
-const MOCK_MISE_SCENE_STATE = {
-  title: '지하철 관제실 · 밤',
-  description: '대본에서 추출한 장면 기준입니다. Shot별 배치는 이 상태를 상속하고, 달라진 부분만 별도로 기록합니다.',
-  characters: [
-    {
-      id: 'jaein',
-      name: '재인',
-      summary: '20대 후반 · 침입자',
-      image: '/img/closeup_woman.png',
-      facts: [
-        { label: '외형 기준', value: '비에 흠뻑 젖은 상태' },
-        { label: '헤어', value: '아직 지정되지 않음', open: true },
-      ],
-    },
-    {
-      id: 'minho',
-      name: '민호',
-      summary: '40대 초반 · 역무 총괄',
-      image: '/img/closeup_man.png',
-      facts: [
-        { label: '외형 기준', value: '지친 눈빛, 차분한 인상' },
-        { label: '헤어·수염', value: '아직 지정되지 않음', open: true },
-      ],
-    },
-  ],
-  location: {
-    name: '지하철 관제실',
-    facts: [
-      { label: '장소 정체', value: '좁고 낡은 지하 관제실' },
-      { label: '고정 소품', value: '모니터 벽 · 콘솔 · 잠긴 철제 캐비닛' },
-    ],
-  },
-  environment: {
-    name: '장면 공통',
-    facts: [
-      { label: '시간', value: '밤' },
-      { label: '계절', value: '아직 지정되지 않음', open: true },
-      { label: '날씨', value: '비' },
-      { label: '조명 기준', value: '형광등 · 간헐적 깜빡임', shared: true },
-      { label: '그림체·렌더 톤', value: '아직 지정되지 않음', open: true, shared: true },
-    ],
-  },
-}
-
+// 씬 기준(인물·장소·환경)은 useStore의 sceneState로 옮겼다.
+// 이 화면에서 고친 것이 buildCutPrompt까지 가야 하기 때문이다.
 const MOCK_MISE_SPATIAL_ELEMENTS = [
   { id: 'room', type: 'rect', x: 250, y: 180, w: 720, h: 480, label: 'CONTROL ROOM' },
   { id: 'monitor-wall', type: 'rect', x: 330, y: 225, w: 500, h: 55, label: 'MONITOR WALL' },
@@ -907,12 +865,11 @@ export default function DecisionBoard({ boardView = 'split' }) {
   const [viewerSnapshot, setViewerSnapshot] = useState(null)
   const [primaryLensId, setPrimaryLensId] = useState('camera')
   const [miseWorkspace, setMiseWorkspace] = useState('scene')
-  const [miseCharacters, setMiseCharacters] = useState(() => (
-    MOCK_MISE_SCENE_STATE.characters.map((character) => ({
-      ...character,
-      facts: character.facts.map((fact) => ({ ...fact })),
-    }))
-  ))
+  // 씬 기준은 스토어에 있다. 이 화면에서 고친 것이 곧 생성 기준이 된다 —
+  // 로컬 state로 두면 프롬프트에 닿지 않는다.
+  const sceneState = useStore((s) => s.sceneState)
+  const updateSceneCharacter = useStore((s) => s.updateSceneCharacter)
+  const miseCharacters = sceneState.characters
   const [editingCharacterId, setEditingCharacterId] = useState(null)
   const [characterDraft, setCharacterDraft] = useState(null)
   const [spatialEditorOpen, setSpatialEditorOpen] = useState(false)
@@ -1059,11 +1016,10 @@ export default function DecisionBoard({ boardView = 'split' }) {
 
   const saveCharacterDetails = () => {
     if (!characterDraft) return
-    setMiseCharacters((characters) => characters.map((character) => (
-      character.id === characterDraft.id
-        ? { ...characterDraft, facts: characterDraft.facts.map((fact) => ({ ...fact })) }
-        : character
-    )))
+    updateSceneCharacter(characterDraft.id, {
+      ...characterDraft,
+      facts: characterDraft.facts.map((fact) => ({ ...fact })),
+    })
     closeCharacterDetails()
   }
 
@@ -1808,11 +1764,11 @@ export default function DecisionBoard({ boardView = 'split' }) {
                   <div className="lens-section-heading">
                     <div>
                       <span>Current scene state</span>
-                      <strong>{MOCK_MISE_SCENE_STATE.title}</strong>
+                      <strong>{sceneState.title}</strong>
                     </div>
                     <em>Global reference</em>
                   </div>
-                  <p className="mise-state-description">{MOCK_MISE_SCENE_STATE.description}</p>
+                  <p className="mise-state-description">{sceneState.description}</p>
 
                   <section className="mise-state-group">
                     <div className="mise-state-group-heading">
@@ -1820,7 +1776,7 @@ export default function DecisionBoard({ boardView = 'split' }) {
                         <span>Characters</span>
                         <strong>인물 기준 상태</strong>
                       </div>
-                      <em>{MOCK_MISE_SCENE_STATE.characters.length} records</em>
+                      <em>{sceneState.characters.length} records</em>
                     </div>
                     <div className="mise-character-grid">
                       {miseCharacters.map((character) => {
@@ -1935,7 +1891,7 @@ export default function DecisionBoard({ boardView = 'split' }) {
                       <div className="mise-state-group-heading">
                         <div>
                           <span>Location</span>
-                          <strong>{MOCK_MISE_SCENE_STATE.location.name}</strong>
+                          <strong>{sceneState.location.name}</strong>
                         </div>
                       </div>
                       <button
@@ -1958,7 +1914,7 @@ export default function DecisionBoard({ boardView = 'split' }) {
                         </span>
                       </button>
                       <dl>
-                        {MOCK_MISE_SCENE_STATE.location.facts.map((fact) => (
+                        {sceneState.location.facts.map((fact) => (
                           <div key={fact.label} className={fact.open ? 'open' : ''}>
                             <dt>{fact.label}</dt>
                             <dd>{fact.value}</dd>
@@ -1971,11 +1927,11 @@ export default function DecisionBoard({ boardView = 'split' }) {
                       <div className="mise-state-group-heading">
                         <div>
                           <span>Shared scene</span>
-                          <strong>{MOCK_MISE_SCENE_STATE.environment.name}</strong>
+                          <strong>{sceneState.environment.name}</strong>
                         </div>
                       </div>
                       <dl>
-                        {MOCK_MISE_SCENE_STATE.environment.facts.map((fact) => (
+                        {sceneState.environment.facts.map((fact) => (
                           <div key={fact.label} className={fact.open ? 'open' : ''}>
                             <dt>{fact.label}</dt>
                             <dd>
@@ -2067,7 +2023,7 @@ export default function DecisionBoard({ boardView = 'split' }) {
           <header className="mise-spatial-editor-header">
             <div>
               <span>Mise-en-scène · Location</span>
-              <strong>{MOCK_MISE_SCENE_STATE.location.name} 2D 배치</strong>
+              <strong>{sceneState.location.name} 2D 배치</strong>
             </div>
             <p>도형과 인물을 드래그해 장면의 공간 기준을 정합니다.</p>
             <button type="button" onClick={() => setSpatialEditorOpen(false)}>↙ Scene State로 돌아가기</button>
