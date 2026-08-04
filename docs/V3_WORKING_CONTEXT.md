@@ -1,14 +1,17 @@
 # SceneLens v3 작업 맥락과 인수인계
 
-- 마지막 정리: 2026-07-26
+- 마지막 정리: 2026-08-04
 - 작업 브랜치: `feature/scene-flow-fill`
 - 구현 기준 커밋: `05bfe6c`
 - 관련 설계: [`SCENELENS_DECISION_SYSTEM_SPEC.md`](./SCENELENS_DECISION_SYSTEM_SPEC.md)
 - 코드 감사: [`V3_AGENT_ARCHITECTURE_AUDIT.md`](./V3_AGENT_ARCHITECTURE_AUDIT.md)
 - 패널 생성 설계: [`PANEL_GENERATION_DESIGN.md`](./PANEL_GENERATION_DESIGN.md)
-  (프롬프트는 컷에서 조립. Agent를 새로 띄우지 않고 Option card로. 비구속 표시는 미정)
+  (프롬프트는 컷에서 조립. Agent를 새로 띄우지 않고 Option card로.
+  비구속 표시 미결 → DG1 P3로 흡수, §1.1 참조)
 - 서사 렌즈 재프레이밍: [`NARRATIVE_LENS_AS_JULCONTI.md`](./NARRATIVE_LENS_AS_JULCONTI.md)
   (서사 렌즈 = 줄콘티의 계산적 구현. 근거는 전문가 formative 세션)
+- **Design Goal (2026-08-04 재구성)**: [`design_goal.md`](./design_goal.md)
+  — 구현 우선순위의 상위 기준. 아래 §1.1 참조
 
 이 문서는 대화를 다시 읽지 않아도 SceneLens v3 작업을 이어갈 수 있도록 만든
 현재 맥락 문서다. 장기적인 개념 명세는 Decision System Spec에, 실제 코드와
@@ -35,6 +38,48 @@ SceneLens도 그 성격을 보존해야 한다.
 `Open`은 이 마지막 목표와 직접 연결된다. Open은 빠뜨렸거나 중요하지 않은
 결정이 아니라, 검토한 뒤에도 다른 참여자가 해석하거나 구체화할 여지를 남긴
 결정이다.
+
+### 1.1 Design Goal (2026-08-04 재구성)
+
+DG가 4개(expose → negotiate → commit → verify)에서 **3개 / 연산 4개**로
+재구성됐다. 전체 서술은 [`design_goal.md`](./design_goal.md)에 있고, 여기에는
+구현 판단에 필요한 만큼만 옮긴다.
+
+**프레임.** 스토리보드에서 부재는 비워진 상태가 아니라 설계 대상이다. 화면에
+없는 것이 보완해야 할 **결손**인지 후속 공정에 맡긴 **위임**인지 구분하는 것이
+핵심이다.
+
+**연산 4개.** 드러내기(surface) – 구분하기(distinguish) – 보완하기(repair) –
+재검토하기(reappraise)
+
+| | 위치 | 다루는 것 | 연산 |
+|---|---|---|---|
+| **DG1** | 의도 → 작품 | 미결 | surface + distinguish |
+| **DG2** | 작품 | 기결의 변경 | repair |
+| **DG3** | 작품 → 관객 | 기결의 읽힘 | reappraise |
+
+순서대로 한 번 거치는 단계가 아니라 순환이다. DG3에서 발견된 어긋남은 원인이
+있는 층위(DG1의 선언 갱신 또는 DG2의 개입)로 되돌아간다. **발견과 처분을
+분리하는 것**이 핵심이며, 모든 어긋남이 패널 재생성으로 흘러가는 우회를 막는다.
+
+#### 구현 순서에 영향을 주는 연결
+
+`design_goal.md`의 DG1 → DG3 연결이 병목을 지정한다.
+
+> 무엇을 담지 않을지 먼저 선언해야 관객 검토가 실제 결손만 가리킨다.
+
+즉 **DG1 P3(이미지가 책임질 범위를 선언한다)가 DG3보다 먼저**여야 한다. P3가
+없으면 Viewer Agent는 의도적으로 비워둔 것까지 전달 실패로 보고한다.
+
+P3는 또한 `PANEL_GENERATION_DESIGN.md` §4.3이 미결로 남긴 "비구속을 어떻게 보일
+것인가"와 같은 문제다. 별개 설계가 아니다.
+
+#### 구 DG 번호를 만나면
+
+이전 문서의 DG 번호는 이 표와 대응하지 않는다. 재구성 전 번호를 쓰는 곳은
+현재 `NARRATIVE_LENS_AS_JULCONTI.md`와 `PANEL_GENERATION_DESIGN.md` 두 곳뿐이고,
+둘 다 갱신하면서 주석을 달아두었다. 그 밖에서 DG 번호를 만나면 재구성 전
+문서일 수 있으니 `design_goal.md`를 기준으로 다시 확인한다.
 
 ---
 
