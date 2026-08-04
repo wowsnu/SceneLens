@@ -824,9 +824,6 @@ const createDeclaration = ({
   // responsibility가 'direction'일 때 스토리보드가 정하는 쪽.
   // 값이 아니라 방향이다 — "왼쪽으로"는 여기, "얼마나 빠르게"는 후속 공정.
   direction = '',
-  // 여러 컷에 걸치는 요소인가. 나중에 정하면 이미 그려진 패널들이 서로
-  // 어긋나 있으므로 생성 직전에 묻는다. 되돌릴 수 없는 것만 여기 해당한다.
-  crossCut = false,
   // AI가 왜 이 요소를 후보로 올렸는지. 판정의 근거가 되므로 남긴다.
   rationale = '',
   // 사용자가 판정하기 전에는 제안일 뿐이다 (DG1 P2: 제안은 판정 대상).
@@ -841,7 +838,6 @@ const createDeclaration = ({
   responsibility,
   channel,
   direction,
-  crossCut,
   rationale,
   status,
   provenance,
@@ -882,7 +878,6 @@ const proposeDeclarations = (cutPlan, { sceneIntention = '' } = {}) => {
       element: '인물 외형 일관성',
       lens: 'mise-en-scene',
       responsibility: 'image',
-      crossCut: true,
       rationale: '여러 컷에 같은 인물이 나온다. 컷마다 다르게 그려지면 다른 사람으로 읽힌다.',
     })
   }
@@ -958,11 +953,6 @@ export const selectPendingDeclarations = (state) =>
 // 것을 요구하지 않는다.
 export const selectDeferredDeclarations = (state) =>
   state.declarations.filter((decl) => decl.status === 'Proposed')
-
-// 생성 직전에 묻는 것 — 여러 컷에 걸쳐 되돌릴 수 없는 선언만.
-// 단계를 따로 두지 않고 생성 버튼 옆에 붙인다.
-export const selectPreGenerationDeclarations = (state) =>
-  state.declarations.filter((decl) => decl.status === 'Proposed' && decl.crossCut)
 
 // 프롬프트에서 빼야 할 요소. 위임한 것을 그림에 확정하면 P3가 무의미해진다.
 export const selectDelegatedDeclarations = (state) =>

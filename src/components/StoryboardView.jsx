@@ -699,8 +699,6 @@ export default function StoryboardView() {
   const acceptedDeclarations = declarations.filter((decl) => decl.status === 'Accepted')
   // 판정은 전부 패널의 인스펙터에서 한다 (DG1 P4).
   const deferredDeclarations = pendingDeclarations
-  // 생성 직전에 묻는 것 — 되돌릴 수 없는 선언만.
-  const preGenerationDeclarations = pendingDeclarations.filter((decl) => decl.crossCut)
   const activeBranch = scene?.activeBranch ?? 0
   const activeShot = scene?.activeShot ?? 0
   const branch = scene?.branches?.[activeBranch]
@@ -1549,32 +1547,6 @@ export default function StoryboardView() {
               </button>
             </div>
 
-            {/* 되돌릴 수 없는 선언만 생성 직전에 묻는다. 여러 컷에 걸치는
-                요소는 나중에 정하면 이미 그려진 패널들이 서로 어긋나 있다.
-                나머지 선언은 그림을 보고 인스펙터에서 판정한다 (DG1 P4). */}
-            {preGenerationDeclarations.length > 0 && (
-              <div className="generation-declaration-row">
-                {preGenerationDeclarations.map((decl) => (
-                  <div key={decl.id} className="generation-declaration">
-                    <strong>{decl.element}</strong>
-                    <small>{decl.rationale}</small>
-                    <div className="deferred-chips is-proposed">
-                      {RESPONSIBILITY_LEVELS.map((level) => (
-                        <button
-                          key={level.id}
-                          type="button"
-                          className={decl.responsibility === level.id ? 'active' : ''}
-                          title={`${level.hint} · AI 제안, 눌러서 확정`}
-                          onClick={() => decideDeclaration(decl.id, level.id)}
-                        >
-                          {level.label}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
             </section>
           )}
 
