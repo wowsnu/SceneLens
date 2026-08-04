@@ -771,3 +771,29 @@
   border-color: rgba(196, 150, 210, 0.55);
   outline: none;
 }
+
+/* compact는 열 간격이 12px이라 가장자리에 걸치면 옆 셀을 덮는다.
+   틈 한가운데로 옮기고 편집기는 오른쪽으로 편다. */
+.grid-view.compact .grid-seam {
+  top: 50%;
+  left: -6px;
+  transform: translateX(-50%);
+}
+
+.grid-view.compact .grid-seam-editor {
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+/* 2열 그리드에서 홀수 번째 셀은 줄의 왼쪽 끝이다. 그 이음새는 옆 칸이
+   아니라 윗줄 마지막 컷과의 사이이므로, 셀 위쪽 가장자리에 얹는다. */
+.grid-view.compact .grid-cell-wrapper:nth-child(odd) .grid-seam {
+  top: -9px;
+  left: 10px;
+  transform: none;
+}
+
+.grid-view.compact .grid-cell-wrapper:nth-child(odd) .grid-seam-editor {
+  left: 0;
+  transform: none;
+}

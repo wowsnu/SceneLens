@@ -206,7 +206,7 @@ export default function GridView({
               {/* 이음새 — 앞 컷과 이 컷 사이 (DG2 P1). 컷을 추가하는 것과
                   사이에 무엇이 있는지 기록하는 것은 다른 일이라 자리를 나눈다.
                   정해진 것이 없으면 hover에서만 나타나 그리드를 어지럽히지 않는다. */}
-              {!compact && i > 0 && (() => {
+              {i > 0 && (() => {
                 const prevShot = shots[i - 1]
                 const seam = seams[seamKeyFor(prevShot.id)]
                 const marked = isSeamMarked(seam)
