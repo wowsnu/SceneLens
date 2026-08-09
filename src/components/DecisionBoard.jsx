@@ -2,6 +2,7 @@ import { useCallback, useMemo, useState } from 'react'
 import useStore from '../store/useStore'
 import SceneOverview from './SceneOverview'
 import SpatialMap from './SpatialMap'
+import { requestViewerReflection } from '../services/api'
 import './DecisionBoard.css'
 
 // Narrative만 사용자와 직접 협업하는 상위 Agent로 드러낸다.
@@ -891,6 +892,38 @@ function SceneFactChanges({ fact, group, characterId = null, shots, onAdd, onRem
   )
 }
 
+function ViewerReadingCard({ reading, initial = false }) {
+  if (!reading) return null
+  const routeLabels = { narrative: '서사', mise: '미장센', camera: '촬영', editing: '편집' }
+  return (
+    <article className="viewer-reading-card">
+      <header>
+        <span>{initial ? 'Initial Reading' : 'Alternative Reading'}</span>
+        <h3>{reading.title}</h3>
+        <p>{reading.summary}</p>
+      </header>
+      {reading.steps?.length > 0 && (
+        <ol className="viewer-reading-steps">
+          {reading.steps.map((step) => (
+            <li key={`${reading.id}-${step.panel_order}`}>
+              <strong>S{step.panel_order}</strong>
+              <div><p>{step.reading}</p>{step.new_information && <small>새로 보인 것: {step.new_information}</small>}</div>
+            </li>
+          ))}
+        </ol>
+      )}
+      <div className="viewer-cue-trace">
+        <div><strong>화면 근거</strong><p>{reading.visible_cues?.join(' · ') || '특정 근거 없음'}</p></div>
+        <div><strong>추가 추론</strong><p>{reading.inferred_assumptions?.join(' · ') || '추가 추론 없음'}</p></div>
+      </div>
+      {!initial && reading.divergence_panel_order && (
+        <p className="viewer-divergence">갈림: S{reading.divergence_panel_order} · {reading.resolved_by_final_panel ? '마지막 패널에서 해소됨' : '마지막 패널까지 열려 있음'}</p>
+      )}
+      {reading.routes?.length > 0 && <div className="viewer-routes">{reading.routes.map((route) => <span key={route}>{routeLabels[route] || route}에서 검토</span>)}</div>}
+    </article>
+  )
+}
+
 export default function DecisionBoard({ boardView = 'split' }) {
   const [selectedOptionId, setSelectedOptionId] = useState(null)
   const [reviewOpen, setReviewOpen] = useState(false)
@@ -900,6 +933,10 @@ export default function DecisionBoard({ boardView = 'split' }) {
   const [cameraApplyHistory, setCameraApplyHistory] = useState([])
   const [editingSequencePreview, setEditingSequencePreview] = useState(null)
   const [viewerSnapshot, setViewerSnapshot] = useState(null)
+  const [viewerIntention, setViewerIntention] = useState('')
+  const [viewerReport, setViewerReport] = useState(null)
+  const [viewerStatus, setViewerStatus] = useState('idle')
+  const [viewerError, setViewerError] = useState('')
   const [primaryLensId, setPrimaryLensId] = useState('camera')
   const [miseWorkspace, setMiseWorkspace] = useState('scene')
   // 씬 기준은 스토어에 있다. 이 화면에서 고친 것이 곧 생성 기준이 된다 —
@@ -1195,12 +1232,34 @@ export default function DecisionBoard({ boardView = 'split' }) {
         scriptBeat: shot.scriptBeat ?? 0,
       })),
     })
+    setViewerIntention('')
+    setViewerReport(null)
+    setViewerStatus('idle')
+    setViewerError('')
   }
 
   const snapshotShots = viewerSnapshot?.shots || []
   const readableShots = snapshotShots.filter((shot) => Boolean(shot.image))
   const firstSnapshotShot = snapshotShots[0]?.order || 1
   const lastSnapshotShot = snapshotShots[snapshotShots.length - 1]?.order || firstSnapshotShot
+
+  const runViewerReflection = async () => {
+    if (readableShots.length === 0 || viewerStatus === 'loading') return
+    setViewerStatus('loading')
+    setViewerError('')
+    try {
+      // Intention stays in this UI snapshot only. The endpoint receives no labels,
+      // CIR, decision state, or creator intent — just audience-visible material.
+      const result = await requestViewerReflection({
+        panels: readableShots.map((shot) => ({ image: shot.image })),
+      })
+      setViewerReport(result)
+      setViewerStatus('ready')
+    } catch (error) {
+      setViewerStatus('error')
+      setViewerError(error.message || '새 눈의 읽기를 불러오지 못했습니다.')
+    }
+  }
 
   const viewerReflectionPane = viewerSnapshot ? (
     <div className="viewer-reflection-shell" aria-label="새 눈으로 보기">
@@ -1232,19 +1291,50 @@ export default function DecisionBoard({ boardView = 'split' }) {
         </dl>
       </section>
 
-      <section className="viewer-reflection-placeholder">
-        <span>새 눈의 메모</span>
-        <strong>어떤 흐름이 먼저 보였는지 이곳에 모일 거예요.</strong>
-        <p>
-          먼저 읽힌 흐름과 잠깐 멈칫한 곳,
-          다르게 보일 수 있는 지점을 차례로 보여줍니다.
+      {readableShots.length !== snapshotShots.length && (
+        <p className="viewer-readability-note">
+          이미지가 없는 {snapshotShots.length - readableShots.length}개 패널은 읽기에 포함하지 않습니다.
         </p>
-        <div className="viewer-placeholder-rows" aria-hidden="true">
-          <span />
-          <span />
-          <span />
-        </div>
+      )}
+
+      <section className="viewer-intention-snapshot">
+        <label htmlFor="viewer-intention">이 장면이 어떻게 읽히길 바라나요? <em>선택 · 분석에는 보내지 않음</em></label>
+        <textarea
+          id="viewer-intention"
+          value={viewerIntention}
+          onChange={(event) => setViewerIntention(event.target.value)}
+          placeholder="예: 둘 사이의 불신이 먼저 보이고, 위협의 정체는 뒤에서 드러나길 바란다."
+          rows={2}
+        />
       </section>
+
+      {!viewerReport ? (
+        <section className="viewer-reflection-placeholder">
+          <span>의도 비공개 · 순차 읽기</span>
+          <strong>보이는 패널만 보고 한 번 읽어봅니다.</strong>
+          <p>처음 읽힌 흐름, 달리 읽힐 수 있는 갈림, 각 읽기를 지지하는 화면 근거를 분리합니다.</p>
+          {viewerError && <p className="viewer-error">{viewerError}</p>}
+          <button type="button" className="viewer-run-button" onClick={runViewerReflection} disabled={readableShots.length === 0 || viewerStatus === 'loading'}>
+            {viewerStatus === 'loading' ? '읽는 중…' : '새 눈의 읽기 시작'}
+          </button>
+        </section>
+      ) : (
+        <section className="viewer-report" aria-live="polite">
+          {viewerIntention.trim() && (
+            <div className="viewer-intention-compare">
+              <span>내가 바란 읽힘</span>
+              <p>{viewerIntention}</p>
+            </div>
+          )}
+          <ViewerReadingCard reading={viewerReport.initial_reading} initial />
+          {(viewerReport.alternative_readings || []).map((reading) => (
+            <ViewerReadingCard key={reading.id} reading={reading} />
+          ))}
+          <button type="button" className="viewer-rerun-button" onClick={runViewerReflection} disabled={viewerStatus === 'loading'}>
+            다시 읽기
+          </button>
+        </section>
+      )}
     </div>
   ) : null
 

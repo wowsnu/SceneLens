@@ -3751,6 +3751,108 @@ button.active .lens-glass::after {
   line-height: 1.55;
 }
 
+.viewer-readability-note,
+.viewer-error {
+  margin: 0;
+  padding: 9px 11px;
+  border-radius: 7px;
+  color: rgba(254, 240, 138, 0.88);
+  background: rgba(234, 179, 8, 0.08);
+  border: 1px solid rgba(234, 179, 8, 0.18);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.viewer-intention-snapshot {
+  display: grid;
+  gap: 6px;
+  padding: 11px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.viewer-intention-snapshot label,
+.viewer-intention-compare span {
+  color: rgba(203, 213, 225, 0.78);
+  font-size: 11px;
+  font-weight: 760;
+}
+
+.viewer-intention-snapshot em {
+  color: rgba(148, 163, 184, 0.68);
+  font-style: normal;
+  font-weight: 600;
+}
+
+.viewer-intention-snapshot textarea {
+  width: 100%;
+  resize: vertical;
+  box-sizing: border-box;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 6px;
+  padding: 8px;
+  background: rgba(3, 7, 18, 0.52);
+  color: #e2e8f0;
+  font: inherit;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.viewer-run-button,
+.viewer-rerun-button {
+  align-self: flex-start;
+  margin-top: 18px;
+  min-height: 34px;
+  border: 1px solid rgba(129, 140, 248, 0.42);
+  border-radius: 7px;
+  padding: 0 12px;
+  background: rgba(99, 102, 241, 0.16);
+  color: #e0e7ff;
+  font-size: 11px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.viewer-run-button:disabled,
+.viewer-rerun-button:disabled { cursor: wait; opacity: .55; }
+
+.viewer-report { display: grid; gap: 10px; }
+
+.viewer-intention-compare {
+  padding: 10px 12px;
+  border-left: 2px solid rgba(167, 139, 250, 0.7);
+  background: rgba(139, 92, 246, 0.07);
+}
+
+.viewer-intention-compare p { margin: 4px 0 0; color: rgba(237, 233, 254, .9); font-size: 12px; line-height: 1.5; }
+
+.viewer-reading-card {
+  padding: 13px;
+  border: 1px solid rgba(165, 180, 252, 0.16);
+  border-radius: 8px;
+  background: rgba(15, 23, 42, 0.42);
+}
+
+.viewer-reading-card header > span { color: #a5b4fc; font-size: 10px; font-weight: 850; letter-spacing: .04em; }
+.viewer-reading-card h3 { margin: 4px 0 0; color: #f1f5f9; font-size: 15px; }
+.viewer-reading-card header > p { margin: 6px 0 0; color: rgba(203, 213, 225, .76); font-size: 12px; line-height: 1.5; }
+
+.viewer-reading-steps { display: grid; gap: 8px; margin: 12px 0; padding: 0; list-style: none; }
+.viewer-reading-steps li { display: grid; grid-template-columns: 27px 1fr; gap: 8px; }
+.viewer-reading-steps li > strong { color: #bfdbfe; font-size: 10px; padding-top: 2px; }
+.viewer-reading-steps p, .viewer-reading-steps small { margin: 0; font-size: 11px; line-height: 1.45; }
+.viewer-reading-steps p { color: rgba(241, 245, 249, .84); }
+.viewer-reading-steps small { display: block; margin-top: 2px; color: rgba(148, 163, 184, .8); }
+
+.viewer-cue-trace { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.viewer-cue-trace > div { padding: 8px; border-radius: 6px; background: rgba(255, 255, 255, .025); }
+.viewer-cue-trace strong { color: #93c5fd; font-size: 10px; }
+.viewer-cue-trace p { margin: 4px 0 0; color: rgba(203, 213, 225, .76); font-size: 11px; line-height: 1.45; }
+.viewer-divergence { margin: 10px 0 0; color: #fde68a; font-size: 11px; }
+.viewer-routes { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 10px; }
+.viewer-routes span { padding: 3px 6px; border-radius: 999px; background: rgba(96, 165, 250, .1); color: #bfdbfe; font-size: 10px; }
+
 .viewer-placeholder-rows {
   display: grid;
   gap: 8px;

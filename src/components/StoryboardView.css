@@ -3182,10 +3182,40 @@
   display: flex;
   align-items: baseline;
   gap: 9px;
+  width: 100%;
   margin: 26px 0 14px;
-  padding-bottom: 9px;
+  padding: 0 0 9px;
+  border: 0;
   border-bottom: 1px solid rgba(216, 170, 98, 0.3);
+  background: transparent;
   font-family: Inter, -apple-system, sans-serif;
+  text-align: left;
+  cursor: pointer;
+}
+
+.sb-scene-label:hover {
+  border-bottom-color: rgba(216, 170, 98, 0.55);
+}
+
+.sb-scene-caret {
+  padding: 0 !important;
+  background: transparent !important;
+  color: rgba(216, 170, 98, 0.6) !important;
+  font-size: 10px !important;
+}
+
+/* 접힌 씬은 경계선만 남아 목록처럼 읽힌다. */
+.sb-scene-label.collapsed {
+  margin-bottom: 8px;
+  opacity: 0.72;
+}
+
+.sb-scene-label em {
+  margin-left: auto;
+  color: rgba(255, 255, 255, 0.35);
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 700;
 }
 
 /* 첫 씬은 위 여백을 두지 않는다. */
@@ -3240,4 +3270,35 @@
 
 .cut-plan-beat-group:first-child .cut-plan-scene-row th {
   padding-top: 6px !important;
+}
+
+/* 컷 표의 씬 헤더도 접힌다. */
+.cut-plan-scene-row th button {
+  display: flex;
+  align-items: baseline;
+  gap: 9px;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.cut-plan-scene-caret {
+  background: transparent !important;
+  color: rgba(216, 170, 98, 0.6) !important;
+  font-size: 10px !important;
+  margin-right: 0 !important;
+  padding: 0 !important;
+}
+
+.cut-plan-scene-row th em {
+  margin-left: auto;
+  color: rgba(255, 255, 255, 0.35);
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 700;
 }

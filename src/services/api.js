@@ -173,6 +173,14 @@ export async function requestAutoFillRange({ shots, scriptContext, intent, userP
   }, FILL_TIMEOUT)
 }
 
+export async function requestViewerReflection({ panels }) {
+  return fetchWithTimeout(`${API_BASE}/viewer/reflection`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ panels }),
+  }, 120000)
+}
+
 // ── Segmentation (MobileSAM, click-based) ────────────────────
 
 export async function segmentPrepare(imageBase64, type = 'png') {

@@ -709,6 +709,8 @@ export default function StoryboardView() {
   const [pendingFocus, setPendingFocus] = useState(null)
   // 접어둔 컷 플랜 Beat 번호.
   const [collapsedCutBeats, setCollapsedCutBeats] = useState([])
+  // 씬 접기. Beat와 별개 축이다 — 씬을 접으면 그 안의 Beat가 전부 숨는다.
+  const [collapsedScenes, setCollapsedScenes] = useState([])
   // 프롬프트를 펼쳐 본 컷. 한 번에 하나만 연다.
   const [expandedPromptCutId, setExpandedPromptCutId] = useState(null)
   // Panels 단계에서 인스펙터에 띄운 패널.
@@ -806,6 +808,28 @@ export default function StoryboardView() {
     .filter((element) => element.type === 'scene-heading')
     .map((element) => element.beat ?? 0)
   const sceneNumberOf = (beat) => sceneOpeningBeats.indexOf(beat) + 1
+  // 이 Beat가 속한 씬의 여는 Beat. 씬 접기 판정에 쓴다.
+  const sceneOfBeat = (beat) => (
+    [...sceneOpeningBeats].reverse().find((opening) => opening <= beat) ?? null
+  )
+  // 이 씬에 몇 개의 Beat가 들어 있는가. 접었을 때 보여준다.
+  const beatsInScene = (openingBeat) => {
+    const next = sceneOpeningBeats.find((opening) => opening > openingBeat)
+    return [...new Set(screenplay.map((element) => element.beat ?? 0))]
+      .filter((beat) => beat >= openingBeat && (next ? beat < next : true)).length
+  }
+  // 이 씬에 몇 개의 컷이 있는가. 접었을 때 보여준다.
+  const cutsInScene = (openingBeat) => {
+    const next = sceneOpeningBeats.find((opening) => opening > openingBeat)
+    return cutPlan.filter((item) => (
+      item.beat >= openingBeat && (next ? item.beat < next : true)
+    )).length
+  }
+  const isSceneCollapsed = (beat) => {
+    const opening = sceneOfBeat(beat)
+    // 씬을 여는 Beat 자체는 접혀도 헤더가 남아야 다시 펼 수 있다.
+    return opening !== null && opening !== beat && collapsedScenes.includes(opening)
+  }
   const needsStructure = screenplay.length > 0
     && !hasSceneHeading
     && new Set(screenplay.map((element) => element.beat ?? 0)).size === 1
@@ -832,6 +856,12 @@ export default function StoryboardView() {
       cutIndex: cutPlan.findIndex((item) => item.id === inspectedCut.id),
     })
     : null
+
+  const toggleScene = (openingBeat) => setCollapsedScenes((current) => (
+    current.includes(openingBeat)
+      ? current.filter((entry) => entry !== openingBeat)
+      : [...current, openingBeat]
+  ))
 
   const toggleCutBeat = (beat) => setCollapsedCutBeats((current) => (
     current.includes(beat) ? current.filter((b) => b !== beat) : [...current, beat]
@@ -1284,6 +1314,9 @@ export default function StoryboardView() {
                   {cutPlanBeatGroups.map((group) => {
                     const collapsed = collapsedCutBeats.includes(group.beat)
                     const sceneNo = sceneNumberOf(group.beat)
+                    // 접힌 씬의 Beat는 그리지 않는다.
+                    if (isSceneCollapsed(group.beat)) return null
+                    const sceneCollapsed = collapsedScenes.includes(group.beat)
                     return (
                       <tbody key={group.beat} className="cut-plan-beat-group">
                         {/* 씬이 바뀌는 Beat에 씬 경계를 그린다. 컷 표에서도
@@ -1291,13 +1324,27 @@ export default function StoryboardView() {
                         {sceneNo > 0 && (
                           <tr className="cut-plan-scene-row">
                             <th colSpan={8}>
-                              <span>Scene {sceneNo}</span>
-                              {screenplay.find((element) => (
-                                element.type === 'scene-heading' && element.beat === group.beat
-                              ))?.text}
+                              <button
+                                type="button"
+                                onClick={() => toggleScene(group.beat)}
+                                aria-expanded={!sceneCollapsed}
+                              >
+                                <span className="cut-plan-scene-caret">
+                                  {sceneCollapsed ? '▸' : '▾'}
+                                </span>
+                                <span>Scene {sceneNo}</span>
+                                {screenplay.find((element) => (
+                                  element.type === 'scene-heading' && element.beat === group.beat
+                                ))?.text}
+                                {sceneCollapsed && (
+                                  <em>{cutsInScene(group.beat)} cuts</em>
+                                )}
+                              </button>
                             </th>
                           </tr>
                         )}
+                        {!sceneCollapsed && (
+                        <>
                         <tr className="cut-plan-beat-row">
                           <th colSpan={8}>
                             <button
@@ -1487,6 +1534,8 @@ export default function StoryboardView() {
                         })()}
                         </Fragment>
                         ))}
+                        </>
+                        )}
                       </tbody>
                     )
                   })}
@@ -1635,6 +1684,9 @@ export default function StoryboardView() {
           )}
 
           {!isCutPlanStage && beats.map((beatGroup, i) => {
+            // 접힌 씬의 Beat는 그리지 않는다. 씬을 여는 Beat는 남겨야
+            // 헤더가 보이고 다시 펼 수 있다.
+            if (isSceneCollapsed(beatGroup.beat)) return null
             const beatShots = getBeatShots(beatGroup.beat)
             const beatSuggestions = narrativeSuggestions.filter((suggestion) => suggestion.beat === beatGroup.beat)
             const inlineSuggestionTypes = new Set(['split-beat', 'insert-script-line', 'replace-script-line'])
@@ -1663,12 +1715,30 @@ export default function StoryboardView() {
                   {/* 씬 경계. Beat보다 큰 단위이므로 위에, 더 크게 둔다 —
                       씬은 시공간이 연속된 범위이고 Beat는 그 안의 국면이다. */}
                   {beatGroup.elements[0]?.type === 'scene-heading' && (
-                    <div className="sb-scene-label">
+                    <button
+                      type="button"
+                      className={`sb-scene-label${collapsedScenes.includes(beatGroup.beat) ? ' collapsed' : ''}`}
+                      onClick={(event) => {
+                        event.stopPropagation()
+                        toggleScene(beatGroup.beat)
+                      }}
+                      aria-expanded={!collapsedScenes.includes(beatGroup.beat)}
+                    >
+                      <span className="sb-scene-caret" aria-hidden="true">
+                        {collapsedScenes.includes(beatGroup.beat) ? '▸' : '▾'}
+                      </span>
                       <span>Scene {sceneNumberOf(beatGroup.beat)}</span>
                       <strong>{beatGroup.elements[0].text}</strong>
-                    </div>
+                      {collapsedScenes.includes(beatGroup.beat) && (
+                        <em>{beatsInScene(beatGroup.beat)} beats</em>
+                      )}
+                    </button>
                   )}
 
+                  {/* 씬을 접으면 그 씬을 여는 Beat의 본문도 함께 숨는다.
+                      헤더만 남아 다시 펼 수 있다. */}
+                  {!collapsedScenes.includes(beatGroup.beat) && (
+                  <>
                   {/* Beat 경계 표시이자 이 Beat의 조작 지점. 줄마다 버튼을
                       띄우지 않고 여기로 모은다. */}
                   {(beats.length > 1 || isScriptStage) && (
@@ -1776,6 +1846,8 @@ export default function StoryboardView() {
                       onDismiss={dismissNarrativeSuggestion}
                     />
                   ))}
+                  </>
+                  )}
                 </div>
 
                 {showStoryboardPanels && (
