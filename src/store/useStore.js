@@ -177,6 +177,127 @@ const shortenNarrativeText = (text = '', maxLength = 46) => (
 
 const includesAny = (text, keywords) => keywords.some((keyword) => text.includes(keyword))
 
+// --- 이야기 → 씬·비트 구조 ----------------------------------------------
+// 컷을 나누려면 씬과 비트가 있어야 한다. 사용자가 쓴 한 덩어리 이야기에는
+// 그 구조가 없으므로 AI가 세운다.
+//
+// 이것은 시나리오 저작이 아니다. 형식을 만들어 주는 것이 아니라 스토리보드가
+// 필요로 하는 단위(씬 = 시공간 연속, 비트 = 국면)를 드러내는 일이다.
+//
+// 내용은 이야기에 있는 것만 문장으로 푼다. 없는 것을 채우면 사용자가 쓰지
+// 않은 것이 대본에 들어가고, 그것이 어디서 왔는지 알 수 없게 된다.
+// 실제 LLM 호출로 교체될 자리다.
+
+// 장소가 바뀌면 씬이 갈린다 — 씬은 시공간이 연속된 범위다.
+// 다만 장소를 '언급'한 것과 그리로 '이동'한 것은 다르다. "승강장 사람들이
+// 위험해진다"는 관제실 안에서 하는 말이지 승강장으로 간 것이 아니다.
+// 이동을 가리키는 동사가 함께 있을 때만 씬을 나눈다.
+const PLACE_WORDS_SHIFT = [
+  ['승강장', '승강장'], ['플랫폼', '승강장'], ['터널', '터널 안'],
+  ['계단', '계단'], ['옥상', '옥상'], ['거리', '거리'], ['골목', '골목'],
+]
+const MOVE_VERBS = ['간다', '가서', '나간다', '나가', '올라', '내려', '도착', '이동', '들어선다', '향한다', '달려간다']
+
+// 국면이 바뀌는 신호. 비트 경계의 단서다.
+const BEAT_SIGNALS = ['근데', '그런데', '그러다', '그리고', '이후', '결국', '마침내', '갑자기']
+
+// 이야기 말투("들어감")를 대본 서술("들어간다")로 바꾼다. 내용은 더하지
+// 않는다 — 사용자가 쓰지 않은 것이 대본에 들어가면 출처를 알 수 없게 된다.
+//
+// 한국어 명사형 종결은 받침 유무로 갈린다. 받침 없는 어간에는 ㅁ이 얹히고
+// (대치함), 있으면 '-음'이 붙는다(있었음). 겹받침 ㄻ도 나온다(달려듦).
+const JONG_M = 16   // ㅁ
+const JONG_LM = 10  // ㄻ
+
+const decomposeJong = (ch) => {
+  const code = ch.charCodeAt(0) - 0xAC00
+  if (code < 0 || code >= 11172) return null
+  return { code, jong: code % 28 }
+}
+
+const toNarrative = (raw) => {
+  const t = raw.replace(/[.!?。]\s*$/, '')
+  if (!t) return ''
+
+  // 서술격 '-임'은 '-이다'. 받침 ㅁ 규칙보다 먼저 걸러야 '총괄인다'가 안 된다.
+  if (t.endsWith('임')) return `${t.slice(0, -1)}이다.`
+  // '-음'은 앞 글자가 어간이다: 있었음 → 있었다
+  if (t.endsWith('음')) return `${t.slice(0, -1)}다.`
+
+  const last = t[t.length - 1]
+  const d = last && decomposeJong(last)
+
+  // 받침 ㅁ: 대치함 → 대치한다. ㅁ을 떼고 ㄴ을 얹는다.
+  if (d && d.jong === JONG_M) {
+    const stem = d.code - JONG_M
+    return `${t.slice(0, -1)}${String.fromCharCode(0xAC00 + stem + 4)}다.`
+  }
+  // 겹받침 ㄻ: 달려듦 → 달려든다
+  if (d && d.jong === JONG_LM) {
+    return `${t.slice(0, -1)}${String.fromCharCode(0xAC00 + (d.code - JONG_LM) + 4)}다.`
+  }
+
+  return /[.!?。]$/.test(raw) ? raw : `${t}.`
+}
+
+const createStoryStructureDraft = (state) => {
+  const source = state.screenplay
+    .map((element) => element.text.trim())
+    .filter(Boolean)
+  if (source.length === 0) return null
+
+  const { time, place } = inferSceneContext(state.screenplay)
+  const baseHeading = [place || '실내', time].filter(Boolean).join(', ')
+
+  // 문장 단위로 쪼갠다. 이야기는 대개 한 줄에 여러 사건이 들어 있다.
+  const sentences = source
+    .flatMap((line) => line.split(/(?<=[.!?。])\s+/))
+    .map((text) => text.trim())
+    .filter((text) => text.length > 1)
+
+  const draft = []
+  let beat = 0
+  let sceneCount = 0
+  let currentPlace = null
+
+  const openScene = (heading) => {
+    if (draft.length > 0) beat += 1
+    draft.push({ type: 'scene-heading', text: heading, beat })
+    sceneCount += 1
+    beat += 1
+  }
+
+  openScene(baseHeading)
+
+  sentences.forEach((sentence, index) => {
+    // 장소가 바뀌면 새 씬이다. 이동 동사가 있어야 이동으로 본다.
+    const moved = MOVE_VERBS.some((verb) => sentence.includes(verb))
+    const shift = moved
+      ? PLACE_WORDS_SHIFT.find(([keyword]) => sentence.includes(keyword))
+      : null
+    if (shift && shift[1] !== currentPlace && index > 0) {
+      currentPlace = shift[1]
+      openScene([shift[1], time].filter(Boolean).join(', '))
+    } else if (index > 0 && BEAT_SIGNALS.some((signal) => sentence.startsWith(signal))) {
+      // 국면 전환어로 시작하면 비트를 나눈다.
+      beat += 1
+    }
+
+    // 이야기 말투를 서술로 바꾼다. 내용은 더하지 않는다.
+    const text = toNarrative(sentence.replace(/^(근데|그런데|그러다|그리고|이후|결국|마침내|갑자기)\s*/, ''))
+
+    draft.push({ type: 'action', text, beat })
+  })
+
+  return {
+    id: `story-structure-${Date.now()}`,
+    screenplay: draft,
+    sceneCount,
+    beatCount: new Set(draft.map((line) => line.beat)).size,
+    sourceCount: sentences.length,
+  }
+}
+
 const createMockScriptSuggestion = ({ beatElements, targetBeat, requestKey, sceneIntention, narrativeRequest }) => {
   const normalizedRequest = narrativeRequest.trim()
   const normalizedIntention = sceneIntention.trim()
@@ -311,6 +432,49 @@ const CUT_PLAN_MOVES = [
   'Dolly in', 'Dolly out', 'Handheld',
 ]
 
+// 컷의 구체적 결정(content, shotSize, seam 등)과 그 결정을 검토하는 이유를
+// 분리한다. 다음 단계의 Decision Card는 lens 이름이 아니라 이 requirement id를
+// 참조한다. 책임 범위도 나중에 카드에 붙고, 요구 역할 자체에는 붙지 않는다.
+export const CUT_REQUIREMENT_LENSES = [
+  { id: 'narrative', label: 'Narrative', shortLabel: 'N', placeholder: '이 컷이 전달해야 할 사건·정보' },
+  { id: 'mise', label: 'Mise-en-scène', shortLabel: 'M', placeholder: '필요한 인물·공간·소품의 관계' },
+  { id: 'camera', label: 'Camera', shortLabel: 'C', placeholder: '관객이 무엇을 어떻게 보아야 하는가' },
+  { id: 'editing', label: 'Editing', shortLabel: 'E', placeholder: '앞뒤 컷 사이에서 수행할 역할' },
+]
+
+const createCutRequirement = (cutId, lensId, value = {}, fallbackProvenance = 'AI') => ({
+  id: `req-${cutId}-${lensId}`,
+  lens: lensId,
+  text: value.text || '',
+  provenance: value.provenance || fallbackProvenance,
+})
+
+const createCutRequirements = (cutId, requirements = {}, provenance = 'AI') => (
+  CUT_REQUIREMENT_LENSES.reduce((result, lens) => ({
+    ...result,
+    [lens.id]: createCutRequirement(cutId, lens.id, requirements[lens.id], provenance),
+  }), {})
+)
+
+const mergeCutRequirements = (first = {}, second = {}) => (
+  CUT_REQUIREMENT_LENSES.reduce((result, lens) => {
+    const firstRequirement = first[lens.id]
+    const secondRequirement = second[lens.id]
+    const texts = [firstRequirement?.text, secondRequirement?.text]
+      .map((text) => text?.trim())
+      .filter(Boolean)
+    return {
+      ...result,
+      [lens.id]: {
+        ...(firstRequirement || {}),
+        lens: lens.id,
+        text: [...new Set(texts)].join(' / '),
+        provenance: 'User',
+      },
+    }
+  }, {})
+)
+
 const createCutPlanItemId = () => `cut-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
 
 const createCutPlanItem = ({
@@ -336,22 +500,27 @@ const createCutPlanItem = ({
   //   Tentative → provenance가 'AI'로 남아 있는 것이 곧 미검토 상태다.
   // 검토 여부는 provenance가 말한다. 사용자가 손대면 'User'로 바뀐다.
   provenance = 'AI',
-} = {}) => ({
-  id: createCutPlanItemId(),
-  order,
-  beat,
-  beatOrder,
-  time,
-  place,
-  content,
-  purpose,
-  characters,
-  shotSize,
-  angle,
-  cameraMove,
-  promptOverride,
-  provenance,
-})
+  requirements = {},
+} = {}) => {
+  const id = createCutPlanItemId()
+  return {
+    id,
+    order,
+    beat,
+    beatOrder,
+    time,
+    place,
+    content,
+    purpose,
+    characters,
+    shotSize,
+    angle,
+    cameraMove,
+    promptOverride,
+    provenance,
+    requirements: createCutRequirements(id, requirements, provenance),
+  }
+}
 
 // Beat의 대본 요소를 읽어 줄콘티 초안을 만드는 Mock.
 // 실제 Narrative LLM 호출로 교체될 자리다.
@@ -408,13 +577,33 @@ const createMockCutPlan = (state) => {
     let beatOrder = 0
     const push = (fields) => {
       beatOrder += 1
+      const resolvedCharacters = fields.characters ?? cast.join(', ')
+      const narrativeRole = fields.purpose
+        ? `${fields.purpose}이 이 컷의 핵심으로 읽혀야 한다.`
+        : '이 컷이 전달할 사건과 정보를 확인한다.'
+      const miseRole = resolvedCharacters
+        ? `${resolvedCharacters}의 위치와 관계가 화면에서 읽혀야 한다.`
+        : `${place || '장소'}의 공간 구조와 필요한 소품을 확인한다.`
+      const cameraRole = fields.purpose
+        ? `${fields.purpose}이 드러나는 시점과 구도를 선택한다.`
+        : '관객이 보아야 할 정보와 시점을 확인한다.'
+      const editingRole = items.length === 0
+        ? '씬의 첫 정보와 공간을 세우는 시작점이 된다.'
+        : '앞 컷의 정보나 행동을 이어받아 다음 변화로 넘긴다.'
+
       items.push(createCutPlanItem({
         order: items.length + 1,
         beat,
         beatOrder,
         time,
         place,
-        characters: cast.join(', '),
+        characters: resolvedCharacters,
+        requirements: {
+          narrative: { text: narrativeRole },
+          mise: { text: miseRole },
+          camera: { text: cameraRole },
+          editing: { text: editingRole },
+        },
         ...fields,
       }))
     }
@@ -1426,6 +1615,28 @@ const useStore = create((set, get) => ({
       }
     }),
   })),
+  updateCutRequirement: (itemId, lensId, text) => set((state) => ({
+    cutPlan: state.cutPlan.map((item) => {
+      if (item.id !== itemId) return item
+      const current = item.requirements?.[lensId] || createCutRequirement(
+        item.id,
+        lensId,
+        {},
+        item.provenance,
+      )
+      return {
+        ...item,
+        requirements: {
+          ...item.requirements,
+          [lensId]: {
+            ...current,
+            text,
+            provenance: 'User',
+          },
+        },
+      }
+    }),
+  })),
   addCutPlanItem: (afterItemId = null, beat = 0) => set((state) => {
     const next = [...state.cutPlan]
     const index = afterItemId
@@ -1476,6 +1687,9 @@ const useStore = create((set, get) => ({
         ...(first.characters || '').split(',').map((n) => n.trim()).filter(Boolean),
         ...(second.characters || '').split(',').map((n) => n.trim()).filter(Boolean),
       ])].join(', '),
+      // 두 컷이 맡던 관점별 역할도 함께 합친다. 뒤 컷의 Requirement가
+      // 사라지면 이후 Decision Card의 근거가 조용히 유실된다.
+      requirements: mergeCutRequirements(first.requirements, second.requirements),
       // 사용자가 구조를 바꿨다.
       provenance: 'User',
       // 조립된 프롬프트를 다시 만들게 한다. 합쳐진 내용을 반영해야 한다.
@@ -1790,11 +2004,33 @@ const useStore = create((set, get) => ({
       narrativeSuggestions: createMockNarrativeSuggestions(state, requestKey, input),
     }
   }),
-  // 대본을 만드는 기능(줄글 → 대본, Beat 나누기 제안)은 두지 않는다.
-  // 대본은 주어진 것에서 시작한다 — 시나리오 저작은 스토리보드 연구의
-  // 범위가 아니고, 실험에서도 완성된 대본으로 진행한다.
-  // 남은 것은 '고치기'뿐이다: 줄 인라인 수정과 Beat 경계 조정.
-  // (DG3에서 발견된 어긋남이 대본까지 되돌아갈 수 있어야 한다.)
+  // 이야기를 씬·비트 구조로 세운다. 컷을 나누려면 그 단위가 있어야 하는데
+  // 사용자가 쓴 한 덩어리 이야기에는 없다.
+  //
+  // 형식을 만들어 주는 것이 아니라 스토리보드가 필요로 하는 구조를 드러내는
+  // 일이다. 제안으로 두고 사용자가 확인해야 적용된다 (DG1 P2).
+  structureDraft: null,
+  requestStoryStructure: () => set((state) => ({
+    structureDraft: createStoryStructureDraft(state),
+    narrativeSuggestions: [],
+  })),
+  dismissStructureDraft: () => set({ structureDraft: null }),
+  acceptStructureDraft: () => set((state) => {
+    const draft = state.structureDraft
+    if (!draft) return {}
+    const maxBeat = Math.max(0, ...draft.screenplay.map((line) => line.beat ?? 0))
+    const next = updateActiveBranchShots(state, (shots) => shots.map((shot) => ({
+      ...shot,
+      scriptBeat: Math.max(0, Math.min(shot.scriptBeat ?? 0, maxBeat)),
+    })))
+    return {
+      ...next,
+      screenplay: draft.screenplay,
+      structureDraft: null,
+      narrativeSuggestions: [],
+      activeBeat: 0,
+    }
+  }),
   dismissNarrativeSuggestion: (suggestionId) => set((state) => ({
     narrativeSuggestions: state.narrativeSuggestions.filter((suggestion) => suggestion.id !== suggestionId),
   })),

@@ -3092,3 +3092,85 @@
   background: rgba(126, 168, 214, 0.16);
   color: rgba(158, 194, 232, 0.95);
 }
+
+/* --- 씬·Beat 구조 제안 --------------------------------------------------
+   이야기 한 덩어리를 컷 분해가 쓸 수 있는 단위로 세운다. 확인 전까지
+   원문은 그대로 둔다 (DG1 P2). */
+.structure-draft-review {
+  margin: 22px 0 16px;
+  border: 1px solid rgba(216, 170, 98, 0.24);
+  border-radius: 10px;
+  background: #111114;
+  overflow: hidden;
+  font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+.structure-draft-review > header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+  background: rgba(216, 170, 98, 0.035);
+}
+
+.structure-draft-review > header > div:nth-child(2) {
+  flex: 1;
+  min-width: 0;
+}
+
+.structure-draft-review > header > div:nth-child(2) > span {
+  color: rgba(216, 170, 98, 0.72);
+  font-size: 10px;
+  font-weight: 760;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.structure-draft-review > header strong {
+  display: block;
+  margin-top: 2px;
+  color: rgba(255, 255, 255, 0.88);
+  font-size: 14px;
+}
+
+.structure-draft-review > header p {
+  margin: 3px 0 0;
+  color: rgba(255, 255, 255, 0.46);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.structure-draft-body {
+  padding: 16px 18px 18px;
+}
+
+/* 씬 경계가 Beat보다 크게 보여야 위계가 읽힌다. */
+.structure-draft-scene {
+  margin: 18px 0 10px;
+  padding-bottom: 7px;
+  border-bottom: 1px solid rgba(216, 170, 98, 0.3);
+  color: rgba(216, 170, 98, 0.95);
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+
+.structure-draft-body > div:first-child .structure-draft-scene {
+  margin-top: 0;
+}
+
+.structure-draft-beat {
+  margin: 13px 0 5px;
+  color: rgba(255, 255, 255, 0.32);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+
+.structure-draft-body p {
+  margin: 0 0 5px;
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 13.5px;
+  line-height: 1.62;
+}

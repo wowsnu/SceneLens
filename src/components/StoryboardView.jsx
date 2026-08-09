@@ -673,6 +673,10 @@ export default function StoryboardView() {
   const removeShotArrow = useStore((s) => s.removeShotArrow)
   const addBeatAfter = useStore((s) => s.addBeatAfter)
   const loadExampleScreenplay = useStore((s) => s.loadExampleScreenplay)
+  const structureDraft = useStore((s) => s.structureDraft)
+  const requestStoryStructure = useStore((s) => s.requestStoryStructure)
+  const acceptStructureDraft = useStore((s) => s.acceptStructureDraft)
+  const dismissStructureDraft = useStore((s) => s.dismissStructureDraft)
   const updateScreenplayLine = useStore((s) => s.updateScreenplayLine)
   const setScreenplayLineType = useStore((s) => s.setScreenplayLineType)
   const insertScreenplayLine = useStore((s) => s.insertScreenplayLine)
@@ -795,6 +799,12 @@ export default function StoryboardView() {
   if (currentBeat.length > 0) beats.push({ beat: beatIdx, elements: currentBeat })
 
   // 컷을 Beat별로 묶는다. index는 전체 기준이어야 이동·삭제가 맞는다.
+  // 씬 헤딩도 Beat 구분도 없으면 아직 이야기 한 덩어리다.
+  const hasSceneHeading = screenplay.some((element) => element.type === 'scene-heading')
+  const needsStructure = screenplay.length > 0
+    && !hasSceneHeading
+    && new Set(screenplay.map((element) => element.beat ?? 0)).size === 1
+
   const cutPlanBeatGroups = []
   cutPlan.forEach((item, index) => {
     const last = cutPlanBeatGroups[cutPlanBeatGroups.length - 1]
@@ -1173,6 +1183,56 @@ export default function StoryboardView() {
                 </button>
               </div>
             </div>
+          )}
+
+          {/* AI가 세운 씬·비트 구조. 확인해야 적용된다 (DG1 P2:
+              생성된 제안은 판정 대상으로 둔다). */}
+          {structureDraft && cutStage === 'script' && isExpanded && !drawingWorkspaceOpen && !showWriteScene && (
+            <section className="structure-draft-review" aria-label="Scene structure draft">
+              <header>
+                <span className="script-draft-mark" aria-hidden="true">N</span>
+                <div>
+                  <span>씬·Beat 구조 · Mock</span>
+                  <strong>
+                    씬 {structureDraft.sceneCount}개 · Beat {structureDraft.beatCount}개로 나눴습니다
+                  </strong>
+                  <p>
+                    이야기에 있는 내용만 문장으로 풀었습니다. 확인하기 전까지
+                    원문은 바뀌지 않습니다.
+                  </p>
+                </div>
+                <div className="script-draft-actions">
+                  <button type="button" onClick={dismissStructureDraft}>Dismiss</button>
+                  <button type="button" onClick={requestStoryStructure}>Again</button>
+                  <button type="button" className="use-draft" onClick={acceptStructureDraft}>
+                    이 구조로 진행
+                  </button>
+                </div>
+              </header>
+
+              <div className="structure-draft-body">
+                {structureDraft.screenplay.map((element, index) => {
+                  const previous = structureDraft.screenplay[index - 1]
+                  const startsBeat = !previous || previous.beat !== element.beat
+                  return (
+                    <div key={`${element.type}-${index}`}>
+                      {element.type === 'scene-heading' ? (
+                        <div className="structure-draft-scene">{element.text}</div>
+                      ) : (
+                        <>
+                          {startsBeat && (
+                            <div className="structure-draft-beat">
+                              Beat {String(element.beat + 1).padStart(2, '0')}
+                            </div>
+                          )}
+                          <p>{element.text}</p>
+                        </>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            </section>
           )}
 
           {cutPlan.length > 0 && cutStage === 'cutplan' && isExpanded && !drawingWorkspaceOpen && (
@@ -1997,7 +2057,23 @@ export default function StoryboardView() {
               <section className="narrative-rail-guidance">
                 <span>Next step</span>
                 {/* 대본은 주어진 것에서 시작한다. 다음 단계는 컷 분해다. */}
-                {cutStage === 'script' ? (
+                {/* 이야기 한 덩어리로 들어왔으면 씬·비트부터 세운다.
+                    컷을 나누려면 그 단위가 있어야 한다. */}
+                {cutStage === 'script' && needsStructure ? (
+                  <>
+                    <p>
+                      아직 이야기 한 덩어리입니다. 씬과 Beat로 나누면 그
+                      단위로 컷을 정할 수 있습니다.
+                    </p>
+                    <button
+                      type="button"
+                      className="narrative-rail-primary"
+                      onClick={requestStoryStructure}
+                    >
+                      씬·Beat로 나누기
+                    </button>
+                  </>
+                ) : cutStage === 'script' ? (
                   <>
                     <p>
                       대본이 준비됐습니다. 그림 전에 이 장면을 몇 개의 컷으로
