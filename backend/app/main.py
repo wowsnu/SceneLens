@@ -5,7 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 from contextlib import asynccontextmanager
 
-from app.routes import sketch, strategy, overlay, image_gen, fill_shot, segment, viewer, story
+from app.routes import directing_review, fill_shot, image_gen, overlay, segment, sketch, story, strategy, viewer
 from app.services.strategy_engine import warmup_theory_cache
 
 load_dotenv()
@@ -18,7 +18,10 @@ async def lifespan(app: FastAPI):
     # but here we can just call it since it's initial setup.
     warmup_theory_cache()
 
-    if os.getenv("SEGMENT_WARMUP", "1") != "0":
+    # 세그멘테이션(MobileSAM)은 torch를 올려 노트북에서 무겁다. 기본은 끈다.
+    # 그리기 도구의 오려내기를 쓸 때만 SEGMENT_WARMUP=1로 켠다 — 끈 상태에서도
+    # 첫 요청에서 lazy-load되므로 기능이 사라지지는 않는다.
+    if os.getenv("SEGMENT_WARMUP", "0") != "0":
         try:
             from app.services.segmenter import Segmenter
             Segmenter.get()
@@ -71,6 +74,7 @@ app.include_router(fill_shot.router, prefix="/api")
 app.include_router(segment.router, prefix="/api")
 app.include_router(viewer.router, prefix="/api")
 app.include_router(story.router, prefix="/api")
+app.include_router(directing_review.router, prefix="/api")
 
 if __name__ == "__main__":
     import uvicorn
