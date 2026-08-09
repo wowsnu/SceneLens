@@ -1,3 +1,5 @@
+import { toStructureDraft } from './storyStructure.js'
+
 function normalizeApiBase(rawBase) {
   const trimmed = rawBase?.replace(/\/$/, '')
   if (!trimmed) return '/api'
@@ -202,35 +204,11 @@ export async function segmentLasso(sessionId, polygon, multimask = false) {
 // --- 이야기 → 씬·비트 구조 ----------------------------------------------
 // 컷을 나누려면 씬과 비트가 있어야 한다. 사용자가 쓴 한 덩어리 이야기에는
 // 그 구조가 없으므로 모델이 세운다. 내용은 더하지 않는다.
-//
-// 응답을 화면이 쓰는 형태(screenplay 배열)로 옮긴다. 씬 헤딩은 한 줄이
-// 되고, 비트는 연속 번호를 받는다.
 export async function structureStory(story, sceneIntention = '') {
   const data = await fetchWithTimeout(`${API_BASE}/story/structure`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ story, scene_intention: sceneIntention }),
   }, 90000)
-
-  const screenplay = []
-  let beat = 0
-  data.scenes.forEach((scene) => {
-    // 씬 헤딩은 자기 Beat를 차지한다. 씬 경계가 Beat 경계이기도 하다.
-    screenplay.push({ type: 'scene-heading', text: scene.heading, beat })
-    beat += 1
-    scene.beats.forEach((entry) => {
-      entry.lines.forEach((line) => {
-        screenplay.push({ type: 'action', text: line, beat })
-      })
-      beat += 1
-    })
-  })
-
-  return {
-    id: `story-structure-${Date.now()}`,
-    screenplay,
-    sceneCount: data.scenes.length,
-    beatCount: new Set(screenplay.map((line) => line.beat)).size,
-    sourceCount: story.split(/(?<=[.!?。])\s+/).filter((s) => s.trim()).length,
-  }
+  return toStructureDraft(data, story)
 }
