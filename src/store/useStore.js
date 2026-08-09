@@ -306,13 +306,13 @@ const createStoryStructureDraft = (state) => {
   }
 }
 
-const createMockScriptSuggestion = ({ beatElements, targetBeat, requestKey, sceneIntention, narrativeRequest }) => {
+const createMockScriptSuggestion = ({ beatElements, targetBeat, requestKey, sceneIntention, narrativeRequest, cast = [] }) => {
   const normalizedRequest = narrativeRequest.trim()
   const normalizedIntention = sceneIntention.trim()
   // 대사는 다루지 않는다. 제안은 행동 한 줄을 더하는 것뿐이다 —
   // 대본을 쓰는 것이 아니라 검토 중 빠진 행동을 짚는 자리다.
   const anchor = beatElements[beatElements.length - 1] || beatElements[0]
-  const characterName = KNOWN_CAST.find((name) => (
+  const characterName = cast.find((name) => (
     beatElements.some((element) => element.text.includes(name))
   )) || '인물'
   const hidesInformation = includesAny(`${normalizedIntention} ${normalizedRequest}`, ['숨', '불안', '위험', '긴장', '모호'])
@@ -375,6 +375,8 @@ const createMockNarrativeSuggestions = (state, requestKey, input = {}) => {
       requestKey,
       sceneIntention: state.sceneIntention || '',
       narrativeRequest,
+      // 이 Beat가 속한 씬의 인물만 후보다.
+      cast: castNamesOf(selectActiveSceneState(state)),
     }))
   }
 
@@ -538,7 +540,9 @@ const TIME_HINTS = [
 ]
 
 // 예제 씬의 등장인물. 실제로는 대본에서 추출하거나 사용자가 지정한다.
-const KNOWN_CAST = ['재인', '민호']
+// 등장인물은 씬 기준에서 가져온다. 상수로 두면 씬이 바뀌어도 같은 이름만
+// 찾게 되고, 승강장의 '아이'는 어느 컷에도 들어가지 않는다.
+const castNamesOf = (sceneState) => (sceneState?.characters || []).map((c) => c.name)
 
 // 대본 전체에서 시간·장소를 한 번만 추론한다. 컷마다 다시 뽑으면 흔들린다.
 const inferSceneContext = (screenplay) => {
@@ -586,8 +590,13 @@ const createMockCutPlan = (state) => {
     ))
   }
 
+  const scenes = selectScenes(state.screenplay)
+
   beats.forEach((beat) => {
     const { time, place } = inferSceneContext(sceneOf(beat))
+    // 이 Beat가 속한 씬의 인물만 후보로 본다.
+    const sceneId = sceneOfBeat(scenes, beat)?.id
+    const KNOWN_CAST = castNamesOf(state.sceneStates?.[sceneId] || state.sceneStates?.['scene-0'])
     const beatElements = withIdx.filter((element) => (element.beat ?? 0) === beat)
     const actions = beatElements.filter((element) => element.type === 'action')
     const heading = beatElements.find((element) => element.type === 'scene-heading')
@@ -1091,6 +1100,86 @@ export const diagnoseSeams = (cutPlan = [], screenplay = [], {
   return findings
 }
 
+// 예제 대본의 두 번째 씬. 씬마다 인물과 공간이 다르다는 것을 보이기 위해
+// 첫 씬과 겹치는 인물이 없다.
+const PLATFORM_SCENE_STATE = {
+  title: '승강장, 밤',
+  description: '관제실에서 이어지는 씬입니다. 인물과 공간이 다릅니다.',
+  characters: [
+    {
+      id: 'child',
+      name: '아이',
+      summary: '노란 우비 · 홀로',
+      image: null,
+      facts: [
+        { label: '외형 기준', value: '노란 우비를 입고 홀로 서 있다' },
+        { label: '표정', value: '아직 지정되지 않음', open: true },
+      ],
+    },
+  ],
+  location: {
+    name: '지하철 승강장',
+    facts: [
+      { label: '장소 정체', value: '텅 빈 지하 승강장' },
+      { label: '고정 소품', value: '천장 스피커 · 안전선 · 터널 입구' },
+    ],
+  },
+  environment: {
+    name: '장면 공통',
+    facts: [
+      { label: '시간', value: '밤' },
+      { label: '조명 기준', value: '드문드문한 형광등', shared: true },
+    ],
+  },
+}
+
+// --- Scene: 시공간이 연속된 범위 -----------------------------------------
+// 씬은 대본에서 파생된다. 별도 목록을 두면 대본의 씬 헤딩과 어긋날 수 있고,
+// 그때 무엇이 진짜인지 알 수 없게 된다.
+export const selectScenes = (screenplay = []) => {
+  const openings = screenplay
+    .map((element, index) => ({ ...element, index }))
+    .filter((element) => element.type === 'scene-heading')
+  const maxBeat = screenplay.length > 0
+    ? Math.max(0, ...screenplay.map((element) => element.beat ?? 0))
+    : 0
+
+  // 씬 헤딩이 없으면 대본 전체가 한 씬이다.
+  if (openings.length === 0) {
+    if (screenplay.length === 0) return []
+    return [{ id: 'scene-0', number: 1, heading: '', startBeat: 0, endBeat: maxBeat }]
+  }
+
+  return openings.map((opening, i) => {
+    const next = openings[i + 1]
+    const startBeat = opening.beat ?? 0
+    return {
+      id: `scene-${startBeat}`,
+      number: i + 1,
+      heading: opening.text,
+      startBeat,
+      endBeat: next ? (next.beat ?? 0) - 1 : maxBeat,
+    }
+  })
+}
+
+// 이 Beat가 속한 씬. 컷과 씬 기준을 묶을 때 쓴다.
+export const sceneOfBeat = (scenes, beat) => (
+  scenes.find((scene) => beat >= scene.startBeat && beat <= scene.endBeat) || null
+)
+
+// 지금 보고 있는 씬의 기준. activeBeat가 속한 씬을 따른다.
+export const selectActiveSceneState = (state) => {
+  const scenes = selectScenes(state.screenplay)
+  const scene = sceneOfBeat(scenes, state.activeBeat ?? 0)
+  return state.sceneStates[scene?.id] || state.sceneStates['scene-0'] || SCENE_STATE
+}
+
+export const selectActiveSceneId = (state) => {
+  const scenes = selectScenes(state.screenplay)
+  return sceneOfBeat(scenes, state.activeBeat ?? 0)?.id || 'scene-0'
+}
+
 // --- Scene state: 컷을 가로지르는 기준 ----------------------------------
 // 여러 컷에 같은 인물과 공간이 나온다. 컷마다 프롬프트를 따로 조립하면
 // 컷 1의 '관제실'과 컷 5의 '관제실'이 각자 해석되어 다른 방이 된다.
@@ -1520,100 +1609,89 @@ const useStore = create((set, get) => ({
     return { seams: next }
   }),
 
-  // 컷을 가로지르는 기준. 여기를 고치면 모든 컷의 프롬프트가 함께 바뀐다.
-  sceneState: SCENE_STATE,
-  updateSceneCharacter: (characterId, patch) => set((state) => ({
-    sceneState: {
-      ...state.sceneState,
-      characters: state.sceneState.characters.map((character) => (
+  // 컷을 가로지르는 기준. 여기를 고치면 그 씬의 모든 컷 프롬프트가 바뀐다.
+  //
+  // 씬마다 따로 둔다 — 관제실의 인물 기준과 승강장의 인물 기준은 다르다.
+  // 승강장의 '노란 우비 아이'는 관제실 기준에 없다.
+  sceneStates: { 'scene-0': SCENE_STATE, 'scene-7': PLATFORM_SCENE_STATE },
+  // 지금 보고 있는 씬. activeBeat에서 파생시키면 둘이 어긋날 수 없다 —
+  // Beat를 고르는 것이 곧 씬을 고르는 것이다.
+
+  // 씬 기준을 고친다. 아래 네 액션이 같은 모양이라 여기로 모은다.
+  updateSceneStateAt: (sceneId, updater) => set((state) => {
+    const current = state.sceneStates[sceneId] || SCENE_STATE
+    return { sceneStates: { ...state.sceneStates, [sceneId]: updater(current) } }
+  }),
+  updateSceneCharacter: (characterId, patch, sceneId = null) => {
+    get().updateSceneStateAt(sceneId || selectActiveSceneId(get()), (scene) => ({
+      ...scene,
+      characters: scene.characters.map((character) => (
         character.id === characterId ? { ...character, ...patch } : character
       )),
-    },
-  })),
+    }))
+  },
+
   // 상태 변화를 더한다. 처음 값은 남기고 구간만 얹는다 —
   // 값을 덮어쓰면 앞 컷들이 무엇이었는지 알 수 없게 된다.
-  addFactChange: (group, label, at, value, { characterId = null } = {}) => set((state) => {
+  addFactChange: (group, label, at, value, { characterId = null, sceneId = null } = {}) => {
     const patchFacts = (facts = []) => facts.map((fact) => {
       if (fact.label !== label) return fact
       const changes = (fact.changes || []).filter((change) => change.at !== at)
       return { ...fact, changes: [...changes, { at, value }].sort((a, b) => a.at - b.at) }
     })
-
-    if (group === 'character') {
-      return {
-        sceneState: {
-          ...state.sceneState,
-          characters: state.sceneState.characters.map((character) => (
+    get().updateSceneStateAt(sceneId || selectActiveSceneId(get()), (scene) => (
+      group === 'character'
+        ? {
+          ...scene,
+          characters: scene.characters.map((character) => (
             character.id === characterId
               ? { ...character, facts: patchFacts(character.facts) }
               : character
           )),
-        },
-      }
-    }
-    return {
-      sceneState: {
-        ...state.sceneState,
-        [group]: { ...state.sceneState[group], facts: patchFacts(state.sceneState[group]?.facts) },
-      },
-    }
-  }),
+        }
+        : { ...scene, [group]: { ...scene[group], facts: patchFacts(scene[group]?.facts) } }
+    ))
+  },
 
-  removeFactChange: (group, label, at, { characterId = null } = {}) => set((state) => {
+  removeFactChange: (group, label, at, { characterId = null, sceneId = null } = {}) => {
     const patchFacts = (facts = []) => facts.map((fact) => (
       fact.label === label
         ? { ...fact, changes: (fact.changes || []).filter((change) => change.at !== at) }
         : fact
     ))
-    if (group === 'character') {
-      return {
-        sceneState: {
-          ...state.sceneState,
-          characters: state.sceneState.characters.map((character) => (
+    get().updateSceneStateAt(sceneId || selectActiveSceneId(get()), (scene) => (
+      group === 'character'
+        ? {
+          ...scene,
+          characters: scene.characters.map((character) => (
             character.id === characterId
               ? { ...character, facts: patchFacts(character.facts) }
               : character
           )),
-        },
-      }
-    }
-    return {
-      sceneState: {
-        ...state.sceneState,
-        [group]: { ...state.sceneState[group], facts: patchFacts(state.sceneState[group]?.facts) },
-      },
-    }
-  }),
+        }
+        : { ...scene, [group]: { ...scene[group], facts: patchFacts(scene[group]?.facts) } }
+    ))
+  },
 
   // 미정으로 남은 항목을 채운다. open을 지우는 것이 곧 결정이다.
-  setSceneFact: (group, label, value, { characterId = null } = {}) => set((state) => {
+  setSceneFact: (group, label, value, { characterId = null, sceneId = null } = {}) => {
     const patchFacts = (facts = []) => facts.map((fact) => (
       fact.label === label ? { ...fact, value, open: !value } : fact
     ))
-
-    if (group === 'character') {
-      return {
-        sceneState: {
-          ...state.sceneState,
-          characters: state.sceneState.characters.map((character) => (
+    get().updateSceneStateAt(sceneId || selectActiveSceneId(get()), (scene) => (
+      group === 'character'
+        ? {
+          ...scene,
+          characters: scene.characters.map((character) => (
             character.id === characterId
               ? { ...character, facts: patchFacts(character.facts) }
               : character
           )),
-        },
-      }
-    }
+        }
+        : { ...scene, [group]: { ...scene[group], facts: patchFacts(scene[group]?.facts) } }
+    ))
+  },
 
-    return {
-      sceneState: {
-        ...state.sceneState,
-        [group]: {
-          ...state.sceneState[group],
-          facts: patchFacts(state.sceneState[group]?.facts),
-        },
-      },
-    }
-  }),
   requestCutPlan: () => set((state) => ({
     cutPlan: createMockCutPlan(state),
     cutPlanAccepted: false,

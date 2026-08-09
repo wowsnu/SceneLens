@@ -5,6 +5,9 @@ import useStore, {
   RESPONSIBILITY_LEVELS,
   OFFIMAGE_CHANNELS,
   buildPanelMarks,
+  selectScenes,
+  selectActiveSceneState,
+  sceneOfBeat,
   seamKeyFor,
   diagnoseCoverage,
   diagnoseSeams,
@@ -665,7 +668,12 @@ export default function StoryboardView() {
   const declarations = useStore((s) => s.declarations)
   const decideDeclaration = useStore((s) => s.decideDeclaration)
   const rejectDeclaration = useStore((s) => s.rejectDeclaration)
-  const sceneState = useStore((s) => s.sceneState)
+  // 씬 기준은 씬마다 다르다. 컷이 속한 씬의 기준을 써야 한다 —
+  // 승강장 컷에 관제실의 인물 기준을 넣으면 없는 사람을 그리게 된다.
+  const sceneStates = useStore((s) => s.sceneStates)
+  // rail이 편집하는 것은 지금 보고 있는 씬의 기준이다. activeBeat에서
+  // 파생되므로 Beat를 옮기면 기준도 따라온다.
+  const activeSceneState = useStore(selectActiveSceneState)
   const seams = useStore((s) => s.seams)
   const setSceneFact = useStore((s) => s.setSceneFact)
   const setShotNote = useStore((s) => s.setShotNote)
@@ -754,7 +762,7 @@ export default function StoryboardView() {
     setExpandedPromptCutId(null)
   }
   // 아직 정하지 않은 씬 기준. 비워둔 것이 보여야 누락과 구분된다.
-  const undecidedSceneFacts = sceneState.characters
+  const undecidedSceneFacts = activeSceneState.characters
     .reduce((count, character) => count + character.facts.filter((f) => f.open).length, 0)
   const deferredDeclarations = pendingDeclarations
   const activeBranch = scene?.activeBranch ?? 0
@@ -804,12 +812,19 @@ export default function StoryboardView() {
   // 씬 헤딩도 Beat 구분도 없으면 아직 이야기 한 덩어리다.
   const hasSceneHeading = screenplay.some((element) => element.type === 'scene-heading')
   // 씬 헤딩이 나온 순서로 번호를 매긴다. 이 Beat가 몇 번째 씬을 여는가.
+  const scriptScenes = selectScenes(screenplay)
+  // 이 컷이 속한 씬의 기준. 없으면 기본값으로 떨어진다.
+  const sceneStateForCut = (cut) => {
+    const scene = cut ? sceneOfBeat(scriptScenes, cut.beat) : null
+    return sceneStates[scene?.id] || sceneStates['scene-0']
+  }
   const sceneOpeningBeats = screenplay
     .filter((element) => element.type === 'scene-heading')
     .map((element) => element.beat ?? 0)
   const sceneNumberOf = (beat) => sceneOpeningBeats.indexOf(beat) + 1
   // 이 Beat가 속한 씬의 여는 Beat. 씬 접기 판정에 쓴다.
-  const sceneOfBeat = (beat) => (
+  // 스토어의 sceneOfBeat는 씬 객체를 돌려주므로 이름을 나눈다.
+  const openingBeatOf = (beat) => (
     [...sceneOpeningBeats].reverse().find((opening) => opening <= beat) ?? null
   )
   // 이 씬에 몇 개의 Beat가 들어 있는가. 접었을 때 보여준다.
@@ -826,7 +841,7 @@ export default function StoryboardView() {
     )).length
   }
   const isSceneCollapsed = (beat) => {
-    const opening = sceneOfBeat(beat)
+    const opening = openingBeatOf(beat)
     // 씬을 여는 Beat 자체는 접혀도 헤더가 남아야 다시 펼 수 있다.
     return opening !== null && opening !== beat && collapsedScenes.includes(opening)
   }
@@ -851,7 +866,7 @@ export default function StoryboardView() {
       sceneIntention,
       sceneNote: scenePromptNote,
       declarations,
-      sceneState,
+      sceneState: sceneStateForCut(inspectedCut),
       seam: seamBefore(inspectedCut.id),
       cutIndex: cutPlan.findIndex((item) => item.id === inspectedCut.id),
     })
@@ -1479,7 +1494,7 @@ export default function StoryboardView() {
                             sceneIntention,
                             sceneNote: scenePromptNote,
                             declarations,
-                            sceneState,
+                            sceneState: sceneStateForCut(item),
                             seam: seamBefore(item.id),
                             cutIndex: index,
                           })
@@ -1866,7 +1881,7 @@ export default function StoryboardView() {
                             sceneIntention,
                             sceneNote: scenePromptNote,
                             declarations,
-                            sceneState,
+                            sceneState: sceneStateForCut(shotCut),
                             seam: seamBefore(shotCut.id),
                             cutIndex: cutPlan.findIndex((item) => item.id === shotCut.id),
                           })
@@ -2274,7 +2289,7 @@ export default function StoryboardView() {
                   </p>
 
                   <ul className="rail-scene-state">
-                    {sceneState.characters.map((character) => {
+                    {activeSceneState.characters.map((character) => {
                       const open = character.facts.filter((fact) => fact.open)
                       return (
                         <li key={character.id}>
@@ -2313,10 +2328,10 @@ export default function StoryboardView() {
 
                     <li>
                       <div className="rail-scene-head">
-                        <strong>{sceneState.location.name}</strong>
+                        <strong>{activeSceneState.location.name}</strong>
                         <em>공간</em>
                       </div>
-                      {sceneState.location.facts.map((fact) => (
+                      {activeSceneState.location.facts.map((fact) => (
                         <p key={fact.label}>
                           <span>{fact.label}</span>
                           {fact.value}

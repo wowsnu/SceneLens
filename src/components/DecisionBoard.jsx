@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useState } from 'react'
-import useStore from '../store/useStore'
+import useStore, { selectActiveSceneState } from '../store/useStore'
 import SceneOverview from './SceneOverview'
 import SpatialMap from './SpatialMap'
 import { requestViewerReflection } from '../services/api'
@@ -941,7 +941,9 @@ export default function DecisionBoard({ boardView = 'split' }) {
   const [miseWorkspace, setMiseWorkspace] = useState('scene')
   // 씬 기준은 스토어에 있다. 이 화면에서 고친 것이 곧 생성 기준이 된다 —
   // 로컬 state로 두면 프롬프트에 닿지 않는다.
-  const sceneState = useStore((s) => s.sceneState)
+  // 지금 보고 있는 씬의 기준. 씬마다 인물·공간이 다르고,
+  // 어느 씬인지는 activeBeat에서 파생된다.
+  const sceneState = useStore(selectActiveSceneState)
   const updateSceneCharacter = useStore((s) => s.updateSceneCharacter)
   const addFactChange = useStore((s) => s.addFactChange)
   const removeFactChange = useStore((s) => s.removeFactChange)

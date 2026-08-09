@@ -226,10 +226,25 @@ Decision 객체 자체에는 남아 있으므로 지우지 않았다 — Decisio
 씬을 여는 Beat 자체는 접혀도 그리되 본문만 숨긴다. 헤더가 사라지면 다시 펼
 방법이 없다.
 
-**아직 안 된 것:** 씬별 상태 분리. `screenplay`·`cutPlan`·`sceneState`·
-`sceneIntention`이 스토어 최상위에 하나씩이라, 관제실 씬과 승강장 씬이 같은
-인물 기준과 같은 씬 의도를 공유한다. 표시와 컷 분해는 씬을 구분하지만 상태는
-아직 하나다. `screenplay`·`cutPlan`·`sceneState`·
+**씬별로 기준이 분리됐다.** `sceneStates`가 씬 id를 키로 갖는다 —
+관제실의 인물 기준(재인·민호)과 승강장의 인물 기준(아이)은 다르다.
+
+씬은 **대본에서 파생된다**(`selectScenes`). 별도 목록을 두면 대본의 씬 헤딩과
+어긋날 수 있고, 그때 무엇이 진짜인지 알 수 없게 된다. 씬 id는 여는
+Beat(`scene-{startBeat}`)다.
+
+`activeSceneId`도 상태로 두지 않고 `activeBeat`에서 파생시킨다
+(`selectActiveSceneId`). Beat를 고르는 것이 곧 씬을 고르는 것이므로 둘이
+어긋날 수 없다.
+
+`buildCutPrompt`는 **컷이 속한 씬의** 기준을 받는다. 컷 분해의 등장인물도
+씬 기준에서 가져온다 — `KNOWN_CAST` 상수를 두면 씬이 바뀌어도 같은 이름만
+찾게 되고 승강장의 '아이'는 어느 컷에도 들어가지 않는다.
+
+**아직 안 된 것:** `screenplay`와 `cutPlan`은 여전히 최상위에 하나씩이다.
+씬 헤딩과 `beat`로 구분되므로 동작에는 문제가 없지만, 씬 단위로 대본을 따로
+다루려면 옮겨야 한다. `scenes[]`(Gas Station / Desert Motel)는 대본의 씬과
+무관한 데모 잔재이며 패널만 들고 있다. `screenplay`·`cutPlan`·`sceneState`·
 `sceneIntention`이 전부 스토어 최상위에 하나씩 있어 사실상 씬 하나를 전제한다.
 `scenes[]`는 있으나 패널(`branches`)만 들고 있는 껍데기다. 2분 영상에 4씬,
 씬당 6비트 같은 구조를 다루려면 이들을 씬 안으로 옮겨야 한다.
