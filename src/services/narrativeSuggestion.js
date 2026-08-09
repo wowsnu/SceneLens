@@ -6,6 +6,11 @@
 // 기준의 globalIdx를 쓰므로 여기서 옮긴다 — 그러지 않으면 제안이 엉뚱한
 // 줄에 붙는다.
 export function toNarrativeSuggestions(data, { beatElements, targetBeat, requestKey }) {
+  // 같은 자리에 여러 줄을 넣을 때 순서를 지킨다. 모델이 line_index를
+  // 1,2,3으로 주더라도 줄이 하나뿐이면 셋 다 마지막 줄로 떨어지는데,
+  // 그대로 두면 나중 제안이 먼저 삽입돼 순서가 뒤집힌다.
+  const insertOffsets = new Map()
+
   return data.suggestions.map((item, index) => {
     const anchor = beatElements[item.line_index] ?? beatElements[beatElements.length - 1]
     const base = {
@@ -24,9 +29,13 @@ export function toNarrativeSuggestions(data, { beatElements, targetBeat, request
     }
 
     if (item.type === 'insert-script-line') {
+      // 앞선 제안이 이미 이 자리를 쓰면 한 칸씩 뒤로 민다.
+      const at = anchor?.globalIdx ?? 0
+      const offset = insertOffsets.get(at) ?? 0
+      insertOffsets.set(at, offset + 1)
       return {
         ...base,
-        insertAfterIndex: anchor?.globalIdx ?? 0,
+        insertAfterIndex: at + offset,
         proposedText: item.proposed_text,
         // 수락 핸들러가 이 객체를 그대로 대본에 끼워 넣는다.
         // 없으면 undefined가 들어가 대본이 깨진다.
