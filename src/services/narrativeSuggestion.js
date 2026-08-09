@@ -28,6 +28,9 @@ export function toNarrativeSuggestions(data, { beatElements, targetBeat, request
         ...base,
         insertAfterIndex: anchor?.globalIdx ?? 0,
         proposedText: item.proposed_text,
+        // 수락 핸들러가 이 객체를 그대로 대본에 끼워 넣는다.
+        // 없으면 undefined가 들어가 대본이 깨진다.
+        newElement: { type: 'action', text: item.proposed_text, beat: targetBeat },
       }
     }
 
