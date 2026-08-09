@@ -1151,6 +1151,9 @@ export default function StoryboardView() {
   const handleNarrativeRequest = () => {
     if (!narrativeRequest.trim()) return
     requestNarrativeSuggestions({ narrativeRequest })
+    // 요청을 넘겼으면 칸을 비운다. 남아 있으면 다음 요청을 쓸 때 지우는
+    // 일부터 해야 하고, 이미 처리된 요청이 아직 대기 중인 것처럼 보인다.
+    setNarrativeRequest('')
   }
 
   return (
@@ -2264,7 +2267,19 @@ export default function StoryboardView() {
                     대사를 조금씩 고쳐 나가세요.
                   </p>
                 )}
-                {narrativeSuggestions.length > 0 && (
+                {/* 요청을 넘긴 뒤 칸이 비므로, 무엇이 진행 중인지 여기서
+                    보인다. 아니면 아무 일도 없는 것처럼 보인다. */}
+                {narrativePending && (
+                  <div className="narrative-rail-proposal-status pending">
+                    <span>…</span>
+                    <div>
+                      <strong>Beat {activeBeat + 1} 검토 중</strong>
+                      <p>요청에 맞는 제안을 찾고 있습니다.</p>
+                    </div>
+                  </div>
+                )}
+
+                {!narrativePending && narrativeSuggestions.length > 0 && (
                   <div className="narrative-rail-proposal-status">
                     <span>{narrativeSuggestions.length}</span>
                     <div>

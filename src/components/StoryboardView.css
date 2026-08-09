@@ -3317,3 +3317,13 @@
   color: rgba(216, 140, 98, 0.9) !important;
   font-size: 11px !important;
 }
+
+/* 요청 처리 중. 칸이 비었으므로 여기서 진행 상태를 보인다. */
+.narrative-rail-proposal-status.pending {
+  opacity: 0.7;
+}
+
+.narrative-rail-proposal-status.pending > span {
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.5);
+}
