@@ -171,6 +171,35 @@ class VectorizeResponse(BaseModel):
     svg: str  # SVG string
 
 
+# ── Viewer Reflection: Initial Reading only ──────────────────
+
+class ViewerPanelInput(BaseModel):
+    """Audience-visible material only; no labels, CIR, or creator context."""
+    image: str
+
+class ViewerInitialReadingRequest(BaseModel):
+    panels: List[ViewerPanelInput]
+
+class ViewerReadingStep(BaseModel):
+    panel_order: int
+    reading: str
+    new_information: str
+    visible_cues: List[str]
+    inferred_assumptions: List[str]
+
+class ViewerInitialReading(BaseModel):
+    id: str = "initial-reading"
+    title: str = "처음 읽힌 흐름"
+    summary: str
+    steps: List[ViewerReadingStep]
+    visible_cues: List[str] = []
+    inferred_assumptions: List[str] = []
+    routes: List[str] = []
+
+class ViewerInitialReadingResponse(BaseModel):
+    initial_reading: ViewerInitialReading
+
+
 # ── Segmentation (MobileSAM, click-based) ─────────────────────
 
 class SegmentPrepareRequest(BaseModel):
@@ -278,3 +307,22 @@ class AutoFillRangeRequest(BaseModel):
 
 class AutoFillRangeResponse(BaseModel):
     versions: List[AutoFillVersion]
+
+
+# --- Story structure: 이야기 → 씬·비트 ------------------------------------
+# 컷을 나누려면 씬(시공간 연속)과 비트(국면)가 있어야 한다. 사용자가 쓴
+# 한 덩어리 이야기에는 그 구조가 없으므로 여기서 세운다. 내용은 더하지 않는다.
+
+class StoryStructureRequest(BaseModel):
+    story: str                              # 사용자가 쓴 짧은 이야기
+    scene_intention: Optional[str] = ""     # 참고용. 내용으로 옮기지 않는다.
+
+class StoryBeat(BaseModel):
+    lines: List[str]                        # 화면에서 볼 수 있는 사건 한 줄씩
+
+class StoryScene(BaseModel):
+    heading: str                            # "관제실, 밤"
+    beats: List[StoryBeat]
+
+class StoryStructureResponse(BaseModel):
+    scenes: List[StoryScene]
