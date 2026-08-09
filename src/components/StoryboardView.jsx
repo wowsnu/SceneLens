@@ -1282,8 +1282,9 @@ export default function StoryboardView() {
                     씬 {structureDraft.sceneCount}개 · Beat {structureDraft.beatCount}개로 나눴습니다
                   </strong>
                   <p>
-                    이야기에 있는 내용만 문장으로 풀었습니다. 확인하기 전까지
-                    원문은 바뀌지 않습니다.
+                    {structureDraft.filledCount > 0
+                      ? `표시된 ${structureDraft.filledCount}줄은 AI가 채운 것입니다. 확인하기 전까지 원문은 바뀌지 않습니다.`
+                      : '확인하기 전까지 원문은 바뀌지 않습니다.'}
                   </p>
                   {/* 모델을 못 불렀으면 그 사실을 밝힌다. 규칙 기반 결과를
                       모델이 만든 것처럼 보이게 두면 안 된다. */}
@@ -1317,7 +1318,11 @@ export default function StoryboardView() {
                               Beat {String(element.beat + 1).padStart(2, '0')}
                             </div>
                           )}
-                          <p>{element.text}</p>
+                          {/* AI가 채운 줄은 구분해 보인다. 사용자가 자기가
+                              쓰지 않은 것을 알아볼 수 있어야 한다. */}
+                          <p className={element.filled ? 'is-filled' : ''}>
+                            {element.text}
+                          </p>
                         </>
                       )}
                     </div>

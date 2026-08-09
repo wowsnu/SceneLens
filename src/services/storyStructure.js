@@ -16,7 +16,9 @@ export function toStructureDraft(data, story = '') {
       // 첫 Beat는 헤딩과 같은 번호를 쓰고, 그 뒤부터 하나씩 올린다.
       if (index > 0) beat += 1
       entry.lines.forEach((line) => {
-        screenplay.push({ type: 'action', text: line, beat })
+        // filled는 AI가 채운 줄이라는 표시다. 사용자가 자기가 쓰지 않은
+        // 것을 알아보고 지울 수 있어야 한다 (DG1 P2).
+        screenplay.push({ type: 'action', text: line.text, beat, filled: line.filled })
       })
     })
     beat += 1
@@ -28,5 +30,7 @@ export function toStructureDraft(data, story = '') {
     sceneCount: data.scenes.length,
     beatCount: new Set(screenplay.map((line) => line.beat)).size,
     sourceCount: story.split(/(?<=[.!?。])\s+/).filter((s) => s.trim()).length,
+    // AI가 채운 줄 수. 사용자가 검토할 분량을 미리 안다.
+    filledCount: screenplay.filter((line) => line.filled).length,
   }
 }

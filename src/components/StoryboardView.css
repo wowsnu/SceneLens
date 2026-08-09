@@ -3333,3 +3333,10 @@
   background: rgba(255, 255, 255, 0.06);
   color: rgba(255, 255, 255, 0.35);
 }
+
+/* AI가 채운 줄. 사용자가 쓴 것과 구분돼야 한다 (DG1 P2). */
+.structure-draft-body p.is-filled {
+  padding-left: 9px;
+  border-left: 2px solid rgba(126, 200, 160, 0.45);
+  color: rgba(255, 255, 255, 0.62);
+}

@@ -294,7 +294,8 @@ const createStoryStructureDraft = (state) => {
     // 이야기 말투를 서술로 바꾼다. 내용은 더하지 않는다.
     const text = toNarrative(sentence.replace(/^(근데|그런데|그러다|그리고|이후|결국|마침내|갑자기)\s*/, ''))
 
-    draft.push({ type: 'action', text, beat })
+    // 규칙 기반은 말투만 바꾼다. 채운 것이 없으므로 filled는 false다.
+    draft.push({ type: 'action', text, beat, filled: false })
   })
 
   return {
@@ -303,6 +304,7 @@ const createStoryStructureDraft = (state) => {
     sceneCount,
     beatCount: new Set(draft.map((line) => line.beat)).size,
     sourceCount: sentences.length,
+    filledCount: 0,
   }
 }
 

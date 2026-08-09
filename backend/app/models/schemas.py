@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, model_validator
 from typing import Optional, List, Dict, Literal
 
 # CIR (Cinematic Intermediate Representation)
@@ -182,9 +182,8 @@ class ViewerInitialReadingRequest(BaseModel):
 
 class ViewerReadingStep(BaseModel):
     panel_order: int
-    reading: str
-    new_information: str
     visible_cues: List[str]
+    possible_interpretations: List[str]
     inferred_assumptions: List[str]
 
 class ViewerInitialReading(BaseModel):
@@ -317,8 +316,12 @@ class StoryStructureRequest(BaseModel):
     story: str                              # 사용자가 쓴 짧은 이야기
     scene_intention: Optional[str] = ""     # 참고용. 내용으로 옮기지 않는다.
 
+class StoryLine(BaseModel):
+    text: str                               # 화면에서 볼 수 있는 사건 하나
+    filled: bool = False                    # AI가 채운 줄인가. 사용자는 알아야 한다.
+
 class StoryBeat(BaseModel):
-    lines: List[str]                        # 화면에서 볼 수 있는 사건 한 줄씩
+    lines: List[StoryLine]
 
 class StoryScene(BaseModel):
     heading: str                            # "관제실, 밤"
@@ -326,3 +329,129 @@ class StoryScene(BaseModel):
 
 class StoryStructureResponse(BaseModel):
     scenes: List[StoryScene]
+
+
+# --- Directing review: 패널 → 다관점 피드백 -------------------------------
+# 미장센·촬영·편집 에이전트의 개별 판단과 합의/충돌, 감독의 선택 지점을
+# 하나의 응답으로 전달한다. 관객 검토는 의도 비공개 흐름이므로 별도 API를 쓴다.
+
+DirectingLens = Literal["mise", "camera", "editing"]
+DirectingReviewMode = Literal["multi", "mise", "camera", "editing"]
+DirectingDiagnosticLevel = Literal[
+    "attribute",
+    "shot_structure",
+    "shot_relation",
+    "scene_structure",
+]
+
+
+class DirectingReviewPanel(BaseModel):
+    id: str
+    image: str
+    context: Optional[str] = None
+    scene_id: Optional[str] = None
+
+
+class DirectingReviewRequest(BaseModel):
+    mode: DirectingReviewMode = "multi"
+    panels: List[DirectingReviewPanel] = Field(min_length=1)
+    intent: Optional[str] = ""
+
+
+class DirectingDiagnosis(BaseModel):
+    id: str
+    level: DirectingDiagnosticLevel
+    targets: List[str] = Field(min_length=1)
+    diagnosis: str
+    evidence: List[str] = Field(min_length=1, max_length=2)
+    theory_basis: Optional[str] = None
+    theory_source: Optional[str] = None
+    suggested_action: str
+
+    @model_validator(mode="after")
+    def validate_multi_panel_levels(self):
+        panel_ids = {target.split(".", 1)[0] for target in self.targets}
+        if self.level in {"shot_relation", "scene_structure"} and len(panel_ids) < 2:
+            raise ValueError(f"{self.level} diagnosis must target at least two panels")
+        if bool(self.theory_basis) != bool(self.theory_source):
+            raise ValueError("theory_basis and theory_source must both be present or both be null")
+        return self
+
+
+class DirectingLensResult(BaseModel):
+    summary: str
+    diagnoses: List[DirectingDiagnosis] = Field(default_factory=list, max_length=1)
+
+    @model_validator(mode="after")
+    def validate_unique_diagnosis_ids(self):
+        diagnosis_ids = [diagnosis.id for diagnosis in self.diagnoses]
+        if len(diagnosis_ids) != len(set(diagnosis_ids)):
+            raise ValueError("diagnosis ids must be unique within a lens result")
+        return self
+
+
+class DirectingCommonFinding(BaseModel):
+    type: Literal["agreement", "conflict"]
+    summary: str
+    lenses: List[DirectingLens] = Field(min_length=2)
+    diagnosis_ids: List[str] = Field(min_length=2)
+
+
+class DirectingChoiceOption(BaseModel):
+    id: str
+    label: str
+    description: Optional[str] = None
+    target_lens: Optional[DirectingLens] = None
+    intent_draft: Optional[str] = None
+
+
+class DirectingChoice(BaseModel):
+    id: str
+    prompt: str
+    lenses: List[DirectingLens] = Field(default_factory=list)
+    diagnosis_ids: List[str] = Field(default_factory=list)
+    options: List[DirectingChoiceOption] = Field(min_length=2)
+
+
+class DirectingQuestion(BaseModel):
+    id: str
+    prompt: str
+    lenses: List[DirectingLens] = Field(default_factory=list)
+    level: Optional[DirectingDiagnosticLevel] = None
+    targets: List[str] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def validate_multi_panel_levels(self):
+        panel_ids = {target.split(".", 1)[0] for target in self.targets}
+        if self.level in {"shot_relation", "scene_structure"} and len(panel_ids) < 2:
+            raise ValueError(f"{self.level} question must target at least two panels")
+        return self
+
+
+class DirectingReviewResponse(BaseModel):
+    lens_results: Dict[DirectingLens, DirectingLensResult]
+    common_findings: List[DirectingCommonFinding] = Field(default_factory=list)
+    directing_choices: List[DirectingChoice] = Field(default_factory=list)
+    questions: List[DirectingQuestion] = Field(default_factory=list)
+
+
+# --- Narrative suggestion: 지금 Beat에 대한 제안 ---------------------------
+# 제안이지 수정이 아니다. 사용자가 수락해야 대본이 바뀐다 (DG1 P2).
+
+class NarrativeSuggestionRequest(BaseModel):
+    narrative_request: str                  # 사용자의 요청
+    beat_lines: List[str]                   # 지금 Beat의 줄들
+    scene_intention: Optional[str] = ""
+    panel_count: Optional[int] = None       # 이 Beat의 현재 패널 수
+
+class NarrativeSuggestionItem(BaseModel):
+    type: Literal["split-beat", "insert-script-line", "replace-script-line", "panel-count"]
+    title: str
+    reason: str
+    line_index: int = -1                    # Beat 안에서의 줄 번호. 없으면 -1
+    original_text: str = ""
+    proposed_text: str = ""
+    target_count: int = -1
+
+class NarrativeSuggestionResponse(BaseModel):
+    suggestions: List[NarrativeSuggestionItem]
