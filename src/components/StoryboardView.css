@@ -3327,3 +3327,9 @@
   background: rgba(255, 255, 255, 0.08);
   color: rgba(255, 255, 255, 0.5);
 }
+
+/* 할 수 없는 요청. 아무 반응이 없으면 고장 난 것으로 보인다. */
+.narrative-rail-proposal-status.empty > span {
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.35);
+}

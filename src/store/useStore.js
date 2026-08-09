@@ -2100,6 +2100,8 @@ const useStore = create((set, get) => ({
   // 서버가 없어도 작업이 멈추지 않아야 한다.
   narrativePending: false,
   narrativeError: null,
+  // 한 번이라도 응답을 받았는가. 제안 0건과 아직 안 물어본 것을 구분한다.
+  narrativeAnswered: false,
   requestNarrativeSuggestions: async (input = {}) => {
     const state = get()
     const requestKey = state.narrativeSuggestionRequestKey + 1
@@ -2115,6 +2117,7 @@ const useStore = create((set, get) => ({
       narrativeSuggestionRequestKey: requestKey,
       narrativePending: true,
       narrativeError: null,
+      narrativeAnswered: false,
     })
 
     const scene = state.scenes[state.activeScene]
@@ -2133,12 +2136,13 @@ const useStore = create((set, get) => ({
         sceneIntention: state.sceneIntention || '',
         panelCount,
       })
-      set({ narrativeSuggestions: suggestions, narrativePending: false })
+      set({ narrativeSuggestions: suggestions, narrativePending: false, narrativeAnswered: true })
     } catch (error) {
       set({
         narrativeSuggestions: createMockNarrativeSuggestions(get(), requestKey, input),
         narrativePending: false,
         narrativeError: error.message,
+        narrativeAnswered: true,
       })
     }
   },

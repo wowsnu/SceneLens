@@ -703,6 +703,7 @@ export default function StoryboardView() {
   const structureError = useStore((s) => s.structureError)
   const narrativePending = useStore((s) => s.narrativePending)
   const narrativeError = useStore((s) => s.narrativeError)
+  const narrativeAnswered = useStore((s) => s.narrativeAnswered)
   const acceptStructureDraft = useStore((s) => s.acceptStructureDraft)
   const dismissStructureDraft = useStore((s) => s.dismissStructureDraft)
   const updateScreenplayLine = useStore((s) => s.updateScreenplayLine)
@@ -2275,6 +2276,21 @@ export default function StoryboardView() {
                     <div>
                       <strong>Beat {activeBeat + 1} 검토 중</strong>
                       <p>요청에 맞는 제안을 찾고 있습니다.</p>
+                    </div>
+                  </div>
+                )}
+
+                {/* 제안이 하나도 없으면 그 사실을 밝힌다. 요청을 보냈는데
+                    아무 반응이 없으면 고장 난 것으로 보인다. */}
+                {!narrativePending && narrativeAnswered && narrativeSuggestions.length === 0 && (
+                  <div className="narrative-rail-proposal-status empty">
+                    <span>—</span>
+                    <div>
+                      <strong>여기서는 할 수 없는 요청입니다</strong>
+                      <p>
+                        서사 에이전트는 지금 Beat만 다룹니다. 이야기를 새로
+                        만들거나 씬을 나누는 것은 대본 단계에서 합니다.
+                      </p>
                     </div>
                   </div>
                 )}
