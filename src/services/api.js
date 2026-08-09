@@ -1,4 +1,5 @@
 import { toStructureDraft } from './storyStructure.js'
+import { toNarrativeSuggestions } from './narrativeSuggestion.js'
 
 function normalizeApiBase(rawBase) {
   const trimmed = rawBase?.replace(/\/$/, '')
@@ -211,4 +212,22 @@ export async function structureStory(story, sceneIntention = '') {
     body: JSON.stringify({ story, scene_intention: sceneIntention }),
   }, 90000)
   return toStructureDraft(data, story)
+}
+
+// --- 지금 Beat에 대한 서사 제안 -------------------------------------------
+// 제안이지 수정이 아니다. 사용자가 수락해야 대본이 바뀐다 (DG1 P2).
+export async function suggestNarrative({
+  narrativeRequest, beatElements, targetBeat, requestKey, sceneIntention = '', panelCount = null,
+}) {
+  const data = await fetchWithTimeout(`${API_BASE}/narrative/suggest`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      narrative_request: narrativeRequest,
+      beat_lines: beatElements.map((element) => element.text),
+      scene_intention: sceneIntention,
+      panel_count: panelCount,
+    }),
+  }, 60000)
+  return toNarrativeSuggestions(data, { beatElements, targetBeat, requestKey })
 }

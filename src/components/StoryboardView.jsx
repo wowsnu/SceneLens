@@ -701,6 +701,8 @@ export default function StoryboardView() {
   const requestStoryStructure = useStore((s) => s.requestStoryStructure)
   const structurePending = useStore((s) => s.structurePending)
   const structureError = useStore((s) => s.structureError)
+  const narrativePending = useStore((s) => s.narrativePending)
+  const narrativeError = useStore((s) => s.narrativeError)
   const acceptStructureDraft = useStore((s) => s.acceptStructureDraft)
   const dismissStructureDraft = useStore((s) => s.dismissStructureDraft)
   const updateScreenplayLine = useStore((s) => s.updateScreenplayLine)
@@ -2267,7 +2269,13 @@ export default function StoryboardView() {
                     <span>{narrativeSuggestions.length}</span>
                     <div>
                       <strong>Proposal ready</strong>
-                      <p>대본 안의 관련 위치에 표시했습니다.</p>
+                      {/* 모델을 못 불렀으면 밝힌다. 규칙 기반 결과를 모델이
+                          만든 것처럼 보이게 두지 않는다. */}
+                      <p>
+                        {narrativeError
+                          ? `AI 호출 실패 · 규칙 기반 제안입니다`
+                          : '대본 안의 관련 위치에 표시했습니다.'}
+                      </p>
                     </div>
                   </div>
                 )}
@@ -2289,10 +2297,10 @@ export default function StoryboardView() {
                   <span>{`Beat ${activeBeat + 1}에 적용`}</span>
                   <button
                     type="button"
-                    disabled={!narrativeRequest.trim()}
+                    disabled={!narrativeRequest.trim() || narrativePending}
                     onClick={handleNarrativeRequest}
                   >
-                    Propose
+                    {narrativePending ? '생각 중…' : 'Propose'}
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
                       <path d="m9 18 6-6-6-6" />
                     </svg>

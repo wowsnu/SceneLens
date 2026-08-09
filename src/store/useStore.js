@@ -2096,13 +2096,52 @@ const useStore = create((set, get) => ({
   requestScriptEditor: () => set((state) => ({ scriptEditorRequestKey: state.scriptEditorRequestKey + 1 })),
   narrativeSuggestionRequestKey: 0,
   narrativeSuggestions: [],
-  requestNarrativeSuggestions: (input = {}) => set((state) => {
+  // 실제 모델을 부른다. 실패하면 규칙 기반 mock으로 떨어진다 —
+  // 서버가 없어도 작업이 멈추지 않아야 한다.
+  narrativePending: false,
+  narrativeError: null,
+  requestNarrativeSuggestions: async (input = {}) => {
+    const state = get()
     const requestKey = state.narrativeSuggestionRequestKey + 1
-    return {
+    const targetBeat = state.activeBeat ?? 0
+    const beatElements = state.screenplay
+      .map((element, globalIdx) => ({ ...element, globalIdx }))
+      .filter((element) => (element.beat ?? 0) === targetBeat)
+
+    const narrativeRequest = input.narrativeRequest?.trim() || ''
+    if (!narrativeRequest || beatElements.length === 0) return
+
+    set({
       narrativeSuggestionRequestKey: requestKey,
-      narrativeSuggestions: createMockNarrativeSuggestions(state, requestKey, input),
+      narrativePending: true,
+      narrativeError: null,
+    })
+
+    const scene = state.scenes[state.activeScene]
+    const branch = scene?.branches?.[scene.activeBranch ?? 0]
+    const panelCount = (branch?.shots || [])
+      .filter((shot) => (shot.scriptBeat ?? 0) === targetBeat).length
+
+    try {
+      // 지연 import — 스토어를 node로 단독 검증할 수 있게 한다.
+      const { suggestNarrative } = await import('../services/api.js')
+      const suggestions = await suggestNarrative({
+        narrativeRequest,
+        beatElements,
+        targetBeat,
+        requestKey,
+        sceneIntention: state.sceneIntention || '',
+        panelCount,
+      })
+      set({ narrativeSuggestions: suggestions, narrativePending: false })
+    } catch (error) {
+      set({
+        narrativeSuggestions: createMockNarrativeSuggestions(get(), requestKey, input),
+        narrativePending: false,
+        narrativeError: error.message,
+      })
     }
-  }),
+  },
   // 이야기를 씬·비트 구조로 세운다. 컷을 나누려면 그 단위가 있어야 하는데
   // 사용자가 쓴 한 덩어리 이야기에는 없다.
   //
