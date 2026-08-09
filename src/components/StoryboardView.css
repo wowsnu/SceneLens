@@ -3174,3 +3174,70 @@
   font-size: 13.5px;
   line-height: 1.62;
 }
+
+/* --- 씬 경계 -----------------------------------------------------------
+   Scene은 Beat보다 큰 단위다. 시공간이 연속된 범위이고, 그 안에 여러
+   Beat가 들어간다. 위계가 눈에 보여야 한다. */
+.sb-scene-label {
+  display: flex;
+  align-items: baseline;
+  gap: 9px;
+  margin: 26px 0 14px;
+  padding-bottom: 9px;
+  border-bottom: 1px solid rgba(216, 170, 98, 0.3);
+  font-family: Inter, -apple-system, sans-serif;
+}
+
+/* 첫 씬은 위 여백을 두지 않는다. */
+.sb-item:first-child .sb-scene-label {
+  margin-top: 0;
+}
+
+.sb-scene-label span {
+  flex-shrink: 0;
+  padding: 2px 7px;
+  border-radius: 4px;
+  background: rgba(216, 170, 98, 0.16);
+  color: rgba(216, 170, 98, 0.95);
+  font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.sb-scene-label strong {
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 15px;
+  font-weight: 750;
+}
+
+/* 컷 표의 씬 경계. Beat 행보다 위계가 높아야 한다. */
+.cut-plan-scene-row th {
+  padding: 16px 14px 8px !important;
+  border-bottom: 1px solid rgba(216, 170, 98, 0.3) !important;
+  background: transparent !important;
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 13.5px;
+  font-weight: 750;
+  text-align: left;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.cut-plan-scene-row th span {
+  display: inline-block;
+  margin-right: 9px;
+  padding: 2px 7px;
+  border-radius: 4px;
+  background: rgba(216, 170, 98, 0.16);
+  color: rgba(216, 170, 98, 0.95);
+  font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  vertical-align: middle;
+}
+
+.cut-plan-beat-group:first-child .cut-plan-scene-row th {
+  padding-top: 6px !important;
+}

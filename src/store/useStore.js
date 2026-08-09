@@ -30,6 +30,14 @@ const SCREENPLAY = [
   { type: 'action', text: '그리고 그녀는 카드를 민호에게 던지지 않는다. 방 한가운데, 콘솔 아래쪽으로 던진다.', beat: 6 },
   { type: 'action', text: '카드는 바닥을 미끄러져 콘솔 밑으로 들어간다. 민호의 시선이 순간 그쪽으로 쏠린다.', beat: 6 },
   { type: 'action', text: '재인이 리모컨을 향해 몸을 던진다.', beat: 6 },
+
+  // 장소가 바뀌므로 새 씬이다. 씬은 시공간이 연속된 범위다.
+  { type: 'scene-heading', text: '승강장, 밤', beat: 7 },
+  { type: 'action', text: '텅 빈 승강장. 노란 우비를 입은 아이가 홀로 서서 어두운 터널 쪽을 본다.', beat: 7 },
+  { type: 'action', text: '천장 스피커가 지직거린다. 아이가 한 걸음 물러선다.', beat: 7 },
+
+  { type: 'action', text: '터널 안쪽에서 헤드라이트 두 개가 서서히 밝아진다.', beat: 8 },
+  { type: 'action', text: '아이가 고개를 들어 열차가 오는 쪽을 본다.', beat: 8 },
 ]
 
 // Dummy strategy data with image paths and spatial coordinates
@@ -563,10 +571,23 @@ const inferSceneContext = (screenplay) => {
 const createMockCutPlan = (state) => {
   const withIdx = state.screenplay.map((element, globalIdx) => ({ ...element, globalIdx }))
   const beats = [...new Set(withIdx.map((element) => element.beat ?? 0))].sort((a, b) => a - b)
-  const { time, place } = inferSceneContext(state.screenplay)
   const items = []
 
+  // 시간·장소는 씬마다 다르다. 대본 전체에서 한 번 뽑으면 두 번째 씬의
+  // 컷이 첫 씬의 장소를 물려받는다 — 씬은 시공간이 연속된 범위다.
+  const sceneOf = (beat) => {
+    const openings = withIdx.filter((element) => element.type === 'scene-heading')
+    const opening = [...openings].reverse().find((element) => (element.beat ?? 0) <= beat)
+    if (!opening) return withIdx
+    const next = openings.find((element) => (element.beat ?? 0) > (opening.beat ?? 0))
+    return withIdx.filter((element) => (
+      (element.beat ?? 0) >= (opening.beat ?? 0)
+      && (next ? (element.beat ?? 0) < (next.beat ?? 0) : true)
+    ))
+  }
+
   beats.forEach((beat) => {
+    const { time, place } = inferSceneContext(sceneOf(beat))
     const beatElements = withIdx.filter((element) => (element.beat ?? 0) === beat)
     const actions = beatElements.filter((element) => element.type === 'action')
     const heading = beatElements.find((element) => element.type === 'scene-heading')

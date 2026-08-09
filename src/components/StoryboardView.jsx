@@ -801,6 +801,11 @@ export default function StoryboardView() {
   // 컷을 Beat별로 묶는다. index는 전체 기준이어야 이동·삭제가 맞는다.
   // 씬 헤딩도 Beat 구분도 없으면 아직 이야기 한 덩어리다.
   const hasSceneHeading = screenplay.some((element) => element.type === 'scene-heading')
+  // 씬 헤딩이 나온 순서로 번호를 매긴다. 이 Beat가 몇 번째 씬을 여는가.
+  const sceneOpeningBeats = screenplay
+    .filter((element) => element.type === 'scene-heading')
+    .map((element) => element.beat ?? 0)
+  const sceneNumberOf = (beat) => sceneOpeningBeats.indexOf(beat) + 1
   const needsStructure = screenplay.length > 0
     && !hasSceneHeading
     && new Set(screenplay.map((element) => element.beat ?? 0)).size === 1
@@ -1278,8 +1283,21 @@ export default function StoryboardView() {
                   </thead>
                   {cutPlanBeatGroups.map((group) => {
                     const collapsed = collapsedCutBeats.includes(group.beat)
+                    const sceneNo = sceneNumberOf(group.beat)
                     return (
                       <tbody key={group.beat} className="cut-plan-beat-group">
+                        {/* 씬이 바뀌는 Beat에 씬 경계를 그린다. 컷 표에서도
+                            어느 씬의 컷인지 보여야 한다. */}
+                        {sceneNo > 0 && (
+                          <tr className="cut-plan-scene-row">
+                            <th colSpan={8}>
+                              <span>Scene {sceneNo}</span>
+                              {screenplay.find((element) => (
+                                element.type === 'scene-heading' && element.beat === group.beat
+                              ))?.text}
+                            </th>
+                          </tr>
+                        )}
                         <tr className="cut-plan-beat-row">
                           <th colSpan={8}>
                             <button
@@ -1642,6 +1660,15 @@ export default function StoryboardView() {
                 )}
 
                 <div className="sb-text-col">
+                  {/* 씬 경계. Beat보다 큰 단위이므로 위에, 더 크게 둔다 —
+                      씬은 시공간이 연속된 범위이고 Beat는 그 안의 국면이다. */}
+                  {beatGroup.elements[0]?.type === 'scene-heading' && (
+                    <div className="sb-scene-label">
+                      <span>Scene {sceneNumberOf(beatGroup.beat)}</span>
+                      <strong>{beatGroup.elements[0].text}</strong>
+                    </div>
+                  )}
+
                   {/* Beat 경계 표시이자 이 Beat의 조작 지점. 줄마다 버튼을
                       띄우지 않고 여기로 모은다. */}
                   {(beats.length > 1 || isScriptStage) && (
