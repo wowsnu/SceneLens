@@ -22,6 +22,22 @@ const MOCK_PANEL_PALETTES = [
   ['#2c2118', '#735139', '#f4dfca'],
 ]
 
+// 관객 관점 Initial Reading을 실제 화면으로 점검하기 위한 고정 테스트 시퀀스.
+// 생성 API의 결과가 아니라 public에 저장된 패널이므로, 비어 있는 컷에만
+// 명시적으로 연결한다. 기존 드로잉·가져온 이미지를 덮어쓰지 않는다.
+const VIEWER_TEST_PANEL_IMAGES = [
+  '/img/viewer-test/panel-01-control-room-establishing.png',
+  '/img/viewer-test/panel-02-jaein-enters.png',
+  '/img/viewer-test/panel-03-minho-looks-back.png',
+  '/img/viewer-test/panel-04-minho-turns.png',
+  '/img/viewer-test/panel-05-jaein-points-camera.png',
+  '/img/viewer-test/panel-06-monitor-wall.png',
+  '/img/viewer-test/panel-07-remote-revealed.png',
+  '/img/viewer-test/panel-08-jaein-cornered.png',
+  '/img/viewer-test/panel-09-child-platform.png',
+  '/img/viewer-test/panel-10-jaein-lunges.png',
+]
+
 function createMockPanelImage(shotIdx, version = 1) {
   const [background, midtone, line] = MOCK_PANEL_PALETTES[shotIdx % MOCK_PANEL_PALETTES.length]
   const variant = (shotIdx + version) % 3
@@ -683,6 +699,8 @@ export default function StoryboardView() {
   const loadExampleScreenplay = useStore((s) => s.loadExampleScreenplay)
   const structureDraft = useStore((s) => s.structureDraft)
   const requestStoryStructure = useStore((s) => s.requestStoryStructure)
+  const structurePending = useStore((s) => s.structurePending)
+  const structureError = useStore((s) => s.structureError)
   const acceptStructureDraft = useStore((s) => s.acceptStructureDraft)
   const dismissStructureDraft = useStore((s) => s.dismissStructureDraft)
   const updateScreenplayLine = useStore((s) => s.updateScreenplayLine)
@@ -926,6 +944,7 @@ export default function StoryboardView() {
         ? selectedShots
         : allBlankShots
   const eligibleScopeShots = scopeShots.filter(({ shot, shotIdx }) => !getShotVisual(shot, shotIdx))
+  const viewerTestTargets = allBlankShots.slice(0, VIEWER_TEST_PANEL_IMAGES.length)
   const currentShotIds = new Set(flowShots.map((shot) => shot.id))
   const currentPanelCandidates = Object.values(panelCandidates)
     .filter((candidate) => currentShotIds.has(candidate.shotId))
@@ -958,6 +977,16 @@ export default function StoryboardView() {
         }
       })
       return next
+    })
+  }
+
+  const connectViewerTestPanels = () => {
+    viewerTestTargets.forEach(({ shot }, index) => {
+      updateFlowShotById(shot.id, {
+        image: VIEWER_TEST_PANEL_IMAGES[index],
+        source: 'viewer-test',
+        isAIGenerated: false,
+      })
     })
   }
 
@@ -1250,6 +1279,13 @@ export default function StoryboardView() {
                     이야기에 있는 내용만 문장으로 풀었습니다. 확인하기 전까지
                     원문은 바뀌지 않습니다.
                   </p>
+                  {/* 모델을 못 불렀으면 그 사실을 밝힌다. 규칙 기반 결과를
+                      모델이 만든 것처럼 보이게 두면 안 된다. */}
+                  {structureError && (
+                    <p className="structure-draft-fallback">
+                      AI 호출에 실패해 규칙 기반으로 나눴습니다 · {structureError}
+                    </p>
+                  )}
                 </div>
                 <div className="script-draft-actions">
                   <button type="button" onClick={dismissStructureDraft}>Dismiss</button>
@@ -1660,6 +1696,15 @@ export default function StoryboardView() {
               </button>
             </div>
             <div className="generation-bar-actions">
+              <button
+                type="button"
+                className="generation-viewer-test"
+                disabled={viewerTestTargets.length === 0}
+                onClick={connectViewerTestPanels}
+                title="비어 있는 컷에 저장된 관객 검토용 패널을 순서대로 연결합니다"
+              >
+                테스트 이미지 채우기{viewerTestTargets.length > 0 ? ` · ${viewerTestTargets.length}` : ''}
+              </button>
               {selectedShots.length > 0 && (
                 <button
                   type="button"
@@ -2183,8 +2228,9 @@ export default function StoryboardView() {
                       type="button"
                       className="narrative-rail-primary"
                       onClick={requestStoryStructure}
+                      disabled={structurePending}
                     >
-                      씬·Beat로 나누기
+                      {structurePending ? '나누는 중…' : '씬·Beat로 나누기'}
                     </button>
                   </>
                 ) : cutStage === 'script' ? (

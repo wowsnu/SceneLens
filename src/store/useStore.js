@@ -2109,10 +2109,29 @@ const useStore = create((set, get) => ({
   // 형식을 만들어 주는 것이 아니라 스토리보드가 필요로 하는 구조를 드러내는
   // 일이다. 제안으로 두고 사용자가 확인해야 적용된다 (DG1 P2).
   structureDraft: null,
-  requestStoryStructure: () => set((state) => ({
-    structureDraft: createStoryStructureDraft(state),
-    narrativeSuggestions: [],
-  })),
+  // 실제 모델을 부른다. 실패하면 규칙 기반 mock으로 떨어져 작업이 멈추지
+  // 않게 한다 — 서버가 없거나 키가 없어도 화면은 돌아가야 한다.
+  structurePending: false,
+  structureError: null,
+  requestStoryStructure: async () => {
+    const state = get()
+    const story = state.screenplay.map((line) => line.text.trim()).filter(Boolean).join(' ')
+    if (!story) return
+
+    set({ structurePending: true, structureError: null, narrativeSuggestions: [] })
+    try {
+      // 지연 import — 스토어를 node로 단독 검증할 수 있게 한다.
+      const { structureStory } = await import('../services/api.js')
+      const draft = await structureStory(story, state.sceneIntention || '')
+      set({ structureDraft: draft, structurePending: false })
+    } catch (error) {
+      set({
+        structureDraft: createStoryStructureDraft(get()),
+        structurePending: false,
+        structureError: error.message,
+      })
+    }
+  },
   dismissStructureDraft: () => set({ structureDraft: null }),
   acceptStructureDraft: () => set((state) => {
     const draft = state.structureDraft

@@ -365,12 +365,20 @@
   color: #e0e7ff;
 }
 
+.generation-viewer-test {
+  border: 1px solid rgba(250, 204, 21, 0.38);
+  background: rgba(250, 204, 21, 0.1);
+  color: #fde68a;
+}
+
 .generation-run:hover:not(:disabled),
-.generation-accept-all:hover {
+.generation-accept-all:hover,
+.generation-viewer-test:hover:not(:disabled) {
   filter: brightness(1.18);
 }
 
-.generation-run:disabled {
+.generation-run:disabled,
+.generation-viewer-test:disabled {
   cursor: not-allowed;
   opacity: 0.35;
 }
@@ -3301,4 +3309,11 @@
   font-size: 11px;
   font-style: normal;
   font-weight: 700;
+}
+
+/* 모델 호출 실패 — 규칙 기반 결과를 모델이 만든 것처럼 보이게 두지 않는다. */
+.structure-draft-fallback {
+  margin: 6px 0 0 !important;
+  color: rgba(216, 140, 98, 0.9) !important;
+  font-size: 11px !important;
 }
