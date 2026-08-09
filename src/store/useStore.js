@@ -1,50 +1,35 @@
 import { create } from 'zustand'
 
-// Screenplay data
+// 씬 서술. 대사는 두지 않는다 — 정지 이미지가 담을 수 없고, 스토리보드가
+// 평가하려는 것도 아니다. 말하는 장면은 말하는 모습으로 적는다.
+// Beat는 빈 줄(문단)로 나뉜다. 별도 형식을 배울 것이 없어야 한다.
 const SCREENPLAY = [
-  { type: 'scene-heading', text: 'INT. 지하철 관제실 - 밤', beat: 0 },
+  { type: 'scene-heading', text: '관제실, 밤', beat: 0 },
   { type: 'action', text: '좁고 낡은 지하 관제실. 형광등이 낮게 웅웅거리고, 콘크리트 벽 너머 어딘가에서 빗물이 떨어지는 소리가 들린다. 벽면 가득한 모니터에는 텅 빈 승강장과 깜빡이는 터널 화면이 비친다.', beat: 0 },
   { type: 'action', text: '재인, 20대 후반. 비를 흠뻑 맞은 채 안으로 미끄러지듯 들어와 조용히 철문을 닫는다. 손에는 훔쳐 온 출입카드가 쥐어져 있다.', beat: 0 },
   { type: 'action', text: '관제실 반대편 끝. 지친 눈빛의 역무 총괄 민호, 40대 초반, 혼자 콘솔 앞에 앉아 있다. 그는 뒤돌아보지 않는다.', beat: 0 },
-  { type: 'character', text: '민호', beat: 1 },
-  { type: 'dialogue', text: '생각보다 오래 걸렸네.', beat: 1 },
-  { type: 'action', text: '재인이 얼어붙는다.', beat: 1 },
-  { type: 'character', text: '재인', beat: 1 },
-  { type: 'dialogue', text: '아무도 안 따라왔는지 확인해야 했어요.', beat: 1 },
+
+  { type: 'action', text: '민호가 뒤돌아보지 않은 채 입을 연다. 재인이 문 앞에서 얼어붙는다.', beat: 1 },
+  { type: 'action', text: '재인이 젖은 앞머리를 쓸어 넘기며 대답한다. 시선은 여전히 민호의 등에 붙어 있다.', beat: 1 },
+
   { type: 'action', text: '민호가 천천히 의자를 돌린다. 얼굴은 차분하지만 오른손은 책상 아래 감춰져 있다.', beat: 2 },
-  { type: 'character', text: '민호', beat: 2 },
-  { type: 'dialogue', text: '가져오긴 했어?', beat: 2 },
-  { type: 'action', text: '재인은 출입카드를 살짝 들어 보이지만 가까이 다가가진 않는다.', beat: 2 },
-  { type: 'character', text: '재인', beat: 2 },
-  { type: 'dialogue', text: '먼저 카메라부터 꺼요.', beat: 2 },
+  { type: 'action', text: '재인은 출입카드를 살짝 들어 보이지만 가까이 다가가진 않는다. 반대편 손이 벽면 카메라를 가리킨다.', beat: 2 },
+
   { type: 'action', text: '민호가 모니터 벽을 흘끗 본다. 한 화면엔 어두운 승강장, 다른 화면엔 터널 안에 멈춰 선 열차가 보인다.', beat: 3 },
-  { type: 'character', text: '민호', beat: 3 },
-  { type: 'dialogue', text: '그 카드 하나가 널 지켜줄 거라고 생각해?', beat: 3 },
-  { type: 'character', text: '재인', beat: 3 },
-  { type: 'dialogue', text: '아니요.', beat: 3 },
-  { type: 'parenthetical', text: '(한 박자)', beat: 3 },
-  { type: 'dialogue', text: '딱 10초는 벌어주겠죠.', beat: 3 },
+  { type: 'action', text: '재인이 고개를 젓는다. 한 박자 뒤, 손에 쥔 카드를 살짝 들어 보인다.', beat: 3 },
+
   { type: 'action', text: '터널 너머로 열차 경적이 낮게 울린다. 형광등이 한 번 깜빡인다.', beat: 4 },
   { type: 'action', text: '민호가 일어선다. 의자가 뒤로 밀려나며 그림자 속으로 미끄러진다. 그제야 감춰져 있던 오른손이 드러난다. 손에는 빨간 버튼 하나가 달린 작은 검은 리모컨이 들려 있다.', beat: 4 },
-  { type: 'character', text: '민호', beat: 4 },
-  { type: 'dialogue', text: '그럼 그 10초, 잘 써.', beat: 4 },
   { type: 'action', text: '재인의 시선이 리모컨에서 모니터로, 다시 콘솔 옆 잠긴 철제 캐비닛으로 옮겨간다.', beat: 4 },
-  { type: 'character', text: '재인', beat: 4 },
-  { type: 'dialogue', text: '그걸 누르면 승강장 사람들 다 죽어요.', beat: 4 },
-  { type: 'character', text: '민호', beat: 4 },
-  { type: 'dialogue', text: '안 누르면 그 사람들이 여기까지 내려오지.', beat: 4 },
   { type: 'action', text: '그가 한 걸음 다가온다. 재인은 출입문 쪽으로 한 걸음 물러난다. 출구와 방 사이에 끼인 채 갇힌다.', beat: 4 },
+
   { type: 'action', text: '빗물 떨어지는 소리. 모니터 하나가 지직거리며 튄다. 한 화면에 노란 우비를 입은 어린아이가 홀로 승강장에 서 있다.', beat: 5 },
-  { type: 'character', text: '재인', beat: 5 },
-  { type: 'dialogue', text: '아직 늦지 않았어요.', beat: 5 },
-  { type: 'character', text: '민호', beat: 5 },
+  { type: 'action', text: '재인이 그 화면을 가리킨다. 민호의 턱이 굳는다.', beat: 5 },
+
   { type: 'action', text: '재인이 침을 삼킨다. 손에 쥔 카드에 힘이 들어간다.', beat: 6 },
   { type: 'action', text: '그리고 그녀는 카드를 민호에게 던지지 않는다. 방 한가운데, 콘솔 아래쪽으로 던진다.', beat: 6 },
-  { type: 'action', text: '카드는 바닥을 미끄러져 콘솔 밑으로 들어간다.', beat: 6 },
-  { type: 'action', text: '민호의 시선이 순간 그쪽으로 쏠린다.', beat: 6 },
-  { type: 'action', text: '그 짧은 틈이면 충분하다.', beat: 6 },
+  { type: 'action', text: '카드는 바닥을 미끄러져 콘솔 밑으로 들어간다. 민호의 시선이 순간 그쪽으로 쏠린다.', beat: 6 },
   { type: 'action', text: '재인이 리모컨을 향해 몸을 던진다.', beat: 6 },
-  { type: 'transition', text: 'CUT TO BLACK.', beat: 6 },
 ]
 
 // Dummy strategy data with image paths and spatial coordinates
@@ -195,28 +180,12 @@ const includesAny = (text, keywords) => keywords.some((keyword) => text.includes
 const createMockScriptSuggestion = ({ beatElements, targetBeat, requestKey, sceneIntention, narrativeRequest }) => {
   const normalizedRequest = narrativeRequest.trim()
   const normalizedIntention = sceneIntention.trim()
-  const dialogue = beatElements.find((element) => element.type === 'dialogue')
-  const wantsDialogueChange = includesAny(normalizedRequest, ['대사', '말', '설명', '짧게', '축약'])
-
-  if (dialogue && wantsDialogueChange) {
-    const hidesInformation = includesAny(`${normalizedIntention} ${normalizedRequest}`, ['숨', '불안', '위험', '긴장', '모호'])
-    return {
-      id: `narrative-${requestKey}-replace-${targetBeat}-${dialogue.globalIdx}`,
-      type: 'replace-script-line',
-      beat: targetBeat,
-      elementIndex: dialogue.globalIdx,
-      title: '이 대사를 덜 설명적으로 바꿔볼까요?',
-      reason: normalizedRequest,
-      originalText: dialogue.text,
-      proposedText: hidesInformation ? '그걸 정말 말해야 알아요?' : '그래서, 다음은요?',
-      actionLabel: 'Replace line',
-      sceneIntention: normalizedIntention,
-    }
-  }
-
-  const anchor = [...beatElements].reverse().find((element) => element.type !== 'transition') || beatElements[0]
-  const character = beatElements.find((element) => element.type === 'character')
-  const characterName = character?.text || '인물'
+  // 대사는 다루지 않는다. 제안은 행동 한 줄을 더하는 것뿐이다 —
+  // 대본을 쓰는 것이 아니라 검토 중 빠진 행동을 짚는 자리다.
+  const anchor = beatElements[beatElements.length - 1] || beatElements[0]
+  const characterName = KNOWN_CAST.find((name) => (
+    beatElements.some((element) => element.text.includes(name))
+  )) || '인물'
   const hidesInformation = includesAny(`${normalizedIntention} ${normalizedRequest}`, ['숨', '불안', '위험', '긴장', '모호'])
   const proposedText = hidesInformation
     ? `${characterName}은 원인을 확인하지 못한 채 움직임을 멈춘다. 익숙하던 소리가 한 박자 늦게 끊긴다.`
@@ -250,105 +219,6 @@ const hasFinalConsonant = (word = '') => {
   return (last - 0xac00) % 28 !== 0
 }
 
-const createMockScreenplayDraft = (state) => {
-  const source = state.screenplay
-  const draft = []
-  let beat = 0
-
-  source.forEach((element, index) => {
-    const text = element.text.trim()
-    if (!text) return
-
-    // 이미 대본 형식인 줄은 그대로 둔다.
-    if (element.type !== 'action' || text.length < 30) {
-      draft.push({ ...element, beat })
-      return
-    }
-
-    const names = ['재인', '민호'].filter((name) => text.includes(name))
-    const subject = names[0] || '인물'
-    const speaker = names[names.length - 1] || subject
-    const particle = hasFinalConsonant(subject) ? '이' : '가'
-    const impliesDialogue = includesAny(text, ['대치', '말', '기다리', '묻', '설득', '협상', '알고'])
-
-    // 장소가 드러나는 첫 서술은 scene heading으로 세운다.
-    if (index === 0 && includesAny(text, ['밤', '낮', '실', '방', '거리'])) {
-      const place = text.split(/[.,]/)[0].trim()
-      draft.push({ type: 'scene-heading', text: place.toUpperCase(), beat })
-    }
-
-    // 서술의 내용에 따라 다른 지문을 세운다. 같은 문장이 반복되면
-    // 초안이 쓸모없어 보인다.
-    const actionText = includesAny(text, ['들어', '몰래', '진입'])
-      ? `${subject}${particle} 문틈으로 들어선다. 발소리를 죽인 채 안쪽을 살핀다.`
-      : includesAny(text, ['기다리', '알고', '앉아'])
-        ? `${subject}${particle} 이미 자리에 앉아 있다. 돌아보지 않는다.`
-        : includesAny(text, ['들고', '리모컨', '위험'])
-          ? `${subject}의 손에 무언가 들려 있다. 그것이 화면 안에서 분명히 보인다.`
-          : includesAny(text, ['던지', '달려', '돌린'])
-            ? `${subject}${particle} 손에 쥔 것을 바닥으로 던진다. 시선이 그쪽으로 쏠린 순간 몸을 던진다.`
-            : `${subject}${particle} 움직인다. 그 행동이 화면 안에서 분명히 보인다.`
-
-    draft.push({ type: 'action', text: actionText, beat })
-
-    if (impliesDialogue) {
-      draft.push({ type: 'character', text: speaker, beat })
-      draft.push({ type: 'dialogue', text: '생각보다 오래 걸렸네.', beat })
-      // 대사가 오간 뒤는 국면이 바뀐 것으로 본다.
-      beat += 1
-    }
-  })
-
-  // 최소 한 줄은 남긴다.
-  if (draft.length === 0) return null
-
-  return {
-    id: `screenplay-draft-${Date.now()}`,
-    screenplay: draft,
-    beatCount: new Set(draft.map((element) => element.beat)).size,
-    sourceCount: source.length,
-  }
-}
-
-// 거친 메모로 들어온 대본은 전부 beat 0이다. 국면이 바뀌는 지점을 찾아
-// Beat 경계를 제안한다. 사용자가 무엇을 물어야 할지 몰라도 다음 단계가
-// 보이도록, 요청 문구 없이 호출할 수 있게 둔다.
-const createMockBeatSplitSuggestions = (state, requestKey) => {
-  const withIdx = state.screenplay.map((element, globalIdx) => ({ ...element, globalIdx }))
-  const beatCount = new Set(withIdx.map((element) => element.beat ?? 0)).size
-
-  // 이미 나뉘어 있으면 더 쪼개자고 하지 않는다.
-  if (beatCount > 1 || withIdx.length < 4) return []
-
-  const suggestions = []
-  // 국면 전환의 단서: 인물이 새로 말하기 시작하는 지점, 전환 지시.
-  withIdx.forEach((element, index) => {
-    if (index === 0 || suggestions.length >= 3) return
-    const prev = withIdx[index - 1]
-    const startsDialogue = element.type === 'character' && prev.type === 'action'
-    const isTransition = element.type === 'transition'
-    const backToAction = element.type === 'action'
-      && (prev.type === 'dialogue' || prev.type === 'parenthetical')
-
-    if (!startsDialogue && !isTransition && !backToAction) return
-
-    suggestions.push({
-      id: `beat-split-${requestKey}-${element.globalIdx}`,
-      type: 'split-beat',
-      beat: 0,
-      elementIndex: element.globalIdx,
-      title: '여기서 Beat를 나눠볼까요?',
-      reason: startsDialogue
-        ? `“${shortenNarrativeText(prev.text)}” 이후 대화가 시작되면서 국면이 바뀝니다.`
-        : isTransition
-          ? '전환 지시에서 장면의 국면이 끊깁니다.'
-          : `대사 이후 “${shortenNarrativeText(element.text)}”에서 행동으로 국면이 옮겨갑니다.`,
-      actionLabel: 'Split Beat',
-    })
-  })
-
-  return suggestions
-}
 
 const createMockNarrativeSuggestions = (state, requestKey, input = {}) => {
   const targetBeat = state.activeBeat ?? 0
@@ -490,6 +360,9 @@ const TIME_HINTS = [
   ['저녁', '저녁'], ['NIGHT', '밤'], ['DAY', '낮'], ['MORNING', '아침'],
 ]
 
+// 예제 씬의 등장인물. 실제로는 대본에서 추출하거나 사용자가 지정한다.
+const KNOWN_CAST = ['재인', '민호']
+
 // 대본 전체에서 시간·장소를 한 번만 추론한다. 컷마다 다시 뽑으면 흔들린다.
 const inferSceneContext = (screenplay) => {
   const heading = screenplay.find((element) => element.type === 'scene-heading')
@@ -527,15 +400,10 @@ const createMockCutPlan = (state) => {
   beats.forEach((beat) => {
     const beatElements = withIdx.filter((element) => (element.beat ?? 0) === beat)
     const actions = beatElements.filter((element) => element.type === 'action')
-    const dialogues = beatElements.filter((element) => element.type === 'dialogue')
     const heading = beatElements.find((element) => element.type === 'scene-heading')
-    const speakers = [...new Set(beatElements
-      .filter((element) => element.type === 'character')
-      .map((element) => element.text))]
-    // 이 Beat에 등장하는 인물. 대사 화자가 없으면 지문에서 찾는다.
+    // 이 Beat에 등장하는 인물. 서술에서 찾는다.
     const beatText = beatElements.map((element) => element.text).join(' ')
-    const mentioned = ['재인', '민호'].filter((name) => beatText.includes(name))
-    const cast = speakers.length > 0 ? speakers : mentioned
+    const cast = KNOWN_CAST.filter((name) => beatText.includes(name))
 
     let beatOrder = 0
     const push = (fields) => {
@@ -563,27 +431,25 @@ const createMockCutPlan = (state) => {
       })
     }
 
-    // 대사가 오가는 Beat: 화자 수만큼 컷을 나눈다.
-    if (dialogues.length > 0) {
-      const speakerCount = Math.max(1, Math.min(speakers.length, 2))
-      for (let i = 0; i < speakerCount; i += 1) {
-        push({
-          content: shortenNarrativeText(dialogues[i]?.text || dialogues[0].text, 50),
-          purpose: i === 0 ? '발화' : '리액션',
-          characters: speakers[i] || cast.join(', '),
-          shotSize: 'Bust',
-        })
-      }
-    }
+    // 나머지 서술은 문장 하나가 컷 하나다. 대사가 없으므로 컷을 나누는
+    // 근거는 행동이다 — 무엇이 일어나는지가 바뀌면 컷이 바뀐다.
+    const body = heading ? actions.slice(1) : actions
+    body.forEach((action) => {
+      // 그 문장에 나오는 인물만 그 컷에 넣는다. Beat 전체 인물을 넣으면
+      // 화면에 없는 사람까지 그리게 된다.
+      const inLine = KNOWN_CAST.filter((name) => action.text.includes(name))
+      const subject = inLine.length > 0 ? inLine : cast
 
-    // 대사 없이 행동만 있는 Beat.
-    if (dialogues.length === 0 && !heading && actions.length > 0) {
+      // 한 인물의 반응이면 가깝게, 둘이 함께 움직이면 넓게 잡는다.
+      const shotSize = subject.length > 1 ? 'Medium' : 'Bust'
+
       push({
-        content: shortenNarrativeText(actions[actions.length - 1].text, 60),
-        purpose: '행동 강조',
-        shotSize: actions.length > 2 ? 'Close-Up' : 'Medium',
+        content: shortenNarrativeText(action.text, 60),
+        purpose: subject.length > 1 ? '관계' : '행동 강조',
+        characters: subject.join(', '),
+        shotSize,
       })
-    }
+    })
   })
 
   return items
@@ -1410,15 +1276,6 @@ const applyCutPlanToShots = (cutPlan, existingShots) => {
   return { shots, orphanedWithImage }
 }
 
-// 초보 창작자가 실제로 주는 것은 대본이 아니라 줄글로 된 이야기다.
-// 대사도 인물 구분도 없고, 전체 흐름만 뭉뚱그려 적혀 있다.
-// 이 상태에서 "대본으로 만들기 → Beat 나누기 → 다듬기"가 왜 필요한지 드러난다.
-const ROUGH_SCREENPLAY = [
-  { type: 'action', text: '밤에 지하철 관제실에 재인이라는 애가 몰래 들어감. 카드를 훔쳐왔음.', beat: 0 },
-  { type: 'action', text: '근데 민호가 이미 알고 기다리고 있었음. 둘이 대치함.', beat: 0 },
-  { type: 'action', text: '민호는 리모컨 같은 걸 들고 있는데 그거 누르면 승강장 사람들이 위험해지는 상황.', beat: 0 },
-  { type: 'action', text: '재인이 카드를 바닥에 던져서 민호 시선을 돌린 다음 달려듦.', beat: 0 },
-]
 
 const useStore = create((set, get) => ({
   viewMode: 'script',
@@ -1852,8 +1709,8 @@ const useStore = create((set, get) => ({
   // 개발·데모용 예시 대본. 입력 화면에서 한 번에 채운다.
   // variant: 'rough'는 Beat가 나뉘지 않은 투박한 초안,
   // 'formatted'는 이미 Beat까지 정리된 대본이다.
-  loadExampleScreenplay: (variant = 'rough') => set((state) => {
-    const script = variant === 'formatted' ? SCREENPLAY : ROUGH_SCREENPLAY
+  loadExampleScreenplay: () => set((state) => {
+    const script = SCREENPLAY
     const maxBeat = Math.max(0, ...script.map((line) => line.beat ?? 0))
     const next = updateActiveBranchShots(state, (shots) => shots.map((shot) => ({
       ...shot,
@@ -1933,38 +1790,11 @@ const useStore = create((set, get) => ({
       narrativeSuggestions: createMockNarrativeSuggestions(state, requestKey, input),
     }
   }),
-  // 줄글을 대본으로 세운다. Beat 나누기까지 한 번에 하고, 사용자가
-  // 수락하기 전까지 원문은 그대로 둔다.
-  screenplayDraft: null,
-  requestScreenplayFormatting: () => set((state) => ({
-    screenplayDraft: createMockScreenplayDraft(state),
-    narrativeSuggestions: [],
-  })),
-  dismissScreenplayDraft: () => set({ screenplayDraft: null }),
-  acceptScreenplayDraft: () => set((state) => {
-    const draft = state.screenplayDraft
-    if (!draft) return {}
-    const maxBeat = Math.max(0, ...draft.screenplay.map((line) => line.beat ?? 0))
-    const next = updateActiveBranchShots(state, (shots) => shots.map((shot) => ({
-      ...shot,
-      scriptBeat: Math.max(0, Math.min(shot.scriptBeat ?? 0, maxBeat)),
-    })))
-    return {
-      ...next,
-      screenplay: draft.screenplay,
-      screenplayDraft: null,
-      narrativeSuggestions: [],
-      activeBeat: 0,
-    }
-  }),
-  // 요청 문구 없이 Beat 경계만 제안한다.
-  requestBeatSplit: () => set((state) => {
-    const requestKey = state.narrativeSuggestionRequestKey + 1
-    return {
-      narrativeSuggestionRequestKey: requestKey,
-      narrativeSuggestions: createMockBeatSplitSuggestions(state, requestKey),
-    }
-  }),
+  // 대본을 만드는 기능(줄글 → 대본, Beat 나누기 제안)은 두지 않는다.
+  // 대본은 주어진 것에서 시작한다 — 시나리오 저작은 스토리보드 연구의
+  // 범위가 아니고, 실험에서도 완성된 대본으로 진행한다.
+  // 남은 것은 '고치기'뿐이다: 줄 인라인 수정과 Beat 경계 조정.
+  // (DG3에서 발견된 어긋남이 대본까지 되돌아갈 수 있어야 한다.)
   dismissNarrativeSuggestion: (suggestionId) => set((state) => ({
     narrativeSuggestions: state.narrativeSuggestions.filter((suggestion) => suggestion.id !== suggestionId),
   })),

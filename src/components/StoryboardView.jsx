@@ -55,13 +55,11 @@ function createMockPanelImage(shotIdx, version = 1) {
   return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`
 }
 
+// 줄 종류는 둘뿐이다. 대사·괄호·전환은 두지 않는다 — 정지 이미지가
+// 담을 수 없고, 스토리보드가 평가하려는 것도 아니다.
 const SCRIPT_LINE_TYPES = [
   { value: 'scene-heading', label: 'Scene' },
   { value: 'action', label: 'Action' },
-  { value: 'character', label: 'Character' },
-  { value: 'dialogue', label: 'Dialogue' },
-  { value: 'parenthetical', label: 'Paren.' },
-  { value: 'transition', label: 'Transition' },
 ]
 
 // Script 단계에서 대본을 그 자리에서 고친다. 별도 raw 편집기를 열고
@@ -171,7 +169,7 @@ function ScriptLineEditor({
             const before = node.value.slice(0, caret)
             const after = node.value.slice(node.selectionEnd)
             // 인물 이름 다음 줄은 대사로 이어지는 것이 자연스럽다.
-            const nextType = element.type === 'character' ? 'dialogue' : element.type
+            const nextType = element.type === 'scene-heading' ? 'action' : element.type
             onInsertAfter(index, nextType, { before, after })
             return
           }
@@ -674,11 +672,6 @@ export default function StoryboardView() {
   const addShotArrow = useStore((s) => s.addShotArrow)
   const removeShotArrow = useStore((s) => s.removeShotArrow)
   const addBeatAfter = useStore((s) => s.addBeatAfter)
-  const requestBeatSplit = useStore((s) => s.requestBeatSplit)
-  const requestScreenplayFormatting = useStore((s) => s.requestScreenplayFormatting)
-  const screenplayDraft = useStore((s) => s.screenplayDraft)
-  const acceptScreenplayDraft = useStore((s) => s.acceptScreenplayDraft)
-  const dismissScreenplayDraft = useStore((s) => s.dismissScreenplayDraft)
   const loadExampleScreenplay = useStore((s) => s.loadExampleScreenplay)
   const updateScreenplayLine = useStore((s) => s.updateScreenplayLine)
   const setScreenplayLineType = useStore((s) => s.setScreenplayLineType)
@@ -828,17 +821,6 @@ export default function StoryboardView() {
   const toggleCutBeat = (beat) => setCollapsedCutBeats((current) => (
     current.includes(beat) ? current.filter((b) => b !== beat) : [...current, beat]
   ))
-
-  // 줄글로 들어온 이야기는 대사도 인물 구분도 없다. 대본으로 세우는 것이
-  // Beat 나누기보다 먼저다.
-  const hasDialogue = screenplay.some((element) => element.type === 'dialogue')
-  const hasLongProse = screenplay.some((element) => (
-    element.type === 'action' && element.text.length >= 30
-  ))
-  const needsScreenplayFormatting = !hasDialogue && hasLongProse
-  // 대본이 섰는데 Beat가 하나뿐이면 그다음이 Beat 나누기다.
-  const needsBeatSplit = !needsScreenplayFormatting
-    && beats.length === 1 && screenplay.length >= 4
 
   const getBeatShots = (beat) => flowShots
     .map((shot, shotIdx) => ({ shot, shotIdx }))
@@ -1032,41 +1014,44 @@ export default function StoryboardView() {
   }
 
   const handleUploadScript = () => {
-    const lines = rawText.split('\n').filter((line) => line.trim() !== '')
-    // 거친 입력도 받으므로 형식 추론은 느슨하게 한다. 정확한 분류는
-    // 사용자가 Script 단계에서 줄 종류를 직접 바꿔 고칠 수 있다.
+    // 형식 규칙은 둘뿐이다. 씬 헤딩이 씬을 나누고, 빈 줄이 Beat를 나눈다.
+    // 참가자가 별도 형식을 배울 필요가 없어야 한다 — 대사도 지문 구분도
+    // 없이 일어나는 일을 그대로 적으면 된다.
     //
-    // 주의: 한글은 대소문자가 없어 `text === text.toUpperCase()`가 항상 참이다.
-    // 영문 대문자 규칙만으로 인물 이름을 판별하면 한글 대본의 모든 줄이
-    // character가 되므로, 문장부호와 길이로 함께 판단한다.
-    const isSceneHeading = (text) => /^(INT|EXT|I\/E)[. ]/i.test(text)
-    const isTransition = (text) => /^(CUT TO|FADE (IN|OUT)|DISSOLVE|SMASH CUT)/i.test(text)
-    const isParenthetical = (text) => text.startsWith('(') && text.endsWith(')')
-    const isCharacterName = (text) => {
-      if (!text || text.length > 20) return false
-      if (isSceneHeading(text) || isTransition(text) || isParenthetical(text)) return false
-      // 문장부호가 있으면 이름이 아니라 서술·대사로 본다.
-      if (/[.!?,。…]/.test(text)) return false
-      const hasLatin = /[a-zA-Z]/.test(text)
-      // 영문은 전부 대문자일 때만 이름으로 본다.
-      if (hasLatin) return text === text.toUpperCase()
-      // 한글 등은 짧고 공백이 거의 없는 줄만 이름으로 본다.
-      return text.split(/\s+/).length <= 2
-    }
+    // 씬 헤딩: 첫 줄이거나 빈 줄 뒤에 오는 짧은 줄로, 문장부호가 없고
+    // 장소·시간처럼 읽히는 것. `관제실, 밤`
+    const looksLikeHeading = (text) => (
+      text.length <= 30
+      && !/[.!?…]/.test(text)
+      && text.split(/\s+/).length <= 5
+    )
 
-    const newScreenplay = lines.map((line, index) => {
+    const rawLines = rawText.split('\n')
+    const newScreenplay = []
+    let beat = 0
+    let sawContentInBeat = false
+    let atBlockStart = true
+
+    rawLines.forEach((line) => {
       const trimmed = line.trim()
-      const prev = index > 0 ? lines[index - 1].trim() : ''
-      let type = 'action'
 
-      if (isSceneHeading(trimmed)) type = 'scene-heading'
-      else if (isTransition(trimmed)) type = 'transition'
-      else if (isParenthetical(trimmed)) type = 'parenthetical'
-      else if (isCharacterName(prev) || isParenthetical(prev)) type = 'dialogue'
-      else if (isCharacterName(trimmed)) type = 'character'
+      // 빈 줄 = Beat 경계. 연속된 빈 줄은 하나로 본다.
+      if (trimmed === '') {
+        if (sawContentInBeat) {
+          beat += 1
+          sawContentInBeat = false
+        }
+        atBlockStart = true
+        return
+      }
 
-      return { type, text: trimmed, beat: 0 }
+      // 문단 첫 줄이면서 헤딩처럼 보이면 씬 헤딩이다.
+      const type = atBlockStart && looksLikeHeading(trimmed) ? 'scene-heading' : 'action'
+      newScreenplay.push({ type, text: trimmed, beat })
+      sawContentInBeat = true
+      atBlockStart = false
     })
+
     setSceneIntention(rawSceneIntention.trim())
     setScreenplay(newScreenplay)
     setIsEditingRaw(false)
@@ -1159,36 +1144,22 @@ export default function StoryboardView() {
               </label>
               <textarea
                 className="screenplay-input"
-                placeholder={'예:\n밤, 지하 관제실. 재인이 몰래 들어온다.\n민호는 이미 알고 있었다는 듯 앉아 있다.\n\n민호\n생각보다 오래 걸렸네.'}
+                placeholder={'관제실, 밤\n\n재인이 젖은 채로 들어와 철문을 닫는다.\n민호는 뒤돌아보지 않는다.\n\n민호가 천천히 의자를 돌린다.'}
                 value={rawText}
                 onChange={(e) => setRawText(e.target.value)}
               />
               <div className="editor-actions">
                 {!hasScreenplay && (
-                  <div className="example-btn-group">
-                    <button
-                      type="button"
-                      className="example-btn"
-                      onClick={() => {
-                        loadExampleScreenplay('rough')
-                        setIsEditingRaw(false)
-                      }}
-                      title="Beat가 나뉘지 않은 투박한 초안"
-                    >
-                      예시 · 거친 초안
-                    </button>
-                    <button
-                      type="button"
-                      className="example-btn"
-                      onClick={() => {
-                        loadExampleScreenplay('formatted')
-                        setIsEditingRaw(false)
-                      }}
-                      title="Beat까지 정리된 대본"
-                    >
-                      예시 · 정리된 대본
-                    </button>
-                  </div>
+                  <button
+                    type="button"
+                    className="example-btn"
+                    onClick={() => {
+                      loadExampleScreenplay()
+                      setIsEditingRaw(false)
+                    }}
+                  >
+                    예시 대본 불러오기
+                  </button>
                 )}
                 {hasScreenplay && (
                   <button className="cancel-btn" onClick={() => setIsEditingRaw(false)}>Cancel</button>
@@ -1202,46 +1173,6 @@ export default function StoryboardView() {
                 </button>
               </div>
             </div>
-          )}
-
-          {/* 줄글에서 세운 대본 초안. 원문은 수락 전까지 그대로 둔다. */}
-          {screenplayDraft && cutStage === 'script' && isExpanded && !drawingWorkspaceOpen && !showWriteScene && (
-            <section className="screenplay-draft-review" aria-label="Screenplay draft">
-              <header>
-                <span className="script-draft-mark" aria-hidden="true">N</span>
-                <div>
-                  <span>Narrative · Mock</span>
-                  <strong>대본 초안</strong>
-                  <p>
-                    {screenplayDraft.sourceCount}개의 서술을 지문과 대사로 풀고
-                    Beat {screenplayDraft.beatCount}개로 나눴습니다. 현재 대본은 아직 바뀌지 않았습니다.
-                  </p>
-                </div>
-                <div className="script-draft-actions">
-                  <button type="button" onClick={dismissScreenplayDraft}>Dismiss</button>
-                  <button type="button" onClick={requestScreenplayFormatting}>Again</button>
-                  <button type="button" className="use-draft" onClick={acceptScreenplayDraft}>
-                    Use draft
-                  </button>
-                </div>
-              </header>
-              <div className="screenplay-draft-body">
-                {screenplayDraft.screenplay.map((element, index) => {
-                  const previous = screenplayDraft.screenplay[index - 1]
-                  const startsBeat = !previous || previous.beat !== element.beat
-                  return (
-                    <div key={`${element.type}-${index}`}>
-                      {startsBeat && (
-                        <div className="screenplay-draft-beat">
-                          Beat {String(element.beat + 1).padStart(2, '0')}
-                        </div>
-                      )}
-                      <div className={`sb-script-${element.type}`}>{element.text}</div>
-                    </div>
-                  )
-                })}
-              </div>
-            </section>
           )}
 
           {cutPlan.length > 0 && cutStage === 'cutplan' && isExpanded && !drawingWorkspaceOpen && (
@@ -2065,37 +1996,8 @@ export default function StoryboardView() {
 
               <section className="narrative-rail-guidance">
                 <span>Next step</span>
-                {/* 사용자가 무엇을 물어야 할지 몰라도 다음 단계가 보이게 한다.
-                    줄글 → 대본 → Beat → 컷 순서로 이어진다. */}
-                {needsScreenplayFormatting ? (
-                  <>
-                    <p>
-                      아직 줄거리 설명에 가깝습니다. 지문과 대사로 풀고 Beat까지
-                      나눈 초안을 만듭니다.
-                    </p>
-                    <button
-                      type="button"
-                      className="narrative-rail-primary"
-                      onClick={requestScreenplayFormatting}
-                    >
-                      대본으로 다듬기
-                    </button>
-                  </>
-                ) : needsBeatSplit ? (
-                  <>
-                    <p>
-                      대본이 아직 한 덩어리입니다. 국면이 바뀌는 지점을 찾아
-                      Beat로 나누면 이후 작업을 Beat 단위로 진행할 수 있습니다.
-                    </p>
-                    <button
-                      type="button"
-                      className="narrative-rail-primary"
-                      onClick={requestBeatSplit}
-                    >
-                      Beat 나누기 제안
-                    </button>
-                  </>
-                ) : cutStage === 'script' ? (
+                {/* 대본은 주어진 것에서 시작한다. 다음 단계는 컷 분해다. */}
+                {cutStage === 'script' ? (
                   <>
                     <p>
                       대본이 준비됐습니다. 그림 전에 이 장면을 몇 개의 컷으로
