@@ -505,6 +505,8 @@ const createCutPlanItem = ({
   cameraMove = 'Fixed',
   // 촬영이 왜 이 샷을 골랐는지. 사용자가 판정하려면 근거가 있어야 한다.
   shotReason = '',
+  // 화면에서 시선이 먼저 가야 할 것. 프롬프트가 이것을 강조한다.
+  dominant = '',
   // 사용자가 조립된 프롬프트를 직접 고친 경우. 비어 있으면 컷에서 조립한
   // 문장을 쓴다. 원문은 언제든 다시 조립할 수 있으므로 되돌리기가 가능하다.
   promptOverride = '',
@@ -531,6 +533,7 @@ const createCutPlanItem = ({
     angle,
     cameraMove,
     shotReason,
+    dominant,
     promptOverride,
     provenance,
     requirements: createCutRequirements(id, requirements, provenance),
@@ -757,12 +760,16 @@ export const buildCutPrompt = (cut, {
     : ''
 
   // 4문장: 무엇이 읽혀야 하는가.
+  // 촬영이 정한 dominant가 있으면 그것을 쓴다 — 화면에서 시선이 먼저 가야
+  // 할 것이므로, purpose보다 구체적인 지시가 된다.
   const emphasisPhrase = PURPOSE_PHRASES[cut.purpose]
-  const emphasis = emphasisPhrase
-    ? `${emphasisPhrase} 잡는다.`
-    : (cut.purpose
-      ? `${cut.purpose}${hasFinalConsonant(cut.purpose) ? '이' : '가'} 드러나도록 잡는다.`
-      : '')
+  const emphasis = cut.dominant
+    ? `${cut.dominant}에 시선이 먼저 가도록 잡는다.`
+    : emphasisPhrase
+      ? `${emphasisPhrase} 잡는다.`
+      : (cut.purpose
+        ? `${cut.purpose}${hasFinalConsonant(cut.purpose) ? '이' : '가'} 드러나도록 잡는다.`
+        : '')
 
   // 이음새가 앞 컷과의 관계를 정한다. 경과가 있으면 앞 컷 직후가 아니므로
   // 인물의 자세나 위치를 그대로 이어 그리면 안 된다.
@@ -947,9 +954,98 @@ const diagnoseAgainstCoverage = (cutPlan, coverages, scenes) => {
   return findings
 }
 
-export const diagnoseCoverage = (cutPlan = [], { coverages = {}, scenes = [] } = {}) => {
+// 촬영 진단 — 한 컷 안의 문제. 이 컷이 무엇을 어떻게 보여주는가.
+// 컷 사이 문제(연속·점프컷·접근)는 편집이 본다. 층위가 다르다.
+export const diagnoseCoverage = (cutPlan = []) => {
   if (cutPlan.length === 0) return []
-  const findings = [...diagnoseAgainstCoverage(cutPlan, coverages, scenes)]
+  const findings = []
+
+  // 1. 샷이 정해지지 않은 컷. 촬영이 아직 할 일이 남았다.
+  const undecided = cutPlan.filter((cut) => !cut.shotSize)
+  if (undecided.length > 0) {
+    findings.push({
+      id: 'shots-undecided',
+      type: 'shots-undecided',
+      layer: 'attribute',
+      title: `샷이 정해지지 않은 컷 ${undecided.length}개`,
+      detail: '샷 크기와 앵글이 비어 있습니다. 이 상태로는 그림의 근거가 없습니다.',
+      cutIds: undecided.map((cut) => cut.id),
+    })
+  }
+
+  // 2. 컷 내용과 샷 크기가 어긋난다. 손에 든 것이 결정적인데 넓게 잡거나,
+  //    공간을 세워야 하는데 좁게 잡은 경우다.
+  const DETAIL_WORDS = ['손', '표정', '눈', '얼굴', '카드', '버튼', '리모컨', '쥔', '움켜']
+  const SPACE_WORDS = ['공간', '방', '전체', '멀리', '들어온다', '거리']
+  cutPlan.forEach((cut) => {
+    if (!cut.shotSize) return
+    const rank = SHOT_SIZE_ORDER.indexOf(cut.shotSize)
+    const text = `${cut.content || ''} ${cut.purpose || ''}`
+
+    if (rank <= 1 && DETAIL_WORDS.some((word) => text.includes(word))) {
+      findings.push({
+        id: `size-detail-${cut.id}`,
+        type: 'size-mismatch',
+        layer: 'attribute',
+        title: `컷 ${cut.beat + 1}-${cut.beatOrder} · 세부가 핵심인데 넓게 잡음`,
+        detail: `${cut.shotSize}로는 이 컷이 보여주려는 것이 화면에서 작게 남습니다.`,
+        cutIds: [cut.id],
+      })
+    }
+    if (rank >= 4 && SPACE_WORDS.some((word) => text.includes(word))) {
+      findings.push({
+        id: `size-space-${cut.id}`,
+        type: 'size-mismatch',
+        layer: 'attribute',
+        title: `컷 ${cut.beat + 1}-${cut.beatOrder} · 공간이 필요한데 좁게 잡음`,
+        detail: `${cut.shotSize}로는 위치 관계가 화면에 담기지 않습니다.`,
+        cutIds: [cut.id],
+      })
+    }
+  })
+
+  // 3. 화면에 인물이 둘 이상인데 관계를 만드는 앵글이 아니다.
+  cutPlan.forEach((cut) => {
+    if (!cut.shotSize || !cut.angle) return
+    const cast = (cut.characters || '').split(',').map((n) => n.trim()).filter(Boolean)
+    const rank = SHOT_SIZE_ORDER.indexOf(cut.shotSize)
+    if (cast.length >= 2 && rank >= 3 && cut.angle === 'Eye level') {
+      findings.push({
+        id: `angle-flat-${cut.id}`,
+        type: 'angle-flat',
+        layer: 'attribute',
+        title: `컷 ${cut.beat + 1}-${cut.beatOrder} · 두 인물이 좁은 샷에 평면적으로`,
+        detail: '둘이 함께 있는데 정면 눈높이라 관계가 드러나지 않습니다. OTS나 앵글 변화를 검토하세요.',
+        cutIds: [cut.id],
+      })
+    }
+  })
+
+  // 4. 공간을 세우는 컷 없이 시작하면 관객은 어디인지 모른다.
+  //    씬 범위의 문제라 촬영이 짚는다 — 한 컷을 고쳐서 될 일이 아니다.
+  const decided = cutPlan.filter((cut) => cut.shotSize)
+  if (decided.length > 0) {
+    const establishing = decided.some((cut) => SHOT_SIZE_ORDER.indexOf(cut.shotSize) <= 1)
+    if (!establishing) {
+      findings.push({
+        id: 'no-establishing',
+        type: 'no-establishing',
+        layer: 'scope',
+        title: '공간을 세우는 컷 없음',
+        detail: '전체가 좁은 샷입니다. 관객이 어디인지 파악할 근거가 없습니다.',
+        cutIds: [cutPlan[0].id],
+      })
+    }
+  }
+
+  return findings
+}
+
+// 편집 진단 중 샷에 관한 것 — 컷을 이어 붙였을 때 어떻게 읽히는가.
+// 촬영이 아니라 편집인 이유: 이것들은 컷 하나를 고쳐서 해결되지 않고
+// 컷 사이의 관계를 다시 맺어야 한다 (design_goal.md DG2 P1).
+const diagnoseShotFlow = (cutPlan, coverages, scenes) => {
+  const findings = []
 
   // 1. 같은 샷 크기가 이어지면 컷을 나눈 의미가 화면에 드러나지 않는다.
   let runStart = 0
@@ -957,7 +1053,7 @@ export const diagnoseCoverage = (cutPlan = [], { coverages = {}, scenes = [] } =
     const ended = i === cutPlan.length || cutPlan[i].shotSize !== cutPlan[runStart].shotSize
     if (ended) {
       const run = i - runStart
-      if (run >= 3) {
+      if (run >= 3 && cutPlan[runStart].shotSize) {
         findings.push({
           id: `run-${cutPlan[runStart].id}`,
           type: 'size-run',
@@ -971,47 +1067,11 @@ export const diagnoseCoverage = (cutPlan = [], { coverages = {}, scenes = [] } =
     }
   }
 
-  // 2. 대사를 주고받는데 리액션 컷이 없다. 말하는 쪽만 보이면 듣는 쪽의
-  //    반응은 후속 공정에서도 되살릴 수 없다.
-  const beats = [...new Set(cutPlan.map((cut) => cut.beat))]
-  beats.forEach((beat) => {
-    const inBeat = cutPlan.filter((cut) => cut.beat === beat)
-    const speech = inBeat.filter((cut) => cut.purpose === '발화')
-    const reaction = inBeat.filter((cut) => cut.purpose === '리액션')
-    if (speech.length > 0 && reaction.length === 0) {
-      findings.push({
-        id: `reaction-${beat}`,
-        type: 'missing-reaction',
-        layer: 'existence',
-        title: `Beat ${beat + 1}에 리액션 컷 없음`,
-        detail: '말하는 쪽만 있습니다. 듣는 쪽이 어떻게 반응하는지 보이지 않습니다.',
-        cutIds: speech.map((cut) => cut.id),
-      })
-    }
-  })
-
-  // 3. 공간을 세우는 컷 없이 클로즈업으로 시작하면 관객은 어디인지 모른다.
-  const first = cutPlan[0]
-  const establishing = cutPlan.some((cut) => (
-    SHOT_SIZE_ORDER.indexOf(cut.shotSize) <= 1
-  ))
-  if (!establishing) {
-    findings.push({
-      id: 'no-establishing',
-      type: 'no-establishing',
-      layer: 'scope',
-      title: '공간을 세우는 컷 없음',
-      detail: '전체가 좁은 샷입니다. 관객이 어디인지 파악할 근거가 없습니다.',
-      cutIds: [first.id],
-    })
-  }
-
-  // 4. 크기 차이가 너무 작으면 컷이 튄다(점프컷). 한 단계 차이는 같은
-  //    구도를 조금 당긴 것처럼 보인다.
+  // 2. 크기 차이가 너무 작으면 컷이 튄다(점프컷).
   cutPlan.forEach((cut, index) => {
-    if (index === 0) return
+    if (index === 0 || !cut.shotSize) return
     const prev = cutPlan[index - 1]
-    if (prev.beat !== cut.beat) return
+    if (prev.beat !== cut.beat || !prev.shotSize) return
     const gap = Math.abs(
       SHOT_SIZE_ORDER.indexOf(cut.shotSize) - SHOT_SIZE_ORDER.indexOf(prev.shotSize),
     )
@@ -1019,7 +1079,7 @@ export const diagnoseCoverage = (cutPlan = [], { coverages = {}, scenes = [] } =
       findings.push({
         id: `jump-${cut.id}`,
         type: 'jump-cut',
-        layer: 'attribute',
+        layer: 'relation',
         title: `컷 ${prev.beat + 1}-${prev.beatOrder} → ${cut.beat + 1}-${cut.beatOrder} 점프컷 위험`,
         detail: '크기와 앵글이 거의 같습니다. 이어 붙이면 화면이 튑니다.',
         cutIds: [prev.id, cut.id],
@@ -1027,6 +1087,8 @@ export const diagnoseCoverage = (cutPlan = [], { coverages = {}, scenes = [] } =
     }
   })
 
+  // 3. 촬영이 세운 카메라 흐름과 실제 샷이 어긋나는 지점.
+  findings.push(...diagnoseAgainstCoverage(cutPlan, coverages, scenes))
   return findings
 }
 
@@ -1081,9 +1143,12 @@ export const diagnoseSeams = (cutPlan = [], screenplay = [], {
   // 컷 → 패널 → 이음새. 이음새는 패널 사이에 붙으므로 컷에서 바로 찾을 수 없다.
   seams = {},
   shots = [],
+  // 촬영이 세운 카메라 흐름. 샷이 이어지는지는 편집이 본다.
+  coverages = {},
+  scenes = [],
 } = {}) => {
   if (cutPlan.length === 0) return []
-  const findings = []
+  const findings = [...diagnoseShotFlow(cutPlan, coverages, scenes)]
 
   const seamForCut = (cutId) => {
     const shot = shots.find((entry) => entry.cutPlanItemId === cutId)
@@ -1913,6 +1978,7 @@ const useStore = create((set, get) => ({
               cameraMove: shot.camera_move,
               // 왜 이 샷인지. 사용자가 판정하려면 근거가 있어야 한다.
               shotReason: shot.reason,
+              dominant: shot.dominant || '',
             }
           }
           return item

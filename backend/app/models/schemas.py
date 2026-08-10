@@ -503,6 +503,8 @@ class DesignedShot(BaseModel):
     shot_size: str
     angle: str
     camera_move: str
+    # 화면에서 시선이 먼저 가야 할 것. 프롬프트가 이것을 강조한다.
+    dominant: str = ""
     reason: str = ""
 
 class SceneCoverage(BaseModel):

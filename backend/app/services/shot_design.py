@@ -59,13 +59,15 @@ RESPONSE_SCHEMA = {
                 "items": {
                     "type": "object",
                     "additionalProperties": False,
-                    "required": ["cut_index", "shot_size", "angle", "camera_move", "reason"],
+                    "required": ["cut_index", "shot_size", "angle", "camera_move", "dominant", "reason"],
                     "properties": {
                         # 요청에 준 컷의 순번 (0부터).
                         "cut_index": {"type": "integer"},
                         "shot_size": {"type": "string", "enum": SHOT_SIZES},
                         "angle": {"type": "string", "enum": ANGLES},
                         "camera_move": {"type": "string", "enum": MOVES},
+                        # 화면에서 관객의 시선이 먼저 가야 할 것. 짧은 명사구.
+                        "dominant": {"type": "string"},
                         # 왜 이 샷인가. 한 문장.
                         "reason": {"type": "string"},
                     },
@@ -104,6 +106,14 @@ PROMPT = f"""당신은 촬영감독입니다. 줄콘티가 나눈 컷을 어떻�
   많이 고르면 씬이 계속 넓어져 긴장이 쌓이지 않습니다.
 
 **2단계 — 그 흐름대로 각 컷의 샷을 정합니다.**
+
+각 컷에 dominant도 정하세요. **화면에서 관객의 시선이 먼저 가야 할 것**입니다.
+프레이밍의 지배 요소(dominant)가 곧 이 컷이 전달하려는 것이어야 합니다.
+- 짧은 명사구로 씁니다. "민호의 숨긴 오른손", "재인이 쥔 출입카드",
+  "모니터 속 노란 우비 아이"
+- 인물 전체가 아니라 **화면 안의 무엇**인지 짚으세요. "재인" 대신
+  "재인의 굳은 표정"처럼.
+- 샷 크기와 맞아야 합니다. dominant가 손이면 Wide로는 보이지 않습니다.
 
 **세운 흐름을 반드시 지키세요.** 설계해 놓고 다르게 정하면 세운 의미가
 없습니다. 샷을 다 정한 뒤 아래를 확인하고, 어긋나면 고치세요.

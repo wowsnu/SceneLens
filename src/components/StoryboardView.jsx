@@ -298,6 +298,18 @@ function ShotInspector({
           {field('장소', 'place')}
           {field('인물', 'characters')}
         </div>
+        {/* 화면에서 시선이 먼저 가야 할 것. 프롬프트가 이것을 강조한다. */}
+        {cut.dominant && (
+          <label className="shot-inspector-field wide">
+            <span>시선이 가야 할 곳</span>
+            <input
+              type="text"
+              value={cut.dominant}
+              onChange={(event) => onChange(cut.id, { dominant: event.target.value })}
+            />
+          </label>
+        )}
+
         {/* 촬영이 왜 이 샷을 골랐는지. 판정하려면 근거가 보여야 한다. */}
         {cut.shotReason && (
           <p className="shot-inspector-reason">
@@ -782,7 +794,6 @@ export default function StoryboardView() {
   const flowShots = branch?.shots || []
   // 컷 사이의 문제. 컷 하나만 보면 드러나지 않는다.
   // flowShots가 필요하므로 그 뒤에 둔다 — 이음새는 패널 사이에 붙는다.
-  const seamFindings = diagnoseSeams(cutPlan, screenplay, { seams, shots: flowShots })
 
   // 이 컷 앞의 이음새. 패널 순서 기준이므로 컷이 아니라 패널에서 찾는다.
   const seamBefore = (cutId) => {
@@ -825,7 +836,12 @@ export default function StoryboardView() {
   // 씬 헤딩이 나온 순서로 번호를 매긴다. 이 Beat가 몇 번째 씬을 여는가.
   const scriptScenes = selectScenes(screenplay)
   // 여러 컷을 함께 읽어야 보이는 문제. scriptScenes가 필요하므로 그 뒤에 둔다.
-  const coverageFindings = diagnoseCoverage(cutPlan, {
+  const coverageFindings = diagnoseCoverage(cutPlan)
+  // 컷 사이의 문제. scriptScenes가 필요하므로 그 뒤에 둔다.
+  const seamFindings = diagnoseSeams(cutPlan, screenplay, {
+    seams,
+    shots: flowShots,
+    // 샷이 이어지는지도 편집이 본다 — 컷 사이의 문제이기 때문이다.
     coverages: sceneCoverages,
     scenes: scriptScenes,
   })
@@ -2451,8 +2467,8 @@ export default function StoryboardView() {
                 {openAgent === 'camera' && (
                 <div className="rail-agent-body">
                   <p className="rail-lens-lead">
-                    줄콘티가 나눈 컷을 어떻게 찍을지 정합니다. 정한 뒤에도
-                    컷 표에서 고칠 수 있습니다.
+                    줄콘티가 나눈 컷을 어떻게 찍을지 정합니다. 한 컷 안의
+                    문제를 봅니다 — 컷을 이어 붙였을 때의 문제는 편집이 봅니다.
                   </p>
 
                   {/* 샷을 정하는 것이 촬영의 몫이다. 줄콘티는 컷만 나눈다. */}
@@ -2510,7 +2526,7 @@ export default function StoryboardView() {
                 <div className="rail-agent-body">
                   <p className="rail-lens-lead">
                     컷 하나하나는 멀쩡해도 이어 붙이면 문제가 되는 것들입니다.
-                    컷을 나누고 합치는 것은 표에서 합니다.
+                    샷이 이어지는지도 여기서 봅니다.
                   </p>
                   <DiagnosisList
                     findings={seamFindings}
