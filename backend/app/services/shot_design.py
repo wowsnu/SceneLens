@@ -220,61 +220,18 @@ async def design_shots(request: ShotDesignRequest) -> ShotDesignResponse:
         max_completion_tokens=4000,
     )
     result = ShotDesignResponse(**json.loads(response.choices[0].message.content.strip()))
-    return _enforce_coverage(result)
 
-
-# 프롬프트만으로는 설계가 지켜지지 않는다. 모델이 세운 흐름과 실제 샷이
-# 어긋나면 여기서 맞춘다 — 설계를 응답에 남기게 한 이유가 이것이다.
-_SIZE_ORDER = {size: i for i, size in enumerate(SHOT_SIZES)}
-
-
-def _enforce_coverage(result: ShotDesignResponse) -> ShotDesignResponse:
-    coverage = result.coverage
-    if not coverage:
-        return result
-
-    by_index = {shot.cut_index: shot for shot in result.shots}
-
-    # 모델이 없는 컷 번호를 가리키면 그 설계는 실행할 수 없다. 조용히
-    # 넘기면 설계와 결과가 어긋난 채로 남으므로 미리 걸러 낸다.
-    coverage.anchor_cuts = [i for i in coverage.anchor_cuts if i in by_index]
-    coverage.approach = [i for i in coverage.approach if i in by_index]
-    if coverage.peak_cut not in by_index:
-        # 고비가 없으면 가장 가까운 샷이 놓인 컷을 고비로 본다.
-        coverage.peak_cut = max(
-            by_index,
-            key=lambda i: _SIZE_ORDER.get(by_index[i].shot_size, 0),
-            default=-1,
-        )
-
-    # 1. 공간을 세우는 컷은 넓어야 한다. 그러라고 고른 컷이다.
-    for index in coverage.anchor_cuts:
-        shot = by_index.get(index)
-        if shot and _SIZE_ORDER.get(shot.shot_size, 0) > _SIZE_ORDER["Full"]:
-            shot.shot_size = "Full"
-
-    # 2. 접근 구간은 좁아지기만 한다. 중간에 넓어지면 접근이 끊긴다.
-    #    앞 컷보다 넓어진 것을 앞 컷 크기로 끌어당긴다.
-    previous = None
-    for index in coverage.approach:
-        shot = by_index.get(index)
-        if not shot:
-            continue
-        current = _SIZE_ORDER.get(shot.shot_size, 0)
-        if previous is not None and current < previous:
-            shot.shot_size = SHOT_SIZES[previous]
-            current = previous
-        previous = current
-
-    # 3. 고비가 씬에서 가장 가까운 샷이어야 한다. 다른 컷이 더 가까우면
-    #    그 컷을 한 단계 물린다 — 접근의 끝이 무의미해지기 때문이다.
-    peak = by_index.get(coverage.peak_cut)
-    if peak:
-        peak_size = _SIZE_ORDER.get(peak.shot_size, 0)
-        for index, shot in by_index.items():
-            if index == coverage.peak_cut:
-                continue
-            if _SIZE_ORDER.get(shot.shot_size, 0) >= peak_size and peak_size > 0:
-                shot.shot_size = SHOT_SIZES[peak_size - 1]
+    # 설계와 어긋나도 값을 고치지 않는다. 모델이 "여기서 잠깐 물러났다
+    # 붙자"고 판단했을 수 있고, 그것을 코드가 덮어쓰면 AI의 선택이 아니라
+    # 우리가 정한 것이 된다. 어긋남은 촬영 진단이 짚고, 고칠지는 창작자가
+    # 정한다 (design_goal.md: 발견과 처분의 분리).
+    #
+    # 다만 없는 컷을 가리키는 설계는 실행도 검증도 할 수 없으므로 걸러 낸다.
+    if result.coverage:
+        valid = {shot.cut_index for shot in result.shots}
+        result.coverage.anchor_cuts = [i for i in result.coverage.anchor_cuts if i in valid]
+        result.coverage.approach = [i for i in result.coverage.approach if i in valid]
+        if result.coverage.peak_cut not in valid:
+            result.coverage.peak_cut = -1
 
     return result

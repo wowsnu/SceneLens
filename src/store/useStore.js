@@ -872,9 +872,84 @@ export const PROBLEM_LAYERS = {
 
 const SHOT_SIZE_ORDER = ['Wide', 'Full', 'Medium', 'Bust', 'Close-Up', 'ECU']
 
-export const diagnoseCoverage = (cutPlan = []) => {
-  if (cutPlan.length === 0) return []
+// 모델이 세운 카메라 흐름과 실제 샷이 어긋나는 지점을 짚는다.
+// 값을 고치지는 않는다 — 잠깐 물러났다 붙는 것은 실제 연출 기법이고,
+// 그것이 의도인지 실수인지는 창작자가 판정할 일이다.
+const diagnoseAgainstCoverage = (cutPlan, coverages, scenes) => {
   const findings = []
+  const rank = (id) => {
+    const cut = cutPlan.find((item) => item.id === id)
+    return cut ? SHOT_SIZE_ORDER.indexOf(cut.shotSize) : -1
+  }
+  const label = (id) => {
+    const cut = cutPlan.find((item) => item.id === id)
+    return cut ? `${cut.beat + 1}-${cut.beatOrder}` : '?'
+  }
+
+  scenes.forEach((scene) => {
+    const coverage = coverages[scene.id]
+    if (!coverage) return
+
+    // 공간을 세우기로 한 컷이 좁게 잡혔다.
+    const tightAnchors = coverage.anchorCutIds.filter((id) => rank(id) > 1)
+    if (tightAnchors.length > 0) {
+      findings.push({
+        id: `cov-anchor-${scene.id}`,
+        type: 'anchor-too-tight',
+        layer: 'relation',
+        title: `공간을 세우기로 한 컷이 좁습니다 · ${tightAnchors.map(label).join(', ')}`,
+        detail: '이 컷으로 공간을 세우려 했는데 넓은 샷이 아닙니다. 관객이 어디인지 잡을 근거가 약해집니다.',
+        cutIds: tightAnchors,
+      })
+    }
+
+    // 접근 구간에서 크기가 넓어졌다. 접근이 끊긴다.
+    let previous = null
+    const widened = []
+    coverage.approachCutIds.forEach((id) => {
+      const current = rank(id)
+      if (current < 0) return
+      if (previous !== null && current < previous) widened.push(id)
+      previous = current
+    })
+    if (widened.length > 0) {
+      findings.push({
+        id: `cov-approach-${scene.id}`,
+        type: 'approach-broken',
+        layer: 'relation',
+        title: `접근 구간에서 샷이 넓어집니다 · ${widened.map(label).join(', ')}`,
+        detail: '고비로 좁혀 들어가는 구간인데 중간에 넓어집니다. 의도한 완급이면 그대로 두세요.',
+        cutIds: widened,
+      })
+    }
+
+    // 고비보다 가까운 컷이 있다. 접근의 끝이 무의미해진다.
+    if (coverage.peakCutId) {
+      const peak = rank(coverage.peakCutId)
+      const closer = cutPlan
+        .filter((cut) => cut.id !== coverage.peakCutId
+          && SHOT_SIZE_ORDER.indexOf(cut.shotSize) >= peak
+          && peak >= 0)
+        .map((cut) => cut.id)
+      if (closer.length > 0) {
+        findings.push({
+          id: `cov-peak-${scene.id}`,
+          type: 'peak-not-closest',
+          layer: 'relation',
+          title: `고비보다 가깝거나 같은 컷이 있습니다 · ${closer.slice(0, 3).map(label).join(', ')}`,
+          detail: `고비는 컷 ${label(coverage.peakCutId)}입니다. 다른 컷이 더 가까우면 접근의 끝이 드러나지 않습니다.`,
+          cutIds: [coverage.peakCutId, ...closer],
+        })
+      }
+    }
+  })
+
+  return findings
+}
+
+export const diagnoseCoverage = (cutPlan = [], { coverages = {}, scenes = [] } = {}) => {
+  if (cutPlan.length === 0) return []
+  const findings = [...diagnoseAgainstCoverage(cutPlan, coverages, scenes)]
 
   // 1. 같은 샷 크기가 이어지면 컷을 나눈 의미가 화면에 드러나지 않는다.
   let runStart = 0
@@ -1770,6 +1845,8 @@ const useStore = create((set, get) => ({
   // 감독이 컷을 나누고 촬영감독과 샷을 정하는 순서다.
   shotDesignPending: false,
   shotDesignError: null,
+  // 씬마다 모델이 세운 카메라 흐름. 진단이 실제 샷과 견준다.
+  sceneCoverages: {},
   requestShotDesign: async () => {
     const state = get()
     if (state.cutPlan.length === 0) return
@@ -1798,16 +1875,31 @@ const useStore = create((set, get) => ({
           .map((element) => element.text)
           .join('\n')
 
-        const shots = await designShots({
+        const { shots, coverage } = await designShots({
           heading: scene.heading,
           cuts,
           script,
           sceneIntention: state.sceneIntention || '',
         })
-        bySceneId.set(scene.id, { cuts, shots })
+        bySceneId.set(scene.id, { cuts, shots, coverage })
       }
 
+      const coverages = {}
+      bySceneId.forEach(({ coverage, cuts }, sceneId) => {
+        if (!coverage) return
+        // 모델은 요청에 준 순번으로 답한다. 컷 id로 옮겨야 컷이 바뀌어도
+        // 설계가 어느 컷을 가리키는지 잃지 않는다.
+        const idOf = (index) => cuts[index]?.id
+        coverages[sceneId] = {
+          arc: coverage.arc,
+          anchorCutIds: (coverage.anchor_cuts || []).map(idOf).filter(Boolean),
+          approachCutIds: (coverage.approach || []).map(idOf).filter(Boolean),
+          peakCutId: idOf(coverage.peak_cut) || null,
+        }
+      })
+
       set({
+        sceneCoverages: coverages,
         cutPlan: get().cutPlan.map((item) => {
           for (const { cuts, shots } of bySceneId.values()) {
             const index = cuts.findIndex((cut) => cut.id === item.id)

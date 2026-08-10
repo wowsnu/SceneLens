@@ -270,5 +270,7 @@ export async function designShots({ heading, cuts, script = '', sceneIntention =
       scene_intention: sceneIntention,
     }),
   }, 120000)
-  return data.shots
+  // coverage는 모델이 세운 씬의 카메라 흐름이다. 진단이 이것과 실제 샷을
+  // 견줘 어긋남을 짚는다 — 값을 고치지는 않는다.
+  return { shots: data.shots, coverage: data.coverage || null }
 }

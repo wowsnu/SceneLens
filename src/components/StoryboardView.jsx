@@ -706,6 +706,7 @@ export default function StoryboardView() {
   const requestShotDesign = useStore((s) => s.requestShotDesign)
   const shotDesignPending = useStore((s) => s.shotDesignPending)
   const shotDesignError = useStore((s) => s.shotDesignError)
+  const sceneCoverages = useStore((s) => s.sceneCoverages)
   const updateCutPlanItem = useStore((s) => s.updateCutPlanItem)
   const addCutPlanItem = useStore((s) => s.addCutPlanItem)
   const removeCutPlanItem = useStore((s) => s.removeCutPlanItem)
@@ -765,7 +766,6 @@ export default function StoryboardView() {
   // 여러 컷을 함께 읽어야 보이는 문제. 컷 표는 한 행씩만 보여준다.
   // 아직 샷이 정해지지 않은 컷. 촬영이 할 일이 남았는지 보인다.
   const undecidedShots = cutPlan.filter((cut) => !cut.shotSize).length
-  const coverageFindings = diagnoseCoverage(cutPlan)
   // 진단은 발견이고 수정은 표에서 한다. 지목된 컷으로 데려다주기만 한다.
   const goToFinding = (finding) => {
     const target = cutPlan.find((cut) => cut.id === finding.cutIds[0])
@@ -824,6 +824,11 @@ export default function StoryboardView() {
   const hasSceneHeading = screenplay.some((element) => element.type === 'scene-heading')
   // 씬 헤딩이 나온 순서로 번호를 매긴다. 이 Beat가 몇 번째 씬을 여는가.
   const scriptScenes = selectScenes(screenplay)
+  // 여러 컷을 함께 읽어야 보이는 문제. scriptScenes가 필요하므로 그 뒤에 둔다.
+  const coverageFindings = diagnoseCoverage(cutPlan, {
+    coverages: sceneCoverages,
+    scenes: scriptScenes,
+  })
   // 이 컷이 속한 씬의 기준. 없으면 기본값으로 떨어진다.
   const sceneStateForCut = (cut) => {
     const scene = cut ? sceneOfBeat(scriptScenes, cut.beat) : null
