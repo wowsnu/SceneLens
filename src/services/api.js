@@ -1,5 +1,6 @@
 import { toStructureDraft } from './storyStructure.js'
 import { toNarrativeSuggestions } from './narrativeSuggestion.js'
+import { toCutPlanItems } from './cutPlan.js'
 
 function normalizeApiBase(rawBase) {
   const trimmed = rawBase?.replace(/\/$/, '')
@@ -184,6 +185,14 @@ export async function requestViewerReflection({ panels }) {
   }, 120000)
 }
 
+export async function requestDirectingReview({ mode, panels, intent = '' }) {
+  return fetchWithTimeout(`${API_BASE}/directing-review`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ mode, panels, intent }),
+  }, 180000)
+}
+
 // ── Segmentation (MobileSAM, click-based) ────────────────────
 
 export async function segmentPrepare(imageBase64, type = 'png') {
@@ -230,4 +239,15 @@ export async function suggestNarrative({
     }),
   }, 60000)
   return toNarrativeSuggestions(data, { beatElements, targetBeat, requestKey })
+}
+
+// --- 줄콘티: Beat → 컷 ----------------------------------------------------
+// 샷 크기·앵글·카메라는 여기서 정하지 않는다. 촬영이 정한다.
+export async function planCuts({ heading, beats, cast = [], sceneIntention = '', time = '', place = '' }) {
+  const data = await fetchWithTimeout(`${API_BASE}/cut-plan`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ heading, beats, cast, scene_intention: sceneIntention }),
+  }, 120000)
+  return toCutPlanItems(data, { time, place })
 }

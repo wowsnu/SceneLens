@@ -5,7 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 from contextlib import asynccontextmanager
 
-from app.routes import directing_review, fill_shot, image_gen, narrative, overlay, segment, sketch, story, strategy, viewer
+from app.routes import cut_plan, directing_review, fill_shot, image_gen, narrative, overlay, segment, sketch, story, strategy, viewer
 from app.services.strategy_engine import warmup_theory_cache
 
 load_dotenv()
@@ -75,6 +75,7 @@ app.include_router(segment.router, prefix="/api")
 app.include_router(viewer.router, prefix="/api")
 app.include_router(story.router, prefix="/api")
 app.include_router(narrative.router, prefix="/api")
+app.include_router(cut_plan.router, prefix="/api")
 app.include_router(directing_review.router, prefix="/api")
 
 if __name__ == "__main__":

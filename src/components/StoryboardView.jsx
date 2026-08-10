@@ -694,6 +694,8 @@ export default function StoryboardView() {
   const scenePromptNote = useStore((s) => s.scenePromptNote)
   const setScenePromptNote = useStore((s) => s.setScenePromptNote)
   const requestCutPlan = useStore((s) => s.requestCutPlan)
+  const cutPlanPending = useStore((s) => s.cutPlanPending)
+  const cutPlanError = useStore((s) => s.cutPlanError)
   const updateCutPlanItem = useStore((s) => s.updateCutPlanItem)
   const addCutPlanItem = useStore((s) => s.addCutPlanItem)
   const removeCutPlanItem = useStore((s) => s.removeCutPlanItem)
@@ -1296,15 +1298,22 @@ export default function StoryboardView() {
               <header>
                 <span className="script-draft-mark" aria-hidden="true">N</span>
                 <div>
-                  <span>줄콘티 · Cut plan · Mock</span>
+                  <span>줄콘티 · Cut plan{cutPlanError ? ' · 규칙 기반' : ''}</span>
                   <strong>
                     {cutPlanSkipped ? '검토하지 않고 넘어간 컷 구성' : '컷 분해 제안'}
                   </strong>
                   <p>
                     {cutPlanSkipped
-                      ? '컷 분해를 건너뛰어 자동 생성했습니다. 모든 컷이 Tentative로 남아 있습니다.'
+                      ? '컷 분해를 건너뛰어 자동 생성했습니다. 검토되지 않은 채 넘어갔습니다.'
                       : '그림으로 가기 전에 컷 수와 순서를 먼저 정합니다. 대본은 바뀌지 않습니다.'}
                   </p>
+                  {/* 모델을 못 불렀으면 밝힌다. 규칙 기반 결과를 모델이
+                      만든 것처럼 보이게 두지 않는다. */}
+                  {cutPlanError && (
+                    <p className="structure-draft-fallback">
+                      AI 호출에 실패해 규칙 기반으로 나눴습니다 · {cutPlanError}
+                    </p>
+                  )}
                 </div>
                 <div className="script-draft-actions">
                   <button type="button" onClick={backToScript}>Back to script</button>
@@ -1438,6 +1447,9 @@ export default function StoryboardView() {
                               onChange={(event) => updateCutPlanItem(item.id, { shotSize: event.target.value })}
                               aria-label={`Cut ${item.order} shot size`}
                             >
+                              {/* 샷은 촬영이 정한다. 빈 값이면 첫 항목이
+                                  선택돼 보여 정해진 것처럼 읽힌다. */}
+                              <option value="">미정</option>
                               {cutPlanShotSizes.map((size) => (
                                 <option key={size} value={size}>{size}</option>
                               ))}
@@ -2203,8 +2215,11 @@ export default function StoryboardView() {
                       type="button"
                       className="narrative-rail-primary"
                       onClick={cutPlan.length > 0 ? clearCutPlanStageOverride : requestCutPlan}
+                      disabled={cutPlanPending}
                     >
-                      {cutPlan.length > 0 ? '컷 플랜 이어서' : '컷 플랜 만들기'}
+                      {cutPlanPending
+                        ? '컷 나누는 중…'
+                        : cutPlan.length > 0 ? '컷 플랜 이어서' : '컷 플랜 만들기'}
                     </button>
                     {/* 보조 동작은 언제나 '건너뛰기'로 고정한다. 상황에 따라
                         삭제로 바뀌면 같은 자리의 버튼이 다른 일을 하게 된다. */}

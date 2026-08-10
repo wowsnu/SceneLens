@@ -719,10 +719,16 @@ export const buildCutPrompt = (cut, {
   const cast = (cut.characters || '').split(',').map((n) => n.trim()).filter(Boolean)
 
   // 1문장: 언제, 어디서, 어떤 크기로.
+  // 샷은 촬영이 정한다. 아직 안 정했으면 그 자리를 비워 둔다 —
+  // 빈 값으로 문장을 만들면 ". ."처럼 깨진다.
   const place = cut.place ? `${cut.place}${cut.time ? ` ${cut.time}` : ''}` : cut.time
-  // 앵글은 기본값(눈높이)일 때 굳이 적지 않는다.
+  // 앵글은 기본값(눈높이)이거나 미정일 때 굳이 적지 않는다.
   const angleText = cut.angle && cut.angle !== 'Eye level' ? `${cut.angle}. ` : ''
-  const opening = place ? `${place}. ${angleText}${shot}.` : `${angleText}${shot}.`
+  const opening = [
+    place && `${place}.`,
+    angleText.trim(),
+    shot && `${shot}.`,
+  ].filter(Boolean).join(' ')
 
   // 2문장: 화면 안에서 무슨 일이 일어나는가.
   const isSpeech = cut.purpose === '발화' || cut.purpose === '리액션'
@@ -1694,13 +1700,69 @@ const useStore = create((set, get) => ({
     ))
   },
 
-  requestCutPlan: () => set((state) => ({
-    cutPlan: createMockCutPlan(state),
-    cutPlanAccepted: false,
-    cutPlanSkipped: false,
-    cutPlanStageOverride: null,
-    cutPlanRequestKey: state.cutPlanRequestKey + 1,
-  })),
+  // 실제 모델을 부른다. 실패하면 규칙 기반 mock으로 떨어진다.
+  cutPlanPending: false,
+  cutPlanError: null,
+  requestCutPlan: async () => {
+    const state = get()
+    if (state.screenplay.length === 0) return
+
+    set({
+      cutPlanPending: true,
+      cutPlanError: null,
+      cutPlanAccepted: false,
+      cutPlanSkipped: false,
+      cutPlanStageOverride: null,
+      cutPlanRequestKey: state.cutPlanRequestKey + 1,
+    })
+
+    try {
+      const { planCuts } = await import('../services/api.js')
+      const scenes = selectScenes(state.screenplay)
+      const items = []
+
+      // 씬마다 따로 부른다. 시간·장소와 인물 기준이 씬마다 다르므로
+      // 한 번에 보내면 두 번째 씬이 첫 씬의 맥락을 물려받는다.
+      for (const scene of scenes) {
+        const beats = []
+        for (let beat = scene.startBeat; beat <= scene.endBeat; beat += 1) {
+          const lines = state.screenplay
+            .filter((element) => element.beat === beat && element.type === 'action')
+            .map((element) => element.text)
+          if (lines.length > 0) beats.push({ beat, lines })
+        }
+        if (beats.length === 0) continue
+
+        const sceneLines = state.screenplay.filter((element) => (
+          element.beat >= scene.startBeat && element.beat <= scene.endBeat
+        ))
+        const { time, place } = inferSceneContext(sceneLines)
+        const sceneState = state.sceneStates[scene.id] || state.sceneStates['scene-0']
+
+        // eslint-disable-next-line no-await-in-loop
+        const planned = await planCuts({
+          heading: scene.heading,
+          beats,
+          cast: castNamesOf(sceneState),
+          sceneIntention: state.sceneIntention || '',
+          time,
+          place,
+        })
+        items.push(...planned)
+      }
+
+      set({
+        cutPlan: reorderCutPlan(items.map((item) => createCutPlanItem(item))),
+        cutPlanPending: false,
+      })
+    } catch (error) {
+      set({
+        cutPlan: createMockCutPlan(get()),
+        cutPlanPending: false,
+        cutPlanError: error.message,
+      })
+    }
+  },
   updateCutPlanItem: (itemId, patch) => set((state) => ({
     cutPlan: state.cutPlan.map((item) => {
       if (item.id !== itemId) return item

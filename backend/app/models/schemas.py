@@ -454,3 +454,28 @@ class NarrativeSuggestionItem(BaseModel):
 
 class NarrativeSuggestionResponse(BaseModel):
     suggestions: List[NarrativeSuggestionItem]
+
+
+# --- Cut plan: Beat → 컷 --------------------------------------------------
+# Beat는 이야기의 국면, Cut은 한 화면이다. 한 Beat가 몇 컷이 되는지가
+# 연출 판단이고, 그것이 줄콘티가 하는 일이다.
+# 샷 크기·앵글·카메라는 여기서 정하지 않는다 — 촬영의 몫이다.
+
+class CutPlanBeat(BaseModel):
+    beat: int                               # Beat 번호 (0부터)
+    lines: List[str]                        # 그 Beat의 대본 줄
+
+class CutPlanRequest(BaseModel):
+    heading: str                            # "관제실, 밤"
+    beats: List[CutPlanBeat]
+    cast: List[str] = []                    # 이 씬의 인물
+    scene_intention: Optional[str] = ""
+
+class PlannedCut(BaseModel):
+    beat: int
+    content: str                            # 이 화면에 보이는 것
+    purpose: str                            # 이 컷이 왜 있는가
+    characters: str = ""                    # 화면에 보이는 인물만
+
+class CutPlanResponse(BaseModel):
+    cuts: List[PlannedCut]
