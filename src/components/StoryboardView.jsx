@@ -9,6 +9,9 @@ import useStore, {
   selectActiveSceneState,
   sceneOfBeat,
   seamKeyFor,
+  isSeamMarked,
+  SEAM_JOINS,
+  SEAM_ELAPSED,
   diagnoseCoverage,
   diagnoseSeams,
   PROBLEM_LAYERS,
@@ -1968,6 +1971,12 @@ export default function StoryboardView() {
                         const candidate = panelCandidates[shot.id]
                         const displayImage = candidate?.image || committedImage
                         const isSelected = selectedShotIds.includes(shot.id)
+                        // 앞 패널과의 이음새. 정한 것이 있을 때만 그린다 —
+                        // 전부 '컷 · 연속'인 기본값까지 표시하면 실제로 정한
+                        // 것이 묻힌다.
+                        const prevShot = shotIdx > 0 ? flowShots[shotIdx - 1] : null
+                        const seamBefore2 = prevShot ? seams[seamKeyFor(prevShot.id)] : null
+                        const showSeam = isSeamMarked(seamBefore2)
                         // 이 패널이 그려야 할 그림 밖 채널 (DG1 P3).
                         const shotCut = cutPlan.find((item) => item.id === shot.cutPlanItemId)
                         const shotPrompt = shotCut
@@ -1990,8 +1999,25 @@ export default function StoryboardView() {
                         )
 
                         return (
+                          <Fragment key={shot.id || shotIdx}>
+                          {showSeam && (
+                            <div className="sb-seam">
+                              <span className="sb-seam-join">
+                                {SEAM_JOINS.find((j) => j.id === seamBefore2.join)?.label}
+                              </span>
+                              {seamBefore2.elapsed !== 'continuous' && (
+                                <span className="sb-seam-elapsed">
+                                  {SEAM_ELAPSED.find((e) => e.id === seamBefore2.elapsed)?.label}
+                                </span>
+                              )}
+                              {seamBefore2.elision && (
+                                <span className="sb-seam-elision">
+                                  생략 · {seamBefore2.elision}
+                                </span>
+                              )}
+                            </div>
+                          )}
                           <div
-                            key={shot.id || shotIdx}
                             className={`sb-shot-card ${shotIdx === activeShot ? 'active-shot' : ''} ${isSelected ? 'selected-for-generation' : ''} ${candidate ? 'has-ai-candidate' : ''} ${inspectedShotId === shot.id ? 'inspected' : ''}`}
                             onClick={(event) => {
                               event.stopPropagation()
@@ -2160,6 +2186,7 @@ export default function StoryboardView() {
                             )}
 
                           </div>
+                          </Fragment>
                         )
                       })}
                       {/* 패널을 여기서 늘리지 않는다. 컷에서 나오지 않은
