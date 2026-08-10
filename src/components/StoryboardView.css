@@ -3280,3 +3280,108 @@
 .rail-lens-primary.is-editing:hover:not(:disabled) {
   background: rgba(196, 150, 210, 0.24);
 }
+
+/* 이음새 제안 — 그림을 보고 정하므로 Panels에 둔다. 생성 동작과는
+   다른 일이라 줄을 나눈다. */
+.generation-seam-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.generation-seam-btn {
+  flex-shrink: 0;
+  padding: 6px 12px;
+  border: 1px solid rgba(196, 150, 210, 0.5);
+  border-radius: 6px;
+  background: rgba(196, 150, 210, 0.14);
+  color: rgba(212, 172, 226, 0.98);
+  font-family: inherit;
+  font-size: 11.5px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.generation-seam-btn:hover:not(:disabled) {
+  background: rgba(196, 150, 210, 0.24);
+}
+
+.generation-seam-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.generation-seam-row > span {
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 11px;
+}
+
+/* 표에서 고른 컷. 편집 렌즈가 이 컷을 다룬다. */
+.cut-plan-table tbody tr.selected td {
+  background: rgba(196, 150, 210, 0.08);
+}
+
+.cut-plan-table tbody tr.selected td:first-child {
+  box-shadow: inset 2px 0 0 rgba(196, 150, 210, 0.8) !important;
+}
+
+/* 편집 렌즈의 컷 조작. 진단이 짚은 컷을 여기서 고친다. */
+.rail-cut-edit {
+  margin: 0 14px 12px;
+  padding: 10px 11px;
+  border: 1px solid rgba(196, 150, 210, 0.3);
+  border-radius: 7px;
+  background: rgba(196, 150, 210, 0.05);
+}
+
+.rail-cut-edit strong {
+  color: rgba(212, 172, 226, 0.95);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.rail-cut-edit p {
+  margin: 4px 0 9px;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 11.5px;
+  line-height: 1.5;
+}
+
+.rail-cut-edit > div {
+  display: flex;
+  gap: 6px;
+}
+
+.rail-cut-edit button {
+  flex: 1;
+  padding: 5px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 5px;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.65);
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.rail-cut-edit button:hover:not(:disabled) {
+  border-color: rgba(196, 150, 210, 0.6);
+  color: rgba(212, 172, 226, 0.95);
+}
+
+.rail-cut-edit button:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.rail-cut-edit-hint {
+  margin: 0 14px 12px;
+  color: rgba(255, 255, 255, 0.33);
+  font-size: 11px;
+  line-height: 1.5;
+}

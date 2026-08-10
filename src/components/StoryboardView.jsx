@@ -641,6 +641,8 @@ export default function StoryboardView() {
   const sceneIntention = useStore((s) => s.sceneIntention)
   const setSceneIntention = useStore((s) => s.setSceneIntention)
   const splitBeat = useStore((s) => s.splitBeat)
+  const splitCut = useStore((s) => s.splitCut)
+  const mergeCuts = useStore((s) => s.mergeCuts)
   const mergeBeat = useStore((s) => s.mergeBeat)
   const activeScene = useStore((s) => s.activeScene)
   const scene = useStore((s) => s.scenes[s.activeScene])
@@ -749,6 +751,8 @@ export default function StoryboardView() {
   const [collapsedScenes, setCollapsedScenes] = useState([])
   // 프롬프트를 펼쳐 본 컷. 한 번에 하나만 연다.
   const [expandedPromptCutId, setExpandedPromptCutId] = useState(null)
+  // 표에서 고른 컷. 편집 렌즈가 이 컷을 나누거나 합친다.
+  const [selectedCutId, setSelectedCutId] = useState(null)
   // Panels 단계에서 인스펙터에 띄운 패널.
   const [inspectedShotId, setInspectedShotId] = useState(null)
   // 화살표를 그리는 중인 패널. 한 번에 하나만 그린다.
@@ -1429,7 +1433,12 @@ export default function StoryboardView() {
                         </tr>
                         {!collapsed && group.items.map(({ item, index }) => (
                         <Fragment key={item.id}>
-                        <tr className={`provenance-row-${item.provenance.toLowerCase()}`}>
+                        <tr
+                          className={`provenance-row-${item.provenance.toLowerCase()}${selectedCutId === item.id ? ' selected' : ''}`}
+                          onClick={() => setSelectedCutId(
+                            selectedCutId === item.id ? null : item.id,
+                          )}
+                        >
                           <td className="col-cut">
                             <span className="cut-plan-number">
                               {item.beat + 1}-{item.beatOrder}
@@ -1759,6 +1768,25 @@ export default function StoryboardView() {
                       : 'Generate storyboard draft'}
                 {eligibleScopeShots.length > 0 ? ` · ${eligibleScopeShots.length}` : ''}
               </button>
+            </div>
+
+            {/* 이음새는 그림을 보고 정하므로 여기 있다. 컷 플랜 rail에
+                두면 눌러도 결과를 볼 수 없다 — 이음새 편집기가 패널 사이에
+                있기 때문이다. */}
+            <div className="generation-seam-row">
+              <button
+                type="button"
+                className="generation-seam-btn"
+                onClick={requestSeamDesign}
+                disabled={seamDesignPending || cutPlan.length < 2}
+              >
+                {seamDesignPending ? '이음새 보는 중…' : '이음새 제안받기'}
+              </button>
+              <span>
+                {seamDesignError
+                  ? `AI 호출 실패 · ${seamDesignError}`
+                  : '컷 사이에 시간이 흘렀거나 생략된 것이 있는지 봅니다.'}
+              </span>
             </div>
 
             </section>
@@ -2546,21 +2574,48 @@ export default function StoryboardView() {
                 <div className="rail-agent-body">
                   <p className="rail-lens-lead">
                     컷 하나하나는 멀쩡해도 이어 붙이면 문제가 되는 것들입니다.
-                    샷이 이어지는지도 여기서 봅니다.
+                    진단이 짚은 컷은 아래에서 합치거나 나눌 수 있습니다.
                   </p>
 
-                  {/* 컷이 20개면 이음새가 19개다. 기본과 다른 것만 제안한다. */}
-                  <button
-                    type="button"
-                    className="rail-lens-primary is-editing"
-                    onClick={requestSeamDesign}
-                    disabled={seamDesignPending || cutPlan.length < 2}
-                  >
-                    {seamDesignPending ? '이음새 보는 중…' : '이음새 제안받기'}
-                  </button>
-                  {seamDesignError && (
-                    <p className="rail-lens-error">AI 호출 실패 · {seamDesignError}</p>
+                  {/* DG2 P1의 병합·분할. 지금까지 Panels에만 있었는데,
+                      컷 구성을 바꾸는 일은 컷 플랜에서 하는 것이 맞다. */}
+                  {!selectedCutId && (
+                    <p className="rail-cut-edit-hint">
+                      표에서 컷을 클릭하면 여기서 나누거나 합칠 수 있습니다.
+                    </p>
                   )}
+
+                  {selectedCutId && (() => {
+                    const index = cutPlan.findIndex((cut) => cut.id === selectedCutId)
+                    const cut = cutPlan[index]
+                    const next = cutPlan[index + 1]
+                    if (!cut) return null
+                    return (
+                      <div className="rail-cut-edit">
+                        <strong>컷 {cut.beat + 1}-{cut.beatOrder}</strong>
+                        <p>{cut.content}</p>
+                        <div>
+                          <button
+                            type="button"
+                            onClick={() => splitCut(cut.id)}
+                          >
+                            나누기
+                          </button>
+                          <button
+                            type="button"
+                            disabled={!next || next.beat !== cut.beat}
+                            title={next && next.beat === cut.beat
+                              ? `컷 ${next.beat + 1}-${next.beatOrder}와 합칩니다`
+                              : '같은 Beat의 다음 컷이 없습니다'}
+                            onClick={() => mergeCuts(cut.id)}
+                          >
+                            다음 컷과 합치기
+                          </button>
+                        </div>
+                      </div>
+                    )
+                  })()}
+
                   <DiagnosisList
                     findings={seamFindings}
                     emptyLabel="지금 이음새에서 걸리는 것이 없습니다."
