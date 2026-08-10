@@ -2292,9 +2292,13 @@ export default function StoryboardView() {
                     <span>—</span>
                     <div>
                       <strong>여기서는 할 수 없는 요청입니다</strong>
+                      {/* 갈 곳을 실제로 가리킨다. "대본 단계"처럼 화면에
+                          없는 이름을 대면 사용자가 찾을 수 없다. */}
                       <p>
-                        서사 에이전트는 지금 Beat만 다룹니다. 이야기를 새로
-                        만들거나 씬을 나누는 것은 대본 단계에서 합니다.
+                        이 자리는 <strong>Beat {activeBeat + 1}</strong> 하나만
+                        다룹니다. 이야기를 더 쓰려면 <strong>Script</strong>
+                        단계에서 대본 줄을 직접 고치고, Beat를 나누려면
+                        줄 옆의 <strong>+ Split Beat</strong>을 쓰세요.
                       </p>
                     </div>
                   </div>
