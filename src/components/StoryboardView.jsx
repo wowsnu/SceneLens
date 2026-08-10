@@ -298,6 +298,13 @@ function ShotInspector({
           {field('장소', 'place')}
           {field('인물', 'characters')}
         </div>
+        {/* 촬영이 왜 이 샷을 골랐는지. 판정하려면 근거가 보여야 한다. */}
+        {cut.shotReason && (
+          <p className="shot-inspector-reason">
+            <span>촬영</span>
+            {cut.shotReason}
+          </p>
+        )}
         <label className="shot-inspector-field wide">
           <span>중요한 것</span>
           <input
@@ -696,6 +703,9 @@ export default function StoryboardView() {
   const requestCutPlan = useStore((s) => s.requestCutPlan)
   const cutPlanPending = useStore((s) => s.cutPlanPending)
   const cutPlanError = useStore((s) => s.cutPlanError)
+  const requestShotDesign = useStore((s) => s.requestShotDesign)
+  const shotDesignPending = useStore((s) => s.shotDesignPending)
+  const shotDesignError = useStore((s) => s.shotDesignError)
   const updateCutPlanItem = useStore((s) => s.updateCutPlanItem)
   const addCutPlanItem = useStore((s) => s.addCutPlanItem)
   const removeCutPlanItem = useStore((s) => s.removeCutPlanItem)
@@ -753,6 +763,8 @@ export default function StoryboardView() {
   const acceptedDeclarations = declarations.filter((decl) => decl.status === 'Accepted')
   // 판정은 전부 패널의 인스펙터에서 한다 (DG1 P4).
   // 여러 컷을 함께 읽어야 보이는 문제. 컷 표는 한 행씩만 보여준다.
+  // 아직 샷이 정해지지 않은 컷. 촬영이 할 일이 남았는지 보인다.
+  const undecidedShots = cutPlan.filter((cut) => !cut.shotSize).length
   const coverageFindings = diagnoseCoverage(cutPlan)
   // 진단은 발견이고 수정은 표에서 한다. 지목된 컷으로 데려다주기만 한다.
   const goToFinding = (finding) => {
@@ -2434,9 +2446,29 @@ export default function StoryboardView() {
                 {openAgent === 'camera' && (
                 <div className="rail-agent-body">
                   <p className="rail-lens-lead">
-                    샷 크기와 앵글은 컷 표에서 고칩니다. 여기서는 여러 컷을
-                    함께 읽어야 보이는 것만 짚습니다.
+                    줄콘티가 나눈 컷을 어떻게 찍을지 정합니다. 정한 뒤에도
+                    컷 표에서 고칠 수 있습니다.
                   </p>
+
+                  {/* 샷을 정하는 것이 촬영의 몫이다. 줄콘티는 컷만 나눈다. */}
+                  <button
+                    type="button"
+                    className="rail-lens-primary"
+                    onClick={requestShotDesign}
+                    disabled={shotDesignPending || cutPlan.length === 0}
+                  >
+                    {shotDesignPending
+                      ? '샷 정하는 중…'
+                      : undecidedShots > 0
+                        ? `샷 정하기 · ${undecidedShots}컷 미정`
+                        : '샷 다시 정하기'}
+                  </button>
+                  {shotDesignError && (
+                    <p className="rail-lens-error">
+                      AI 호출 실패 · {shotDesignError}
+                    </p>
+                  )}
+
                   <DiagnosisList
                     findings={coverageFindings}
                     emptyLabel="지금 구성에서 걸리는 것이 없습니다."

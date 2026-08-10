@@ -479,3 +479,29 @@ class PlannedCut(BaseModel):
 
 class CutPlanResponse(BaseModel):
     cuts: List[PlannedCut]
+
+
+# --- Shot design: 컷 → 샷 -------------------------------------------------
+# 줄콘티가 나눈 컷을 어떻게 찍을지 정한다. 컷 하나만 보고는 정할 수 없어
+# (같은 크기 연속, 점프컷, 공간 설정 부재) 씬의 컷 전체를 함께 본다.
+
+class ShotDesignCut(BaseModel):
+    beat: int
+    content: str
+    purpose: str = ""
+    characters: str = ""
+
+class ShotDesignRequest(BaseModel):
+    heading: str
+    cuts: List[ShotDesignCut]
+    scene_intention: Optional[str] = ""
+
+class DesignedShot(BaseModel):
+    cut_index: int                          # 요청에 준 컷의 순번
+    shot_size: str
+    angle: str
+    camera_move: str
+    reason: str = ""
+
+class ShotDesignResponse(BaseModel):
+    shots: List[DesignedShot]

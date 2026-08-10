@@ -503,6 +503,8 @@ const createCutPlanItem = ({
   // 촬영 지시. 줄콘티가 원래 담는 정보이며 패널에서 조정한다.
   angle = 'Eye level',
   cameraMove = 'Fixed',
+  // 촬영이 왜 이 샷을 골랐는지. 사용자가 판정하려면 근거가 있어야 한다.
+  shotReason = '',
   // 사용자가 조립된 프롬프트를 직접 고친 경우. 비어 있으면 컷에서 조립한
   // 문장을 쓴다. 원문은 언제든 다시 조립할 수 있으므로 되돌리기가 가능하다.
   promptOverride = '',
@@ -528,6 +530,7 @@ const createCutPlanItem = ({
     shotSize,
     angle,
     cameraMove,
+    shotReason,
     promptOverride,
     provenance,
     requirements: createCutRequirements(id, requirements, provenance),
@@ -1763,6 +1766,61 @@ const useStore = create((set, get) => ({
       })
     }
   },
+  // 촬영이 샷을 정한다. 줄콘티가 컷을 나눈 뒤에 부른다 —
+  // 감독이 컷을 나누고 촬영감독과 샷을 정하는 순서다.
+  shotDesignPending: false,
+  shotDesignError: null,
+  requestShotDesign: async () => {
+    const state = get()
+    if (state.cutPlan.length === 0) return
+
+    set({ shotDesignPending: true, shotDesignError: null })
+    try {
+      const { designShots } = await import('../services/api.js')
+      const scenes = selectScenes(state.screenplay)
+      const bySceneId = new Map()
+
+      // 씬마다 따로 부른다. 커버리지는 씬 안에서 판단된다 —
+      // 다른 씬의 컷이 섞이면 연속성 판단이 어긋난다.
+      for (const scene of scenes) {
+        const cuts = state.cutPlan.filter((cut) => (
+          cut.beat >= scene.startBeat && cut.beat <= scene.endBeat
+        ))
+        if (cuts.length === 0) continue
+        // eslint-disable-next-line no-await-in-loop
+        const shots = await designShots({
+          heading: scene.heading,
+          cuts,
+          sceneIntention: state.sceneIntention || '',
+        })
+        bySceneId.set(scene.id, { cuts, shots })
+      }
+
+      set({
+        cutPlan: get().cutPlan.map((item) => {
+          for (const { cuts, shots } of bySceneId.values()) {
+            const index = cuts.findIndex((cut) => cut.id === item.id)
+            if (index < 0) continue
+            const shot = shots.find((entry) => entry.cut_index === index)
+            if (!shot) continue
+            return {
+              ...item,
+              shotSize: shot.shot_size,
+              angle: shot.angle,
+              cameraMove: shot.camera_move,
+              // 왜 이 샷인지. 사용자가 판정하려면 근거가 있어야 한다.
+              shotReason: shot.reason,
+            }
+          }
+          return item
+        }),
+        shotDesignPending: false,
+      })
+    } catch (error) {
+      set({ shotDesignPending: false, shotDesignError: error.message })
+    }
+  },
+
   updateCutPlanItem: (itemId, patch) => set((state) => ({
     cutPlan: state.cutPlan.map((item) => {
       if (item.id !== itemId) return item
