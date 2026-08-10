@@ -689,6 +689,9 @@ export default function StoryboardView() {
   const sceneStatePending = useStore((s) => s.sceneStatePending)
   const sceneStateError = useStore((s) => s.sceneStateError)
   const setShotNote = useStore((s) => s.setShotNote)
+  const requestSeamDesign = useStore((s) => s.requestSeamDesign)
+  const seamDesignPending = useStore((s) => s.seamDesignPending)
+  const seamDesignError = useStore((s) => s.seamDesignError)
   const addShotArrow = useStore((s) => s.addShotArrow)
   const removeShotArrow = useStore((s) => s.removeShotArrow)
   const addBeatAfter = useStore((s) => s.addBeatAfter)
@@ -2545,6 +2548,19 @@ export default function StoryboardView() {
                     컷 하나하나는 멀쩡해도 이어 붙이면 문제가 되는 것들입니다.
                     샷이 이어지는지도 여기서 봅니다.
                   </p>
+
+                  {/* 컷이 20개면 이음새가 19개다. 기본과 다른 것만 제안한다. */}
+                  <button
+                    type="button"
+                    className="rail-lens-primary is-editing"
+                    onClick={requestSeamDesign}
+                    disabled={seamDesignPending || cutPlan.length < 2}
+                  >
+                    {seamDesignPending ? '이음새 보는 중…' : '이음새 제안받기'}
+                  </button>
+                  {seamDesignError && (
+                    <p className="rail-lens-error">AI 호출 실패 · {seamDesignError}</p>
+                  )}
                   <DiagnosisList
                     findings={seamFindings}
                     emptyLabel="지금 이음새에서 걸리는 것이 없습니다."

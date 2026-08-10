@@ -549,3 +549,28 @@ class SceneStateResponse(BaseModel):
     characters: List[SceneCharacter]
     location: SceneLocation
     environment: SceneEnvironment
+
+
+# --- Seam design: 컷 사이 --------------------------------------------------
+# 이음새는 두 컷 사이에 있는 것이다 — 생략된 것, 연결 방식, 흐른 시간.
+# 대부분은 '컷 · 연속'이므로 기본과 다른 것만 답한다.
+
+class SeamDesignCut(BaseModel):
+    beat: int
+    content: str
+    purpose: str = ""
+
+class SeamDesignRequest(BaseModel):
+    heading: str
+    cuts: List[SeamDesignCut]
+    script: Optional[str] = ""
+
+class DesignedSeam(BaseModel):
+    after_cut: int                          # 이 이음새 앞 컷의 순번
+    join: str = "cut"
+    elapsed: str = "continuous"
+    elision: str = ""
+    reason: str = ""
+
+class SeamDesignResponse(BaseModel):
+    seams: List[DesignedSeam]

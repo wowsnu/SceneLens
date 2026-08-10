@@ -3269,3 +3269,14 @@
 .rail-lens-primary.is-mise:hover:not(:disabled) {
   background: rgba(126, 200, 160, 0.24);
 }
+
+/* 편집 렌즈의 동작. 미장센(초록)·촬영(파랑)과 색을 구분한다. */
+.rail-lens-primary.is-editing {
+  border-color: rgba(196, 150, 210, 0.5);
+  background: rgba(196, 150, 210, 0.14);
+  color: rgba(212, 172, 226, 0.98);
+}
+
+.rail-lens-primary.is-editing:hover:not(:disabled) {
+  background: rgba(196, 150, 210, 0.24);
+}

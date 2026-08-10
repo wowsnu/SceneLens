@@ -2305,6 +2305,62 @@ const useStore = create((set, get) => ({
     declarations: state.declarations.filter((decl) => decl.id !== id),
   })),
 
+  // 편집이 이음새를 제안한다. 컷이 20개면 이음새가 19개라 전부 수동으로
+  // 채우기 어렵다. 기본('컷 · 연속')과 다른 것만 돌아온다.
+  seamDesignPending: false,
+  seamDesignError: null,
+  requestSeamDesign: async () => {
+    const state = get()
+    if (state.cutPlan.length < 2) return
+
+    set({ seamDesignPending: true, seamDesignError: null })
+    try {
+      const { designSeams } = await import('../services/api.js')
+      const scenes = selectScenes(state.screenplay)
+      const shots = state.scenes[state.activeScene]
+        ?.branches[state.scenes[state.activeScene].activeBranch ?? 0]?.shots || []
+      const nextSeams = { ...state.seams }
+
+      for (const scene of scenes) {
+        const cuts = state.cutPlan.filter((cut) => (
+          cut.beat >= scene.startBeat && cut.beat <= scene.endBeat
+        ))
+        if (cuts.length < 2) continue
+
+        const script = state.screenplay
+          .filter((element) => (
+            element.beat >= scene.startBeat
+            && element.beat <= scene.endBeat
+            && element.type === 'action'
+          ))
+          .map((element) => element.text)
+          .join('\n')
+
+        // eslint-disable-next-line no-await-in-loop
+        const designed = await designSeams({ heading: scene.heading, cuts, script })
+
+        designed.forEach((seam) => {
+          // 이음새는 패널 사이에 붙는다. 컷 → 패널로 옮겨야 한다.
+          const cut = cuts[seam.after_cut]
+          if (!cut) return
+          const shot = shots.find((entry) => entry.cutPlanItemId === cut.id)
+          if (!shot) return
+          nextSeams[seamKeyFor(shot.id)] = {
+            join: seam.join,
+            elapsed: seam.elapsed,
+            elision: seam.elision || '',
+            // 왜 이렇게 보는지. 판정하려면 근거가 있어야 한다.
+            reason: seam.reason || '',
+          }
+        })
+      }
+
+      set({ seams: nextSeams, seamDesignPending: false })
+    } catch (error) {
+      set({ seamDesignPending: false, seamDesignError: error.message })
+    }
+  },
+
   // 패널 메모. 오버레이로 그릴 수 없는 것을 적어두는 자리다 —
   // 화살표나 배지로 표현되지 않는 지시가 갈 곳이 없으면 결국 누락된다.
   setShotNote: (shotId, note) => set((state) => updateActiveBranchShots(

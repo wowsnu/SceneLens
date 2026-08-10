@@ -309,6 +309,11 @@ export default function GridView({
                           ))}
                         </div>
 
+                        {/* 편집이 왜 이렇게 보는지. 판정하려면 근거가 필요하다. */}
+                        {seam?.reason && (
+                          <p className="grid-seam-reason">{seam.reason}</p>
+                        )}
+
                         {/* 생략한 것을 적어두지 않으면 나중에 누락과 구분되지 않는다. */}
                         <label htmlFor={`elision-${prevShot.id}`}>생략된 것</label>
                         <input

@@ -286,3 +286,22 @@ export async function buildSceneState({ heading, script, sceneIntention = '' }) 
   }, 90000)
   return toSceneState(data, heading)
 }
+
+// --- 편집: 컷 사이 --------------------------------------------------------
+// 대부분의 이음새는 '컷 · 연속'이다. 기본과 다른 것만 돌아온다.
+export async function designSeams({ heading, cuts, script = '' }) {
+  const data = await fetchWithTimeout(`${API_BASE}/seam-design`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      heading,
+      cuts: cuts.map((cut) => ({
+        beat: cut.beat,
+        content: cut.content,
+        purpose: cut.purpose,
+      })),
+      script,
+    }),
+  }, 90000)
+  return data.seams
+}
