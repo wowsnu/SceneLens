@@ -35,8 +35,25 @@ RESPONSE_SCHEMA = {
     "schema": {
         "type": "object",
         "additionalProperties": False,
-        "required": ["shots"],
+        "required": ["coverage", "shots"],
         "properties": {
+            # 개별 샷보다 먼저 씬 전체의 카메라 흐름을 세운다.
+            # 컷마다 최선을 고르면 각각은 그럴듯해도 이어지지 않는다.
+            "coverage": {
+                "type": "object",
+                "additionalProperties": False,
+                "required": ["arc", "anchor_cuts", "peak_cut", "approach"],
+                "properties": {
+                    # 이 씬의 카메라가 어디서 시작해 어디로 가는가. 한두 문장.
+                    "arc": {"type": "string"},
+                    # 공간을 세우거나 다시 세우는 컷. 넓은 샷이 놓이는 자리.
+                    "anchor_cuts": {"type": "array", "items": {"type": "integer"}},
+                    # 가장 가까운 샷이 놓일 컷. 접근의 끝.
+                    "peak_cut": {"type": "integer"},
+                    # peak로 가는 접근 구간. 순서대로 좁아지는 컷들.
+                    "approach": {"type": "array", "items": {"type": "integer"}},
+                },
+            },
             "shots": {
                 "type": "array",
                 "items": {
@@ -66,20 +83,39 @@ PROMPT = f"""당신은 촬영감독입니다. 줄콘티가 나눈 컷을 어떻�
 - angle: {" / ".join(ANGLES)}
 - camera_move: {" / ".join(MOVES)}
 
-**먼저 씬 전체를 읽으세요.** 컷을 하나씩 보고 정하면 어느 컷이나 그럴듯한
-샷이 나오지만, 씬은 밋밋해집니다. 정하기 전에 스스로 물으세요:
+## 순서가 중요합니다
 
-- 이 씬은 무엇에 관한 이야기인가. 어디서 시작해 어디로 가는가.
-- 고비는 어느 컷인가. 관객이 무엇을 알게 되는 순간인가.
-- 누가 주도하는가. 그 관계가 씬 안에서 뒤집히는가.
+**컷마다 따로 정하지 마세요.** 컷 하나씩 최선을 고르면 각각은 그럴듯해도
+이어 보면 카메라가 튀거나 밋밋해집니다. 씬 전체의 흐름을 먼저 세우고,
+그 흐름 위에 컷을 배분하세요.
 
-**그다음 그 흐름에 맞춰 샷을 배분하세요.**
-- 고비의 컷은 가장 가깝게 잡습니다. 씬에서 가장 큰 샷은 아무 데나 쓰지
-  말고 결정적인 순간에 남겨 두세요.
-- 도입은 넓게 시작해 좁혀 들어갑니다. 관객이 공간을 먼저 알아야 인물의
-  움직임이 읽힙니다.
-- 긴장이 오를수록 샷이 좁아집니다. 이완되면 다시 넓힙니다.
-- 주도권이 바뀌는 지점에서 앵글을 바꿉니다.
+**1단계 — coverage에 씬의 카메라 흐름을 세웁니다.**
+
+- arc: 이 씬의 카메라가 어디서 시작해 어디로 가는가. **한두 문장으로.**
+  넓게 열어 좁혀 들어가는가, 붙어 있다가 물러나는가, 중간에 뒤집히는가.
+- peak_cut: 가장 가까운 샷이 놓일 컷 **하나**. 씬이 결정되는 순간입니다.
+  정보가 노출되는 컷이 아니라 **인물이 무언가를 하기로 하는 컷**인 경우가
+  많습니다.
+- approach: peak_cut 바로 앞의 **연속된 3~5개 컷**. peak를 향해 좁혀 들어가는
+  구간입니다. 띄엄띄엄 고르지 마세요 — 이어져 있어야 접근이 됩니다.
+  예: peak가 17이면 approach는 [13,14,15,16] 같은 식입니다.
+- anchor_cuts: 공간을 세우는 컷. **1~2개면 충분합니다.** 씬 시작과, 인물
+  위치가 크게 바뀌어 관객이 다시 방향을 잡아야 할 때뿐입니다.
+  많이 고르면 씬이 계속 넓어져 긴장이 쌓이지 않습니다.
+
+**2단계 — 그 흐름대로 각 컷의 샷을 정합니다.**
+
+**세운 흐름을 반드시 지키세요.** 설계해 놓고 다르게 정하면 세운 의미가
+없습니다. 샷을 다 정한 뒤 아래를 확인하고, 어긋나면 고치세요.
+
+- approach의 컷들은 **순서대로 좁아지거나 최소한 유지**되어야 합니다.
+  Wide→Medium→Bust→Close-Up처럼. 중간에 넓어지면 접근이 끊깁니다.
+- anchor_cuts는 **Wide 또는 Full**입니다. 다른 크기를 쓰면 공간이 안 세워집니다.
+- peak_cut이 씬에서 **가장 가까운 샷**입니다. 다른 컷이 더 가까우면 안 됩니다.
+- approach와 peak 밖에서는 Close-Up·ECU를 쓰지 마세요. 접근의 끝에 와야
+  할 샷을 미리 쓰면 정작 고비에서 쓸 것이 없습니다.
+- 나머지 컷은 앞뒤와 이어지게 정합니다. 앞 컷과 크기·앵글이 모두 같으면
+  화면이 바뀐 것이 읽히지 않습니다.
 
 다음은 촬영 이론서에서 뽑은 원칙입니다. 이것을 근거로 정하세요.
 
@@ -183,4 +219,62 @@ async def design_shots(request: ShotDesignRequest) -> ShotDesignResponse:
         # gpt-5 계열은 max_tokens를 받지 않는다.
         max_completion_tokens=4000,
     )
-    return ShotDesignResponse(**json.loads(response.choices[0].message.content.strip()))
+    result = ShotDesignResponse(**json.loads(response.choices[0].message.content.strip()))
+    return _enforce_coverage(result)
+
+
+# 프롬프트만으로는 설계가 지켜지지 않는다. 모델이 세운 흐름과 실제 샷이
+# 어긋나면 여기서 맞춘다 — 설계를 응답에 남기게 한 이유가 이것이다.
+_SIZE_ORDER = {size: i for i, size in enumerate(SHOT_SIZES)}
+
+
+def _enforce_coverage(result: ShotDesignResponse) -> ShotDesignResponse:
+    coverage = result.coverage
+    if not coverage:
+        return result
+
+    by_index = {shot.cut_index: shot for shot in result.shots}
+
+    # 모델이 없는 컷 번호를 가리키면 그 설계는 실행할 수 없다. 조용히
+    # 넘기면 설계와 결과가 어긋난 채로 남으므로 미리 걸러 낸다.
+    coverage.anchor_cuts = [i for i in coverage.anchor_cuts if i in by_index]
+    coverage.approach = [i for i in coverage.approach if i in by_index]
+    if coverage.peak_cut not in by_index:
+        # 고비가 없으면 가장 가까운 샷이 놓인 컷을 고비로 본다.
+        coverage.peak_cut = max(
+            by_index,
+            key=lambda i: _SIZE_ORDER.get(by_index[i].shot_size, 0),
+            default=-1,
+        )
+
+    # 1. 공간을 세우는 컷은 넓어야 한다. 그러라고 고른 컷이다.
+    for index in coverage.anchor_cuts:
+        shot = by_index.get(index)
+        if shot and _SIZE_ORDER.get(shot.shot_size, 0) > _SIZE_ORDER["Full"]:
+            shot.shot_size = "Full"
+
+    # 2. 접근 구간은 좁아지기만 한다. 중간에 넓어지면 접근이 끊긴다.
+    #    앞 컷보다 넓어진 것을 앞 컷 크기로 끌어당긴다.
+    previous = None
+    for index in coverage.approach:
+        shot = by_index.get(index)
+        if not shot:
+            continue
+        current = _SIZE_ORDER.get(shot.shot_size, 0)
+        if previous is not None and current < previous:
+            shot.shot_size = SHOT_SIZES[previous]
+            current = previous
+        previous = current
+
+    # 3. 고비가 씬에서 가장 가까운 샷이어야 한다. 다른 컷이 더 가까우면
+    #    그 컷을 한 단계 물린다 — 접근의 끝이 무의미해지기 때문이다.
+    peak = by_index.get(coverage.peak_cut)
+    if peak:
+        peak_size = _SIZE_ORDER.get(peak.shot_size, 0)
+        for index, shot in by_index.items():
+            if index == coverage.peak_cut:
+                continue
+            if _SIZE_ORDER.get(shot.shot_size, 0) >= peak_size and peak_size > 0:
+                shot.shot_size = SHOT_SIZES[peak_size - 1]
+
+    return result

@@ -505,5 +505,13 @@ class DesignedShot(BaseModel):
     camera_move: str
     reason: str = ""
 
+class SceneCoverage(BaseModel):
+    """씬 전체의 카메라 흐름. 개별 샷보다 먼저 정한다."""
+    arc: str = ""                           # 어디서 시작해 어디로 가는가
+    anchor_cuts: List[int] = []             # 공간을 세우는 컷
+    peak_cut: int = -1                      # 가장 가까운 샷이 놓일 컷
+    approach: List[int] = []                # peak로 가는 접근 구간
+
 class ShotDesignResponse(BaseModel):
+    coverage: Optional[SceneCoverage] = None
     shots: List[DesignedShot]
