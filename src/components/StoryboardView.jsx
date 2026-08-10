@@ -704,6 +704,7 @@ export default function StoryboardView() {
   const narrativePending = useStore((s) => s.narrativePending)
   const narrativeError = useStore((s) => s.narrativeError)
   const narrativeAnswered = useStore((s) => s.narrativeAnswered)
+  const clearNarrativeResult = useStore((s) => s.clearNarrativeResult)
   const acceptStructureDraft = useStore((s) => s.acceptStructureDraft)
   const dismissStructureDraft = useStore((s) => s.dismissStructureDraft)
   const updateScreenplayLine = useStore((s) => s.updateScreenplayLine)
@@ -2280,11 +2281,12 @@ export default function StoryboardView() {
                       <strong>여기서는 할 수 없는 요청입니다</strong>
                       {/* 갈 곳을 실제로 가리킨다. "대본 단계"처럼 화면에
                           없는 이름을 대면 사용자가 찾을 수 없다. */}
+                      {/* 문장 안에 strong을 쓰지 않는다 — 이 블록의
+                          strong은 display:block이라 줄이 끊긴다. */}
                       <p>
-                        이 자리는 <strong>Beat {activeBeat + 1}</strong> 하나만
-                        다룹니다. 이야기를 더 쓰려면 <strong>Script</strong>
-                        단계에서 대본 줄을 직접 고치고, Beat를 나누려면
-                        줄 옆의 <strong>+ Split Beat</strong>을 쓰세요.
+                        서사 에이전트는 Beat {activeBeat + 1} 하나만 다룹니다.
+                        이야기를 더 쓰려면 Script 단계에서 대본을 고치고,
+                        Beat를 나누려면 줄 옆 “+ Split Beat”을 쓰세요.
                       </p>
                     </div>
                   </div>
@@ -2314,7 +2316,12 @@ export default function StoryboardView() {
                 <textarea
                   id="narrative-screenplay-request"
                   value={narrativeRequest}
-                  onChange={(event) => setNarrativeRequest(event.target.value)}
+                  onChange={(event) => {
+                    setNarrativeRequest(event.target.value)
+                    // 새 요청을 쓰기 시작하면 지난 결과를 지운다. 계속 떠
+                    // 있으면 방금 쓴 요청에 대한 답으로 오해된다.
+                    if (narrativeAnswered) clearNarrativeResult()
+                  }}
                   placeholder="예: 이 Beat를 둘로 나누고 대사를 덜 설명적으로 바꿔줘."
                   aria-label={`Narrative request for Beat ${activeBeat + 1}`}
                   rows={3}

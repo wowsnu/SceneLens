@@ -2104,6 +2104,10 @@ const useStore = create((set, get) => ({
   narrativeError: null,
   // 한 번이라도 응답을 받았는가. 제안 0건과 아직 안 물어본 것을 구분한다.
   narrativeAnswered: false,
+  // 새 요청을 쓰기 시작하면 "할 수 없는 요청" 안내를 치운다.
+  // 제안 자체는 지우지 않는다 — 사용자가 검토 중인 것을 타이핑만으로
+  // 날리면 안 된다.
+  clearNarrativeResult: () => set({ narrativeAnswered: false }),
   requestNarrativeSuggestions: async (input = {}) => {
     const state = get()
     const requestKey = state.narrativeSuggestionRequestKey + 1
