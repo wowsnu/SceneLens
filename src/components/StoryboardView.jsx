@@ -578,63 +578,39 @@ function PanelNote({ note, onChange }) {
   )
 }
 
+// 제안 카드. 무엇을 하는 제안인지 한눈에 보여야 한다 —
+// 나누기면 어디서 나누는지, 추가면 무슨 문장이 들어가는지.
+// 부가 정보를 얹을수록 정작 그것이 안 보인다.
 function NarrativeSuggestionCard({ suggestion, onAccept, onDismiss }) {
-  const canAccept = suggestion.type !== 'keep-structure'
-  const suggestionMeta = {
-    'split-beat': { label: 'Beat boundary', change: 'Splits the current Beat' },
-    'insert-script-line': { label: 'Script edit', change: 'Adds one script line' },
-    'replace-script-line': { label: 'Script edit', change: 'Replaces one script line' },
-    'keep-structure': { label: 'Narrative check', change: 'No changes suggested' },
-  }[suggestion.type] || { label: 'Proposal', change: 'Reviews the current Beat' }
+  const KIND = {
+    'split-beat': '여기서 Beat 나누기',
+    'insert-script-line': '이 줄 다음에 추가',
+    'replace-script-line': '이 줄을 바꾸기',
+  }[suggestion.type] || '제안'
 
   return (
-    <aside className={`narrative-inline-suggestion ${suggestion.type}`} onClick={(event) => event.stopPropagation()}>
-      <header className="narrative-suggestion-heading">
-        <span className="narrative-suggestion-mark" aria-hidden="true">N</span>
-        <div>
-          <span>Narrative proposal</span>
-          <strong>{suggestion.title}</strong>
-        </div>
-        <em>{suggestionMeta.label} · B{(suggestion.beat ?? 0) + 1}</em>
-      </header>
-      <p>{suggestion.reason}</p>
-      {(suggestion.type === 'insert-script-line' || suggestion.type === 'replace-script-line') && (
-        <div className="narrative-script-patch">
-          {suggestion.originalText && (
-            <div className="script-patch-line removed">
-              <span>−</span>
-              <p>{suggestion.originalText}</p>
-            </div>
-          )}
-          <div className="script-patch-line added">
-            <span>+</span>
-            <p>{suggestion.proposedText}</p>
-          </div>
-          {suggestion.sceneIntention && (
-            <small>Scene intention: {suggestion.sceneIntention}</small>
-          )}
-        </div>
+    <aside
+      className={`narrative-inline-suggestion ${suggestion.type}`}
+      onClick={(event) => event.stopPropagation()}
+    >
+      <span className="narrative-suggestion-kind">{KIND}</span>
+
+      {/* 나누기는 자리가 곧 내용이다. 보여줄 문장이 없다. */}
+      {suggestion.type === 'insert-script-line' && (
+        <p className="narrative-suggestion-text added">{suggestion.proposedText}</p>
       )}
-      {suggestion.purposes?.length > 0 && (
-        <ol className="narrative-panel-purpose-list">
-          {suggestion.purposes.map((purpose, index) => (
-            <li key={purpose}>
-              <span>P{index + 1}</span>
-              {purpose}
-            </li>
-          ))}
-        </ol>
+      {suggestion.type === 'replace-script-line' && (
+        <>
+          <p className="narrative-suggestion-text removed">{suggestion.originalText}</p>
+          <p className="narrative-suggestion-text added">{suggestion.proposedText}</p>
+        </>
       )}
+
       <div className="narrative-suggestion-actions">
-        <span>{suggestionMeta.change}</span>
-        <button type="button" className="narrative-dismiss-btn" onClick={() => onDismiss(suggestion.id)}>
-          {canAccept ? 'Dismiss' : 'Got it'}
+        <button type="button" onClick={() => onDismiss(suggestion.id)}>버리기</button>
+        <button type="button" className="accept" onClick={() => onAccept(suggestion)}>
+          적용
         </button>
-        {canAccept && (
-          <button type="button" className="narrative-accept-btn" onClick={() => onAccept(suggestion)}>
-            {suggestion.actionLabel}
-          </button>
-        )}
       </div>
     </aside>
   )
@@ -703,6 +679,7 @@ export default function StoryboardView() {
   const narrativeError = useStore((s) => s.narrativeError)
   const narrativeAnswered = useStore((s) => s.narrativeAnswered)
   const clearNarrativeResult = useStore((s) => s.clearNarrativeResult)
+  const clearNarrativeSuggestions = useStore((s) => s.clearNarrativeSuggestions)
   const acceptStructureDraft = useStore((s) => s.acceptStructureDraft)
   const dismissStructureDraft = useStore((s) => s.dismissStructureDraft)
   const updateScreenplayLine = useStore((s) => s.updateScreenplayLine)
@@ -1067,27 +1044,24 @@ export default function StoryboardView() {
     setPendingFocus({ index: Math.max(0, index - 1), caret: 'end' })
   }
 
+  // 하나를 수락하면 나머지는 버린다. 제안은 수락 시점의 대본을 가리키는
+  // 인덱스를 들고 있어서, 대본이 바뀌면 그 인덱스가 다른 줄을 가리킨다 —
+  // 남겨 두면 두 번째 수락이 엉뚱한 자리에 적용된다.
   const handleAcceptNarrativeSuggestion = (suggestion) => {
     if (suggestion.type === 'split-beat') {
       splitBeat(suggestion.elementIndex)
-      return
-    }
-
-    if (suggestion.type === 'insert-script-line') {
+    } else if (suggestion.type === 'insert-script-line') {
       const nextScreenplay = [...screenplay]
       nextScreenplay.splice(suggestion.insertAfterIndex + 1, 0, suggestion.newElement)
       setScreenplay(nextScreenplay)
-      return
-    }
-
-    if (suggestion.type === 'replace-script-line') {
-      const nextScreenplay = screenplay.map((element, index) => (
+    } else if (suggestion.type === 'replace-script-line') {
+      setScreenplay(screenplay.map((element, index) => (
         index === suggestion.elementIndex
           ? { ...element, text: suggestion.proposedText }
           : element
-      ))
-      setScreenplay(nextScreenplay)
+      )))
     }
+    clearNarrativeSuggestions()
   }
 
   const handleUploadScript = () => {

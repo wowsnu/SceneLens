@@ -2148,212 +2148,80 @@
 }
 
 /* 대본 안에 놓이는 Narrative의 편집 제안 */
+/* 제안 카드 — 무엇을 하는 제안인지가 먼저 보여야 한다.
+   출처 마크·라벨·이유·변경 요약을 얹으면 정작 그것이 묻힌다. */
 .narrative-inline-suggestion {
-  position: relative;
-  margin: 10px 0 13px;
-  padding: 11px 11px 9px;
+  margin: 8px 0 12px;
+  padding: 10px 12px;
   border-radius: 8px;
-  border: 1px solid rgba(255, 255, 255, 0.085);
-  background: #111114;
+  border: 1px solid rgba(216, 170, 98, 0.28);
+  background: rgba(216, 170, 98, 0.045);
   font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 }
 
-.narrative-inline-suggestion::before {
-  content: '';
-  position: absolute;
-  top: 10px;
-  bottom: 10px;
-  left: -1px;
-  width: 2px;
-  border-radius: 2px;
-  background: rgba(216, 170, 98, 0.55);
-}
-
-.narrative-suggestion-heading {
-  display: grid;
-  grid-template-columns: 26px minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 9px;
-}
-
-.narrative-suggestion-mark {
-  width: 26px;
-  height: 26px;
-  display: grid;
-  place-items: center;
-  border: 1px solid rgba(216, 170, 98, 0.25);
-  border-radius: 7px;
-  background: rgba(216, 170, 98, 0.065);
-  color: #d9b67f;
-  font-family: 'Courier Prime', ui-monospace, monospace;
-  font-size: 9px;
-  font-weight: 800;
-}
-
-.narrative-suggestion-heading > div {
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.narrative-suggestion-heading > div > span {
-  color: rgba(255, 255, 255, 0.34);
-  font-size: 10px;
+.narrative-suggestion-kind {
+  display: block;
+  margin-bottom: 7px;
+  color: rgba(216, 170, 98, 0.9);
+  font-size: 11px;
   font-weight: 750;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
 }
 
-.narrative-suggestion-heading strong {
-  color: rgba(255, 255, 255, 0.82);
-  font-size: 13px;
-  font-weight: 650;
-  line-height: 1.4;
+/* 제안 문장은 대본 본문과 같은 크기로 읽힌다 — 실제로 대본에 들어갈
+   문장이므로 작게 보이면 판단할 수가 없다. */
+.narrative-suggestion-text {
+  margin: 0 0 6px;
+  padding-left: 10px;
+  border-left: 2px solid transparent;
+  font-size: 14px;
+  line-height: 1.6;
 }
 
-.narrative-suggestion-heading > em {
-  padding: 3px 6px;
-  border: 1px solid rgba(255, 255, 255, 0.075);
-  border-radius: 5px;
-  color: rgba(255, 255, 255, 0.36);
-  font-size: 10px;
-  font-style: normal;
-  font-weight: 700;
-  letter-spacing: 0.03em;
-  white-space: nowrap;
+.narrative-suggestion-text.added {
+  border-left-color: rgba(126, 200, 160, 0.6);
+  color: rgba(255, 255, 255, 0.9);
 }
 
-.narrative-inline-suggestion > p {
-  margin: 8px 0 0 35px;
-  color: rgba(255, 255, 255, 0.46);
-  font-size: 12px;
-  line-height: 1.5;
-}
-
-.narrative-script-patch {
-  display: grid;
-  gap: 2px;
-  margin: 9px 0 0 35px;
-  overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  border-radius: 6px;
-  background: #0d0d10;
-  font-family: 'Courier Prime', ui-monospace, monospace;
-}
-
-.script-patch-line {
-  display: grid;
-  grid-template-columns: 15px minmax(0, 1fr);
-  gap: 5px;
-  padding: 6px 7px;
-}
-
-.script-patch-line > span {
-  opacity: 0.7;
-  font-weight: 800;
-}
-
-.script-patch-line p {
-  margin: 0;
-  font-size: 12px;
-  line-height: 1.45;
-}
-
-.script-patch-line.removed {
-  background: rgba(239, 68, 68, 0.045);
-  color: rgba(252, 165, 165, 0.56);
+.narrative-suggestion-text.removed {
+  border-left-color: rgba(255, 255, 255, 0.2);
+  color: rgba(255, 255, 255, 0.4);
   text-decoration: line-through;
-}
-
-.script-patch-line.added {
-  background: rgba(34, 197, 94, 0.045);
-  color: rgba(187, 247, 208, 0.7);
-}
-
-.narrative-script-patch small {
-  padding: 5px 7px 6px 22px;
-  border-top: 1px solid rgba(255, 255, 255, 0.045);
-  color: rgba(255, 255, 255, 0.28);
-  font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  font-size: 10px;
-  line-height: 1.4;
-}
-
-.narrative-panel-purpose-list {
-  display: grid;
-  gap: 3px;
-  margin: 9px 0 0 35px;
-  padding: 0;
-  list-style: none;
-}
-
-.narrative-panel-purpose-list li {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  color: rgba(255, 255, 255, 0.5);
-  font-size: 11.5px;
-}
-
-.narrative-panel-purpose-list li span {
-  display: grid;
-  place-items: center;
-  width: 19px;
-  height: 16px;
-  border: 1px solid rgba(255, 255, 255, 0.07);
-  border-radius: 4px;
-  color: rgba(255, 255, 255, 0.32);
-  font-size: 9px;
-  font-weight: 750;
 }
 
 .narrative-suggestion-actions {
   display: flex;
-  align-items: center;
+  justify-content: flex-end;
   gap: 6px;
-  margin: 10px 0 0 35px;
-  padding-top: 8px;
-  border-top: 1px solid rgba(255, 255, 255, 0.055);
-}
-
-.narrative-suggestion-actions > span {
-  margin-right: auto;
-  color: rgba(255, 255, 255, 0.26);
-  font-size: 10px;
+  margin-top: 9px;
 }
 
 .narrative-suggestion-actions button {
-  height: 25px;
-  padding: 0 9px;
+  padding: 5px 13px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
   border-radius: 6px;
-  font-size: 11px;
-  font-weight: 720;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.6);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 650;
   cursor: pointer;
 }
 
-.narrative-dismiss-btn {
-  border: 0;
-  background: transparent;
-  color: rgba(255, 255, 255, 0.38);
+.narrative-suggestion-actions button:hover {
+  border-color: rgba(255, 255, 255, 0.3);
+  color: rgba(255, 255, 255, 0.9);
 }
 
-.narrative-accept-btn {
-  border: 1px solid rgba(216, 170, 98, 0.28);
-  background: rgba(216, 170, 98, 0.075);
-  color: #d9b67f;
+.narrative-suggestion-actions .accept {
+  border-color: rgba(216, 170, 98, 0.55);
+  background: rgba(216, 170, 98, 0.16);
+  color: #e1bd85;
 }
 
-.narrative-dismiss-btn:hover {
-  color: rgba(255, 255, 255, 0.7);
-  background: rgba(255, 255, 255, 0.035);
+.narrative-suggestion-actions .accept:hover {
+  background: rgba(216, 170, 98, 0.26);
 }
 
-.narrative-accept-btn:hover {
-  border-color: rgba(216, 170, 98, 0.46);
-  background: rgba(216, 170, 98, 0.13);
-  color: #fff;
-}
 
 /* AI가 왜 이 요소를 올렸는지. 판정의 근거이므로 접지 않고 항상 보인다. */
 /* --- Shot Inspector: 이 컷이 책임지지 않는 것 -------------------------- */

@@ -2108,6 +2108,9 @@ const useStore = create((set, get) => ({
   // 제안 자체는 지우지 않는다 — 사용자가 검토 중인 것을 타이핑만으로
   // 날리면 안 된다.
   clearNarrativeResult: () => set({ narrativeAnswered: false }),
+  // 하나를 수락하면 나머지 제안은 버린다. 남은 것들의 인덱스가 이미
+  // 무효라, 이어서 수락하면 엉뚱한 줄에 적용된다.
+  clearNarrativeSuggestions: () => set({ narrativeSuggestions: [], narrativeAnswered: false }),
   requestNarrativeSuggestions: async (input = {}) => {
     const state = get()
     const requestKey = state.narrativeSuggestionRequestKey + 1
