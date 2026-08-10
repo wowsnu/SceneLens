@@ -915,10 +915,6 @@ export default function StoryboardView() {
     openDrawingWorkspace()
   }
 
-  const handleAddShot = (beatNum) => {
-    addShotToBeat(beatNum)
-  }
-
   const handleDeleteShot = (shotId, shotIdx) => {
     if (flowShots.length <= 1) return
     setSelectedShotIds((current) => current.filter((id) => id !== shotId))
@@ -2124,19 +2120,9 @@ export default function StoryboardView() {
                           </div>
                         )
                       })}
-                      <button
-                        className="sb-add-shot-inline"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          handleAddShot(beatGroup.beat)
-                        }}
-                      >
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round">
-                          <line x1="12" y1="5" x2="12" y2="19" />
-                          <line x1="5" y1="12" x2="19" y2="12" />
-                        </svg>
-                        Add shot
-                      </button>
+                      {/* 패널을 여기서 늘리지 않는다. 컷에서 나오지 않은
+                          패널은 프롬프트가 붙지 않아 생성도 못 한다.
+                          컷을 더하려면 컷 플랜의 `+`를 쓴다. */}
                     </div>
                   </div>
                 )}
