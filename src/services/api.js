@@ -254,12 +254,13 @@ export async function planCuts({ heading, beats, cast = [], sceneIntention = '',
 
 // --- 촬영: 컷 → 샷 --------------------------------------------------------
 // 컷 하나만 보고 정할 수 없다. 커버리지는 컷을 이어 봐야 판단된다.
-export async function designShots({ heading, cuts, sceneIntention = '' }) {
+export async function designShots({ heading, cuts, script = '', sceneIntention = '' }) {
   const data = await fetchWithTimeout(`${API_BASE}/shot-design`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       heading,
+      script,
       cuts: cuts.map((cut) => ({
         beat: cut.beat,
         content: cut.content,

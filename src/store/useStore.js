@@ -1788,9 +1788,20 @@ const useStore = create((set, get) => ({
         ))
         if (cuts.length === 0) continue
         // eslint-disable-next-line no-await-in-loop
+        // 대본을 함께 보낸다. 컷 목록만으로는 어디가 고비인지 알 수 없다.
+        const script = state.screenplay
+          .filter((element) => (
+            element.beat >= scene.startBeat
+            && element.beat <= scene.endBeat
+            && element.type === 'action'
+          ))
+          .map((element) => element.text)
+          .join('\n')
+
         const shots = await designShots({
           heading: scene.heading,
           cuts,
+          script,
           sceneIntention: state.sceneIntention || '',
         })
         bySceneId.set(scene.id, { cuts, shots })
