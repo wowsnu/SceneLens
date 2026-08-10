@@ -685,6 +685,9 @@ export default function StoryboardView() {
   const activeSceneState = useStore(selectActiveSceneState)
   const seams = useStore((s) => s.seams)
   const setSceneFact = useStore((s) => s.setSceneFact)
+  const requestSceneStates = useStore((s) => s.requestSceneStates)
+  const sceneStatePending = useStore((s) => s.sceneStatePending)
+  const sceneStateError = useStore((s) => s.sceneStateError)
   const setShotNote = useStore((s) => s.setShotNote)
   const addShotArrow = useStore((s) => s.addShotArrow)
   const removeShotArrow = useStore((s) => s.removeShotArrow)
@@ -2384,6 +2387,20 @@ export default function StoryboardView() {
                     여러 컷에 같은 인물과 공간이 나옵니다. 컷마다 따로 해석되지
                     않도록 기준을 여기서 정합니다.
                   </p>
+
+                  {/* 대본에서 기준을 세운다. 지금은 예제가 하드코딩돼 있어
+                      다른 이야기를 넣어도 같은 인물이 남는다. */}
+                  <button
+                    type="button"
+                    className="rail-lens-primary is-mise"
+                    onClick={requestSceneStates}
+                    disabled={sceneStatePending || screenplay.length === 0}
+                  >
+                    {sceneStatePending ? '기준 세우는 중…' : '대본에서 기준 세우기'}
+                  </button>
+                  {sceneStateError && (
+                    <p className="rail-lens-error">AI 호출 실패 · {sceneStateError}</p>
+                  )}
 
                   <ul className="rail-scene-state">
                     {activeSceneState.characters.map((character) => {

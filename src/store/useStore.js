@@ -1768,6 +1768,44 @@ const useStore = create((set, get) => ({
   // 지금 보고 있는 씬. activeBeat에서 파생시키면 둘이 어긋날 수 없다 —
   // Beat를 고르는 것이 곧 씬을 고르는 것이다.
 
+  // 대본에서 씬 기준을 세운다. 씬마다 인물과 공간이 다르므로 씬별로 부른다.
+  sceneStatePending: false,
+  sceneStateError: null,
+  requestSceneStates: async () => {
+    const state = get()
+    if (state.screenplay.length === 0) return
+
+    set({ sceneStatePending: true, sceneStateError: null })
+    try {
+      const { buildSceneState } = await import('../services/api.js')
+      const scenes = selectScenes(state.screenplay)
+      const next = { ...state.sceneStates }
+
+      for (const scene of scenes) {
+        const script = state.screenplay
+          .filter((element) => (
+            element.beat >= scene.startBeat
+            && element.beat <= scene.endBeat
+            && element.type === 'action'
+          ))
+          .map((element) => element.text)
+          .join('\n')
+        if (!script.trim()) continue
+
+        // eslint-disable-next-line no-await-in-loop
+        next[scene.id] = await buildSceneState({
+          heading: scene.heading,
+          script,
+          sceneIntention: state.sceneIntention || '',
+        })
+      }
+
+      set({ sceneStates: next, sceneStatePending: false })
+    } catch (error) {
+      set({ sceneStatePending: false, sceneStateError: error.message })
+    }
+  },
+
   // 씬 기준을 고친다. 아래 네 액션이 같은 모양이라 여기로 모은다.
   updateSceneStateAt: (sceneId, updater) => set((state) => {
     const current = state.sceneStates[sceneId] || SCENE_STATE

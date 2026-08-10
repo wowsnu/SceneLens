@@ -1,6 +1,7 @@
 import { toStructureDraft } from './storyStructure.js'
 import { toNarrativeSuggestions } from './narrativeSuggestion.js'
 import { toCutPlanItems } from './cutPlan.js'
+import { toSceneState } from './sceneState.js'
 
 function normalizeApiBase(rawBase) {
   const trimmed = rawBase?.replace(/\/$/, '')
@@ -273,4 +274,15 @@ export async function designShots({ heading, cuts, script = '', sceneIntention =
   // coverage는 모델이 세운 씬의 카메라 흐름이다. 진단이 이것과 실제 샷을
   // 견줘 어긋남을 짚는다 — 값을 고치지는 않는다.
   return { shots: data.shots, coverage: data.coverage || null }
+}
+
+// --- 미장센: 대본 → 씬 기준 -----------------------------------------------
+// 여러 컷에 걸쳐 같아야 하는 것을 세운다. 대본에 없는 것은 open으로 남긴다.
+export async function buildSceneState({ heading, script, sceneIntention = '' }) {
+  const data = await fetchWithTimeout(`${API_BASE}/scene-state`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ heading, script, scene_intention: sceneIntention }),
+  }, 90000)
+  return toSceneState(data, heading)
 }

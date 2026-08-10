@@ -517,3 +517,35 @@ class SceneCoverage(BaseModel):
 class ShotDesignResponse(BaseModel):
     coverage: Optional[SceneCoverage] = None
     shots: List[DesignedShot]
+
+
+# --- Scene state: 대본 → 씬 기준 ------------------------------------------
+# 여러 컷에 걸쳐 같아야 하는 것(인물 외형·공간·환경)을 대본에서 뽑는다.
+# 대본이 정하지 않은 항목은 open으로 남긴다 — 비워 둔 것과 누락은 다르다.
+
+class SceneStateRequest(BaseModel):
+    heading: str
+    script: str
+    scene_intention: Optional[str] = ""
+
+class SceneFact(BaseModel):
+    label: str
+    value: str = ""
+    open: bool = False                      # 대본이 정하지 않은 항목
+
+class SceneCharacter(BaseModel):
+    name: str
+    summary: str = ""
+    facts: List[SceneFact] = []
+
+class SceneLocation(BaseModel):
+    name: str
+    facts: List[SceneFact] = []
+
+class SceneEnvironment(BaseModel):
+    facts: List[SceneFact] = []
+
+class SceneStateResponse(BaseModel):
+    characters: List[SceneCharacter]
+    location: SceneLocation
+    environment: SceneEnvironment
