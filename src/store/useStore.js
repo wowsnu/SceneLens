@@ -904,8 +904,8 @@ const diagnoseAgainstCoverage = (cutPlan, coverages, scenes) => {
         id: `cov-anchor-${scene.id}`,
         type: 'anchor-too-tight',
         layer: 'relation',
-        title: `공간을 세우기로 한 컷이 좁습니다 · ${tightAnchors.map(label).join(', ')}`,
-        detail: '이 컷으로 공간을 세우려 했는데 넓은 샷이 아닙니다. 관객이 어디인지 잡을 근거가 약해집니다.',
+        title: `공간을 보여줄 컷인데 좁게 잡혔습니다 · ${tightAnchors.map(label).join(', ')}`,
+        detail: '여기서 공간을 보여주려 했는데 화면이 좁습니다. 관객이 어디인지 알기 어려워집니다.',
         cutIds: tightAnchors,
       })
     }
@@ -924,13 +924,13 @@ const diagnoseAgainstCoverage = (cutPlan, coverages, scenes) => {
         id: `cov-approach-${scene.id}`,
         type: 'approach-broken',
         layer: 'relation',
-        title: `접근 구간에서 샷이 넓어집니다 · ${widened.map(label).join(', ')}`,
-        detail: '고비로 좁혀 들어가는 구간인데 중간에 넓어집니다. 의도한 완급이면 그대로 두세요.',
+        title: `좁혀 가다가 다시 넓어집니다 · ${widened.map(label).join(', ')}`,
+        detail: '가장 중요한 컷으로 좁혀 가는 구간인데 중간에 다시 넓어집니다. 일부러 그런 것이면 그대로 두세요.',
         cutIds: widened,
       })
     }
 
-    // 고비보다 가까운 컷이 있다. 접근의 끝이 무의미해진다.
+    // 가장 중요한 컷보다 더 가까이 잡은 컷이 있다. 그러면 그 컷이 안 도드라진다.
     if (coverage.peakCutId) {
       const peak = rank(coverage.peakCutId)
       const closer = cutPlan
@@ -943,8 +943,8 @@ const diagnoseAgainstCoverage = (cutPlan, coverages, scenes) => {
           id: `cov-peak-${scene.id}`,
           type: 'peak-not-closest',
           layer: 'relation',
-          title: `고비보다 가깝거나 같은 컷이 있습니다 · ${closer.slice(0, 3).map(label).join(', ')}`,
-          detail: `고비는 컷 ${label(coverage.peakCutId)}입니다. 다른 컷이 더 가까우면 접근의 끝이 드러나지 않습니다.`,
+          title: `가장 중요한 컷보다 가까운 컷이 있습니다 · ${closer.slice(0, 3).map(label).join(', ')}`,
+          detail: `가장 중요한 컷은 ${label(coverage.peakCutId)}입니다. 다른 컷을 더 가까이 잡으면 이 컷이 도드라지지 않습니다.`,
           cutIds: [coverage.peakCutId, ...closer],
         })
       }
@@ -967,8 +967,8 @@ export const diagnoseCoverage = (cutPlan = []) => {
       id: 'shots-undecided',
       type: 'shots-undecided',
       layer: 'attribute',
-      title: `샷이 정해지지 않은 컷 ${undecided.length}개`,
-      detail: '샷 크기와 앵글이 비어 있습니다. 이 상태로는 그림의 근거가 없습니다.',
+      title: `샷을 아직 안 정한 컷 ${undecided.length}개`,
+      detail: '샷 크기와 앵글이 비어 있어 이대로는 그림을 그릴 수 없습니다.',
       cutIds: undecided.map((cut) => cut.id),
     })
   }
@@ -987,8 +987,8 @@ export const diagnoseCoverage = (cutPlan = []) => {
         id: `size-detail-${cut.id}`,
         type: 'size-mismatch',
         layer: 'attribute',
-        title: `컷 ${cut.beat + 1}-${cut.beatOrder} · 세부가 핵심인데 넓게 잡음`,
-        detail: `${cut.shotSize}로는 이 컷이 보여주려는 것이 화면에서 작게 남습니다.`,
+        title: `컷 ${cut.beat + 1}-${cut.beatOrder} · 작은 것을 보여주는데 화면이 넓습니다`,
+        detail: `${cut.shotSize}로 잡으면 정작 보여줄 것이 화면에서 너무 작아집니다.`,
         cutIds: [cut.id],
       })
     }
@@ -997,8 +997,8 @@ export const diagnoseCoverage = (cutPlan = []) => {
         id: `size-space-${cut.id}`,
         type: 'size-mismatch',
         layer: 'attribute',
-        title: `컷 ${cut.beat + 1}-${cut.beatOrder} · 공간이 필요한데 좁게 잡음`,
-        detail: `${cut.shotSize}로는 위치 관계가 화면에 담기지 않습니다.`,
+        title: `컷 ${cut.beat + 1}-${cut.beatOrder} · 공간을 보여주는데 화면이 좁습니다`,
+        detail: `${cut.shotSize}로 잡으면 누가 어디에 있는지가 화면에 안 담깁니다.`,
         cutIds: [cut.id],
       })
     }
@@ -1014,8 +1014,8 @@ export const diagnoseCoverage = (cutPlan = []) => {
         id: `angle-flat-${cut.id}`,
         type: 'angle-flat',
         layer: 'attribute',
-        title: `컷 ${cut.beat + 1}-${cut.beatOrder} · 두 인물이 좁은 샷에 평면적으로`,
-        detail: '둘이 함께 있는데 정면 눈높이라 관계가 드러나지 않습니다. OTS나 앵글 변화를 검토하세요.',
+        title: `컷 ${cut.beat + 1}-${cut.beatOrder} · 두 사람이 나오는데 구도가 밋밋합니다`,
+        detail: '둘이 마주 보는 장면인데 정면 눈높이라 관계가 안 보입니다. 어깨 너머로 잡거나 앵글을 바꿔보세요.',
         cutIds: [cut.id],
       })
     }
@@ -1032,7 +1032,7 @@ export const diagnoseCoverage = (cutPlan = []) => {
         type: 'no-establishing',
         layer: 'scope',
         title: '공간을 세우는 컷 없음',
-        detail: '전체가 좁은 샷입니다. 관객이 어디인지 파악할 근거가 없습니다.',
+        detail: '컷이 전부 좁아서 관객이 여기가 어디인지 알 수 없습니다.',
         cutIds: [cutPlan[0].id],
       })
     }
@@ -1059,7 +1059,7 @@ const diagnoseShotFlow = (cutPlan, coverages, scenes) => {
           type: 'size-run',
           layer: 'relation',
           title: `${cutPlan[runStart].shotSize} ${run}컷 연속`,
-          detail: '크기가 같으면 컷이 바뀐 것이 화면에서 잘 읽히지 않습니다.',
+          detail: '크기가 같으면 컷이 넘어간 것이 화면에서 잘 안 보입니다.',
           cutIds: cutPlan.slice(runStart, i).map((cut) => cut.id),
         })
       }
@@ -1081,7 +1081,7 @@ const diagnoseShotFlow = (cutPlan, coverages, scenes) => {
         type: 'jump-cut',
         layer: 'relation',
         title: `컷 ${prev.beat + 1}-${prev.beatOrder} → ${cut.beat + 1}-${cut.beatOrder} 점프컷 위험`,
-        detail: '크기와 앵글이 거의 같습니다. 이어 붙이면 화면이 튑니다.',
+        detail: '앞 컷과 크기도 앵글도 거의 같아서, 이어 붙이면 화면이 툭 튑니다.',
         cutIds: [prev.id, cut.id],
       })
     }
@@ -1968,7 +1968,7 @@ const useStore = create((set, get) => ({
         ))
         if (cuts.length === 0) continue
         // eslint-disable-next-line no-await-in-loop
-        // 대본을 함께 보낸다. 컷 목록만으로는 어디가 고비인지 알 수 없다.
+        // 대본을 함께 보낸다. 컷 목록만으로는 어디가 중요한 대목인지 알 수 없다.
         const script = state.screenplay
           .filter((element) => (
             element.beat >= scene.startBeat

@@ -123,7 +123,7 @@ PROMPT = f"""당신은 촬영감독입니다. 줄콘티가 나눈 컷을 어떻�
 - anchor_cuts는 **Wide 또는 Full**입니다. 다른 크기를 쓰면 공간이 안 세워집니다.
 - peak_cut이 씬에서 **가장 가까운 샷**입니다. 다른 컷이 더 가까우면 안 됩니다.
 - approach와 peak 밖에서는 Close-Up·ECU를 쓰지 마세요. 접근의 끝에 와야
-  할 샷을 미리 쓰면 정작 고비에서 쓸 것이 없습니다.
+  할 샷을 미리 쓰면 정작 가장 중요한 순간에 쓸 것이 없습니다.
 - 나머지 컷은 앞뒤와 이어지게 정합니다. 앞 컷과 크기·앵글이 모두 같으면
   화면이 바뀐 것이 읽히지 않습니다.
 
@@ -210,7 +210,7 @@ async def design_shots(request: ShotDesignRequest) -> ShotDesignResponse:
     )
     user_content = f"[씬] {request.heading}\n\n[컷]\n{body}"
     # 컷 목록만으로는 씬이 무엇에 관한 이야기인지 알 수 없다. 대본을 함께
-    # 준다 — 흐름을 모르면 어느 컷이 고비인지 판단할 수 없다.
+    # 준다 — 흐름을 모르면 어느 컷이 가장 중요한지 판단할 수 없다.
     if request.script:
         user_content = (
             f"[씬] {request.heading}\n\n[대본]\n{request.script}\n\n[컷]\n{body}"

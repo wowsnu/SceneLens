@@ -494,7 +494,7 @@ class ShotDesignCut(BaseModel):
 class ShotDesignRequest(BaseModel):
     heading: str
     cuts: List[ShotDesignCut]
-    # 씬의 대본. 컷 목록만으로는 어디가 고비인지 알 수 없다.
+    # 씬의 대본. 컷 목록만으로는 어디가 중요한 대목인지 알 수 없다.
     script: Optional[str] = ""
     scene_intention: Optional[str] = ""
 

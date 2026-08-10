@@ -2415,8 +2415,8 @@ export default function StoryboardView() {
                 {openAgent === 'mise' && (
                 <div className="rail-agent-body">
                   <p className="rail-lens-lead">
-                    여러 컷에 같은 인물과 공간이 나옵니다. 컷마다 따로 해석되지
-                    않도록 기준을 여기서 정합니다.
+                    같은 인물과 공간이 여러 컷에 나옵니다. 컷마다 다르게
+                    그려지지 않도록 기준을 정해 둡니다.
                   </p>
 
                   {/* 대본에서 기준을 세운다. 지금은 예제가 하드코딩돼 있어
@@ -2515,8 +2515,8 @@ export default function StoryboardView() {
                 {openAgent === 'camera' && (
                 <div className="rail-agent-body">
                   <p className="rail-lens-lead">
-                    줄콘티가 나눈 컷을 어떻게 찍을지 정합니다. 한 컷 안의
-                    문제를 봅니다 — 컷을 이어 붙였을 때의 문제는 편집이 봅니다.
+                    컷을 어떻게 찍을지 정합니다. 컷 하나 안의 문제를 보고,
+                    이어 붙였을 때의 문제는 편집이 봅니다.
                   </p>
 
                   {/* 샷을 정하는 것이 촬영의 몫이다. 줄콘티는 컷만 나눈다. */}
@@ -2573,8 +2573,8 @@ export default function StoryboardView() {
                 {openAgent === 'editing' && (
                 <div className="rail-agent-body">
                   <p className="rail-lens-lead">
-                    컷 하나하나는 멀쩡해도 이어 붙이면 문제가 되는 것들입니다.
-                    진단이 짚은 컷은 아래에서 합치거나 나눌 수 있습니다.
+                    컷은 하나씩 보면 괜찮아도 이어 붙이면 문제가 되기도 합니다.
+                    짚어준 컷은 아래에서 합치거나 나눌 수 있습니다.
                   </p>
 
                   {/* DG2 P1의 병합·분할. 지금까지 Panels에만 있었는데,

@@ -2678,13 +2678,16 @@
   margin-bottom: 6px;
 }
 
+/* 이름은 줄이지 않는다. flex가 좁히면 글자마다 줄바꿈된다. */
 .rail-scene-head strong {
+  flex-shrink: 0;
   color: rgba(255, 255, 255, 0.88);
   font-size: 12px;
   font-weight: 700;
 }
 
 .rail-scene-head em {
+  min-width: 0;
   color: rgba(255, 255, 255, 0.34);
   font-size: 10.5px;
   font-style: normal;
