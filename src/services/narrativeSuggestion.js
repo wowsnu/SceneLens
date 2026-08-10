@@ -52,12 +52,11 @@ export function toNarrativeSuggestions(data, { beatElements, targetBeat, request
       }
     }
 
-    return { ...base, targetCount: item.target_count }
+    return null
   }).filter((suggestion) => (
     // 붙일 자리를 못 찾은 제안은 버린다. 엉뚱한 줄에 붙는 것보다 낫다.
-    suggestion.elementIndex !== undefined
-    || suggestion.insertAfterIndex !== undefined
-    || suggestion.targetCount > 0
+    suggestion !== null
+    && (suggestion.elementIndex !== undefined || suggestion.insertAfterIndex !== undefined)
   ))
 }
 
@@ -65,5 +64,4 @@ const ACTION_LABEL = {
   'split-beat': 'Split beat',
   'insert-script-line': 'Insert line',
   'replace-script-line': 'Replace line',
-  'panel-count': 'Add panels',
 }

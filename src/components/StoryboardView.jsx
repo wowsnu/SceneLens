@@ -582,7 +582,6 @@ function NarrativeSuggestionCard({ suggestion, onAccept, onDismiss }) {
   const canAccept = suggestion.type !== 'keep-structure'
   const suggestionMeta = {
     'split-beat': { label: 'Beat boundary', change: 'Splits the current Beat' },
-    'panel-count': { label: 'Panel plan', change: 'Adds blank panels' },
     'insert-script-line': { label: 'Script edit', change: 'Adds one script line' },
     'replace-script-line': { label: 'Script edit', change: 'Replaces one script line' },
     'keep-structure': { label: 'Narrative check', change: 'No changes suggested' },
@@ -656,7 +655,6 @@ export default function StoryboardView() {
   const setActiveBeat = useStore((s) => s.setActiveBeat)
   const selectBeat = useStore((s) => s.selectBeat)
   const activeBeat = useStore((s) => s.activeBeat)
-  const addShotToBeat = useStore((s) => s.addShotToBeat)
   const removeShot = useStore((s) => s.flowRemoveShot)
   const maximizedPanel = useStore((s) => s.maximizedPanel)
   const storyboardPanelsVisible = useStore((s) => s.storyboardPanelsVisible)
@@ -1072,16 +1070,6 @@ export default function StoryboardView() {
   const handleAcceptNarrativeSuggestion = (suggestion) => {
     if (suggestion.type === 'split-beat') {
       splitBeat(suggestion.elementIndex)
-      return
-    }
-
-    if (suggestion.type === 'panel-count') {
-      const currentCount = getBeatShots(suggestion.beat).length
-      const missingCount = Math.max(0, suggestion.targetCount - currentCount)
-      for (let index = 0; index < missingCount; index += 1) {
-        addShotToBeat(suggestion.beat)
-      }
-      dismissNarrativeSuggestion(suggestion.id)
       return
     }
 

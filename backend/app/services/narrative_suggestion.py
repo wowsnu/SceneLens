@@ -7,7 +7,6 @@ Four kinds, each anchored to a line so the UI can show it in place:
   split-beat          — this beat holds two phases; divide it here
   insert-script-line  — an action is missing between these lines
   replace-script-line — this line does not read as what it means to
-  panel-count         — this beat needs more panels than it has
 
 The model does not write dialogue and does not invent events the creator
 did not write. It works with what the beat already contains.
@@ -36,7 +35,7 @@ RESPONSE_SCHEMA = {
                     "additionalProperties": False,
                     "required": [
                         "type", "title", "reason",
-                        "line_index", "original_text", "proposed_text", "target_count",
+                        "line_index", "original_text", "proposed_text",
                     ],
                     "properties": {
                         "type": {
@@ -45,7 +44,6 @@ RESPONSE_SCHEMA = {
                                 "split-beat",
                                 "insert-script-line",
                                 "replace-script-line",
-                                "panel-count",
                             ],
                         },
                         "title": {"type": "string"},
@@ -56,8 +54,6 @@ RESPONSE_SCHEMA = {
                         "original_text": {"type": "string"},
                         # insert/replace일 때 제안 문장. 아니면 빈 문자열.
                         "proposed_text": {"type": "string"},
-                        # panel-count일 때 목표 패널 수. 아니면 -1.
-                        "target_count": {"type": "integer"},
                     },
                 },
             },
@@ -69,7 +65,7 @@ RESPONSE_SCHEMA = {
 PROMPT = """당신은 스토리보드 작업의 서사 담당입니다.
 사용자가 지금 보고 있는 Beat에 대해 요청을 했습니다. 그 요청에 답하는 제안을 만드세요.
 
-제안은 네 종류뿐입니다:
+제안은 세 종류뿐입니다:
 - split-beat: 이 Beat에 국면이 둘 이상 들어 있어 나눠야 할 때.
   line_index는 새 Beat가 시작될 줄입니다.
   **줄이 하나뿐인 Beat는 나눌 수 없습니다.** 그때는 insert로 먼저 채우세요.
@@ -79,8 +75,6 @@ PROMPT = """당신은 스토리보드 작업의 서사 담당입니다.
   줄이 하나뿐이어도 그 뒤에 얼마든지 더할 수 있습니다.
 - replace-script-line: 어떤 줄이 의도한 대로 읽히지 않을 때.
   line_index는 바꿀 줄, original_text는 그 원문, proposed_text는 대안입니다.
-- panel-count: 이 Beat의 사건 수에 비해 패널이 모자랄 때.
-  target_count에 필요한 패널 수를 씁니다.
 
 당신의 역할은 **큰 틀에 살을 붙이는 것**입니다.
 사용자는 뼈대만 씁니다. "둘이 대치한다" 같은 한 줄에서 그 대치가 화면에서
@@ -111,7 +105,7 @@ PROMPT = """당신은 스토리보드 작업의 서사 담당입니다.
    ✓ "재인이 문틈으로 복도를 확인한다." ← 다음 장
    여러 동작이 필요하면 insert 제안을 여러 개 내세요.
 5. 요청이 "살을 붙여달라", "채워달라", "구체적으로" 같은 것이면 insert를
-   여러 개 내세요. 구조(split/panel-count)가 아니라 내용이 필요한 요청입니다.
+   여러 개 내세요. 구조(split)가 아니라 내용이 필요한 요청입니다.
    line_index를 각각 다르게 지정하면 여러 줄이 들어갑니다.
 6. 1~4개만 제안하세요. 확실한 것이 하나면 하나만 내세요.
 7. 해당 없는 필드는 빈 문자열 또는 -1로 채우세요.

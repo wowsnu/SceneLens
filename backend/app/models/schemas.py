@@ -445,13 +445,12 @@ class NarrativeSuggestionRequest(BaseModel):
     panel_count: Optional[int] = None       # 이 Beat의 현재 패널 수
 
 class NarrativeSuggestionItem(BaseModel):
-    type: Literal["split-beat", "insert-script-line", "replace-script-line", "panel-count"]
+    type: Literal["split-beat", "insert-script-line", "replace-script-line"]
     title: str
     reason: str
     line_index: int = -1                    # Beat 안에서의 줄 번호. 없으면 -1
     original_text: str = ""
     proposed_text: str = ""
-    target_count: int = -1
 
 class NarrativeSuggestionResponse(BaseModel):
     suggestions: List[NarrativeSuggestionItem]

@@ -2777,6 +2777,8 @@ const useStore = create((set, get) => ({
       .filter(({ shot }) => shot.scriptBeat === beat)
   },
 
+  // 패널을 Beat에 직접 더한다. 지금은 쓰이지 않는다 — 패널은 컷에서
+  // 나와야 프롬프트가 붙기 때문이다. 컷 없이 만든 패널은 생성도 못 한다.
   addShotToBeat: (beat, afterShotIdx = null) => set((state) => {
     return updateActiveBranchShots(state, (shots) => {
       const sameBeatIndices = shots
