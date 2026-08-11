@@ -182,15 +182,68 @@ class ViewerInitialReadingRequest(BaseModel):
 
 class ViewerReadingStep(BaseModel):
     panel_order: int
-    visible_cues: List[str]
-    possible_interpretations: List[str]
-    inferred_assumptions: List[str]
+    noticed_cues: List[str]
+    immediate_reading: str
+    feeling: str
+    relation_to_previous: Literal[
+        "start",
+        "reinforced",
+        "shifted",
+        "unsettled",
+        "new_question",
+    ]
+    current_hypothesis: str
+    open_question: str
+    # Temporary view compatibility. The model does not generate these fields;
+    # the service derives them from the cumulative reading above.
+    visible_cues: List[str] = []
+    possible_interpretations: List[str] = []
+    inferred_assumptions: List[str] = []
+
+class ViewerInterpretiveBranch(BaseModel):
+    starts_at_panel: int
+    main_reading: str
+    alternative_reading: str
+    status: Literal[
+        "main_strengthened",
+        "alternative_strengthened",
+        "unresolved",
+    ]
+    visible_basis: List[str]
+
+class ViewerReviewPoint(BaseModel):
+    panel_orders: List[int]
+    issue: str
+    audience_effect: str
+    issue_kind: Literal[
+        "story_context",
+        "element_visibility",
+        "spatial_relation",
+        "framing_readability",
+        "cut_connection",
+        "information_order",
+    ]
+    suspected_cause: Literal["narrative", "mise", "camera", "editing"]
+    # The viewer supplies a symptom and suspected cause. The backend resolves
+    # the final route and range so a model cannot send an unsupported route.
+    routes: List[Literal["narrative", "mise", "camera", "editing"]] = []
+    scope: Literal["single", "range"] = "single"
+    route_reason: str = ""
 
 class ViewerInitialReading(BaseModel):
     id: str = "initial-reading"
     title: str = "처음 읽힌 흐름"
     summary: str
+    final_hypothesis: str
+    emotional_arc: str
+    turning_point_panel_order: int
+    turning_point_reason: str
     steps: List[ViewerReadingStep]
+    interpretive_branches: List[ViewerInterpretiveBranch] = []
+    unresolved_questions: List[str] = []
+    review_points: List[ViewerReviewPoint] = []
+    # Temporary view compatibility; remove after the Viewer UI consumes the
+    # cumulative fields and review_points directly.
     visible_cues: List[str] = []
     inferred_assumptions: List[str] = []
     routes: List[str] = []
@@ -349,6 +402,7 @@ class DirectingReviewPanel(BaseModel):
     id: str
     image: str
     context: Optional[str] = None
+    directing_notes: Optional[str] = None
     scene_id: Optional[str] = None
 
 
@@ -360,6 +414,7 @@ class DirectingReviewRequest(BaseModel):
 
 class DirectingDiagnosis(BaseModel):
     id: str
+    rule_id: str
     level: DirectingDiagnosticLevel
     targets: List[str] = Field(min_length=1)
     diagnosis: str
@@ -497,6 +552,96 @@ class ShotDesignRequest(BaseModel):
     # 씬의 대본. 컷 목록만으로는 어디가 중요한 대목인지 알 수 없다.
     script: Optional[str] = ""
     scene_intention: Optional[str] = ""
+
+class ReferenceImageRequest(BaseModel):
+    # "character" | "location"
+    kind: str
+    # 항목 값에서 조립하거나 사용자가 직접 고친 문장.
+    prompt: str
+
+class ReferenceImageResponse(BaseModel):
+    image: str      # base64 PNG
+
+class SpaceLayoutRequest(BaseModel):
+    heading: str
+    script: str
+    # 미장센이 세운 공간 기준. 도면이 그것과 어긋나면 안 된다.
+    location_facts: Optional[str] = ""
+
+class SpaceLayoutElement(BaseModel):
+    label: str
+    x: int
+    y: int
+    w: int
+    h: int
+
+class SpaceLayoutPerson(BaseModel):
+    name: str
+    x: int
+    y: int
+
+class SpaceLayoutResponse(BaseModel):
+    elements: List[SpaceLayoutElement] = []
+    # 인물의 시작 위치. 컷마다의 위치는 사용자가 끌어서 정한다.
+    people: List[SpaceLayoutPerson] = []
+    note: str = ""
+
+class PanelReference(BaseModel):
+    # 화면에서 이 그림이 무엇인지. 프롬프트에서 인물 이름으로 가리킨다.
+    name: str
+    # "character" | "location"
+    kind: str
+    image: str      # base64 PNG
+
+class PanelImageRequest(BaseModel):
+    # 이 컷 한 장의 내용. 샷 크기·행동·강조가 들어 있다.
+    prompt: str
+    # 모든 컷이 공유하는 씬 기준(미장센). 이것이 빠지면 컷마다 인물과
+    # 공간이 따로 해석돼 같은 사람이 다른 사람으로 그려진다.
+    shared: Optional[str] = ""
+    # 바로 앞 컷의 문장. 이어지는 두 장이라는 것을 알아야 화면이 튀지 않는다.
+    previous: Optional[str] = ""
+    # 이 컷에 걸리는 레퍼런스 그림(base64 PNG). 글로만 기준을 주면 컷마다
+    # 다른 얼굴이 나온다. 그림을 물려야 실제로 같은 인물이 된다.
+    references: List[PanelReference] = []
+    # 그림체. 미장센의 '그림체' 항목에서 온다. 비면 기본 스케치체를 쓴다 —
+    # 화면에 칸이 있는데 반영되지 않으면 정한 것이 무시되는 셈이다.
+    style: Optional[str] = ""
+    # 2D 구조도를 문장으로 옮긴 것. 무엇이 어디에 있는지 컷마다 같아야 한다.
+    layout: Optional[str] = ""
+
+
+class PanelImageResponse(BaseModel):
+    image: str      # base64 PNG
+    format: str = "png"
+
+class ShotFixCut(BaseModel):
+    beat: int
+    content: str
+    purpose: Optional[str] = ""
+    characters: Optional[str] = ""
+    # 지금 정해져 있는 샷. 무엇을 바꾸는지 알려면 현재 값이 있어야 한다.
+    shot_size: Optional[str] = ""
+    dominant: Optional[str] = ""
+
+class ShotFixRequest(BaseModel):
+    heading: str
+    cuts: List[ShotFixCut]
+    # 편집이 낸 진단. 무엇을 풀어야 하는지 알아야 고칠 수 있다.
+    finding_title: str
+    finding_detail: Optional[str] = ""
+    # 진단에 걸린 컷의 순번. 어디를 고쳐야 하는지 짚어 준다.
+    target_indexes: List[int] = []
+    scene_intention: Optional[str] = ""
+
+class ShotFixEdit(BaseModel):
+    cut_index: int
+    shot_size: str
+    reason: str = ""
+
+class ShotFixResponse(BaseModel):
+    edits: List[ShotFixEdit] = []
+    summary: str = ""
 
 class DesignedShot(BaseModel):
     cut_index: int                          # 요청에 준 컷의 순번

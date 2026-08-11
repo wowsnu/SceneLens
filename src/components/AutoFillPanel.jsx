@@ -21,6 +21,7 @@ function stripDataUrl(image) {
   return image.split(',', 2)[1] || null
 }
 
+// eslint-disable-next-line no-unused-vars -- 아래 비활성화된 API 호출이 쓴다
 function toApiShot(shot, index) {
   return {
     id: shot?.id || `shot-${index + 1}`,
@@ -116,6 +117,7 @@ function buildMockAutoFillResponse(rangeShots) {
   return { versions }
 }
 
+// eslint-disable-next-line no-unused-vars -- 아래 비활성화된 API 호출이 쓴다
 function pickRangeScript(screenplay, rangeShots) {
   const fullScript = screenplay.map((line) => line.text).join('\n')
   const beats = rangeShots
@@ -145,7 +147,9 @@ export default function AutoFillPanel() {
   const acceptAutoFillVersion = useStore((s) => s.acceptAutoFillVersion)
   const scenes = useStore((s) => s.scenes)
   const activeScene = useStore((s) => s.activeScene)
+  // eslint-disable-next-line no-unused-vars -- 아래 비활성화된 API 호출이 쓴다
   const screenplay = useStore((s) => s.screenplay)
+  // eslint-disable-next-line no-unused-vars -- 아래 비활성화된 API 호출이 쓴다
   const intent = useStore((s) => s.intent)
 
   // ── Empty state — no range selected ─────────────────

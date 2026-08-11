@@ -276,6 +276,77 @@ export async function designShots({ heading, cuts, script = '', sceneIntention =
   return { shots: data.shots, coverage: data.coverage || null }
 }
 
+// --- 미장센: 공간 배치 ------------------------------------------------------
+// 그림이 아니라 좌표를 받는다. 그리는 것은 SpatialMap이 한다.
+export async function buildSpaceLayout({ heading, script, locationFacts = '' }) {
+  const data = await fetchWithTimeout(`${API_BASE}/space-layout`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ heading, script, location_facts: locationFacts }),
+  }, 60000)
+  return {
+    elements: data.elements || [],
+    people: data.people || [],
+    note: data.note || '',
+  }
+}
+
+// --- 패널 그림 ------------------------------------------------------------
+// 앞 공정이 조립한 프롬프트를 실제로 소비하는 자리. 씬 기준·책임 선언·
+// 이음새·샷이 전부 이 문장으로 모인다.
+export async function generatePanelImage(
+  prompt, { shared = '', previous = '', references = [], style = '', layout = '' } = {},
+) {
+  const data = await fetchWithTimeout(`${API_BASE}/panel-image`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    // shared는 모든 컷이 공유하는 씬 기준, previous는 앞 컷의 문장이다.
+    // 둘 다 이 컷 하나만으로는 알 수 없는 것이라 따로 넘긴다.
+    // references는 인물·공간의 레퍼런스 그림 — 글로만 기준을 주면
+    // 컷마다 다른 얼굴이 나온다.
+    body: JSON.stringify({ prompt, shared, previous, references, style, layout }),
+  }, 240000)
+  return `data:image/png;base64,${data.image}`
+}
+
+// 미장센: 인물·공간의 레퍼런스 그림. 이 그림이 패널 생성의 기준이 된다.
+export async function generateReferenceImage(kind, prompt) {
+  const data = await fetchWithTimeout(`${API_BASE}/reference-image`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ kind, prompt }),
+  }, 180000)
+  return `data:image/png;base64,${data.image}`
+}
+
+// --- 촬영: 진단 → 샷 수정본 ------------------------------------------------
+// 진단은 무엇이 잘못됐는지까지만 말한다. 어느 크기로 바꿀지는 그 컷이
+// 무엇을 보여주려는지 봐야 정해지고, 그것은 촬영의 판단이다.
+export async function fixShots({
+  heading, cuts, findingTitle, findingDetail = '', targetIndexes = [], sceneIntention = '',
+}) {
+  const data = await fetchWithTimeout(`${API_BASE}/shot-fix`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      heading,
+      cuts: cuts.map((cut) => ({
+        beat: cut.beat,
+        content: cut.content,
+        purpose: cut.purpose,
+        characters: cut.characters,
+        shot_size: cut.shotSize || '',
+        dominant: cut.dominant || '',
+      })),
+      finding_title: findingTitle,
+      finding_detail: findingDetail,
+      target_indexes: targetIndexes,
+      scene_intention: sceneIntention,
+    }),
+  }, 60000)
+  return { edits: data.edits || [], summary: data.summary || '' }
+}
+
 // --- 미장센: 대본 → 씬 기준 -----------------------------------------------
 // 여러 컷에 걸쳐 같아야 하는 것을 세운다. 대본에 없는 것은 open으로 남긴다.
 export async function buildSceneState({ heading, script, sceneIntention = '' }) {

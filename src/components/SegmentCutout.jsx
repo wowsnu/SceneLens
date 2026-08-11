@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import './SegmentCutout.css'
 
 /**
@@ -19,10 +19,14 @@ export default function SegmentCutout({ cutout, onConfirm, onCancel }) {
   const dragging = useRef(null)   // { startX, startY, origX, origY }
   const resizing = useRef(null)   // { startX, startY, origW, origH, origX, origY, corner }
 
-  useEffect(() => {
+  // 잘라낸 조각이 바뀌면 위치·크기도 따라가야 한다. 렌더 중에 맞추면
+  // effect가 한 번 더 도는 것(연쇄 렌더)을 피할 수 있다.
+  const [syncedCutout, setSyncedCutout] = useState(cutout)
+  if (syncedCutout !== cutout) {
+    setSyncedCutout(cutout)
     setPos({ x: cutout.bbox.x, y: cutout.bbox.y })
     setSize({ w: cutout.bbox.w, h: cutout.bbox.h })
-  }, [cutout])
+  }
 
   const onPointerMoveWindow = (e) => {
     if (dragging.current) {

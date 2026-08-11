@@ -46,23 +46,22 @@
 
 .scope-panel {
   flex-shrink: 0;
-  display: grid;
-  grid-template-columns: minmax(260px, 0.8fr) minmax(360px, 1.2fr);
-  gap: 14px;
+  display: flex;
+  gap: 12px;
   align-items: center;
-  padding: 10px 12px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.028);
+  min-height: 38px;
+  padding: 4px 2px 8px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.075);
 }
 
 .scope-panel-copy {
   min-width: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 9px;
 }
 
 .scope-panel-copy span {
-  display: block;
-  margin-bottom: 3px;
   color: rgba(255, 255, 255, 0.35);
   font-size: 9px;
   font-weight: 900;
@@ -71,43 +70,18 @@
 }
 
 .scope-panel-copy strong {
-  display: block;
   color: #f8fafc;
-  font-size: 13px;
+  font-size: 11.5px;
   line-height: 1.2;
 }
 
-.scope-panel-copy p {
-  margin: 4px 0 0;
-  color: rgba(226, 232, 240, 0.52);
-  font-size: 11px;
-  line-height: 1.35;
-}
-
 .scope-controls {
+  flex: 1;
   min-width: 0;
   display: flex;
   align-items: center;
+  justify-content: flex-end;
   gap: 10px;
-}
-
-.scope-generate-btn {
-  flex-shrink: 0;
-  height: 30px;
-  padding: 0 12px;
-  border-radius: 7px;
-  border: 1px solid rgba(245, 158, 11, 0.44);
-  background: rgba(245, 158, 11, 0.14);
-  color: #fde68a;
-  font-size: 11px;
-  font-weight: 900;
-  cursor: pointer;
-}
-
-.scope-generate-btn:hover {
-  border-color: rgba(245, 158, 11, 0.72);
-  background: rgba(245, 158, 11, 0.22);
-  color: #fff7ed;
 }
 
 .scope-mode-toggle {
@@ -716,6 +690,471 @@
   color: rgba(255, 255, 255, 0.5);
 }
 
+.decision-review-nav {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 43px;
+  padding: 0 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.075);
+}
+
+.decision-review-nav > span {
+  flex: 0 0 auto;
+  color: rgba(255, 255, 255, 0.34);
+  font-size: 9.5px;
+  font-weight: 850;
+  letter-spacing: 0.05em;
+}
+
+.decision-review-nav > div {
+  min-width: 0;
+  display: flex;
+  align-items: stretch;
+  align-self: stretch;
+  gap: 2px;
+  overflow-x: auto;
+}
+
+.decision-review-nav button {
+  position: relative;
+  flex: 0 0 auto;
+  padding: 0 9px;
+  border: 0;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.42);
+  font-family: inherit;
+  font-size: 10.5px;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.decision-review-nav button::after {
+  content: '';
+  position: absolute;
+  right: 7px;
+  bottom: 0;
+  left: 7px;
+  height: 2px;
+  border-radius: 2px 2px 0 0;
+  background: transparent;
+}
+
+.decision-review-nav button:hover {
+  color: rgba(255, 255, 255, 0.76);
+}
+
+.decision-review-nav button.active {
+  color: rgba(255, 255, 255, 0.94);
+}
+
+.decision-review-nav button.active::after {
+  background: #d8aa62;
+}
+
+.decision-review-nav button.audience.active::after {
+  background: #a5b4fc;
+}
+
+.decision-review-nav button:disabled {
+  cursor: not-allowed;
+  opacity: 0.35;
+}
+
+.decision-review-divider {
+  flex: 0 0 auto;
+  width: 1px;
+  height: 18px;
+  align-self: center;
+  margin: 0 4px;
+  background: rgba(255, 255, 255, 0.11);
+}
+
+.primary-lens-control[hidden],
+.option-lanes[hidden] {
+  display: none;
+}
+
+/* 실제 응답을 붙이기 전의 다관점 리뷰 화면. 세 관점의 짧은 판단을 먼저
+   비교하고, 통합 판단과 관점 충돌은 별도 층으로 분리한다. */
+.multi-review-preview {
+  flex: 0 0 auto;
+  display: grid;
+  gap: 0;
+  margin: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.018);
+  overflow: hidden;
+}
+
+.multi-review-preview-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 14px;
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.09), rgba(59, 130, 246, 0.035));
+}
+
+.multi-review-preview-heading h2 {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 15px;
+  line-height: 1.35;
+}
+
+.multi-review-run-button {
+  flex: 0 0 auto;
+  min-height: 34px;
+  padding: 0 12px;
+  border: 1px solid rgba(216, 170, 98, 0.48);
+  border-radius: 7px;
+  background: rgba(216, 170, 98, 0.13);
+  color: #f0cb91;
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.multi-review-run-button:hover:not(:disabled) {
+  border-color: rgba(216, 170, 98, 0.7);
+  background: rgba(216, 170, 98, 0.2);
+  color: #fff0d5;
+}
+
+.multi-review-run-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.48;
+}
+
+.multi-review-intent {
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+  background: rgba(0, 0, 0, 0.08);
+}
+
+.multi-review-intent > summary {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 9px;
+  min-height: 38px;
+  padding: 0 12px;
+  cursor: pointer;
+  list-style: none;
+}
+
+.multi-review-intent > summary::-webkit-details-marker {
+  display: none;
+}
+
+.multi-review-intent > summary span {
+  color: rgba(216, 170, 98, 0.72);
+  font-size: 9.5px;
+  font-weight: 850;
+  letter-spacing: 0.04em;
+}
+
+.multi-review-intent > summary strong {
+  overflow: hidden;
+  color: rgba(255, 255, 255, 0.45);
+  font-size: 10.5px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.multi-review-intent > summary::after {
+  content: '⌄';
+  color: rgba(255, 255, 255, 0.34);
+  font-size: 13px;
+  transition: transform 140ms ease;
+}
+
+.multi-review-intent[open] > summary::after {
+  transform: rotate(180deg);
+}
+
+.multi-review-intent > label {
+  display: block;
+  padding: 0 12px;
+}
+
+.multi-review-intent > label > span {
+  display: block;
+  margin-bottom: 5px;
+  color: rgba(255, 255, 255, 0.45);
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.multi-review-intent textarea {
+  width: 100%;
+  min-height: 54px;
+  padding: 8px 9px;
+  border: 1px solid rgba(216, 170, 98, 0.22);
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.24);
+  color: rgba(255, 255, 255, 0.84);
+  font-family: inherit;
+  font-size: 11px;
+  line-height: 1.45;
+  resize: vertical;
+}
+
+.multi-review-intent textarea:focus {
+  border-color: rgba(216, 170, 98, 0.48);
+  outline: none;
+}
+
+.multi-review-intent-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 7px 12px 10px;
+}
+
+.multi-review-intent-footer p {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.3);
+  font-size: 9.5px;
+  line-height: 1.45;
+}
+
+.multi-review-intent-footer button {
+  flex: 0 0 auto;
+  min-height: 30px;
+  padding: 0 10px;
+  border: 1px solid rgba(216, 170, 98, 0.38);
+  border-radius: 6px;
+  background: rgba(216, 170, 98, 0.1);
+  color: #e9c58d;
+  font-family: inherit;
+  font-size: 10px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.multi-review-intent-footer button:disabled {
+  border-color: rgba(255, 255, 255, 0.08);
+  background: transparent;
+  color: rgba(255, 255, 255, 0.3);
+  cursor: default;
+}
+
+.multi-review-loading {
+  display: grid;
+  gap: 12px;
+  padding: 16px 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.multi-review-loading div strong,
+.multi-review-loading div span {
+  display: block;
+}
+
+.multi-review-loading div strong {
+  color: rgba(255, 255, 255, 0.84);
+  font-size: 12px;
+}
+
+.multi-review-loading div span {
+  margin-top: 3px;
+  color: rgba(255, 255, 255, 0.42);
+  font-size: 10.5px;
+}
+
+.multi-review-loading > i {
+  position: relative;
+  display: block;
+  height: 3px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.multi-review-loading > i::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -36%;
+  width: 36%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, transparent, #d8aa62, transparent);
+  animation: multi-review-progress 1.1s ease-in-out infinite;
+}
+
+@keyframes multi-review-progress {
+  to { left: 100%; }
+}
+
+.multi-review-summary,
+.multi-review-tension {
+  padding: 11px 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.multi-review-summary > header,
+.multi-review-tension > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 5px;
+}
+
+.multi-review-summary span,
+.multi-review-tension span {
+  display: block;
+  color: rgba(255, 255, 255, 0.42);
+  font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.multi-review-summary > header em,
+.multi-review-tension > header em {
+  flex: 0 0 auto;
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.055);
+  color: rgba(255, 255, 255, 0.42);
+  font-size: 9px;
+  font-style: normal;
+  font-weight: 850;
+  letter-spacing: 0.05em;
+}
+
+.multi-review-summary p,
+.multi-review-tension p {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 11.5px;
+  line-height: 1.55;
+}
+
+.multi-review-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.multi-review-card {
+  min-width: 0;
+  padding: 11px;
+  border-right: 1px solid rgba(255, 255, 255, 0.07);
+  box-shadow: inset 0 2px color-mix(in srgb, var(--lens-color), transparent 42%);
+}
+
+.multi-review-card:last-child {
+  border-right: 0;
+}
+
+.multi-review-card > header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.multi-review-card > header > span {
+  flex: 0 0 auto;
+  display: grid;
+  width: 24px;
+  height: 24px;
+  place-items: center;
+  border: 1px solid color-mix(in srgb, var(--lens-color), transparent 48%);
+  border-radius: 7px;
+  background: color-mix(in srgb, var(--lens-color), transparent 90%);
+  color: color-mix(in srgb, var(--lens-color), white 22%);
+  font-size: 10px;
+  font-weight: 900;
+}
+
+.multi-review-card > header div {
+  min-width: 0;
+}
+
+.multi-review-card > header strong,
+.multi-review-card > header em {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.multi-review-card > header strong {
+  color: rgba(255, 255, 255, 0.84);
+  font-size: 11.5px;
+}
+
+.multi-review-card > header em {
+  margin-top: 1px;
+  color: rgba(255, 255, 255, 0.34);
+  font-size: 9px;
+  font-style: normal;
+}
+
+.multi-review-card > p {
+  margin: 9px 0 0;
+  color: rgba(255, 255, 255, 0.61);
+  font-size: 10.5px;
+  line-height: 1.55;
+}
+
+.multi-review-tension {
+  border-color: rgba(239, 68, 68, 0.18);
+  background: rgba(239, 68, 68, 0.02);
+}
+
+.multi-review-tension span {
+  color: rgba(252, 165, 165, 0.68);
+}
+
+.multi-review-tension > strong {
+  display: block;
+  margin-bottom: 3px;
+  color: rgba(255, 255, 255, 0.84);
+  font-size: 11.5px;
+  line-height: 1.45;
+}
+
+.multi-review-tension-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 9px;
+}
+
+.multi-review-tension-actions button {
+  min-height: 28px;
+  padding: 0 9px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.5);
+  font-family: inherit;
+  font-size: 10px;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.multi-review-tension-actions button:hover {
+  border-color: rgba(255, 255, 255, 0.24);
+  color: rgba(255, 255, 255, 0.84);
+}
+
+.multi-review-tension-actions button.selected {
+  border-color: rgba(216, 170, 98, 0.48);
+  background: rgba(216, 170, 98, 0.12);
+  color: #f0cb91;
+}
+
 /* ── 사용자가 직접 고르는 현재의 주 Creative Lens ── */
 .primary-lens-control {
   flex: 0 0 auto;
@@ -743,6 +1182,7 @@
 }
 
 .viewer-entry-button {
+  flex-shrink: 0;
   min-height: 32px;
   display: inline-flex;
   align-items: center;
@@ -1169,6 +1609,25 @@ button.active .lens-glass::after {
   margin-bottom: 8px;
 }
 
+.viewer-handoff-card {
+  display: grid;
+  gap: 7px;
+  margin-bottom: 10px;
+  padding: 10px;
+  border: 1px solid rgba(167, 139, 250, 0.28);
+  border-left: 3px solid rgba(167, 139, 250, 0.72);
+  border-radius: 8px;
+  background: rgba(109, 40, 217, 0.08);
+}
+
+.viewer-handoff-card header { display: flex; align-items: center; justify-content: space-between; }
+.viewer-handoff-card header span { color: #c4b5fd; font-size: 10px; font-weight: 850; }
+.viewer-handoff-card header button { border: 0; background: transparent; color: rgba(226, 232, 240, .5); cursor: pointer; }
+.viewer-handoff-card > strong { color: rgba(248, 250, 252, .9); font-size: 12px; line-height: 1.45; }
+.viewer-handoff-card p { margin: 0; color: rgba(203, 213, 225, .7); font-size: 11px; line-height: 1.45; }
+.viewer-handoff-card p em { margin-right: 6px; color: #a5b4fc; font-style: normal; font-weight: 800; }
+.viewer-handoff-card .viewer-handoff-use { justify-self: start; padding: 5px 8px; border: 1px solid rgba(167, 139, 250, .3); border-radius: 6px; background: rgba(124, 58, 237, .12); color: #ddd6fe; font-size: 10px; font-weight: 800; cursor: pointer; }
+
 .lens-intent-row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 66px;
@@ -1218,6 +1677,227 @@ button.active .lens-glass::after {
 .lens-send-btn:disabled {
   cursor: not-allowed;
   opacity: 0.42;
+}
+
+.lens-review-actionbar {
+  display: flex;
+  justify-content: flex-end;
+  margin: 0 0 9px;
+}
+
+.lens-review-run-button {
+  min-width: 112px;
+  min-height: 34px;
+  padding: 0 12px;
+  border: 1px solid color-mix(in srgb, var(--lens-color), transparent 48%);
+  border-radius: 7px;
+  background: color-mix(in srgb, var(--lens-color), transparent 84%);
+  color: color-mix(in srgb, var(--lens-color), white 30%);
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 850;
+  cursor: pointer;
+}
+
+.lens-review-run-button:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--lens-color), transparent 24%);
+  background: color-mix(in srgb, var(--lens-color), transparent 74%);
+  color: #fff;
+}
+
+.lens-review-run-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.48;
+}
+
+.option-lane.lens-review-waiting :is(
+  .lens-analysis-panel,
+  .lens-proposals-panel,
+  .editing-single-workspace,
+  .mise-shot-staging
+) {
+  display: none;
+}
+
+.lens-review-loading {
+  margin: 0 -12px -10px -14px;
+}
+
+.directing-review-result,
+.directing-review-error {
+  display: grid;
+  gap: 13px;
+  padding: 16px;
+  border: 1px solid color-mix(in srgb, var(--lens-color), transparent 70%);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--lens-color), rgba(5, 8, 16, 0.94) 94%);
+}
+
+.directing-review-result-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.directing-review-result-heading > div {
+  display: grid;
+  gap: 4px;
+}
+
+.directing-review-result-heading span,
+.directing-diagnosis-card span,
+.directing-review-question span {
+  color: color-mix(in srgb, var(--lens-color), white 20%);
+  font-size: 11.5px;
+  font-weight: 850;
+}
+
+.directing-review-result-heading strong {
+  color: rgba(248, 250, 252, 0.96);
+  font-size: 16px;
+  line-height: 1.35;
+}
+
+.directing-review-result-heading > em {
+  flex: 0 0 auto;
+  padding: 5px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 850;
+}
+
+.directing-review-result-heading > em.has-issue {
+  background: rgba(251, 191, 36, 0.14);
+  color: #fde68a;
+}
+
+.directing-review-result-heading > em.clear {
+  background: rgba(52, 211, 153, 0.13);
+  color: #a7f3d0;
+}
+
+.directing-review-summary {
+  margin: 0;
+  color: rgba(241, 245, 249, 0.88);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.directing-diagnosis-card {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid rgba(251, 191, 36, 0.18);
+  border-radius: 8px;
+  background: rgba(15, 23, 42, 0.52);
+}
+
+.directing-diagnosis-card > strong {
+  color: rgba(255, 251, 235, 0.96);
+  font-size: 14.5px;
+  line-height: 1.55;
+}
+
+.directing-diagnosis-targets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.directing-diagnosis-targets > span {
+  padding: 4px 7px;
+  border-radius: 5px;
+  background: color-mix(in srgb, var(--lens-color), transparent 87%);
+}
+
+.directing-evidence,
+.directing-suggested-action {
+  display: grid;
+  gap: 6px;
+}
+
+.directing-evidence ul {
+  display: grid;
+  gap: 5px;
+  margin: 0;
+  padding-left: 18px;
+  color: rgba(226, 232, 240, 0.78);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.directing-suggested-action {
+  padding: 11px;
+  border-left: 3px solid color-mix(in srgb, var(--lens-color), white 8%);
+  background: color-mix(in srgb, var(--lens-color), transparent 92%);
+}
+
+.directing-suggested-action p,
+.directing-review-question p,
+.directing-review-error p {
+  margin: 0;
+  color: rgba(241, 245, 249, 0.86);
+  font-size: 13.5px;
+  line-height: 1.55;
+}
+
+.directing-theory-basis {
+  margin: 0;
+  color: rgba(148, 163, 184, 0.72);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.directing-diagnosis-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 7px;
+  padding-top: 2px;
+}
+
+.directing-diagnosis-actions button {
+  min-height: 34px;
+  padding: 0 11px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.035);
+  color: rgba(226, 232, 240, 0.78);
+  font-size: 11.5px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.directing-diagnosis-actions button:hover {
+  border-color: color-mix(in srgb, var(--lens-color), transparent 45%);
+  color: rgba(248, 250, 252, 0.94);
+}
+
+.directing-diagnosis-actions button.primary {
+  border-color: color-mix(in srgb, var(--lens-color), transparent 48%);
+  background: color-mix(in srgb, var(--lens-color), transparent 84%);
+  color: color-mix(in srgb, var(--lens-color), white 28%);
+}
+
+.directing-review-question {
+  display: grid;
+  gap: 6px;
+  padding: 12px;
+  border-radius: 8px;
+  background: rgba(96, 165, 250, 0.08);
+}
+
+.directing-review-error {
+  gap: 5px;
+  border-color: rgba(248, 113, 113, 0.32);
+  background: rgba(127, 29, 29, 0.12);
+}
+
+.directing-review-error strong {
+  color: #fecaca;
+  font-size: 14px;
 }
 
 .mise-workspace-toggle {
@@ -3718,6 +4398,27 @@ button.active .lens-glass::after {
   margin: 0;
 }
 
+.viewer-range-control {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 7px;
+  color: rgba(203, 213, 225, 0.72);
+  font-size: 11px;
+}
+
+.viewer-range-control > span { color: rgba(165, 180, 252, .9); font-weight: 800; }
+.viewer-range-control label { display: inline-flex; align-items: center; gap: 4px; }
+.viewer-range-control select {
+  min-height: 28px;
+  border: 1px solid rgba(148, 163, 184, .2);
+  border-radius: 5px;
+  padding: 0 5px;
+  background: rgba(15, 23, 42, .72);
+  color: rgba(241, 245, 249, .92);
+  font: inherit;
+}
+
 .viewer-reflection-placeholder {
   flex: 1;
   min-height: 260px;
@@ -3751,54 +4452,6 @@ button.active .lens-glass::after {
   line-height: 1.55;
 }
 
-.viewer-readability-note,
-.viewer-error {
-  margin: 0;
-  padding: 9px 11px;
-  border-radius: 7px;
-  color: rgba(254, 240, 138, 0.88);
-  background: rgba(234, 179, 8, 0.08);
-  border: 1px solid rgba(234, 179, 8, 0.18);
-  font-size: 11px;
-  line-height: 1.45;
-}
-
-.viewer-intention-snapshot {
-  display: grid;
-  gap: 6px;
-  padding: 11px 12px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.025);
-}
-
-.viewer-intention-snapshot label,
-.viewer-intention-compare span {
-  color: rgba(203, 213, 225, 0.78);
-  font-size: 11px;
-  font-weight: 760;
-}
-
-.viewer-intention-snapshot em {
-  color: rgba(148, 163, 184, 0.68);
-  font-style: normal;
-  font-weight: 600;
-}
-
-.viewer-intention-snapshot textarea {
-  width: 100%;
-  resize: vertical;
-  box-sizing: border-box;
-  border: 1px solid rgba(148, 163, 184, 0.2);
-  border-radius: 6px;
-  padding: 8px;
-  background: rgba(3, 7, 18, 0.52);
-  color: #e2e8f0;
-  font: inherit;
-  font-size: 12px;
-  line-height: 1.45;
-}
-
 .viewer-run-button,
 .viewer-rerun-button {
   align-self: flex-start;
@@ -3815,17 +4468,45 @@ button.active .lens-glass::after {
 }
 
 .viewer-run-button:disabled,
-.viewer-rerun-button:disabled { cursor: wait; opacity: .55; }
+.viewer-rerun-button:disabled { cursor: not-allowed; opacity: .55; }
 
 .viewer-report { display: grid; gap: 10px; }
 
-.viewer-intention-compare {
-  padding: 10px 12px;
-  border-left: 2px solid rgba(167, 139, 250, 0.7);
-  background: rgba(139, 92, 246, 0.07);
+.viewer-whole-reading {
+  padding: 12px;
+  border-left: 2px solid rgba(165, 180, 252, .72);
+  background: rgba(99, 102, 241, .08);
 }
 
-.viewer-intention-compare p { margin: 4px 0 0; color: rgba(237, 233, 254, .9); font-size: 12px; line-height: 1.5; }
+.viewer-whole-reading span { color: #c7d2fe; font-size: 10px; font-weight: 850; }
+.viewer-whole-reading p { margin: 5px 0 0; color: rgba(241, 245, 249, .92); font-size: 13px; line-height: 1.5; }
+.viewer-whole-reading details { margin-top: 8px; padding-top: 7px; border-top: 1px solid rgba(165, 180, 252, .14); }
+.viewer-whole-reading summary { color: rgba(196, 181, 253, .86); font-size: 10px; font-weight: 800; cursor: pointer; }
+.viewer-whole-reading details p { color: rgba(226, 232, 240, .82); font-size: 11px; }
+.viewer-whole-reading details small { display: block; margin-top: 5px; color: rgba(165, 180, 252, .68); font-size: 10px; line-height: 1.45; }
+
+.viewer-flow-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  color: rgba(165, 180, 252, .9);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.viewer-flow-controls > div { display: inline-flex; align-items: center; gap: 7px; }
+.viewer-flow-controls button {
+  width: 26px;
+  height: 26px;
+  border: 1px solid rgba(148, 163, 184, .2);
+  border-radius: 5px;
+  background: rgba(255, 255, 255, .04);
+  color: #e2e8f0;
+  cursor: pointer;
+}
+.viewer-flow-controls button:disabled { opacity: .38; cursor: not-allowed; }
+.viewer-flow-controls strong { min-width: 28px; color: #f1f5f9; text-align: center; }
 
 .viewer-reading-card {
   padding: 13px;
@@ -3838,20 +4519,112 @@ button.active .lens-glass::after {
 .viewer-reading-card h3 { margin: 4px 0 0; color: #f1f5f9; font-size: 15px; }
 .viewer-reading-card header > p { margin: 6px 0 0; color: rgba(203, 213, 225, .76); font-size: 12px; line-height: 1.5; }
 
+.viewer-guide-card {
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+  padding: 12px;
+  border: 1px solid rgba(167, 139, 250, .18);
+  border-radius: 10px;
+  background: rgba(15, 23, 42, .42);
+}
+
+.viewer-guide-character { display: grid; justify-items: center; gap: 5px; }
+.viewer-guide-character > strong { color: #c4b5fd; font-size: 10px; }
+.viewer-guide-face {
+  position: relative;
+  width: 50px;
+  height: 50px;
+  border: 2px solid rgba(76, 29, 149, .72);
+  border-radius: 44% 48% 46% 50%;
+  background: #fef3c7;
+  box-shadow: inset 0 -6px 0 rgba(245, 158, 11, .1), 0 4px 12px rgba(0, 0, 0, .2);
+  transform: rotate(-2deg);
+}
+.viewer-guide-face::before {
+  content: '';
+  position: absolute;
+  left: 7px;
+  top: -5px;
+  width: 35px;
+  height: 13px;
+  border-radius: 70% 45% 50% 20%;
+  background: #6d28d9;
+  transform: rotate(-5deg);
+}
+.viewer-guide-face .eye { position: absolute; top: 21px; width: 5px; height: 7px; border-radius: 50%; background: #312e81; }
+.viewer-guide-face .eye-left { left: 13px; }
+.viewer-guide-face .eye-right { right: 13px; }
+.viewer-guide-mouth { position: absolute; left: 21px; top: 35px; width: 9px; height: 5px; border-bottom: 2px solid #7c2d12; border-radius: 50%; }
+.viewer-guide-character.phase-middle .viewer-guide-face .eye-right { height: 3px; top: 23px; border-radius: 999px; }
+.viewer-guide-character.phase-end .viewer-guide-mouth { width: 7px; height: 7px; border: 2px solid #7c2d12; border-top: 0; border-radius: 0 0 8px 8px; }
+
+.viewer-guide-bubble {
+  position: relative;
+  display: grid;
+  gap: 7px;
+  padding: 11px 12px;
+  border: 1px solid rgba(167, 139, 250, .22);
+  border-radius: 10px;
+  background: rgba(109, 40, 217, .07);
+}
+.viewer-guide-bubble::before { content: ''; position: absolute; left: -7px; top: 18px; width: 12px; height: 12px; border-left: 1px solid rgba(167, 139, 250, .22); border-bottom: 1px solid rgba(167, 139, 250, .22); background: #16152a; transform: rotate(45deg); }
+.viewer-guide-bubble > span { color: #a5b4fc; font-size: 10px; font-weight: 850; }
+.viewer-guide-bubble h3 { margin: 0; color: rgba(248, 250, 252, .94); font-size: 14px; line-height: 1.45; }
+.viewer-guide-feeling { display: flex; gap: 6px; margin: 0; color: rgba(253, 230, 138, .78); font-size: 10.5px; line-height: 1.45; }
+.viewer-guide-feeling strong { flex: 0 0 auto; color: rgba(253, 224, 71, .9); font-size: 9.5px; }
+.viewer-current-hypothesis { padding: 8px 9px; border-radius: 7px; background: rgba(99, 102, 241, .1); }
+.viewer-current-hypothesis > strong { color: #c4b5fd; font-size: 9.5px; }
+.viewer-current-hypothesis > p { margin: 4px 0 0; color: rgba(241, 245, 249, .88); font-size: 11.5px; line-height: 1.45; }
+.viewer-open-question { display: grid; grid-template-columns: auto 1fr; gap: 6px; margin: 0; color: rgba(203, 213, 225, .74); font-size: 10.5px; line-height: 1.45; }
+.viewer-open-question strong { color: rgba(147, 197, 253, .9); font-size: 9.5px; }
+.viewer-guide-bubble details { border-top: 1px solid rgba(148, 163, 184, .1); padding-top: 6px; }
+.viewer-guide-bubble summary { color: rgba(196, 181, 253, .82); font-size: 10px; font-weight: 800; cursor: pointer; }
+.viewer-guide-bubble details p { margin: 5px 0 0; color: rgba(203, 213, 225, .72); font-size: 11px; line-height: 1.45; }
+.viewer-inline-review { margin-top: 2px; padding: 8px 9px; border: 1px solid rgba(251, 191, 36, .18); border-radius: 7px; background: rgba(245, 158, 11, .07); }
+.viewer-inline-review > span { color: #fde68a; font-size: 9.5px; font-weight: 850; }
+.viewer-inline-review > p { margin: 4px 0 0; color: rgba(254, 243, 199, .84); font-size: 11px; line-height: 1.45; }
+.viewer-inline-review > small { display: block; margin-top: 4px; color: rgba(203, 213, 225, .62); font-size: 9.5px; line-height: 1.4; }
+
+.viewer-branches,
+.viewer-review-points { display: grid; gap: 7px; padding: 11px; border: 1px solid rgba(148, 163, 184, .12); border-radius: 9px; background: rgba(15, 23, 42, .3); }
+.viewer-branches > header { display: grid; gap: 2px; }
+.viewer-branches > header span,
+.viewer-review-points > span { color: #c4b5fd; font-size: 10px; font-weight: 850; }
+.viewer-branches > header small { color: rgba(148, 163, 184, .66); font-size: 9.5px; }
+.viewer-branches article { display: grid; grid-template-columns: 32px minmax(0, 1fr); gap: 8px; padding-top: 7px; border-top: 1px solid rgba(148, 163, 184, .1); }
+.viewer-branches article > button { width: 32px; height: 24px; border: 1px solid rgba(129, 140, 248, .24); border-radius: 6px; background: rgba(99, 102, 241, .1); color: #c7d2fe; font-size: 9.5px; font-weight: 850; cursor: pointer; }
+.viewer-branches article > div { display: grid; gap: 6px; }
+.viewer-branches article p { display: grid; gap: 2px; margin: 0; color: rgba(226, 232, 240, .76); font-size: 10.5px; line-height: 1.45; }
+.viewer-branches article p strong { color: rgba(241, 245, 249, .92); font-size: 9.5px; }
+.viewer-branches details { color: rgba(148, 163, 184, .76); font-size: 9.5px; }
+.viewer-branches details summary { cursor: pointer; }
+.viewer-branches details p { margin-top: 4px; color: rgba(148, 163, 184, .72); }
+.viewer-review-points > button { display: grid; grid-template-columns: auto 1fr; gap: 8px; align-items: start; padding: 7px 8px; border: 1px solid rgba(251, 191, 36, .14); border-radius: 7px; background: rgba(245, 158, 11, .05); color: inherit; text-align: left; cursor: pointer; }
+.viewer-review-points > button:hover { border-color: rgba(251, 191, 36, .34); background: rgba(245, 158, 11, .09); }
+.viewer-review-points > button strong { color: #fde68a; font-size: 9.5px; white-space: nowrap; }
+.viewer-review-points > button span { color: rgba(226, 232, 240, .75); font-size: 10.5px; line-height: 1.4; }
+
 .viewer-reading-steps { display: grid; gap: 8px; margin: 12px 0; padding: 0; list-style: none; }
-.viewer-reading-steps li { display: grid; grid-template-columns: 27px 1fr; gap: 8px; }
-.viewer-reading-steps li > strong { color: #bfdbfe; font-size: 10px; padding-top: 2px; }
+.viewer-reading-steps li button { width: 100%; display: grid; grid-template-columns: 27px 1fr; gap: 8px; border: 0; padding: 5px; border-radius: 5px; background: transparent; color: inherit; text-align: left; cursor: pointer; }
+.viewer-reading-steps li.active button { background: rgba(96, 165, 250, .1); }
+.viewer-reading-steps li button strong { color: #bfdbfe; font-size: 10px; padding-top: 2px; }
 .viewer-reading-steps p, .viewer-reading-steps small { margin: 0; font-size: 11px; line-height: 1.45; }
 .viewer-reading-steps p { color: rgba(241, 245, 249, .84); }
 .viewer-reading-steps small { display: block; margin-top: 2px; color: rgba(148, 163, 184, .8); }
 
 .viewer-cue-trace { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.viewer-cue-trace.viewer-panel-reading { grid-template-columns: 1fr; margin-top: 10px; }
 .viewer-cue-trace > div { padding: 8px; border-radius: 6px; background: rgba(255, 255, 255, .025); }
 .viewer-cue-trace strong { color: #93c5fd; font-size: 10px; }
 .viewer-cue-trace p { margin: 4px 0 0; color: rgba(203, 213, 225, .76); font-size: 11px; line-height: 1.45; }
+.viewer-possible-interpretations { border-left: 2px solid rgba(165, 180, 252, .7); }
+.viewer-possible-interpretations ul { display: grid; gap: 4px; margin: 5px 0 0; padding-left: 16px; color: rgba(241, 245, 249, .9); font-size: 12px; line-height: 1.45; }
 .viewer-divergence { margin: 10px 0 0; color: #fde68a; font-size: 11px; }
 .viewer-routes { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 10px; }
-.viewer-routes span { padding: 3px 6px; border-radius: 999px; background: rgba(96, 165, 250, .1); color: #bfdbfe; font-size: 10px; }
+.viewer-routes button { padding: 4px 7px; border: 1px solid rgba(96, 165, 250, .2); border-radius: 999px; background: rgba(96, 165, 250, .1); color: #bfdbfe; font-size: 10px; cursor: pointer; }
+.viewer-routes button:hover { border-color: rgba(147, 197, 253, .52); color: #eff6ff; }
 
 .viewer-placeholder-rows {
   display: grid;
@@ -3897,21 +4670,32 @@ button.active .lens-glass::after {
     padding: 10px;
   }
 
-  .scope-panel,
   .selected-review-panel {
     grid-template-columns: 1fr;
     display: flex;
     flex-direction: column;
   }
 
-  .scope-controls {
-    width: 100%;
-    flex-direction: column;
-    align-items: stretch;
+  .scope-panel {
+    flex-wrap: wrap;
   }
 
-  .scope-generate-btn {
+  .scope-controls {
     width: 100%;
+    justify-content: flex-start;
+  }
+
+  .multi-review-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .multi-review-card {
+    border-right: 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+  }
+
+  .multi-review-card:last-child {
+    border-bottom: 0;
   }
 
   .debate-turn-list {
@@ -4119,4 +4903,268 @@ button.active .lens-glass::after {
 .mise-change-save:disabled {
   opacity: 0.4;
   cursor: default;
+}
+
+/* ── 우측 검토 패널 가독성 기준 ───────────────────────────────
+   기존 컴포넌트마다 9–12px로 흩어진 값을 한곳에서 끌어올린다.
+   정보가 한 화면에 덜 보여도 읽고 판단할 수 있는 크기를 우선한다. */
+.decision-board-options {
+  font-size: 14px;
+}
+
+.decision-board-options * {
+  font-size: inherit !important;
+}
+
+.decision-board-options :is(em, small, dt, .tradeoff-eyebrow) {
+  font-size: 12.5px !important;
+  line-height: 1.45 !important;
+}
+
+.decision-board-options strong {
+  font-size: 15.5px !important;
+  line-height: 1.4 !important;
+}
+
+.decision-board-options :is(h1, h2),
+.decision-board-options :is(h1, h2) strong {
+  font-size: 20px !important;
+  line-height: 1.35 !important;
+}
+
+.decision-board-options h3,
+.decision-board-options h3 strong {
+  font-size: 18px !important;
+  line-height: 1.4 !important;
+}
+
+.decision-board-options :is(p, li, dd) {
+  line-height: 1.65 !important;
+}
+
+.decision-board-options :is(span, label) {
+  line-height: 1.4 !important;
+}
+
+.decision-board-options :is(button, input, textarea, select) {
+  min-height: 34px;
+  font-size: 14px !important;
+  line-height: 1.4 !important;
+}
+
+.decision-board-options textarea {
+  padding: 10px 11px;
+}
+
+.decision-board-options .decision-review-nav {
+  min-height: 54px;
+}
+
+/* 이음새 제안 카드. 수락 전까지 이음새에 들어가지 않는다. */
+.editing-seam-proposals {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 10px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.editing-seam-proposals > li {
+  padding: 10px 12px;
+  border: 1px solid rgba(196, 150, 210, 0.28);
+  border-radius: 8px;
+  background: rgba(196, 150, 210, 0.07);
+}
+
+.editing-seam-where {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.editing-seam-where span {
+  color: rgba(255, 255, 255, 0.34);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.editing-seam-where strong {
+  flex-shrink: 0;
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 12px;
+}
+
+.editing-seam-values {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+.editing-seam-values em {
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: rgba(196, 150, 210, 0.2);
+  color: rgba(216, 178, 228, 0.98);
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 700;
+}
+
+.editing-seam-elision {
+  margin: 0 0 4px;
+  color: rgba(255, 255, 255, 0.62);
+  font-size: 11px;
+}
+
+.editing-seam-proposals p {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.45);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.editing-seam-actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.editing-seam-actions button {
+  padding: 4px 12px;
+  border: 1px solid rgba(196, 150, 210, 0.5);
+  border-radius: 5px;
+  background: rgba(196, 150, 210, 0.2);
+  color: rgba(216, 178, 228, 0.98);
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.editing-seam-actions button.ghost {
+  border-color: rgba(255, 255, 255, 0.16);
+  background: transparent;
+  color: rgba(255, 255, 255, 0.42);
+}
+
+.editing-seam-actions button:hover {
+  filter: brightness(1.25);
+}
+
+/* 이음새 제안받기 버튼. 이 화면의 그리드에서 바로 열어 고칠 수 있다. */
+.editing-seam-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 12px 0 4px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.editing-seam-row button {
+  flex-shrink: 0;
+  padding: 6px 12px;
+  border: 1px solid rgba(196, 150, 210, 0.5);
+  border-radius: 6px;
+  background: rgba(196, 150, 210, 0.14);
+  color: rgba(212, 172, 226, 0.98);
+  font-family: inherit;
+  font-size: 11.5px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.editing-seam-row button:hover:not(:disabled) {
+  background: rgba(196, 150, 210, 0.24);
+}
+
+.editing-seam-row button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.editing-seam-row > span {
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+/* 레퍼런스 그림 생성. 이 그림이 패널 생성의 참조로 물린다. */
+.mise-reference-gen {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.mise-reference-gen > label {
+  display: block;
+}
+
+.mise-reference-gen > label > span {
+  display: block;
+  margin-bottom: 4px;
+  color: rgba(255, 255, 255, 0.34);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.mise-reference-gen textarea {
+  width: 100%;
+  padding: 7px 9px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.25);
+  color: rgba(255, 255, 255, 0.82);
+  font-family: inherit;
+  font-size: 11px;
+  line-height: 1.5;
+  resize: vertical;
+}
+
+.mise-reference-gen textarea:focus {
+  border-color: rgba(126, 200, 160, 0.5);
+  outline: none;
+}
+
+.mise-reference-gen-actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 7px;
+}
+
+.mise-reference-gen-actions button {
+  padding: 5px 12px;
+  border: 1px solid rgba(126, 200, 160, 0.45);
+  border-radius: 5px;
+  background: rgba(126, 200, 160, 0.16);
+  color: rgba(150, 216, 182, 0.98);
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.mise-reference-gen-actions button.ghost {
+  border-color: rgba(255, 255, 255, 0.14);
+  background: transparent;
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.mise-reference-gen-actions button:hover:not(:disabled) {
+  filter: brightness(1.2);
+}
+
+.mise-reference-gen-actions button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.mise-reference-error {
+  margin: 6px 0 0;
+  color: rgba(232, 168, 168, 0.9);
+  font-size: 10.5px;
 }

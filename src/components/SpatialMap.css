@@ -629,3 +629,15 @@
   margin: 0 4px;
 }
 
+
+/* 대본에서 배치 제안받기. 빈 캔버스에서 시작하지 않아도 된다. */
+.tool-btn.propose {
+  color: rgba(126, 200, 160, 0.95);
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.tool-btn.propose:disabled {
+  opacity: 0.45;
+  cursor: default;
+}

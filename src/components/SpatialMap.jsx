@@ -41,6 +41,11 @@ export default function SpatialMap({
   initialEntityPresets = INITIAL_PRESETS,
   onElementsChange,
   showShotNodes = true,
+  // 미장센이 제안한 배치. 들어오면 화면을 그것으로 갈아 끼운다.
+  proposedElements = null,
+  onProposeLayout,
+  proposePending = false,
+  proposeNote = '',
 }) {
   const setViewMode = useStore((s) => s.setViewMode)
   const strategies = useStore((s) => s.strategies)
@@ -64,6 +69,13 @@ export default function SpatialMap({
   const [newCharName, setNewCharName] = useState('')
 
   const [elements, setElements] = useState(() => cloneElements(initialElements))
+  // 배치 제안이 들어오면 화면도 따라가야 한다. elements는 처음 한 번만
+  // 초기화되므로 스토어가 바뀌어도 그대로 남는다.
+  const [syncedProposal, setSyncedProposal] = useState(null)
+  if (proposedElements && proposedElements !== syncedProposal) {
+    setSyncedProposal(proposedElements)
+    setElements(cloneElements(proposedElements))
+  }
 
   const [nodePositions, setNodePositions] = useState({})
   const [drawingPreview, setDrawingPreview] = useState(null)
@@ -339,6 +351,17 @@ export default function SpatialMap({
             )}
           </div>
           <div className="tool-divider" />
+          {/* 빈 캔버스에서 시작하는 대신 대본에서 초안을 받는다. */}
+          {onProposeLayout && (
+            <button
+              className="tool-btn propose"
+              onClick={onProposeLayout}
+              disabled={proposePending}
+              title={proposeNote || '대본에서 배치 제안받기'}
+            >
+              {proposePending ? '…' : '✦'}
+            </button>
+          )}
           <button className={`tool-btn ${activeTool === 'select' ? 'active' : ''}`} onClick={() => setActiveTool('select')} title="Select Mode"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 3l7.07 16.97 2.51-7.39 7.39-2.51L3 3z" /></svg></button>
         </div>
       )}

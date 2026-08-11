@@ -1,11 +1,16 @@
 import { Fragment, useCallback, useEffect, useRef, useState } from 'react'
 import useStore, {
   buildCutPrompt,
+  describeLayout,
+  layoutToImage,
   selectCutStage,
   RESPONSIBILITY_LEVELS,
   OFFIMAGE_CHANNELS,
+  CAMERA_MOVE_TYPES,
   buildPanelMarks,
   selectScenes,
+  cutOrderOf,
+  selectActiveSceneId,
   selectActiveSceneState,
   sceneOfBeat,
   seamKeyFor,
@@ -18,12 +23,8 @@ import useStore, {
 } from '../store/useStore'
 import './StoryboardView.css'
 
-const MOCK_PANEL_PALETTES = [
-  ['#172033', '#334b75', '#d8e3ff'],
-  ['#251b2f', '#6c3f68', '#f2d5ef'],
-  ['#182923', '#356653', '#d4f2e6'],
-  ['#2c2118', '#735139', '#f4dfca'],
-]
+const EMPTY_SHOTS = []
+
 
 // 관객 관점 Initial Reading을 실제 화면으로 점검하기 위한 고정 테스트 시퀀스.
 // 생성 API의 결과가 아니라 public에 저장된 패널이므로, 비어 있는 컷에만
@@ -41,42 +42,6 @@ const VIEWER_TEST_PANEL_IMAGES = [
   '/img/viewer-test/panel-10-jaein-lunges.png',
 ]
 
-function createMockPanelImage(shotIdx, version = 1) {
-  const [background, midtone, line] = MOCK_PANEL_PALETTES[shotIdx % MOCK_PANEL_PALETTES.length]
-  const variant = (shotIdx + version) % 3
-  const compositions = [
-    `
-      <rect x="68" y="62" width="250" height="190" rx="8" fill="${midtone}" opacity=".54"/>
-      <circle cx="420" cy="150" r="58" fill="${line}" opacity=".18"/>
-      <path d="M380 258c18-63 48-93 89-93 36 0 65 31 83 93" fill="${midtone}" stroke="${line}" stroke-width="6"/>
-      <path d="M102 105h146M102 140h112M102 175h165" stroke="${line}" stroke-width="5" opacity=".72"/>
-    `,
-    `
-      <path d="M42 282 214 92h212l172 190" fill="${midtone}" opacity=".46"/>
-      <path d="M214 92v190M426 92v190" stroke="${line}" stroke-width="5" opacity=".58"/>
-      <circle cx="276" cy="166" r="34" fill="${line}" opacity=".22"/>
-      <circle cx="384" cy="166" r="34" fill="${line}" opacity=".22"/>
-      <path d="M238 262c8-54 24-81 48-81s40 27 48 81M346 262c8-54 24-81 48-81s40 27 48 81" fill="none" stroke="${line}" stroke-width="6"/>
-    `,
-    `
-      <rect x="45" y="45" width="550" height="230" rx="14" fill="${midtone}" opacity=".35"/>
-      <path d="M45 204 180 126l106 56 116-92 193 114v71H45Z" fill="${midtone}" opacity=".8"/>
-      <circle cx="180" cy="126" r="38" fill="${line}" opacity=".2"/>
-      <path d="M79 238h482" stroke="${line}" stroke-width="5" opacity=".72"/>
-    `,
-  ]
-  const svg = `
-    <svg xmlns="http://www.w3.org/2000/svg" width="640" height="360" viewBox="0 0 640 360">
-      <rect width="640" height="360" fill="${background}"/>
-      <rect x="22" y="22" width="596" height="316" rx="18" fill="none" stroke="${line}" stroke-width="3" opacity=".32"/>
-      ${compositions[variant]}
-      <rect x="38" y="298" width="124" height="25" rx="12.5" fill="#050507" opacity=".72"/>
-      <text x="100" y="315" text-anchor="middle" fill="${line}" font-family="Arial, sans-serif" font-size="11" font-weight="700" letter-spacing="1.8">AI DRAFT · V${version}</text>
-    </svg>
-  `
-  return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`
-}
-
 // 줄 종류는 둘뿐이다. 대사·괄호·전환은 두지 않는다 — 정지 이미지가
 // 담을 수 없고, 스토리보드가 평가하려는 것도 아니다.
 const SCRIPT_LINE_TYPES = [
@@ -86,6 +51,14 @@ const SCRIPT_LINE_TYPES = [
 
 // Script 단계에서 대본을 그 자리에서 고친다. 별도 raw 편집기를 열고
 // 전체를 다시 붙여넣지 않아도 되고, beat 구조가 유지된다.
+// 샷 크기를 바꿔 풀리는 진단. 여기 없는 것은 두 종류다 — 컷을 나누거나
+// 합쳐야 하는 것(층위가 다르다)과 angle-flat(표에 앵글 칸이 없다).
+const SHOT_FIXABLE = new Set([
+  'jump-cut', 'size-run',
+  'size-mismatch', 'no-establishing',
+  'anchor-too-tight', 'approach-broken', 'peak-not-closest',
+])
+
 const SEAM_ACTION_LABEL = {
   split: '나눌 컷 보기',
   merge: '두 컷 보기',
@@ -94,9 +67,163 @@ const SEAM_ACTION_LABEL = {
 }
 
 // 촬영·편집의 진단 카드. 문제의 층위를 밝힌다 (design_goal.md DG2:
-// 원인이 속성·컷의 존재·컷 간 관계·씬 범위 중 어디인지 진단하고 해당
+// 원인이 속성·컷 구성·컷 관계·씬 구조 중 어디인지 진단하고 해당
 // 층위에서 개입한다). 고치는 것은 표에서 하므로 버튼은 데려다주기만 한다.
-function DiagnosisList({ findings, emptyLabel, onGoTo }) {
+// 씬 기준의 값 한 줄. 대본에서 읽은 것이든 비어 있는 것이든 전부 고칠 수
+// 있다 — AI가 대본을 잘못 읽었을 때 고칠 방법이 없으면 안 된다. 다만
+// 어디서 온 값인지는 구분해 보인다 (DG1 P2: AI가 낸 것은 판정 대상이다).
+// 도면은 SVG로 만들지만 images.edit는 PNG만 받는다. 캔버스로 옮긴다.
+const rasterizeLayout = (svgDataUrl) => new Promise((resolve) => {
+  if (!svgDataUrl) return resolve(null)
+  const image = new Image()
+  image.onload = () => {
+    const canvas = document.createElement('canvas')
+    canvas.width = image.width || 768
+    canvas.height = image.height || 768
+    const context = canvas.getContext('2d')
+    // 투명 배경은 검게 깔린다. 도면은 흰 종이여야 읽힌다.
+    context.fillStyle = '#fff'
+    context.fillRect(0, 0, canvas.width, canvas.height)
+    context.drawImage(image, 0, 0)
+    resolve(canvas.toDataURL('image/png'))
+  }
+  // 도면을 못 만들어도 패널은 나와야 한다.
+  image.onerror = () => resolve(null)
+  image.src = svgDataUrl
+})
+
+// 화면은 data URL로 들고 있고 서버는 base64만 받는다.
+const stripDataUrl = (value = '') => value.replace(/^data:image\/\w+;base64,/, '')
+
+function SceneFactRow({ fact, onCommit, cutOptions = [], onAddChange, onRemoveChange }) {
+  const [draft, setDraft] = useState(fact.value || '')
+  // 대본을 다시 읽으면 화면 값도 따라가야 한다. 렌더 중에 맞추면 effect가
+  // 한 번 더 도는 것을 피할 수 있다.
+  const [synced, setSynced] = useState(fact.value || '')
+  if (synced !== (fact.value || '')) {
+    setSynced(fact.value || '')
+    setDraft(fact.value || '')
+  }
+
+  const commit = () => {
+    const next = draft.trim()
+    if (next !== (fact.value || '')) onCommit(next)
+  }
+
+  const changes = fact.changes || []
+  const canChange = Boolean(onAddChange) && cutOptions.length > 0
+
+  const addChange = () => {
+    // 아직 변화가 없는 첫 컷을 고른다. 같은 컷에 두 번 얹을 수 없다.
+    const used = new Set(changes.map((change) => change.cutId))
+    const open = cutOptions.find((option) => !used.has(option.cutId))
+    if (open) onAddChange(open.cutId, '')
+  }
+
+  return (
+    <div className="rail-scene-fact-block">
+      <label className={`rail-scene-fact${fact.open ? ' is-open' : ''}`}>
+        <span>{fact.label}</span>
+        <input
+          type="text"
+          value={draft}
+          placeholder="아직 지정되지 않음"
+          onChange={(event) => setDraft(event.target.value)}
+          onBlur={commit}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter') event.currentTarget.blur()
+            if (event.key === 'Escape') setDraft(fact.value || '')
+          }}
+        />
+        {/* 인물과 공간은 씬 안에서 변한다. 처음 값만 두면 옷을 갈아입어도
+            모든 컷이 같은 모습으로 그려진다. */}
+        {canChange && (
+          <button
+            type="button"
+            className="rail-scene-fact-add"
+            onClick={addChange}
+            title="이 컷부터 값이 바뀝니다"
+            aria-label={`${fact.label} 변화 추가`}
+          >
+            +
+          </button>
+        )}
+      </label>
+
+      {/* 지워진 컷을 가리키는 변화는 값을 못 낸다. 목록에서도 빼면
+          되살릴 방법이 없으므로, 고를 수 있는 컷만 남기고 보여준다. */}
+      {changes.map((change) => (
+        <SceneFactChangeRow
+          key={change.cutId}
+          change={change}
+          cutOptions={cutOptions}
+          taken={changes.map((entry) => entry.cutId)}
+          onCommit={(value) => onAddChange(change.cutId, value)}
+          onMove={(nextCutId) => {
+            onRemoveChange(change.cutId)
+            onAddChange(nextCutId, change.value)
+          }}
+          onRemove={() => onRemoveChange(change.cutId)}
+        />
+      ))}
+    </div>
+  )
+}
+
+// 특정 컷부터 값이 바뀐다. 처음 값을 덮어쓰지 않고 구간만 얹는다 —
+// 덮어쓰면 앞 컷들이 무엇이었는지 알 수 없게 된다.
+function SceneFactChangeRow({ change, cutOptions, taken, onCommit, onMove, onRemove }) {
+  const [draft, setDraft] = useState(change.value || '')
+  const [synced, setSynced] = useState(change.value || '')
+  if (synced !== (change.value || '')) {
+    setSynced(change.value || '')
+    setDraft(change.value || '')
+  }
+
+  return (
+    <div className="rail-scene-change">
+      <select
+        value={change.cutId}
+        onChange={(event) => onMove(event.target.value)}
+        aria-label="변화가 시작되는 컷"
+      >
+        {/* 가리키던 컷이 지워졌으면 목록에 없다. 그대로 두면 첫 항목이
+            선택돼 보여 다른 컷을 가리키는 것처럼 읽힌다. */}
+        {!cutOptions.some((option) => option.cutId === change.cutId) && (
+          <option value={change.cutId}>지워진 컷</option>
+        )}
+        {cutOptions.map((option) => (
+          <option
+            key={option.cutId}
+            value={option.cutId}
+            disabled={option.cutId !== change.cutId && taken.includes(option.cutId)}
+          >
+            {option.label}부터
+          </option>
+        ))}
+      </select>
+      <input
+        type="text"
+        value={draft}
+        placeholder="이 컷부터의 값"
+        onChange={(event) => setDraft(event.target.value)}
+        onBlur={() => {
+          if (draft.trim() !== (change.value || '')) onCommit(draft.trim())
+        }}
+        onKeyDown={(event) => {
+          if (event.key === 'Enter') event.currentTarget.blur()
+          if (event.key === 'Escape') setDraft(change.value || '')
+        }}
+      />
+      <button type="button" onClick={onRemove} aria-label="변화 삭제">×</button>
+    </div>
+  )
+}
+
+function DiagnosisList({
+  findings, emptyLabel, onGoTo,
+  onRequestFix, fixPending, fixProposal, fixError, onAcceptFix, onRejectFix,
+}) {
   if (findings.length === 0) {
     return <p className="rail-coverage-clear">{emptyLabel}</p>
   }
@@ -105,6 +232,10 @@ function DiagnosisList({ findings, emptyLabel, onGoTo }) {
     <ul className="rail-coverage">
       {findings.map((finding) => {
         const layer = PROBLEM_LAYERS[finding.layer]
+        // 샷 크기로 풀리는 진단만 촬영에 물을 수 있다. 컷을 나누거나
+        // 합쳐야 하는 것은 층위가 다르다.
+        const canFix = Boolean(onRequestFix) && SHOT_FIXABLE.has(finding.type)
+        const proposal = fixProposal?.findingId === finding.id ? fixProposal : null
         return (
           <li key={finding.id}>
             {layer && (
@@ -114,10 +245,52 @@ function DiagnosisList({ findings, emptyLabel, onGoTo }) {
             )}
             <strong>{finding.title}</strong>
             <p>{finding.detail}</p>
-            <button type="button" onClick={() => onGoTo(finding)}>
-              {SEAM_ACTION_LABEL[finding.action] || '해당 컷 보기'}
-              {finding.cutIds.length > 1 && ` · ${finding.cutIds.length}`}
-            </button>
+            {/* 데려다주기만 하면 무엇을 해야 하는지 사용자가 다시
+                알아내야 한다. 샷으로 풀리는 진단은 촬영에 수정본을 묻는다. */}
+            <div className="rail-fix-actions">
+              {canFix && (
+                <button
+                  type="button"
+                  onClick={() => onRequestFix(finding)}
+                  disabled={fixPending === finding.id}
+                >
+                  {fixPending === finding.id ? '촬영에 묻는 중…' : '수정본 받기'}
+                </button>
+              )}
+              <button type="button" className="ghost" onClick={() => onGoTo(finding)}>
+                {SEAM_ACTION_LABEL[finding.action] || '표에서 보기'}
+                {finding.cutIds.length > 1 && ` · ${finding.cutIds.length}`}
+              </button>
+            </div>
+
+            {canFix && fixError && fixPending !== finding.id && !proposal && (
+              <p className="rail-fix-error">{fixError}</p>
+            )}
+
+            {/* 수락해야 표에 들어간다. 무엇이 어떻게 바뀌는지 먼저 보인다. */}
+            {proposal && (
+              <div className="rail-fix">
+                {proposal.summary && <p className="rail-fix-summary">{proposal.summary}</p>}
+                <ul className="rail-fix-edits">
+                  {proposal.edits.map((edit) => (
+                    <li key={edit.cutId} className={edit.isTarget ? '' : 'is-ripple'}>
+                      <div className="rail-fix-change">
+                        <strong>{edit.label}</strong>
+                        <span>{edit.from} → {edit.to}</span>
+                        {/* 진단에 걸린 컷이 아니라 그 여파로 함께 고치는
+                            컷. 구분이 없으면 왜 나왔는지 알 수 없다. */}
+                        {!edit.isTarget && <em>연쇄</em>}
+                      </div>
+                      {edit.reason && <p>{edit.reason}</p>}
+                    </li>
+                  ))}
+                </ul>
+                <div className="rail-fix-actions">
+                  <button type="button" onClick={onAcceptFix}>수락</button>
+                  <button type="button" className="ghost" onClick={onRejectFix}>거부</button>
+                </div>
+              </div>
+            )}
           </li>
         )
       })}
@@ -268,7 +441,13 @@ function ShotInspector({
     <label className="shot-inspector-field" key={key}>
       <span>{label}</span>
       {options ? (
-        <select value={cut[key]} onChange={(event) => onChange(cut.id, { [key]: event.target.value })}>
+        <select
+          className={cut[key] ? '' : 'is-undecided'}
+          value={cut[key] || ''}
+          onChange={(event) => onChange(cut.id, { [key]: event.target.value })}
+        >
+          {/* 빈 값이면 첫 항목이 선택돼 보여 정해진 것처럼 읽힌다. */}
+          <option value="">미정</option>
           {options.map((option) => <option key={option} value={option}>{option}</option>)}
         </select>
       ) : (
@@ -285,7 +464,7 @@ function ShotInspector({
     <aside className="shot-inspector" aria-label="Shot inspector">
       <header>
         <div>
-          <span>Cut {cut.beat + 1}-{cut.beatOrder}</span>
+          <span>Cut {cut.order || cut.beatOrder}</span>
           <strong>{shot.label}</strong>
         </div>
         <button type="button" onClick={onClose} aria-label="Close inspector">×</button>
@@ -301,18 +480,6 @@ function ShotInspector({
           {field('장소', 'place')}
           {field('인물', 'characters')}
         </div>
-        {/* 화면에서 시선이 먼저 가야 할 것. 프롬프트가 이것을 강조한다. */}
-        {cut.dominant && (
-          <label className="shot-inspector-field wide">
-            <span>시선이 가야 할 곳</span>
-            <input
-              type="text"
-              value={cut.dominant}
-              onChange={(event) => onChange(cut.id, { dominant: event.target.value })}
-            />
-          </label>
-        )}
-
         {/* 촬영이 왜 이 샷을 골랐는지. 판정하려면 근거가 보여야 한다. */}
         {cut.shotReason && (
           <p className="shot-inspector-reason">
@@ -369,19 +536,19 @@ function ShotInspector({
             여기서 다시 나열하지 않는다. */}
       </section>
 
-      {/* 이 컷에 걸린 책임 선언 (DG1 P3). 판정하는 자리는 여기 하나다 —
-          프롬프트의 '고정:' 줄과 '이 그림이 정하지 않는 것'은 결과 표시일
-          뿐이고, 고치는 것은 언제나 이 목록에서 한다.
-          이미 판정한 것도 함께 둔다. 결과를 보고 제약을 해제할 수 있어야
-          한다 (DG1 P4). */}
+      {/* 모든 요소를 고르게 하지 않는다. 기존 선언 데이터와 제약 해제 통로는
+          보존하되, 평소 작업에서는 화살표·메모가 먼저 보이도록 접어 둔다. */}
       {(deferredDeclarations.length > 0 || decidedDeclarations.length > 0) && (
-        <section className="shot-inspector-section shot-inspector-deferred">
-          <h4>
-            책임 범위
+        <details className="shot-inspector-section shot-inspector-deferred">
+          <summary>
+            고급 표시 설정
             {deferredDeclarations.length > 0 && (
               <em>{deferredDeclarations.length} 미정</em>
             )}
-          </h4>
+          </summary>
+          <p className="shot-inspector-deferred-help">
+            이미지 제약이나 후속 공정 구분이 꼭 필요할 때만 확인하세요.
+          </p>
           <ul>
             {[...deferredDeclarations, ...decidedDeclarations].map((decl) => {
               const decided = decl.status === 'Accepted'
@@ -422,7 +589,7 @@ function ShotInspector({
               )
             })}
           </ul>
-        </section>
+        </details>
       )}
     </aside>
   )
@@ -431,7 +598,9 @@ function ShotInspector({
 // 이미지 밖 채널을 패널 위에 그린다 (DG1 P3).
 // 화살표는 사용자가 직접 끌어서 그린다 — 카메라가 어느 쪽으로 움직이는지는
 // 감독이 화면을 보고 정하는 것이지 텍스트에서 유추할 것이 아니다.
-function PanelOverlay({ marks, arrows, drawing, onDrawArrow, onRemoveArrow }) {
+function PanelOverlay({
+  marks, arrows, drawing, selectedArrowId, onDrawArrow, onSelectArrow,
+}) {
   const [draft, setDraft] = useState(null)
   const surfaceRef = useRef(null)
 
@@ -501,11 +670,11 @@ function PanelOverlay({ marks, arrows, drawing, onDrawArrow, onRemoveArrow }) {
         {arrows.map((arrow) => line(
           arrow,
           arrow.id,
-          'sb-arrow',
+          `sb-arrow${selectedArrowId === arrow.id ? ' selected' : ''}`,
           (event) => {
             if (!drawing) return
             event.stopPropagation()
-            onRemoveArrow(arrow.id)
+            onSelectArrow(arrow.id)
           },
         ))}
         {draft && line(draft, 'draft', 'sb-arrow draft')}
@@ -539,10 +708,29 @@ function PanelOverlay({ marks, arrows, drawing, onDrawArrow, onRemoveArrow }) {
   )
 }
 
+function CameraMovePicker({ existing = false, onChoose, onDelete, onCancel }) {
+  return (
+    <div className="sb-camera-move-picker" onClick={(event) => event.stopPropagation()}>
+      <span>{existing ? '화살표 수정' : '이동 종류'}</span>
+      <div>
+        {CAMERA_MOVE_TYPES.map((move) => (
+          <button key={move.id} type="button" onClick={() => onChoose(move)}>
+            <strong>{move.label}</strong>
+            <small>{move.name}</small>
+          </button>
+        ))}
+      </div>
+      <footer>
+        {existing && <button type="button" className="danger" onClick={onDelete}>삭제</button>}
+        <button type="button" onClick={onCancel}>취소</button>
+      </footer>
+    </div>
+  )
+}
+
 // 패널에 붙이는 메모. 포스트잇처럼 붙어 있다가 없으면 자리를 차지하지 않는다.
 // 그림 위에 상시 입력칸을 두면 패널이 어지러워진다.
-function PanelNote({ note, onChange }) {
-  const [editing, setEditing] = useState(false)
+function PanelNote({ note, onChange, editing, onEditingChange }) {
   const inputRef = useRef(null)
 
   useEffect(() => {
@@ -551,24 +739,7 @@ function PanelNote({ note, onChange }) {
 
   const stop = (event) => event.stopPropagation()
 
-  if (!note && !editing) {
-    return (
-      <button
-        type="button"
-        className="sb-note-add"
-        title="메모 붙이기"
-        aria-label="메모 붙이기"
-        onClick={(event) => {
-          stop(event)
-          setEditing(true)
-        }}
-      >
-        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round">
-          <path d="M12 5v14M5 12h14" />
-        </svg>
-      </button>
-    )
-  }
+  if (!note && !editing) return null
 
   return (
     <div className={`sb-note${editing ? ' editing' : ''}`} onClick={stop}>
@@ -579,18 +750,18 @@ function PanelNote({ note, onChange }) {
           rows={2}
           placeholder="메모"
           onChange={(event) => onChange(event.target.value)}
-          onBlur={() => setEditing(false)}
+          onBlur={() => onEditingChange(false)}
           onKeyDown={(event) => {
-            if (event.key === 'Escape') setEditing(false)
+            if (event.key === 'Escape') onEditingChange(false)
           }}
         />
       ) : (
         <p
           role="button"
           tabIndex={0}
-          onClick={() => setEditing(true)}
+          onClick={() => onEditingChange(true)}
           onKeyDown={(event) => {
-            if (event.key === 'Enter') setEditing(true)
+            if (event.key === 'Enter') onEditingChange(true)
           }}
         >
           {note}
@@ -674,9 +845,10 @@ export default function StoryboardView() {
   const cutPlanAccepted = useStore((s) => s.cutPlanAccepted)
   const cutPlanSkipped = useStore((s) => s.cutPlanSkipped)
   const reopenCutPlan = useStore((s) => s.reopenCutPlan)
-  const skipCutPlan = useStore((s) => s.skipCutPlan)
   const cutPlanOrphanedShots = useStore((s) => s.cutPlanOrphanedShots)
   const clearCutPlanOrphanWarning = useStore((s) => s.clearCutPlanOrphanWarning)
+  const viewerFindingHandoff = useStore((s) => s.viewerFindingHandoff)
+  const clearViewerFindingHandoff = useStore((s) => s.clearViewerFindingHandoff)
   const cutStage = useStore(selectCutStage)
   // 책임 범위 선언 (DG1 P3)
   const declarations = useStore((s) => s.declarations)
@@ -690,15 +862,19 @@ export default function StoryboardView() {
   const activeSceneState = useStore(selectActiveSceneState)
   const seams = useStore((s) => s.seams)
   const setSceneFact = useStore((s) => s.setSceneFact)
+  const addFactChange = useStore((s) => s.addFactChange)
+  const spatialElements = useStore((s) => s.spatialElements)
+  const removeFactChange = useStore((s) => s.removeFactChange)
+  const activeSceneId = useStore(selectActiveSceneId)
   const requestSceneStates = useStore((s) => s.requestSceneStates)
   const sceneStatePending = useStore((s) => s.sceneStatePending)
   const sceneStateError = useStore((s) => s.sceneStateError)
   const setShotNote = useStore((s) => s.setShotNote)
-  const requestSeamDesign = useStore((s) => s.requestSeamDesign)
-  const seamDesignPending = useStore((s) => s.seamDesignPending)
-  const seamDesignError = useStore((s) => s.seamDesignError)
   const addShotArrow = useStore((s) => s.addShotArrow)
+  const updateShotArrow = useStore((s) => s.updateShotArrow)
   const removeShotArrow = useStore((s) => s.removeShotArrow)
+  const panelToolRequest = useStore((s) => s.panelToolRequest)
+  const clearPanelToolRequest = useStore((s) => s.clearPanelToolRequest)
   const addBeatAfter = useStore((s) => s.addBeatAfter)
   const loadExampleScreenplay = useStore((s) => s.loadExampleScreenplay)
   const structureDraft = useStore((s) => s.structureDraft)
@@ -719,12 +895,19 @@ export default function StoryboardView() {
   const backToScript = useStore((s) => s.backToScript)
   const clearCutPlanStageOverride = useStore((s) => s.clearCutPlanStageOverride)
   const cutPlanShotSizes = useStore((s) => s.cutPlanShotSizes)
+  const requestShotFix = useStore((s) => s.requestShotFix)
+  const shotFixPending = useStore((s) => s.shotFixPending)
+  const shotFixProposal = useStore((s) => s.shotFixProposal)
+  const shotFixError = useStore((s) => s.shotFixError)
+  const acceptShotFix = useStore((s) => s.acceptShotFix)
+  const rejectShotFix = useStore((s) => s.rejectShotFix)
   const cutPlanAngles = useStore((s) => s.cutPlanAngles)
   const cutPlanMoves = useStore((s) => s.cutPlanMoves)
   const scenePromptNote = useStore((s) => s.scenePromptNote)
   const setScenePromptNote = useStore((s) => s.setScenePromptNote)
   const requestCutPlan = useStore((s) => s.requestCutPlan)
   const cutPlanPending = useStore((s) => s.cutPlanPending)
+  const cutPlanRunPending = useStore((s) => s.cutPlanRunPending)
   const cutPlanError = useStore((s) => s.cutPlanError)
   const requestShotDesign = useStore((s) => s.requestShotDesign)
   const shotDesignPending = useStore((s) => s.shotDesignPending)
@@ -741,9 +924,29 @@ export default function StoryboardView() {
   const [rawText, setRawText] = useState('')
   const [rawSceneIntention, setRawSceneIntention] = useState('')
   const [narrativeRequest, setNarrativeRequest] = useState('')
-  const [narrativeRailOpen, setNarrativeRailOpen] = useState(true)
+  // Script에서는 Narrative가 다음 단계를 안내한다. Cut plan에서는 표가 주 작업
+  // 공간이므로 Agents rail과 개별 에이전트를 기본으로 접어 둔다. 단계별 상태를
+  // 따로 보존해 Script로 돌아왔을 때 사용자가 정한 접힘 상태도 유지한다.
+  const [narrativeRailByStage, setNarrativeRailByStage] = useState({
+    script: true,
+    cutplan: true,
+  })
+  const narrativeRailOpen = narrativeRailByStage[cutStage] ?? false
+  const setNarrativeRailOpen = (nextValue) => setNarrativeRailByStage((current) => {
+    const currentValue = current[cutStage] ?? false
+    const next = typeof nextValue === 'function' ? nextValue(currentValue) : nextValue
+    return { ...current, [cutStage]: next }
+  })
   // 한 번에 한 에이전트만 펼친다. 둘 다 펼치면 rail이 길어져 스크롤된다.
-  const [openAgent, setOpenAgent] = useState('narrative')
+  const [openAgentByStage, setOpenAgentByStage] = useState({
+    script: 'narrative',
+    cutplan: null,
+  })
+  const openAgent = openAgentByStage[cutStage] ?? null
+  const setOpenAgent = (nextAgent) => setOpenAgentByStage((current) => ({
+    ...current,
+    [cutStage]: nextAgent,
+  }))
   // 줄 종류·삭제 버튼은 Beat 단위로 켠다. 평소엔 대본만 보이게 한다.
   const [editingBeat, setEditingBeat] = useState(null)
   // Enter나 화살표로 옮겨갈 줄. { index, caret } 형태.
@@ -760,9 +963,19 @@ export default function StoryboardView() {
   const [inspectedShotId, setInspectedShotId] = useState(null)
   // 화살표를 그리는 중인 패널. 한 번에 하나만 그린다.
   const [arrowDrawingShotId, setArrowDrawingShotId] = useState(null)
+  // 새 화살표는 방향을 그린 뒤 이동 종류를 고를 때까지 확정하지 않는다.
+  const [pendingArrow, setPendingArrow] = useState(null)
+  const [selectedArrow, setSelectedArrow] = useState(null)
+  const [noteEditingShotId, setNoteEditingShotId] = useState(null)
   const [generationScope, setGenerationScope] = useState('all')
   const [panelCandidates, setPanelCandidates] = useState({})
+  // 어느 패널이 생성 중인가. 여러 장을 한 번에 만들 수 있어 shotId별로 둔다.
+  const [panelGenPending, setPanelGenPending] = useState({})
+  const [panelGenError, setPanelGenError] = useState(null)
+  const generatingCount = Object.keys(panelGenPending).length
+  const isGenerating = generatingCount > 0
   const handledScriptEditorRequestKey = useRef(0)
+  const handledPanelToolRequestId = useRef(null)
 
   const isExpanded = maximizedPanel === 'left'
   // 줄콘티는 대본과 패널 사이의 경유 단계다. 컷을 확정하기 전에는 패널 작업을
@@ -800,11 +1013,14 @@ export default function StoryboardView() {
   // 아직 정하지 않은 씬 기준. 비워둔 것이 보여야 누락과 구분된다.
   const undecidedSceneFacts = activeSceneState.characters
     .reduce((count, character) => count + character.facts.filter((f) => f.open).length, 0)
+  const hasActiveSceneState = activeSceneState.characters.length > 0
+    || activeSceneState.location.facts.length > 0
+    || (activeSceneState.environment?.facts?.length ?? 0) > 0
   const deferredDeclarations = pendingDeclarations
   const activeBranch = scene?.activeBranch ?? 0
   const activeShot = scene?.activeShot ?? 0
   const branch = scene?.branches?.[activeBranch]
-  const flowShots = branch?.shots || []
+  const flowShots = branch?.shots || EMPTY_SHOTS
   // 컷 사이의 문제. 컷 하나만 보면 드러나지 않는다.
   // flowShots가 필요하므로 그 뒤에 둔다 — 이음새는 패널 사이에 붙는다.
 
@@ -827,6 +1043,46 @@ export default function StoryboardView() {
       return () => window.clearTimeout(timer)
     }
   }, [scriptEditorRequestKey, screenplay, sceneIntention])
+
+  useEffect(() => {
+    if (!panelToolRequest || handledPanelToolRequestId.current === panelToolRequest.id) return
+    const shotIndex = flowShots.findIndex((shot) => shot.id === panelToolRequest.shotId)
+    if (shotIndex < 0) return
+
+    handledPanelToolRequestId.current = panelToolRequest.id
+    const shot = flowShots[shotIndex]
+    setFlowActiveShot(shotIndex)
+    setInspectedShotId(shot.id)
+    setCollapsedScenes([])
+    setPendingArrow(null)
+    setSelectedArrow(null)
+
+    if (panelToolRequest.tool === 'camera-arrow') {
+      setNoteEditingShotId(null)
+      setArrowDrawingShotId(shot.id)
+    } else if (panelToolRequest.tool === 'memo') {
+      setArrowDrawingShotId(null)
+      const suggested = (panelToolRequest.text || '').trim()
+      if (suggested && !shot.note?.includes(suggested)) {
+        setShotNote(shot.id, [shot.note, suggested].filter(Boolean).join('\n'))
+      }
+      setNoteEditingShotId(shot.id)
+    }
+
+    window.setTimeout(() => {
+      document.querySelector(`[data-shot-id="${shot.id}"]`)?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'center',
+      })
+    }, 80)
+    clearPanelToolRequest()
+  }, [
+    clearPanelToolRequest,
+    flowShots,
+    panelToolRequest,
+    setFlowActiveShot,
+    setShotNote,
+  ])
 
   const beats = []
   let currentBeat = []
@@ -859,6 +1115,63 @@ export default function StoryboardView() {
     scenes: scriptScenes,
   })
   // 이 컷이 속한 씬의 기준. 없으면 기본값으로 떨어진다.
+  // 상태 변화는 컷 id로 기록된다. 값을 읽을 때 순서로 옮길 표.
+  const cutOrder = cutOrderOf(cutPlan)
+
+  // 변화가 시작될 수 있는 컷. 변화는 컷 id로 기록되므로 컷이 밀려도
+  // 엉뚱한 컷에 걸리지 않는다. 첫 컷은 '처음 값'이 맡으므로 제외한다.
+  const sceneCutOptions = cutPlan
+    .map((cut, index) => ({ cut, index }))
+    .filter(({ cut }) => {
+      const scene = sceneOfBeat(scriptScenes, cut.beat)
+      return scene?.id === activeSceneId
+    })
+    .slice(1)
+    .map(({ cut }) => ({
+      cutId: cut.id,
+      label: `컷 ${cut.beat + 1}-${cut.beatOrder}`,
+    }))
+
+  // 이 컷에 걸리는 레퍼런스 그림. 화면에 나오는 인물과 그 씬의 공간만
+  // 넣는다 — 씬의 모든 인물을 매 컷에 물리면 없는 사람까지 그려진다.
+  const referencesForCut = (cut, layoutImage = null) => {
+    const scene = sceneStateForCut(cut)
+    if (!scene || !cut) return []
+    const cast = (cut.characters || '').split(',').map((n) => n.trim()).filter(Boolean)
+    const refs = scene.characters
+      .filter((character) => character.image
+        && cast.some((name) => name.includes(character.name)))
+      .map((character) => ({
+        name: character.name,
+        kind: 'character',
+        image: stripDataUrl(character.image),
+      }))
+    if (scene.location?.image) {
+      refs.push({
+        name: scene.location.name || '공간',
+        kind: 'location',
+        image: stripDataUrl(scene.location.image),
+      })
+    }
+    // 참조가 많을수록 느리고 서로를 흐린다. 인물 2명 + 공간이면 충분하다.
+    const picked = refs.slice(0, 3)
+    if (layoutImage) {
+      picked.push({
+        name: scene.location?.name || '이 공간',
+        kind: 'layout',
+        image: stripDataUrl(layoutImage),
+      })
+    }
+    return picked
+  }
+
+  // 미장센이 정한 그림체. 안 정했으면 빈 문자열이고 서버가 기본을 쓴다.
+  const styleOfCut = (cut) => {
+    const scene = sceneStateForCut(cut)
+    const fact = scene?.environment?.facts?.find((entry) => entry.label === '그림체')
+    return fact && !fact.open ? fact.value : ''
+  }
+
   const sceneStateForCut = (cut) => {
     const scene = cut ? sceneOfBeat(scriptScenes, cut.beat) : null
     return sceneStates[scene?.id] || sceneStates['scene-0']
@@ -914,6 +1227,7 @@ export default function StoryboardView() {
       sceneState: sceneStateForCut(inspectedCut),
       seam: seamBefore(inspectedCut.id),
       cutIndex: cutPlan.findIndex((item) => item.id === inspectedCut.id),
+      cutOrder,
     })
     : null
 
@@ -981,26 +1295,96 @@ export default function StoryboardView() {
     ))
   }
 
-  const handleGeneratePanels = (targets, { includeExisting = false } = {}) => {
+  // 조립한 프롬프트로 실제 그림을 만든다. 씬 기준·책임 선언·이음새·샷이
+  // 전부 이 문장으로 모이므로, 여기서 쓰지 않으면 앞 공정이 무의미해진다.
+  const handleGeneratePanels = async (targets, { includeExisting = false } = {}) => {
     const eligibleTargets = includeExisting
       ? targets
       : targets.filter(({ shot, shotIdx }) => !getShotVisual(shot, shotIdx))
     if (eligibleTargets.length === 0) return
     if (!isExpanded) setMaximizedPanel('left')
 
-    setPanelCandidates((current) => {
+    setPanelGenError(null)
+    setPanelGenPending((current) => {
       const next = { ...current }
-      eligibleTargets.forEach(({ shot, shotIdx }) => {
-        const version = (current[shot.id]?.version || 0) + 1
-        next[shot.id] = {
-          shotId: shot.id,
-          shotIdx,
-          version,
-          image: createMockPanelImage(shotIdx, version),
-        }
-      })
+      eligibleTargets.forEach(({ shot }) => { next[shot.id] = true })
       return next
     })
+
+    const { generatePanelImage } = await import('../services/api')
+    // 구조도는 씬 전체에 걸리므로 한 번만 준비한다. 도면 그림과 문장을
+    // 함께 준다 — 그림이 배치를 정확히 전하고, 문장이 그것을 보강한다.
+    const layoutLine = describeLayout(spatialElements)
+    const layoutImage = await rasterizeLayout(layoutToImage(spatialElements))
+    const failures = []
+
+    const promptOf = (cut) => (cut
+      ? buildCutPrompt(cut, {
+        sceneIntention,
+        sceneNote: scenePromptNote,
+        declarations,
+        sceneState: sceneStateForCut(cut),
+        seam: seamBefore(cut.id),
+        cutIndex: cutPlan.findIndex((item) => item.id === cut.id),
+        cutOrder,
+      })
+      : null)
+
+    // 컷 순서대로, 한 장씩 만든다. 동시에 만들면 각 패널이 앞 컷을 모른 채
+    // 그려져 같은 씬인데 이어지지 않는다. 앞 컷의 문장을 함께 넘긴다.
+    const ordered = [...eligibleTargets].sort((a, b) => a.shotIdx - b.shotIdx)
+
+    for (const { shot, shotIdx } of ordered) {
+      const cut = cutPlan.find((item) => item.id === shot.cutPlanItemId)
+      const prompt = promptOf(cut)
+      // 앞 컷은 '이 요청에 포함된 것'이 아니라 컷 플랜상 바로 앞 컷이다 —
+      // 한 장만 다시 그릴 때도 앞뒤가 맞아야 한다.
+      const cutAt = cut ? cutPlan.findIndex((item) => item.id === cut.id) : -1
+      const previous = cutAt > 0 ? promptOf(cutPlan[cutAt - 1]) : null
+
+      try {
+        // 프롬프트가 없는 패널은 만들 수 없다. 컷과 이어지지 않은 패널이다.
+        if (!prompt?.effective) throw new Error('이 패널에 연결된 컷이 없습니다')
+        // shared(씬 기준)를 함께 보낸다. 이것을 빼면 컷마다 인물과 공간이
+        // 따로 해석돼, 미장센이 기준을 세운 의미가 없어진다.
+        const image = await generatePanelImage(prompt.effective, {
+          shared: prompt.shared || '',
+          previous: previous?.effective || '',
+          // 레퍼런스 그림이 있으면 물린다. 글만으로는 컷마다 같은 얼굴이
+          // 나오지 않는다.
+          references: referencesForCut(cut, layoutImage),
+          // 그림체는 미장센의 '그림체' 항목에서 온다. 화면에 칸이 있는데
+          // 반영되지 않으면 정한 것이 무시되는 셈이다.
+          style: styleOfCut(cut),
+          // 2D 구조도의 배치. 컷마다 콘솔이 좌우로 옮겨 다니는 것을
+          // 글로만 막기는 어렵다.
+          layout: layoutLine,
+        })
+
+        setPanelCandidates((current) => ({
+          ...current,
+          [shot.id]: {
+            shotId: shot.id,
+            shotIdx,
+            version: (current[shot.id]?.version || 0) + 1,
+            image,
+            // 무엇으로 그렸는지 남긴다. 결과가 어긋나면 프롬프트를 봐야 한다.
+            prompt: prompt.effective,
+          },
+        }))
+      } catch (error) {
+        failures.push(error.message)
+      } finally {
+        setPanelGenPending((current) => {
+          const next = { ...current }
+          delete next[shot.id]
+          return next
+        })
+      }
+    }
+
+    // 실패를 조용히 넘기면 왜 그림이 안 나왔는지 알 수 없다.
+    if (failures.length > 0) setPanelGenError(failures[0])
   }
 
   const connectViewerTestPanels = () => {
@@ -1162,6 +1546,19 @@ export default function StoryboardView() {
     // 요청을 넘겼으면 칸을 비운다. 남아 있으면 다음 요청을 쓸 때 지우는
     // 일부터 해야 하고, 이미 처리된 요청이 아직 대기 중인 것처럼 보인다.
     setNarrativeRequest('')
+  }
+
+  const addViewerFindingToNarrativeRequest = () => {
+    if (!viewerFindingHandoff) return
+    const interpretation = viewerFindingHandoff.interpretations?.join(' / ') || '관객 해석을 확인하기 어렵습니다.'
+    const cues = viewerFindingHandoff.visibleCues?.join(', ') || '화면 근거 없음'
+    const panelLabel = (viewerFindingHandoff.panelOrders || [viewerFindingHandoff.panelOrder])
+      .map((panelOrder) => `S${panelOrder}`)
+      .join(' · ')
+    setNarrativeRequest(
+      `의도 비공개 순차 읽기 ${panelLabel}: ${interpretation}\n화면 근거: ${cues}\n이 읽힘이 생기는 서사 흐름을 검토해줘.`,
+    )
+    if (narrativeAnswered) clearNarrativeResult()
   }
 
   return (
@@ -1566,6 +1963,7 @@ export default function StoryboardView() {
                             sceneState: sceneStateForCut(item),
                             seam: seamBefore(item.id),
                             cutIndex: index,
+                            cutOrder,
                           })
                           return (
                             <tr className="cut-plan-prompt-row">
@@ -1705,7 +2103,7 @@ export default function StoryboardView() {
                   setSelectedShotIds([])
                 }}
               >
-                Beat B{activeBeat + 1}
+                현재 구간 · {activeBeatShots.length}
               </button>
               <button
                 type="button"
@@ -1759,38 +2157,28 @@ export default function StoryboardView() {
               <button
                 type="button"
                 className="generation-run"
-                disabled={eligibleScopeShots.length === 0}
+                disabled={eligibleScopeShots.length === 0 || isGenerating}
                 onClick={() => handleGeneratePanels(eligibleScopeShots)}
               >
-                {generationScope === 'all'
-                  ? 'Generate storyboard draft'
-                  : generationScope === 'beat'
-                    ? `Generate Beat ${activeBeat + 1}`
-                    : generationScope === 'selected'
-                      ? 'Generate selected'
-                      : 'Generate storyboard draft'}
-                {eligibleScopeShots.length > 0 ? ` · ${eligibleScopeShots.length}` : ''}
+                {isGenerating ? `그리는 중… · ${generatingCount}` : (
+                  <>
+                    {generationScope === 'all'
+                      ? 'Generate storyboard draft'
+                      : generationScope === 'beat'
+                        ? '현재 구간 생성'
+                        : generationScope === 'selected'
+                          ? 'Generate selected'
+                          : 'Generate storyboard draft'}
+                    {eligibleScopeShots.length > 0 ? ` · ${eligibleScopeShots.length}` : ''}
+                  </>
+                )}
               </button>
             </div>
+            {/* 실패를 조용히 넘기면 왜 그림이 안 나왔는지 알 수 없다. */}
+            {panelGenError && (
+              <p className="generation-error">그림 생성 실패 · {panelGenError}</p>
+            )}
 
-            {/* 이음새는 그림을 보고 정하므로 여기 있다. 컷 플랜 rail에
-                두면 눌러도 결과를 볼 수 없다 — 이음새 편집기가 패널 사이에
-                있기 때문이다. */}
-            <div className="generation-seam-row">
-              <button
-                type="button"
-                className="generation-seam-btn"
-                onClick={requestSeamDesign}
-                disabled={seamDesignPending || cutPlan.length < 2}
-              >
-                {seamDesignPending ? '이음새 보는 중…' : '이음새 제안받기'}
-              </button>
-              <span>
-                {seamDesignError
-                  ? `AI 호출 실패 · ${seamDesignError}`
-                  : '컷 사이에 시간이 흘렀거나 생략된 것이 있는지 봅니다.'}
-              </span>
-            </div>
 
             </section>
           )}
@@ -1807,10 +2195,10 @@ export default function StoryboardView() {
             return (
               <div
                 key={i}
-                className={`sb-item ${showStoryboardPanels ? 'layout-expanded' : isExpanded ? 'layout-script-focus' : 'layout-sidebar'} ${beatGroup.beat === activeBeat ? 'active-beat' : ''}`}
+                className={`sb-item ${showStoryboardPanels ? 'layout-expanded panels-matched' : isExpanded ? 'layout-script-focus' : 'layout-sidebar'} ${beatGroup.beat === activeBeat ? 'active-beat' : ''}`}
                 onClick={() => selectBeat(beatGroup.beat)}
               >
-                {i > 0 && !isScriptStage && (
+                {i > 0 && !isScriptStage && !showStoryboardPanels && (
                   <button
                     className="merge-beat-btn"
                     onClick={(e) => {
@@ -1842,14 +2230,18 @@ export default function StoryboardView() {
                       <span>Scene {sceneNumberOf(beatGroup.beat)}</span>
                       <strong>{beatGroup.elements[0].text}</strong>
                       {collapsedScenes.includes(beatGroup.beat) && (
-                        <em>{beatsInScene(beatGroup.beat)} beats</em>
+                        <em>
+                          {showStoryboardPanels
+                            ? `${cutsInScene(beatGroup.beat)} cuts`
+                            : `${beatsInScene(beatGroup.beat)} beats`}
+                        </em>
                       )}
                     </button>
                   )}
 
                   {/* 씬을 접으면 그 씬을 여는 Beat의 본문도 함께 숨는다.
                       헤더만 남아 다시 펼 수 있다. */}
-                  {!collapsedScenes.includes(beatGroup.beat) && (
+                  {!collapsedScenes.includes(beatGroup.beat) && !showStoryboardPanels && (
                   <>
                   {/* Beat 경계 표시이자 이 Beat의 조작 지점. 줄마다 버튼을
                       띄우지 않고 여기로 모은다. */}
@@ -1965,8 +2357,11 @@ export default function StoryboardView() {
                 {showStoryboardPanels && (
                   <div className="sb-img-col">
                     <div className="sb-shot-stack">
-                      {beatShots.map(({ shot, shotIdx }, localIdx) => {
-                        const beatShotLabel = `B${beatGroup.beat + 1}-S${localIdx + 1}`
+                      {beatShots.map(({ shot, shotIdx }) => {
+                        const shotCut = cutPlan.find((item) => item.id === shot.cutPlanItemId)
+                        const cutLabel = shotCut
+                          ? `Cut ${shotCut.order || shotIdx + 1}`
+                          : `Panel ${shotIdx + 1}`
                         const committedImage = getShotVisual(shot, shotIdx)
                         const candidate = panelCandidates[shot.id]
                         const displayImage = candidate?.image || committedImage
@@ -1978,7 +2373,6 @@ export default function StoryboardView() {
                         const seamBefore2 = prevShot ? seams[seamKeyFor(prevShot.id)] : null
                         const showSeam = isSeamMarked(seamBefore2)
                         // 이 패널이 그려야 할 그림 밖 채널 (DG1 P3).
-                        const shotCut = cutPlan.find((item) => item.id === shot.cutPlanItemId)
                         const shotPrompt = shotCut
                           ? buildCutPrompt(shotCut, {
                             sceneIntention,
@@ -1987,6 +2381,7 @@ export default function StoryboardView() {
                             sceneState: sceneStateForCut(shotCut),
                             seam: seamBefore(shotCut.id),
                             cutIndex: cutPlan.findIndex((item) => item.id === shotCut.id),
+                            cutOrder,
                           })
                           : null
                         const { marks: panelMarks, notes: panelNotes } = buildPanelMarks(
@@ -2018,6 +2413,7 @@ export default function StoryboardView() {
                             </div>
                           )}
                           <div
+                            data-shot-id={shot.id}
                             className={`sb-shot-card ${shotIdx === activeShot ? 'active-shot' : ''} ${isSelected ? 'selected-for-generation' : ''} ${candidate ? 'has-ai-candidate' : ''} ${inspectedShotId === shot.id ? 'inspected' : ''}`}
                             onClick={(event) => {
                               event.stopPropagation()
@@ -2028,7 +2424,7 @@ export default function StoryboardView() {
                               type="button"
                               className={`sb-shot-select ${isSelected ? 'selected' : ''}`}
                               aria-pressed={isSelected}
-                              aria-label={`${isSelected ? 'Remove' : 'Add'} ${beatShotLabel} ${isSelected ? 'from' : 'to'} generation selection`}
+                              aria-label={`${isSelected ? 'Remove' : 'Add'} ${cutLabel} ${isSelected ? 'from' : 'to'} generation selection`}
                               onClick={(event) => {
                                 event.stopPropagation()
                                 toggleShotSelection(shot.id)
@@ -2041,8 +2437,8 @@ export default function StoryboardView() {
                               type="button"
                               className="sb-shot-delete"
                               disabled={flowShots.length <= 1}
-                              title={flowShots.length <= 1 ? 'Keep at least one shot in the scene' : `Delete ${beatShotLabel}`}
-                              aria-label={`Delete ${beatShotLabel}`}
+                              title={flowShots.length <= 1 ? 'Keep at least one shot in the scene' : `Delete ${cutLabel}`}
+                              aria-label={`Delete ${cutLabel}`}
                               onClick={(event) => {
                                 event.stopPropagation()
                                 handleDeleteShot(shot.id, shotIdx)
@@ -2052,10 +2448,26 @@ export default function StoryboardView() {
                                 <path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6M10 10v6M14 10v6" />
                               </svg>
                             </button>
-                            {candidate ? (
+                            {shotCut && (
+                              <header className="sb-panel-cut-context">
+                                <div>
+                                  <span>{cutLabel}</span>
+                                  {shotCut.purpose && <em>{shotCut.purpose}</em>}
+                                </div>
+                                <p>{shotCut.content}</p>
+                              </header>
+                            )}
+                            {/* 그림은 30초 넘게 걸린다. 표시가 없으면 눌린
+                                건지 알 수 없어 다시 누르게 된다. */}
+                            {panelGenPending[shot.id] ? (
+                              <div className="sb-panel-pending">
+                                <span className="sb-pending-spinner" />
+                                <span>그리는 중…</span>
+                              </div>
+                            ) : candidate ? (
                               <div className="sb-panel-candidate">
                                 <div className="sb-img-wrapper">
-                                  <img src={displayImage} alt={`${beatShotLabel} AI draft`} />
+                                  <img src={displayImage} alt={`${cutLabel} AI draft`} />
                                   <span className="sb-candidate-badge">AI candidate · V{candidate.version}</span>
                                 </div>
                                 <div className="sb-candidate-actions">
@@ -2078,17 +2490,31 @@ export default function StoryboardView() {
                               </div>
                             ) : committedImage ? (
                               <div className="sb-img-wrapper">
-                                <img src={displayImage} alt={beatShotLabel} />
+                                <img src={displayImage} alt={cutLabel} />
                                 <PanelOverlay
                                   marks={panelMarks}
                                   arrows={shot.arrows || []}
                                   drawing={arrowDrawingShotId === shot.id}
-                                  onDrawArrow={(arrow) => addShotArrow(shot.id, arrow)}
-                                  onRemoveArrow={(arrowId) => removeShotArrow(shot.id, arrowId)}
+                                  selectedArrowId={selectedArrow?.shotId === shot.id
+                                    ? selectedArrow.arrowId
+                                    : null}
+                                  onDrawArrow={(arrow) => {
+                                    setPendingArrow({ shotId: shot.id, arrow })
+                                    setSelectedArrow(null)
+                                    setArrowDrawingShotId(null)
+                                  }}
+                                  onSelectArrow={(arrowId) => {
+                                    setPendingArrow(null)
+                                    setSelectedArrow({ shotId: shot.id, arrowId })
+                                  }}
                                 />
                                 <PanelNote
                                   note={shot.note || ''}
                                   onChange={(value) => setShotNote(shot.id, value)}
+                                  editing={noteEditingShotId === shot.id}
+                                  onEditingChange={(editing) => (
+                                    setNoteEditingShotId(editing ? shot.id : null)
+                                  )}
                                 />
                                 <div className="sb-hover-actions">
                                   <button
@@ -2113,7 +2539,7 @@ export default function StoryboardView() {
                               </div>
                             ) : (
                               <div className="sb-add-shot existing-empty">
-                                <span>{beatShotLabel}</span>
+                                <span>{cutLabel}</span>
                                 <small>Choose how to start</small>
                                 <div className="sb-empty-panel-actions">
                                   <button
@@ -2141,29 +2567,85 @@ export default function StoryboardView() {
                                 샷 사이즈·출처·프롬프트는 인스펙터에 다 있고,
                                 열두 패널마다 반복되면 그림이 안 보인다. */}
                             <div className="sb-shot-meta">
-                              <span>{beatShotLabel}</span>
-
-                              {/* 화살표는 그림을 고치는 것이 아니라 그림 밖
-                                  채널이다. Draw와 섞이지 않게 패널 밖에 둔다. */}
-                              <button
-                                type="button"
-                                className={`sb-arrow-toggle${arrowDrawingShotId === shot.id ? ' active' : ''}`}
-                                aria-pressed={arrowDrawingShotId === shot.id}
-                                aria-label="화살표 그리기"
-                                title="끌어서 그리고, 그린 화살표를 클릭하면 지웁니다"
-                                onClick={(event) => {
-                                  event.stopPropagation()
-                                  setArrowDrawingShotId(
-                                    arrowDrawingShotId === shot.id ? null : shot.id,
-                                  )
-                                }}
-                              >
-                                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round">
-                                  <path d="M5 12h13M13 6l6 6-6 6" />
-                                </svg>
-                                {arrowDrawingShotId === shot.id && '완료'}
-                              </button>
+                              <span>{cutLabel}</span>
+                              <div className="sb-panel-tools">
+                                {/* 화살표와 메모는 책임 상태가 아니라 직접 쓰는
+                                    스토리보드 표기 도구다. 항상 보여 발견 가능하게 한다. */}
+                                <button
+                                  type="button"
+                                  className={`sb-arrow-toggle${arrowDrawingShotId === shot.id ? ' active' : ''}`}
+                                  aria-pressed={arrowDrawingShotId === shot.id}
+                                  title="패널 위를 끌어서 카메라 이동 방향을 표시합니다"
+                                  onClick={(event) => {
+                                    event.stopPropagation()
+                                    const closing = arrowDrawingShotId === shot.id
+                                    setArrowDrawingShotId(closing ? null : shot.id)
+                                    setNoteEditingShotId(null)
+                                    setPendingArrow(null)
+                                    setSelectedArrow(null)
+                                  }}
+                                >
+                                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round">
+                                    <path d="M5 12h13M13 6l6 6-6 6" />
+                                  </svg>
+                                  {arrowDrawingShotId === shot.id ? '그리는 중' : '카메라 이동'}
+                                </button>
+                                <button
+                                  type="button"
+                                  className={`sb-note-toggle${noteEditingShotId === shot.id ? ' active' : ''}`}
+                                  aria-pressed={noteEditingShotId === shot.id}
+                                  onClick={(event) => {
+                                    event.stopPropagation()
+                                    setNoteEditingShotId(
+                                      noteEditingShotId === shot.id ? null : shot.id,
+                                    )
+                                    setArrowDrawingShotId(null)
+                                    setPendingArrow(null)
+                                    setSelectedArrow(null)
+                                  }}
+                                >
+                                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                                    <path d="M5 4h14v13H9l-4 3V4Z" />
+                                  </svg>
+                                  메모
+                                </button>
+                              </div>
                             </div>
+
+                            {pendingArrow?.shotId === shot.id && (
+                              <CameraMovePicker
+                                onChoose={(move) => {
+                                  addShotArrow(shot.id, {
+                                    ...pendingArrow.arrow,
+                                    channel: 'camera-move',
+                                    kind: move.id,
+                                    label: move.label,
+                                  })
+                                  setPendingArrow(null)
+                                }}
+                                onCancel={() => setPendingArrow(null)}
+                              />
+                            )}
+                            {selectedArrow?.shotId === shot.id && (
+                              <CameraMovePicker
+                                existing
+                                onChoose={(move) => {
+                                  updateShotArrow(shot.id, selectedArrow.arrowId, {
+                                    channel: 'camera-move',
+                                    kind: move.id,
+                                    label: move.label,
+                                  })
+                                  setSelectedArrow(null)
+                                  setArrowDrawingShotId(null)
+                                }}
+                                onDelete={() => {
+                                  removeShotArrow(shot.id, selectedArrow.arrowId)
+                                  setSelectedArrow(null)
+                                  setArrowDrawingShotId(null)
+                                }}
+                                onCancel={() => setSelectedArrow(null)}
+                              />
+                            )}
 
                             {/* 아직 그리지 않은 그림 밖 채널만 남긴다.
                                 이미 그렸으면 화살표가 그 자리에 있으므로
@@ -2222,6 +2704,8 @@ export default function StoryboardView() {
         />
       )}
 
+      {/* Panels에는 rail을 두지 않는다. 인스펙터와 나란히 서면 rail이 둘로
+          보이고, 보드도 630px 좁아진다. 샷은 컷 플랜에서 이미 정해진다. */}
       {isExpanded && !drawingWorkspaceOpen && cutStage !== 'panels' && (
         <aside
           className={`storyboard-narrative-rail ${narrativeRailOpen ? 'open' : 'collapsed'}`}
@@ -2303,26 +2787,19 @@ export default function StoryboardView() {
                   <>
                     <p>
                       대본이 준비됐습니다. 그림 전에 이 장면을 몇 개의 컷으로
-                      나눌지 텍스트로 정합니다.
+                      나눌지 정하고, 이어서 촬영이 각 컷의 샷을 정합니다.
                     </p>
                     <button
                       type="button"
                       className="narrative-rail-primary"
                       onClick={cutPlan.length > 0 ? clearCutPlanStageOverride : requestCutPlan}
-                      disabled={cutPlanPending}
+                      disabled={cutPlanRunPending}
                     >
                       {cutPlanPending
                         ? '컷 나누는 중…'
-                        : cutPlan.length > 0 ? '컷 플랜 이어서' : '컷 플랜 만들기'}
-                    </button>
-                    {/* 보조 동작은 언제나 '건너뛰기'로 고정한다. 상황에 따라
-                        삭제로 바뀌면 같은 자리의 버튼이 다른 일을 하게 된다. */}
-                    <button
-                      type="button"
-                      className="narrative-rail-secondary"
-                      onClick={skipCutPlan}
-                    >
-                      건너뛰고 패널로
+                        : cutPlanRunPending
+                          ? '샷 정하는 중…'
+                          : cutPlan.length > 0 ? '컷 플랜 이어서' : '컷 플랜 만들기'}
                     </button>
                   </>
                 ) : (
@@ -2379,6 +2856,20 @@ export default function StoryboardView() {
                   </div>
                 )}
               </section>
+
+              {viewerFindingHandoff?.route === 'narrative' && (
+                <section className="narrative-viewer-handoff" aria-label="순차 읽기에서 가져온 문제">
+                  <header>
+                    <span>순차 읽기 · {(viewerFindingHandoff.panelOrders || [viewerFindingHandoff.panelOrder]).map((panelOrder) => `S${panelOrder}`).join(' · ')}</span>
+                    <button type="button" onClick={clearViewerFindingHandoff} aria-label="순차 읽기 카드 닫기">×</button>
+                  </header>
+                  <strong>{viewerFindingHandoff.interpretations?.[0] || viewerFindingHandoff.title}</strong>
+                  <p><em>시각적 근거</em>{viewerFindingHandoff.visibleCues?.join(' · ') || '특정 근거 없음'}</p>
+                  <button type="button" onClick={addViewerFindingToNarrativeRequest}>
+                    요청에 담기
+                  </button>
+                </section>
+              )}
 
               {/* Next step 바로 아래에 둔다. 제시된 다음 단계와 직접
                   이어지는 입력이기 때문이다. */}
@@ -2442,61 +2933,46 @@ export default function StoryboardView() {
                 {openAgent === 'mise' && (
                 <div className="rail-agent-body">
                   <p className="rail-lens-lead">
-                    같은 인물과 공간이 여러 컷에 나옵니다. 컷마다 다르게
-                    그려지지 않도록 기준을 정해 둡니다.
+                    컷마다 프롬프트를 따로 만들기 때문에, 그냥 두면 컷 1의
+                    재인과 컷 15의 재인이 다른 사람으로 그려집니다. 인물과
+                    공간의 생김새를 씬 단위로 한 번 정해 모든 컷에 같이
+                    넣습니다.
                   </p>
 
-                  {/* 대본에서 기준을 세운다. 지금은 예제가 하드코딩돼 있어
-                      다른 이야기를 넣어도 같은 인물이 남는다. */}
+                  {/* 대본에 있는 것만 읽는다. 없는 것은 지어내지 않고
+                      '미정'으로 남긴다 — 무엇이 안 정해졌는지 보여야
+                      창작자가 판정할 수 있다 (DG1 P2). */}
                   <button
                     type="button"
                     className="rail-lens-primary is-mise"
                     onClick={requestSceneStates}
                     disabled={sceneStatePending || screenplay.length === 0}
                   >
-                    {sceneStatePending ? '기준 세우는 중…' : '대본에서 기준 세우기'}
+                    {sceneStatePending ? '읽는 중…' : '대본에서 인물·공간 읽기'}
                   </button>
                   {sceneStateError && (
                     <p className="rail-lens-error">AI 호출 실패 · {sceneStateError}</p>
                   )}
 
+                  {hasActiveSceneState ? (
                   <ul className="rail-scene-state">
-                    {activeSceneState.characters.map((character) => {
-                      const open = character.facts.filter((fact) => fact.open)
-                      return (
-                        <li key={character.id}>
-                          <div className="rail-scene-head">
-                            <strong>{character.name}</strong>
-                            <em>{character.summary}</em>
-                          </div>
-                          {character.facts.filter((fact) => !fact.open).map((fact) => (
-                            <p key={fact.label}>
-                              <span>{fact.label}</span>
-                              {fact.value}
-                            </p>
-                          ))}
-                          {/* 미정은 프롬프트에 들어가지 않는다. 비워둔 것이
-                              보이지 않으면 누락과 구분되지 않는다. */}
-                          {open.map((fact) => (
-                            <label key={fact.label} className="rail-scene-open">
-                              <span>{fact.label}</span>
-                              <input
-                                type="text"
-                                placeholder="아직 지정되지 않음"
-                                onBlur={(event) => {
-                                  const value = event.target.value.trim()
-                                  if (value) {
-                                    setSceneFact('character', fact.label, value, {
-                                      characterId: character.id,
-                                    })
-                                  }
-                                }}
-                              />
-                            </label>
-                          ))}
-                        </li>
-                      )
-                    })}
+                    {activeSceneState.characters.map((character) => (
+                      <li key={character.id}>
+                        <div className="rail-scene-head">
+                          <strong>{character.name}</strong>
+                          <em>{character.summary}</em>
+                        </div>
+                        {character.facts.map((fact) => (
+                          <SceneFactRow
+                            key={fact.label}
+                            fact={fact}
+                            onCommit={(value) => setSceneFact(
+                              'character', fact.label, value, { characterId: character.id },
+                            )}
+                          />
+                        ))}
+                      </li>
+                    ))}
 
                     <li>
                       <div className="rail-scene-head">
@@ -2504,13 +2980,38 @@ export default function StoryboardView() {
                         <em>공간</em>
                       </div>
                       {activeSceneState.location.facts.map((fact) => (
-                        <p key={fact.label}>
-                          <span>{fact.label}</span>
-                          {fact.value}
-                        </p>
+                        <SceneFactRow
+                          key={fact.label}
+                          fact={fact}
+                          onCommit={(value) => setSceneFact('location', fact.label, value)}
+                        />
                       ))}
                     </li>
+
+                    {activeSceneState.environment?.facts?.length > 0 && (
+                      <li>
+                        <div className="rail-scene-head">
+                          <strong>환경</strong>
+                          <em>씬 전체</em>
+                        </div>
+                        {activeSceneState.environment.facts.map((fact) => (
+                          <SceneFactRow
+                            key={fact.label}
+                            fact={fact}
+                            cutOptions={sceneCutOptions}
+                            onCommit={(value) => setSceneFact('environment', fact.label, value)}
+                            onAddChange={(at, value) => addFactChange('environment', fact.label, at, value)}
+                            onRemoveChange={(at) => removeFactChange('environment', fact.label, at)}
+                          />
+                        ))}
+                      </li>
+                    )}
                   </ul>
+                  ) : (
+                    <p className="rail-coverage-clear">
+                      아직 이 이야기의 미장센 기준을 읽지 않았습니다.
+                    </p>
+                  )}
                 </div>
                 )}
               </section>
@@ -2569,6 +3070,12 @@ export default function StoryboardView() {
                     findings={coverageFindings}
                     emptyLabel="지금 구성에서 걸리는 것이 없습니다."
                     onGoTo={goToFinding}
+                    onRequestFix={requestShotFix}
+                    fixPending={shotFixPending}
+                    fixProposal={shotFixProposal}
+                    fixError={shotFixError}
+                    onAcceptFix={acceptShotFix}
+                    onRejectFix={rejectShotFix}
                   />
                 </div>
                 )}
@@ -2647,6 +3154,12 @@ export default function StoryboardView() {
                     findings={seamFindings}
                     emptyLabel="지금 이음새에서 걸리는 것이 없습니다."
                     onGoTo={goToFinding}
+                    onRequestFix={requestShotFix}
+                    fixPending={shotFixPending}
+                    fixProposal={shotFixProposal}
+                    fixError={shotFixError}
+                    onAcceptFix={acceptShotFix}
+                    onRejectFix={rejectShotFix}
                   />
                 </div>
                 )}

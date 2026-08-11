@@ -499,10 +499,11 @@ const createCutPlanItem = ({
   content = '',
   purpose = '',
   characters = '',
-  shotSize = 'Medium',
-  // 촬영 지시. 줄콘티가 원래 담는 정보이며 패널에서 조정한다.
-  angle = 'Eye level',
-  cameraMove = 'Fixed',
+  // 샷은 촬영이 정한다. 기본값을 넣어 두면 정해진 것처럼 읽혀,
+  // 촬영을 부르지 않고 넘어가도 화면에서 구분되지 않는다 (DG1 P2).
+  shotSize = '',
+  angle = '',
+  cameraMove = '',
   // 촬영이 왜 이 샷을 골랐는지. 사용자가 판정하려면 근거가 있어야 한다.
   shotReason = '',
   // 화면에서 시선이 먼저 가야 할 것. 프롬프트가 이것을 강조한다.
@@ -560,23 +561,19 @@ const inferSceneContext = (screenplay) => {
 
   const time = TIME_HINTS.find(([hint]) => source.includes(hint))?.[1] || ''
 
-  // 장소는 공간을 가리키는 낱말만 뽑는다. heading 문장을 통째로 쓰면
-  // 표의 장소 칸이 문장으로 넘친다.
-  // 접두 낱말은 선택. 필수로 두면 탐욕 매칭이 '관제실' 자체를 삼켜 실패한다.
-  const PLACE_WORDS = '관제실|사무실|화장실|정류장|승강장|주차장|편의점|원룸|교실|거실|침실|카페|병원|학교|공항|옥상|복도|거리|골목|역|방|집'
-  const PLACE_PATTERN = new RegExp(`([가-힣]{0,6}(?:${PLACE_WORDS}))`)
-  const placeFromText = (text = '') => text.match(PLACE_PATTERN)?.[1] || ''
+  // 장소는 씬 heading이 이미 말해 준다. "관제실, 밤"에서 시간 부분만
+  // 떼면 장소가 남는다 — 낱말 목록으로 찾으면 목록에 없는 장소(등대,
+  // 폐공장)를 놓치고, "꼭대기 방"에서 '방'만 집어내기도 한다.
+  const stripTime = (text = '') => text
+    .replace(/^(INT|EXT|I\/E)[.\s]*/i, '')
+    // "관제실, 밤" / "관제실 - 밤" / "WAREHOUSE - NIGHT"
+    .split(/\s*[,\-–]\s*/)[0]
+    .trim()
 
-  let place = placeFromText(heading?.text || '')
-  if (!place) place = placeFromText(firstAction?.text || '')
-  // 그래도 못 찾으면 heading에서 형식 표기만 떼고 짧게 자른다.
-  if (!place && heading) {
-    const stripped = heading.text
-      .replace(/^(INT|EXT|I\/E)[.\s]*/i, '')
-      .split(/\s*[-–]\s*/)[0]
-      .trim()
-    place = stripped.length <= 12 ? stripped : ''
-  }
+  let place = stripTime(heading?.text || '')
+  // heading이 문장이면 표의 장소 칸에 넘친다. 그때는 비워 둔다 —
+  // 틀린 장소보다 빈 칸이 낫다.
+  if (place.length > 14) place = ''
   return { time, place }
 }
 
@@ -650,11 +647,10 @@ const createMockCutPlan = (state) => {
     // 공간을 훑는 컷이므로 카메라가 움직인다 — 정지 이미지가 담을 수 없는
     // 정보라 책임 선언과 패널 화살표의 대상이 된다 (DG1 P3).
     if (heading) {
+      // 샷은 촬영이 정한다. 여기서 넣으면 촬영을 부르기 전에 값이 차 있다.
       push({
         content: shortenNarrativeText(actions[0]?.text || heading.text, 60),
         purpose: '공간 설정',
-        shotSize: 'Wide',
-        cameraMove: 'Pan right',
       })
     }
 
@@ -713,6 +709,8 @@ export const buildCutPrompt = (cut, {
   seam = null,
   // 이 컷이 씬에서 몇 번째인가. 인물·공간 상태가 변하므로 시점이 필요하다.
   cutIndex = null,
+  // 컷 id → 순번. 상태 변화가 id로 기록되므로 순서를 옮길 표가 필요하다.
+  cutOrder = null,
   // 이 컷에 걸리는 책임 선언 (DG1 P3). 위임한 요소는 프롬프트에서 빼고,
   // 엄격히 고정한 요소는 제약으로 넣는다.
   declarations = [],
@@ -782,7 +780,7 @@ export const buildCutPrompt = (cut, {
   // 씬 기준을 컷 문장에 섞는다. 컷마다 같은 문구가 들어가야 같은 인물과
   // 같은 방으로 그려진다. 아직 정하지 않은 항목(open)은 넣지 않는다 —
   // 미정을 문장으로 만들면 모델이 그것을 정해버린다.
-  const reference = selectSceneReference(sceneState, cut, cutIndex)
+  const reference = selectSceneReference(sceneState, cut, cutIndex, cutOrder)
   const referenceLine = [
     reference.location && `공간 기준: ${reference.location}`,
     reference.characters.length > 0 && reference.characters
@@ -872,12 +870,13 @@ export const buildCutPrompt = (cut, {
 // DG2의 요구이기도 하다.
 export const PROBLEM_LAYERS = {
   attribute: { label: '속성', hint: '컷의 값. 표에서 고칩니다' },
-  existence: { label: '컷의 존재', hint: '컷이 있어야 하거나 없어야 합니다' },
-  relation: { label: '컷 간 관계', hint: '컷 하나가 아니라 사이의 문제입니다' },
-  scope: { label: '씬 범위', hint: '장면 전체가 무엇을 담는지의 문제입니다' },
+  shot_structure: { label: '컷 구성', hint: '컷을 추가·삭제·분할·병합하는 문제입니다' },
+  shot_relation: { label: '컷 관계', hint: '두 컷 이상의 연결을 다루는 문제입니다' },
+  scene_structure: { label: '씬 구조', hint: '장면 전체의 순서와 정보 배치 문제입니다' },
 }
 
 const SHOT_SIZE_ORDER = ['Wide', 'Full', 'Medium', 'Bust', 'Close-Up', 'ECU']
+
 
 // 모델이 세운 카메라 흐름과 실제 샷이 어긋나는 지점을 짚는다.
 // 값을 고치지는 않는다 — 잠깐 물러났다 붙는 것은 실제 연출 기법이고,
@@ -903,7 +902,7 @@ const diagnoseAgainstCoverage = (cutPlan, coverages, scenes) => {
       findings.push({
         id: `cov-anchor-${scene.id}`,
         type: 'anchor-too-tight',
-        layer: 'relation',
+        layer: 'shot_relation',
         title: `공간을 보여줄 컷인데 좁게 잡혔습니다 · ${tightAnchors.map(label).join(', ')}`,
         detail: '여기서 공간을 보여주려 했는데 화면이 좁습니다. 관객이 어디인지 알기 어려워집니다.',
         cutIds: tightAnchors,
@@ -923,7 +922,7 @@ const diagnoseAgainstCoverage = (cutPlan, coverages, scenes) => {
       findings.push({
         id: `cov-approach-${scene.id}`,
         type: 'approach-broken',
-        layer: 'relation',
+        layer: 'shot_relation',
         title: `좁혀 가다가 다시 넓어집니다 · ${widened.map(label).join(', ')}`,
         detail: '가장 중요한 컷으로 좁혀 가는 구간인데 중간에 다시 넓어집니다. 일부러 그런 것이면 그대로 두세요.',
         cutIds: widened,
@@ -942,7 +941,7 @@ const diagnoseAgainstCoverage = (cutPlan, coverages, scenes) => {
         findings.push({
           id: `cov-peak-${scene.id}`,
           type: 'peak-not-closest',
-          layer: 'relation',
+          layer: 'shot_relation',
           title: `가장 중요한 컷보다 가까운 컷이 있습니다 · ${closer.slice(0, 3).map(label).join(', ')}`,
           detail: `가장 중요한 컷은 ${label(coverage.peakCutId)}입니다. 다른 컷을 더 가까이 잡으면 이 컷이 도드라지지 않습니다.`,
           cutIds: [coverage.peakCutId, ...closer],
@@ -1030,7 +1029,7 @@ export const diagnoseCoverage = (cutPlan = []) => {
       findings.push({
         id: 'no-establishing',
         type: 'no-establishing',
-        layer: 'scope',
+        layer: 'scene_structure',
         title: '공간을 세우는 컷 없음',
         detail: '컷이 전부 좁아서 관객이 여기가 어디인지 알 수 없습니다.',
         cutIds: [cutPlan[0].id],
@@ -1057,7 +1056,7 @@ const diagnoseShotFlow = (cutPlan, coverages, scenes) => {
         findings.push({
           id: `run-${cutPlan[runStart].id}`,
           type: 'size-run',
-          layer: 'relation',
+          layer: 'shot_relation',
           title: `${cutPlan[runStart].shotSize} ${run}컷 연속`,
           detail: '크기가 같으면 컷이 넘어간 것이 화면에서 잘 안 보입니다.',
           cutIds: cutPlan.slice(runStart, i).map((cut) => cut.id),
@@ -1079,7 +1078,7 @@ const diagnoseShotFlow = (cutPlan, coverages, scenes) => {
       findings.push({
         id: `jump-${cut.id}`,
         type: 'jump-cut',
-        layer: 'relation',
+        layer: 'shot_relation',
         title: `컷 ${prev.beat + 1}-${prev.beatOrder} → ${cut.beat + 1}-${cut.beatOrder} 점프컷 위험`,
         detail: '앞 컷과 크기도 앵글도 거의 같아서, 이어 붙이면 화면이 툭 튑니다.',
         cutIds: [prev.id, cut.id],
@@ -1166,7 +1165,7 @@ export const diagnoseSeams = (cutPlan = [], screenplay = [], {
       findings.push({
         id: `dense-${beat}`,
         type: 'compressed',
-        layer: 'existence',
+        layer: 'shot_structure',
         title: `Beat ${beat + 1} · 행동 ${actions.length}개가 컷 하나에`,
         detail: '대본은 여러 단계로 적혀 있는데 컷이 하나입니다. 나눠야 순서가 보입니다.',
         cutIds: inBeat.map((cut) => cut.id),
@@ -1184,7 +1183,7 @@ export const diagnoseSeams = (cutPlan = [], screenplay = [], {
       findings.push({
         id: `dup-${cut.id}`,
         type: 'duplicate',
-        layer: 'relation',
+        layer: 'shot_relation',
         title: `컷 ${prev.beat + 1}-${prev.beatOrder} · ${cut.beat + 1}-${cut.beatOrder} 내용 같음`,
         detail: '두 컷이 같은 것을 담고 있습니다. 하나로 합치거나 한쪽을 다시 쓰세요.',
         cutIds: [prev.id, cut.id],
@@ -1201,7 +1200,7 @@ export const diagnoseSeams = (cutPlan = [], screenplay = [], {
     findings.push({
       id: `gap-${beat}`,
       type: 'skipped-beat',
-      layer: 'existence',
+      layer: 'shot_structure',
       title: `Beat ${beat + 1}에 컷이 없음`,
       detail: '대본에는 있는데 컷으로 나뉘지 않았습니다. 그대로 두면 화면에서 사라집니다.',
       cutIds: near.map((cut) => cut.id),
@@ -1219,7 +1218,7 @@ export const diagnoseSeams = (cutPlan = [], screenplay = [], {
       findings.push({
         id: `elapsed-${cut.id}`,
         type: 'unmarked-elapsed',
-        layer: 'relation',
+        layer: 'shot_relation',
         title: `컷 ${cutPlan[index - 1].beat + 1}-${cutPlan[index - 1].beatOrder} → ${cut.beat + 1}-${cut.beatOrder} 경과가 안 보임`,
         detail: '시간이 흘렀다고 적었지만 그냥 컷으로 이어집니다. 관객은 연속으로 읽습니다.',
         cutIds: [cutPlan[index - 1].id, cut.id],
@@ -1239,7 +1238,7 @@ export const diagnoseSeams = (cutPlan = [], screenplay = [], {
       findings.push({
         id: `elision-${cut.id}`,
         type: 'unmarked-elision',
-        layer: 'relation',
+        layer: 'shot_relation',
         title: `컷 ${prev.beat + 1}-${prev.beatOrder} → ${cut.beat + 1}-${cut.beatOrder} 생략이 안 보임`,
         detail: `"${seam.elision}"을 건너뛰었지만 화면에는 연속으로 보입니다.`,
         cutIds: [prev.id, cut.id],
@@ -1319,11 +1318,18 @@ export const sceneOfBeat = (scenes, beat) => (
   scenes.find((scene) => beat >= scene.startBeat && beat <= scene.endBeat) || null
 )
 
+const screenplayFingerprint = (screenplay = []) => screenplay
+  .map((element) => `${element.type}:${element.text}`)
+  .join('\n')
+
 // 지금 보고 있는 씬의 기준. activeBeat가 속한 씬을 따른다.
 export const selectActiveSceneState = (state) => {
+  if (state.sceneStateStoryKey !== screenplayFingerprint(state.screenplay)) {
+    return EMPTY_SCENE_STATE
+  }
   const scenes = selectScenes(state.screenplay)
   const scene = sceneOfBeat(scenes, state.activeBeat ?? 0)
-  return state.sceneStates[scene?.id] || state.sceneStates['scene-0'] || SCENE_STATE
+  return state.sceneStates[scene?.id] || state.sceneStates['scene-0'] || EMPTY_SCENE_STATE
 }
 
 export const selectActiveSceneId = (state) => {
@@ -1343,6 +1349,14 @@ export const selectActiveSceneId = (state) => {
 //
 // `open: true`인 항목은 아직 정하지 않은 것이다. 프롬프트에 넣지 않는다 —
 // 미정을 문장으로 만들면 모델이 그것을 정해버린다.
+const EMPTY_SCENE_STATE = {
+  title: '씬 기준 미설정',
+  description: '대본에서 인물과 공간을 읽은 뒤 표시됩니다.',
+  characters: [],
+  location: { name: '', facts: [] },
+  environment: { name: '장면 공통', facts: [] },
+}
+
 const SCENE_STATE = {
   title: '지하철 관제실 · 밤',
   description: '대본에서 추출한 장면 기준입니다. Shot별 배치는 이 상태를 상속하고, 달라진 부분만 별도로 기록합니다.',
@@ -1393,30 +1407,36 @@ const SCENE_STATE = {
 //  표현하고, 구조를 바꾸면 관련 패널에 반영되게 한다.)
 //
 // `changes`는 "이 컷부터 이렇게 바뀐다"의 목록이다. 없으면 씬 내내 `value`다.
-//   { at: 6, value: '젖은 채 굳어 있음' }   ← 7번째 컷(0-based 6)부터
+//   { cutId: 'cut-abc', value: '젖은 채 굳어 있음' }
+//
+// 컷의 순번이 아니라 id로 가리키는 이유: 앞에 컷을 하나 넣으면 뒤의 순번이
+// 전부 밀려, 변화가 조용히 엉뚱한 컷에 걸린다. 에러도 나지 않아 발견이
+// 늦다. seams가 패널 id를 키로 쓰는 것과 같은 이유다.
 //
 // 값 자체를 바꾸는 것이 아니라 구간을 더하는 이유: 처음 상태가 지워지면
 // 앞 컷들이 무엇이었는지 알 수 없게 된다.
-const factValueAt = (fact, cutIndex) => {
+const factValueAt = (fact, cutIndex, cutOrder = null) => {
   if (!fact.changes?.length || cutIndex == null) return fact.value
-  // 이 시점까지 일어난 변화 중 마지막 것.
+  // 이 시점까지 일어난 변화 중 마지막 것. 순서는 컷 플랜의 순서를 따른다.
   const applied = fact.changes
-    .filter((change) => change.at <= cutIndex)
+    .map((change) => ({ change, at: cutOrder?.get(change.cutId) }))
+    // 지워진 컷을 가리키는 변화는 건너뛴다. 남겨두면 되살릴 수 있다.
+    .filter((entry) => entry.at != null && entry.at <= cutIndex)
     .sort((a, b) => a.at - b.at)
     .slice(-1)[0]
-  return applied ? applied.value : fact.value
+  return applied ? applied.change.value : fact.value
 }
 
 // 정해진 사실만 한 줄로 잇는다. 컷 시점이 주어지면 그 시점의 값을 쓴다.
-const settledFacts = (facts = [], cutIndex = null) => facts
+const settledFacts = (facts = [], cutIndex = null, cutOrder = null) => facts
   .filter((fact) => !fact.open && fact.value)
-  .map((fact) => factValueAt(fact, cutIndex))
+  .map((fact) => factValueAt(fact, cutIndex, cutOrder))
   .filter(Boolean)
   .join(', ')
 
 // 이 컷에 걸리는 씬 기준을 뽑는다. 컷에 나오는 인물만 넣는다 —
 // 씬의 모든 인물을 매 컷에 적으면 화면에 없는 사람까지 그리게 된다.
-export const selectSceneReference = (sceneState, cut, cutIndex = null) => {
+export const selectSceneReference = (sceneState, cut, cutIndex = null, cutOrder = null) => {
   if (!sceneState || !cut) return { characters: [], location: '', environment: '' }
 
   const cast = (cut.characters || '').split(',').map((name) => name.trim()).filter(Boolean)
@@ -1424,22 +1444,166 @@ export const selectSceneReference = (sceneState, cut, cutIndex = null) => {
     .filter((character) => cast.some((name) => name.includes(character.name)))
     .map((character) => ({
       name: character.name,
-      detail: settledFacts(character.facts, cutIndex),
+      detail: settledFacts(character.facts, cutIndex, cutOrder),
     }))
     .filter((entry) => entry.detail)
 
   return {
     characters,
-    location: settledFacts(sceneState.location?.facts, cutIndex),
-    environment: settledFacts(sceneState.environment?.facts, cutIndex),
+    location: settledFacts(sceneState.location?.facts, cutIndex, cutOrder),
+    environment: settledFacts(sceneState.environment?.facts, cutIndex, cutOrder),
   }
 }
 
+// 컷 id → 순번. 변화는 id로 가리키고 순서는 컷 플랜이 정하므로, 값을 읽을
+// 때마다 이 표로 옮긴다.
+export const cutOrderOf = (cutPlan = []) => new Map(
+  cutPlan.map((cut, index) => [cut.id, index]),
+)
+
 // 이 사실이 씬 안에서 언제 바뀌는가. 편집 화면이 구간을 보여줄 때 쓴다.
-export const factTimeline = (fact) => [
-  { at: 0, value: fact.value },
-  ...(fact.changes || []).slice().sort((a, b) => a.at - b.at),
+export const factTimeline = (fact, cutOrder = null) => [
+  { cutId: null, value: fact.value, at: 0 },
+  ...(fact.changes || [])
+    .map((change) => ({ ...change, at: cutOrder?.get(change.cutId) }))
+    .filter((change) => change.at != null)
+    .sort((a, b) => a.at - b.at),
 ]
+
+// 레퍼런스 그림에 쓸 문장. 항목 값에서 조립한다 — 항목을 고치면 그림도
+// 따라 바뀌어야 텍스트와 그림이 어긋나지 않는다. 컷 프롬프트가
+// promptOverride로 하는 것과 같이, 사용자가 직접 고치면 그것을 쓴다.
+export const buildReferencePrompt = (subject, kind) => {
+  if (!subject) return { auto: '', effective: '', isEdited: false }
+
+  const settled = (subject.facts || [])
+    .filter((fact) => !fact.open && fact.value)
+    .map((fact) => fact.value)
+
+  // summary가 이름과 같으면 "등대지기. 등대지기."가 된다 — 대본이 인물을
+  // 부르는 말이 곧 이름인 경우다.
+  const head = kind === 'character' && subject.summary && subject.summary !== subject.name
+    ? [subject.name, subject.summary]
+    : [subject.name]
+  const auto = [...head, ...settled].filter(Boolean).join('. ')
+
+  const edited = (subject.promptOverride || '').trim()
+  return { auto, effective: edited || auto, isEdited: Boolean(edited) }
+}
+
+// 인물 마커 색. SpatialMap의 PRESET_COLORS와 같은 값이어야 화면이 튀지 않는다.
+const MARKER_COLORS = ['#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#06b6d4', '#f97316']
+
+// 2D 구조도를 도면 그림으로 옮긴다. 좌표를 말로 바꾸면("콘솔은 가운데")
+// 정확도가 떨어진다 — 도면 한 장이 배치를 훨씬 정확히 전한다.
+// images.edit에 레퍼런스로 함께 물린다.
+//
+// 편집기 화면을 그대로 캡처하지 않는 이유: 도구 막대, 선택 표시, 격자 같은
+// 것이 함께 들어가면 모델이 그것까지 그림의 일부로 읽는다.
+export const layoutToImage = (elements = [], size = 768) => {
+  const boxes = elements.filter((entry) => entry.type === 'rect')
+  const markers = elements.filter((entry) => entry.type === 'marker')
+  if (boxes.length === 0 && markers.length === 0) return null
+
+  // 좌표계를 그림 크기에 맞춘다. 절대 좌표는 의미가 없고 서로의 관계만 남는다.
+  const points = [
+    ...boxes.flatMap((box) => [
+      { x: box.x, y: box.y },
+      { x: box.x + (box.w || 0), y: box.y + (box.h || 0) },
+    ]),
+    ...markers.map((marker) => ({ x: marker.x, y: marker.y })),
+  ]
+  const minX = Math.min(...points.map((point) => point.x))
+  const maxX = Math.max(...points.map((point) => point.x))
+  const minY = Math.min(...points.map((point) => point.y))
+  const maxY = Math.max(...points.map((point) => point.y))
+  const pad = 60
+  const scale = Math.min(
+    (size - pad * 2) / Math.max(maxX - minX, 1),
+    (size - pad * 2) / Math.max(maxY - minY, 1),
+  )
+  const tx = (value) => pad + (value - minX) * scale
+  const ty = (value) => pad + (value - minY) * scale
+
+  const esc = (text = '') => String(text)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+
+  const shapes = boxes.map((box) => {
+    const w = Math.max((box.w || 0) * scale, 8)
+    const h = Math.max((box.h || 0) * scale, 8)
+    return `<rect x="${tx(box.x)}" y="${ty(box.y)}" width="${w}" height="${h}" `
+      + 'fill="none" stroke="#000" stroke-width="3"/>'
+      // 이름이 상자보다 길면 넘쳐 옆 상자를 덮는다. 상자 폭에 맞춰 줄인다.
+      + (box.label
+        ? `<text x="${tx(box.x) + w / 2}" y="${ty(box.y) + h / 2 + 6}" `
+          + 'text-anchor="middle" font-family="sans-serif" '
+          + `font-size="${Math.max(10, Math.min(18, (w * 1.7) / Math.max(box.label.length, 1)))}" `
+          + `fill="#000">${esc(box.label)}</text>`
+        : '')
+  })
+
+  // 인물은 채운 원으로. 사물(빈 사각형)과 한눈에 갈려야 한다.
+  const people = markers.map((marker) => (
+    `<circle cx="${tx(marker.x)}" cy="${ty(marker.y)}" r="16" fill="#000"/>`
+    + (marker.label
+      ? `<text x="${tx(marker.x)}" y="${ty(marker.y) - 26}" text-anchor="middle" `
+        + `font-family="sans-serif" font-size="20" font-weight="bold" fill="#000">${esc(marker.label)}</text>`
+      : '')
+  ))
+
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" `
+    + `viewBox="0 0 ${size} ${size}">`
+    + `<rect width="${size}" height="${size}" fill="#fff"/>`
+    + shapes.join('') + people.join('')
+    + '</svg>'
+  return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`
+}
+
+// 2D 구조도를 문장으로도 옮긴다. 도면과 함께 주면 서로를 보강한다.
+// 무엇이 어디에 있고 누가 어디 서 있는지를 말로 바꾼다.
+//
+// 구조도가 있으면 컷마다 배치가 흔들리지 않는다 — 컷 1에서 왼쪽에 있던
+// 콘솔이 컷 5에서 오른쪽으로 가는 것을 글로만 막기는 어렵다.
+export const describeLayout = (elements = []) => {
+  const boxes = elements.filter((entry) => entry.type === 'rect' && entry.label)
+  const markers = elements.filter((entry) => entry.type === 'marker' && entry.label)
+  if (boxes.length === 0 && markers.length === 0) return ''
+
+  // 좌표계의 절대값은 의미가 없다. 서로의 상대 위치만 말이 된다.
+  const xs = [...boxes, ...markers].map((entry) => entry.x)
+  const ys = [...boxes, ...markers].map((entry) => entry.y)
+  const minX = Math.min(...xs)
+  const maxX = Math.max(...xs)
+  const minY = Math.min(...ys)
+  const maxY = Math.max(...ys)
+  const spanX = maxX - minX || 1
+  const spanY = maxY - minY || 1
+
+  const where = (entry) => {
+    const h = (entry.x - minX) / spanX
+    const v = (entry.y - minY) / spanY
+    const side = h < 0.34 ? '왼쪽' : h > 0.66 ? '오른쪽' : '가운데'
+    const depth = v < 0.34 ? '안쪽' : v > 0.66 ? '앞쪽' : ''
+    return depth ? `${depth} ${side}` : side
+  }
+
+  // 받침 유무로 조사가 갈린다. '민호은'처럼 쓰면 사람이 쓴 문장으로 안 읽힌다.
+  const topic = (word = '') => {
+    const last = word.trim().slice(-1)
+    const code = last.charCodeAt(0)
+    if (code < 0xac00 || code > 0xd7a3) return `${word}은`
+    return (code - 0xac00) % 28 === 0 ? `${word}는` : `${word}은`
+  }
+
+  const parts = []
+  if (boxes.length > 0) {
+    parts.push(boxes.map((box) => `${topic(box.label)} ${where(box)}`).join(', '))
+  }
+  if (markers.length > 0) {
+    parts.push(markers.map((marker) => `${topic(marker.label)} ${where(marker)}에 있다`).join(', '))
+  }
+  return parts.join('. ')
+}
 
 // --- Responsibility registry (DG1 P3) -----------------------------------
 // "이미지가 책임질 범위를 선언한다." 화면에 없는 것이 보완해야 할 결손인지
@@ -1484,17 +1648,31 @@ export const OFFIMAGE_CHANNELS = [
   { id: 'copy', label: '카피', mark: 'note' },
 ]
 
+// 화살표의 방향은 패널 위 드래그가 정하고, 이동 종류만 짧은 라벨로 붙인다.
+// 하나의 자유 입력칸보다 자주 쓰는 촬영 용어를 고르게 해야 여러 패널에서
+// 같은 표기가 유지된다.
+export const CAMERA_MOVE_TYPES = [
+  { id: 'pan', label: 'PAN', name: '팬' },
+  { id: 'tilt', label: 'TILT', name: '틸트' },
+  { id: 'track', label: 'TRACK', name: '트래킹' },
+  { id: 'dolly', label: 'DOLLY', name: '달리' },
+  { id: 'zoom', label: 'ZOOM', name: '줌' },
+]
+
 // 화살표는 사용자가 패널 위에 직접 그린다. 방향을 문구에서 유추하면
 // 창작자가 말하지 않은 것을 화면이 주장하게 된다 — 카메라가 어느 쪽으로
 // 움직이는지는 감독이 화면을 보고 정하는 것이다.
 // 좌표는 패널 크기에 무관하도록 0~1 비율로 저장한다.
-export const createPanelArrow = ({ x1, y1, x2, y2, channel = 'camera-move', label = '' }) => ({
+export const createPanelArrow = ({
+  x1, y1, x2, y2, channel = 'camera-move', kind = '', label = '',
+}) => ({
   id: `arrow-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
   x1,
   y1,
   x2,
   y2,
   channel,
+  kind,
   label,
 })
 
@@ -1654,6 +1832,10 @@ const reorderCutPlan = (items) => {
 export const selectCutStage = (state) => {
   if (state.cutPlanStageOverride) return state.cutPlanStageOverride
   if (state.cutPlanAccepted) return 'panels'
+  // 컷 플랜 다음에 촬영이 이어서 돈다. 컷이 들어오자마자 넘기면 샷이 빈
+  // 표를 보다가 값이 뒤늦게 채워진다. 두 공정이 다 끝나고 넘어간다.
+  // 컷 플랜에서 '샷 다시 정하기'를 누른 경우는 해당하지 않는다.
+  if (state.cutPlanRunPending) return 'script'
   return state.cutPlan.length > 0 ? 'cutplan' : 'script'
 }
 
@@ -1764,7 +1946,12 @@ const useStore = create((set, get) => ({
   //
   // 씬마다 따로 둔다 — 관제실의 인물 기준과 승강장의 인물 기준은 다르다.
   // 승강장의 '노란 우비 아이'는 관제실 기준에 없다.
-  sceneStates: { 'scene-0': SCENE_STATE, 'scene-7': PLATFORM_SCENE_STATE },
+  sceneStates: {},
+  // 2D 구조도. 컴포넌트 지역 상태로 두면 패널 생성이 읽지 못한다 —
+  // 배치를 그림에 반영하려면 스토어에 있어야 한다.
+  spatialElements: [],
+  setSpatialElements: (elements) => set({ spatialElements: elements }),
+  sceneStateStoryKey: '',
   // 지금 보고 있는 씬. activeBeat에서 파생시키면 둘이 어긋날 수 없다 —
   // Beat를 고르는 것이 곧 씬을 고르는 것이다.
 
@@ -1779,7 +1966,7 @@ const useStore = create((set, get) => ({
     try {
       const { buildSceneState } = await import('../services/api.js')
       const scenes = selectScenes(state.screenplay)
-      const next = { ...state.sceneStates }
+      const next = {}
 
       for (const scene of scenes) {
         const script = state.screenplay
@@ -1793,14 +1980,40 @@ const useStore = create((set, get) => ({
         if (!script.trim()) continue
 
         // eslint-disable-next-line no-await-in-loop
-        next[scene.id] = await buildSceneState({
+        const built = await buildSceneState({
           heading: scene.heading,
           script,
           sceneIntention: state.sceneIntention || '',
         })
+
+        // 레퍼런스 그림과 직접 고친 프롬프트는 사용자가 만든 것이다.
+        // 대본을 다시 읽는다고 지워지면 안 된다 — 다시 그려야 한다.
+        const kept = state.sceneStates[scene.id]
+        next[scene.id] = kept ? {
+          ...built,
+          characters: built.characters.map((character) => {
+            const before = kept.characters?.find((entry) => entry.name === character.name)
+            return before
+              ? {
+                ...character,
+                image: before.image ?? null,
+                promptOverride: before.promptOverride || '',
+              }
+              : character
+          }),
+          location: {
+            ...built.location,
+            image: kept.location?.image ?? null,
+            promptOverride: kept.location?.promptOverride || '',
+          },
+        } : built
       }
 
-      set({ sceneStates: next, sceneStatePending: false })
+      set({
+        sceneStates: next,
+        sceneStateStoryKey: screenplayFingerprint(state.screenplay),
+        sceneStatePending: false,
+      })
     } catch (error) {
       set({ sceneStatePending: false, sceneStateError: error.message })
     }
@@ -1808,7 +2021,7 @@ const useStore = create((set, get) => ({
 
   // 씬 기준을 고친다. 아래 네 액션이 같은 모양이라 여기로 모은다.
   updateSceneStateAt: (sceneId, updater) => set((state) => {
-    const current = state.sceneStates[sceneId] || SCENE_STATE
+    const current = state.sceneStates[sceneId] || EMPTY_SCENE_STATE
     return { sceneStates: { ...state.sceneStates, [sceneId]: updater(current) } }
   }),
   updateSceneCharacter: (characterId, patch, sceneId = null) => {
@@ -1820,13 +2033,146 @@ const useStore = create((set, get) => ({
     }))
   },
 
+  // 대본에서 공간 배치를 제안받는다. 빈 캔버스에서 시작하는 대신
+  // 초안을 고치게 한다 — 이 배치가 곧 패널 생성의 도면 참조가 된다.
+  spaceLayoutPending: false,
+  spaceLayoutError: null,
+  spaceLayoutNote: '',
+  requestSpaceLayout: async () => {
+    const state = get()
+    const scenes = selectScenes(state.screenplay)
+    const scene = scenes.find((entry) => entry.id === selectActiveSceneId(state)) || scenes[0]
+    if (!scene) return
+
+    const script = state.screenplay
+      .filter((element) => (
+        element.beat >= scene.startBeat
+        && element.beat <= scene.endBeat
+        && element.type === 'action'
+      ))
+      .map((element) => element.text)
+      .join('\n')
+    if (!script.trim()) return
+
+    set({ spaceLayoutPending: true, spaceLayoutError: null })
+    try {
+      // 지연 import — 스토어를 node로 단독 검증할 수 있게 한다.
+      const { buildSpaceLayout } = await import('../services/api.js')
+      const sceneState = state.sceneStates[scene.id]
+      const result = await buildSpaceLayout({
+        heading: scene.heading,
+        script,
+        locationFacts: (sceneState?.location?.facts || [])
+          .filter((fact) => !fact.open && fact.value)
+          .map((fact) => fact.value)
+          .join(', '),
+      })
+
+      // 이미 놓인 인물은 자리를 지킨다. 사용자가 옮겨 뒀을 수 있고,
+      // 제안이 그것을 되돌리면 한 일이 사라진다.
+      const placed = new Map(
+        state.spatialElements
+          .filter((entry) => entry.type === 'marker')
+          .map((entry) => [entry.label, entry]),
+      )
+      set({
+        spatialElements: [
+          ...result.elements.map((element, index) => ({
+            id: `layout-${index}`,
+            type: 'rect',
+            x: element.x,
+            y: element.y,
+            w: element.w,
+            h: element.h,
+            label: element.label,
+          })),
+          ...result.people.map((person, index) => placed.get(person.name) || {
+            id: `person-${index}`,
+            type: 'marker',
+            x: person.x,
+            y: person.y,
+            label: person.name,
+            color: MARKER_COLORS[index % MARKER_COLORS.length],
+            // 컷별 이동은 사용자가 끌어서 정한다. 대본은 시작 위치까지만 말한다.
+            waypoints: [],
+          }),
+          // 제안에 없는 인물도 남긴다 — 사용자가 직접 놓은 것이다.
+          ...[...placed.values()].filter((entry) => (
+            !result.people.some((person) => person.name === entry.label)
+          )),
+        ],
+        spaceLayoutNote: result.note,
+        spaceLayoutPending: false,
+      })
+    } catch (error) {
+      set({ spaceLayoutPending: false, spaceLayoutError: error.message })
+    }
+  },
+
+  // 인물·공간의 레퍼런스 그림을 만든다. 씬 기준을 글로만 두면 컷마다
+  // 다르게 해석된다 — 그림이 기준이어야 같은 인물로 이어진다.
+  referenceImagePending: null,
+  referenceImageError: null,
+  requestReferenceImage: async (kind, subjectId = null) => {
+    const state = get()
+    const scene = state.sceneStates[selectActiveSceneId(state)]
+    if (!scene) return
+
+    const subject = kind === 'character'
+      ? scene.characters.find((entry) => entry.id === subjectId)
+      : scene[kind]
+    if (!subject) return
+
+    const prompt = buildReferencePrompt(subject, kind)
+    if (!prompt.effective) {
+      set({ referenceImageError: '먼저 인물이나 공간의 값을 채워 주세요.' })
+      return
+    }
+
+    const key = kind === 'character' ? subjectId : kind
+    set({ referenceImagePending: key, referenceImageError: null })
+    try {
+      // 지연 import — 스토어를 node로 단독 검증할 수 있게 한다.
+      const { generateReferenceImage } = await import('../services/api.js')
+      const image = await generateReferenceImage(kind, prompt.effective)
+      get().updateSceneStateAt(selectActiveSceneId(get()), (current) => (
+        kind === 'character'
+          ? {
+            ...current,
+            characters: current.characters.map((entry) => (
+              entry.id === subjectId ? { ...entry, image } : entry
+            )),
+          }
+          : { ...current, [kind]: { ...current[kind], image } }
+      ))
+      set({ referenceImagePending: null })
+    } catch (error) {
+      set({ referenceImagePending: null, referenceImageError: error.message })
+    }
+  },
+
+  // 레퍼런스 프롬프트를 직접 고친다. 비우면 항목에서 다시 조립된다.
+  setReferencePrompt: (kind, subjectId, text) => {
+    get().updateSceneStateAt(selectActiveSceneId(get()), (current) => (
+      kind === 'character'
+        ? {
+          ...current,
+          characters: current.characters.map((entry) => (
+            entry.id === subjectId ? { ...entry, promptOverride: text } : entry
+          )),
+        }
+        : { ...current, [kind]: { ...current[kind], promptOverride: text } }
+    ))
+  },
+
   // 상태 변화를 더한다. 처음 값은 남기고 구간만 얹는다 —
   // 값을 덮어쓰면 앞 컷들이 무엇이었는지 알 수 없게 된다.
-  addFactChange: (group, label, at, value, { characterId = null, sceneId = null } = {}) => {
+  addFactChange: (group, label, cutId, value, { characterId = null, sceneId = null } = {}) => {
     const patchFacts = (facts = []) => facts.map((fact) => {
       if (fact.label !== label) return fact
-      const changes = (fact.changes || []).filter((change) => change.at !== at)
-      return { ...fact, changes: [...changes, { at, value }].sort((a, b) => a.at - b.at) }
+      // 같은 컷에 두 번 얹지 않는다. 다시 넣으면 값만 바뀐다.
+      const changes = (fact.changes || []).filter((change) => change.cutId !== cutId)
+      return { ...fact, changes: [...changes, { cutId, value }] }
     })
     get().updateSceneStateAt(sceneId || selectActiveSceneId(get()), (scene) => (
       group === 'character'
@@ -1842,10 +2188,10 @@ const useStore = create((set, get) => ({
     ))
   },
 
-  removeFactChange: (group, label, at, { characterId = null, sceneId = null } = {}) => {
+  removeFactChange: (group, label, cutId, { characterId = null, sceneId = null } = {}) => {
     const patchFacts = (facts = []) => facts.map((fact) => (
       fact.label === label
-        ? { ...fact, changes: (fact.changes || []).filter((change) => change.at !== at) }
+        ? { ...fact, changes: (fact.changes || []).filter((change) => change.cutId !== cutId) }
         : fact
     ))
     get().updateSceneStateAt(sceneId || selectActiveSceneId(get()), (scene) => (
@@ -1884,6 +2230,8 @@ const useStore = create((set, get) => ({
   // 실제 모델을 부른다. 실패하면 규칙 기반 mock으로 떨어진다.
   cutPlanPending: false,
   cutPlanError: null,
+  // 줄콘티+촬영이 한 실행으로 도는 중인가. 단계 전환을 이것으로 막는다.
+  cutPlanRunPending: false,
   requestCutPlan: async () => {
     const state = get()
     if (state.screenplay.length === 0) return
@@ -1895,6 +2243,8 @@ const useStore = create((set, get) => ({
       cutPlanSkipped: false,
       cutPlanStageOverride: null,
       cutPlanRequestKey: state.cutPlanRequestKey + 1,
+      // 줄콘티와 촬영을 하나의 실행으로 묶는다. 둘 다 끝나야 단계가 넘어간다.
+      cutPlanRunPending: true,
     })
 
     try {
@@ -1932,16 +2282,26 @@ const useStore = create((set, get) => ({
         items.push(...planned)
       }
 
-      set({
-        cutPlan: reorderCutPlan(items.map((item) => createCutPlanItem(item))),
-        cutPlanPending: false,
-      })
+      // 컷을 나눴으면 이어서 샷을 정한다. 감독이 컷을 나누고 촬영감독과
+      // 샷을 정하는 순서이며, 따로 부르게 두면 샷이 빈 채로 그림 단계까지
+      // 넘어간다. 실패해도 컷 플랜은 남는다 — 샷은 다시 부를 수 있다.
+      //
+      // 컷 플랜을 먼저 set하면 단계가 그 순간 cutplan으로 넘어가, 샷이
+      // 빈 표를 보다가 값이 뒤늦게 채워진다. 촬영까지 끝내고 한 번에 넘긴다.
+      const planned = reorderCutPlan(items.map((item) => createCutPlanItem(item)))
+      set({ cutPlan: planned, cutPlanPending: false })
+      await get().requestShotDesign()
     } catch (error) {
       set({
         cutPlan: createMockCutPlan(get()),
         cutPlanPending: false,
         cutPlanError: error.message,
       })
+      await get().requestShotDesign()
+    } finally {
+      // 촬영이 실패해도 단계는 넘어간다. 컷 플랜은 이미 있고, 샷은
+      // rail에서 다시 부를 수 있다.
+      set({ cutPlanRunPending: false })
     }
   },
   // 촬영이 샷을 정한다. 줄콘티가 컷을 나눈 뒤에 부른다 —
@@ -2079,6 +2439,85 @@ const useStore = create((set, get) => ({
     }))
     return { cutPlan: reorderCutPlan(next) }
   }),
+  // 진단을 받아 촬영에 수정본을 묻는다. 어느 크기로 바꿀지는 그 컷이
+  // 무엇을 보여주려는지 봐야 정해진다 — 코드로 "한 칸 벌린다"고 두면
+  // 내용과 무관한 처방이 된다.
+  shotFixPending: null,
+  shotFixError: null,
+  shotFixProposal: null,
+  requestShotFix: async (finding) => {
+    const state = get()
+    if (!finding?.cutIds?.length) return
+
+    // 진단에 걸린 컷이 속한 씬의 컷을 전부 보낸다. 한 컷만 보고 고치면
+    // 앞뒤와 다시 어긋난다.
+    const scenes = selectScenes(state.screenplay)
+    const first = state.cutPlan.find((cut) => cut.id === finding.cutIds[0])
+    const scene = first ? sceneOfBeat(scenes, first.beat) : null
+    if (!scene) return
+    const cuts = state.cutPlan.filter((cut) => (
+      cut.beat >= scene.startBeat && cut.beat <= scene.endBeat
+    ))
+    if (cuts.length === 0) return
+
+    set({ shotFixPending: finding.id, shotFixError: null, shotFixProposal: null })
+    try {
+      // 지연 import — 스토어를 node로 단독 검증할 수 있게 한다.
+      const { fixShots } = await import('../services/api.js')
+      const result = await fixShots({
+        heading: scene.heading,
+        cuts,
+        findingTitle: finding.title,
+        findingDetail: finding.detail || '',
+        targetIndexes: finding.cutIds
+          .map((id) => cuts.findIndex((cut) => cut.id === id))
+          .filter((index) => index >= 0),
+        sceneIntention: state.sceneIntention || '',
+      })
+      // 순번은 요청에 준 씬 안의 자리다. 컷 id로 되돌려야 표에 적용된다.
+      const edits = result.edits
+        .map((edit) => {
+          const cut = cuts[edit.cut_index]
+          return cut && {
+            cutId: cut.id,
+            label: cut.label || `컷 ${cut.beat + 1}-${cut.beatOrder}`,
+            from: cut.shotSize || '미정',
+            to: edit.shot_size,
+            reason: edit.reason || '',
+            // 진단에 걸린 컷인가, 그 여파로 함께 고치는 컷인가. 구분하지
+            // 않으면 왜 엉뚱한 컷이 나왔는지 알 수 없다.
+            isTarget: finding.cutIds.includes(cut.id),
+          }
+        })
+        .filter(Boolean)
+
+      set({
+        shotFixPending: null,
+        shotFixProposal: edits.length
+          ? { findingId: finding.id, summary: result.summary || '', edits }
+          : null,
+        shotFixError: edits.length ? null : '고칠 것이 없다고 답했습니다.',
+      })
+    } catch (error) {
+      set({ shotFixPending: null, shotFixError: error.message })
+    }
+  },
+
+  // 수락해야 표에 들어간다 — 진단과 처분은 다른 일이다 (design_goal.md DG2).
+  acceptShotFix: () => set((state) => {
+    const proposal = state.shotFixProposal
+    if (!proposal) return {}
+    return {
+      cutPlan: state.cutPlan.map((item) => {
+        const edit = proposal.edits.find((entry) => entry.cutId === item.id)
+        return edit ? { ...item, shotSize: edit.to } : item
+      }),
+      shotFixProposal: null,
+    }
+  }),
+
+  rejectShotFix: () => set({ shotFixProposal: null, shotFixError: null }),
+
   removeCutPlanItem: (itemId) => set((state) => ({
     cutPlan: reorderCutPlan(state.cutPlan.filter((item) => item.id !== itemId)),
   })),
@@ -2309,17 +2748,20 @@ const useStore = create((set, get) => ({
   // 채우기 어렵다. 기본('컷 · 연속')과 다른 것만 돌아온다.
   seamDesignPending: false,
   seamDesignError: null,
+  // 제안은 수락 전까지 이음새에 들어가지 않는다. 다른 에이전트와 같은
+  // 규칙이다 — AI가 더한 것은 판정을 거치기 전까지 잠정이다 (DG1 P2).
+  seamProposals: [],
   requestSeamDesign: async () => {
     const state = get()
     if (state.cutPlan.length < 2) return
 
-    set({ seamDesignPending: true, seamDesignError: null })
+    set({ seamDesignPending: true, seamDesignError: null, seamProposals: [] })
     try {
       const { designSeams } = await import('../services/api.js')
       const scenes = selectScenes(state.screenplay)
       const shots = state.scenes[state.activeScene]
         ?.branches[state.scenes[state.activeScene].activeBranch ?? 0]?.shots || []
-      const nextSeams = { ...state.seams }
+      const proposals = []
 
       for (const scene of scenes) {
         const cuts = state.cutPlan.filter((cut) => (
@@ -2345,21 +2787,50 @@ const useStore = create((set, get) => ({
           if (!cut) return
           const shot = shots.find((entry) => entry.cutPlanItemId === cut.id)
           if (!shot) return
-          nextSeams[seamKeyFor(shot.id)] = {
+          proposals.push({
+            id: `seam-proposal-${shot.id}`,
+            shotId: shot.id,
+            // 어디에 붙는 제안인지 화면에 보여야 판정할 수 있다.
+            label: shot.label || '',
+            sceneHeading: scene.heading,
             join: seam.join,
             elapsed: seam.elapsed,
             elision: seam.elision || '',
             // 왜 이렇게 보는지. 판정하려면 근거가 있어야 한다.
             reason: seam.reason || '',
-          }
+          })
         })
       }
 
-      set({ seams: nextSeams, seamDesignPending: false })
+      set({ seamProposals: proposals, seamDesignPending: false })
     } catch (error) {
       set({ seamDesignPending: false, seamDesignError: error.message })
     }
   },
+
+  // 수락해야 이음새가 된다. 거부는 제안을 목록에서 지울 뿐이다.
+  acceptSeamProposal: (id) => set((state) => {
+    const proposal = state.seamProposals.find((entry) => entry.id === id)
+    if (!proposal) return {}
+    return {
+      seams: {
+        ...state.seams,
+        [seamKeyFor(proposal.shotId)]: {
+          join: proposal.join,
+          elapsed: proposal.elapsed,
+          elision: proposal.elision,
+          reason: proposal.reason,
+        },
+      },
+      seamProposals: state.seamProposals.filter((entry) => entry.id !== id),
+    }
+  }),
+
+  rejectSeamProposal: (id) => set((state) => ({
+    seamProposals: state.seamProposals.filter((entry) => entry.id !== id),
+  })),
+
+  clearSeamProposals: () => set({ seamProposals: [] }),
 
   // 패널 메모. 오버레이로 그릴 수 없는 것을 적어두는 자리다 —
   // 화살표나 배지로 표현되지 않는 지시가 갈 곳이 없으면 결국 누락된다.
@@ -2368,11 +2839,36 @@ const useStore = create((set, get) => ({
     (shots) => shots.map((shot) => (shot.id === shotId ? { ...shot, note } : shot)),
   )),
 
+  // Decision Board의 AI 진단에서 특정 패널 도구로 이동할 때 쓰는 일회성 요청.
+  // 도구 상태 자체는 StoryboardView의 로컬 UI 상태이고, store에는 사용자가
+  // 실제로 남긴 화살표·메모만 영속한다.
+  panelToolRequest: null,
+  requestPanelTool: (shotId, tool, payload = {}) => set({
+    panelToolRequest: {
+      id: `panel-tool-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      shotId,
+      tool,
+      ...payload,
+    },
+  }),
+  clearPanelToolRequest: () => set({ panelToolRequest: null }),
+
   // 패널 위 화살표. 사용자가 그림 위에 직접 그린다 (DG1 P3).
   addShotArrow: (shotId, arrow) => set((state) => updateActiveBranchShots(
     state,
     (shots) => shots.map((shot) => (shot.id === shotId
       ? { ...shot, arrows: [...(shot.arrows || []), createPanelArrow(arrow)] }
+      : shot)),
+  )),
+  updateShotArrow: (shotId, arrowId, patch) => set((state) => updateActiveBranchShots(
+    state,
+    (shots) => shots.map((shot) => (shot.id === shotId
+      ? {
+          ...shot,
+          arrows: (shot.arrows || []).map((arrow) => (
+            arrow.id === arrowId ? { ...arrow, ...patch } : arrow
+          )),
+        }
       : shot)),
   )),
   removeShotArrow: (shotId, arrowId) => set((state) => updateActiveBranchShots(
@@ -2384,15 +2880,7 @@ const useStore = create((set, get) => ({
 
   // 줄콘티를 다시 열어 수정한다. accept를 되돌리되 컷 자체는 지우지 않는다.
   reopenCutPlan: () => set({ cutPlanAccepted: false, cutPlanStageOverride: null }),
-  // 건너뛰기는 막지 않되 기록한다. 자동 생성된 컷은 provenance가 'AI'로 남아
-  // "검토되지 않은 채 넘어간 컷 분해"가 나중에 드러난다.
   cutPlanSkipped: false,
-  skipCutPlan: () => set((state) => ({
-    cutPlan: state.cutPlan.length > 0 ? state.cutPlan : createMockCutPlan(state),
-    cutPlanAccepted: true,
-    cutPlanSkipped: true,
-    cutPlanStageOverride: null,
-  })),
   overviewTab: 'spatial',
   setOverviewTab: (tab) => set({ overviewTab: tab }),
   isScriptOpen: false,
@@ -2414,7 +2902,14 @@ const useStore = create((set, get) => ({
       ...shot,
       scriptBeat: Math.max(0, Math.min(shot.scriptBeat ?? 0, maxBeat)),
     })))
-    return { ...next, screenplay: script, narrativeSuggestions: [], activeBeat: 0 }
+    return {
+      ...next,
+      screenplay: script,
+      narrativeSuggestions: [],
+      activeBeat: 0,
+      sceneStates: { 'scene-0': SCENE_STATE, 'scene-7': PLATFORM_SCENE_STATE },
+      sceneStateStoryKey: screenplayFingerprint(script),
+    }
   }),
   sceneIntention: '',
   setSceneIntention: (sceneIntention) => set({ sceneIntention }),
@@ -3381,6 +3876,11 @@ const useStore = create((set, get) => ({
   layoutMode: 'unified', // 'unified' | 'maximized'
   maximizedPanel: 'left', // 사이트 진입은 서사/스토리보드 구성 화면에서 시작한다.
   setMaximizedPanel: (panel) => set({ maximizedPanel: panel }),
+  // Viewer에서 발견한 읽힘을 작업 화면까지 들고 간다. 이동 후에도 어떤
+  // 패널의 어떤 근거 때문에 왔는지 잃지 않게 하는 짧은 handoff다.
+  viewerFindingHandoff: null,
+  setViewerFindingHandoff: (finding) => set({ viewerFindingHandoff: finding }),
+  clearViewerFindingHandoff: () => set({ viewerFindingHandoff: null }),
   storyboardPanelsVisible: true,
   setStoryboardPanelsVisible: (visible) => set({
     storyboardPanelsVisible: visible,
