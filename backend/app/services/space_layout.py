@@ -99,6 +99,11 @@ PROMPT = f"""당신은 미장센 담당입니다. 대본을 읽고 이 공간의
 **대본에 나온 것만 놓으세요.** "모니터 벽"과 "콘솔"만 나왔으면 둘만 놓습니다.
 있을 법한 가구를 채워 넣지 마세요 — 그리면 그림에 그대로 나옵니다.
 
+**같은 것을 두 번 놓지 마세요.** 이름이 겹치면("책장"이 둘) 도면에서 어느
+쪽인지 알 수 없습니다. 같은 종류가 정말 여럿이면 이름으로 구분하세요
+("왼쪽 책장", "오른쪽 책장"). "문"과 "문(유리)"처럼 같은 것을 달리 부르며
+겹쳐 놓지도 마세요 — 하나만 놓습니다.
+
 **대본이 위치를 말했으면 따르세요.**
   "관제실 반대편 끝에 B가 콘솔 앞에 앉아 있다"
   → 콘솔은 A가 들어온 문에서 먼 쪽입니다.
@@ -218,12 +223,23 @@ async def build_space_layout(request: SpaceLayoutRequest) -> SpaceLayoutResponse
         element.x = max(0, min(element.x, CANVAS - element.w))
         element.y = max(0, min(element.y, CANVAS - element.h))
         kept.append(element)
-    result.elements = kept
+    # 같은 이름이거나 거의 같은 자리에 놓인 것은 하나만 남긴다 —
+    # 도면에서 겹쳐 그려지면 어느 쪽을 말하는지 알 수 없다.
+    unique = []
+    for element in kept:
+        clash = any(
+            element.label == other.label
+            or (abs(element.x - other.x) < 60 and abs(element.y - other.y) < 60)
+            for other in unique
+        )
+        if not clash:
+            unique.append(element)
+    result.elements = unique
 
     # 인물도 화면 밖으로 나가면 도면에서 보이지 않는다.
     for person in result.people:
         person.x = max(0, min(person.x, CANVAS))
         person.y = max(0, min(person.y, CANVAS))
-        _push_clear(person, kept)
+        _push_clear(person, result.elements)
     result.people = [person for person in result.people if person.name.strip()]
     return result

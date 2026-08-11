@@ -35,3 +35,7 @@ lerna-debug.log*
 *.njsproj
 *.sln
 *.sw?
+
+# 시험이 만든 그림. 매번 달라지므로 저장소에 두지 않는다.
+backend/tools/out/
+backend/tools/walkthrough/

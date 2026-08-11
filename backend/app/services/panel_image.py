@@ -80,6 +80,14 @@ async def generate_panel(request: PanelImageRequest) -> PanelImageResponse:
             "who appeared in it unless this panel names them."
         )
     parts.append(f"Draw this panel: {request.prompt}")
+    # 금지를 맨 앞에만 두면 뒤따르는 지시에 묻힌다. 특히 간판·안내문이
+    # 나오는 장면에서 모델이 글자를 써 넣는다 ("CLOSED"). 마지막에 한 번 더.
+    parts.append(
+        "Final rule: this drawing contains NO written characters of any kind. "
+        "Signs, notices, posters, book spines and labels must be blank or show "
+        "only meaningless scribbles — never real letters or words. "
+        "Do not draw a border around the image."
+    )
 
     client = AsyncOpenAI(api_key=api_key)
 
