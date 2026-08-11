@@ -1681,7 +1681,9 @@ export default function StoryboardView() {
               <header>
                 <span className="script-draft-mark" aria-hidden="true">N</span>
                 <div>
-                  <span>씬·Beat 구조 · Mock</span>
+                  {/* 'Mock'을 늘 붙여 두면 모델이 답했을 때도 규칙 기반인
+                      것처럼 읽힌다. 실제로 떨어졌을 때만 밝힌다. */}
+                  <span>씬·Beat 구조{structureError ? ' · 규칙 기반' : ''}</span>
                   <strong>
                     씬 {structureDraft.sceneCount}개 · Beat {structureDraft.beatCount}개로 나눴습니다
                   </strong>
@@ -2088,7 +2090,9 @@ export default function StoryboardView() {
               onClick={(event) => event.stopPropagation()}
             >
             <div className="generation-bar-copy">
-              <span>AI storyboard draft <em>Mock</em></span>
+              {/* 패널은 실제 모델이 그린다. 'Mock' 표시가 남아 있으면
+                  진짜 그림을 가짜로 읽게 된다. */}
+              <span>AI storyboard draft</span>
               <strong>
                 {eligibleScopeShots.length} blank panel{eligibleScopeShots.length === 1 ? '' : 's'} in scope
               </strong>
