@@ -3900,17 +3900,22 @@ const useStore = create((set, get) => ({
       : next,
   })),
   clearStoryboardShotSelection: () => set({ selectedStoryboardShotIds: [] }),
-  openDrawingWorkspace: () => set({
+  // 그리기로 들어오기 전에 어느 화면이었는지. 나갈 때 그리로 돌려보낸다 —
+  // 늘 분할 화면으로 떨어지면 Panels에서 Draw를 눌렀을 때 다른 곳에 도착한다.
+  drawingReturnTo: null,
+  openDrawingWorkspace: () => set((state) => ({
     drawingWorkspaceOpen: true,
     selectedStoryboardShotIds: [],
+    drawingReturnTo: state.maximizedPanel,
     maximizedPanel: null,
     centerTab: 'canvas',
     zenMode: false,
-  }),
-  closeDrawingWorkspace: () => set({
+  })),
+  closeDrawingWorkspace: () => set((state) => ({
     drawingWorkspaceOpen: false,
-    maximizedPanel: null,
-  }),
+    maximizedPanel: state.drawingReturnTo,
+    drawingReturnTo: null,
+  })),
   
   leftPanelVisible: true,
   setLeftPanelVisible: (val) => set({ leftPanelVisible: val }),

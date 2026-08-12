@@ -104,6 +104,8 @@ function App() {
                   Edit Script
                 </button>
               )}
+              {/* 화살표만 두면 어디로 가는 버튼인지 알 수 없다. 이 전환은
+                  '패널을 넓게 보기'와 '검토 화면으로 가기'라는 두 가지 일이다. */}
               {maximizedPanel === 'left' ? (
                 <button
                   className="panel-control-btn"
@@ -113,8 +115,9 @@ function App() {
                     setLeftPanelVisible(false)
                   }}
                   style={{ marginLeft: leftPanelVisible ? 8 : 'auto' }}
+                  title="검토 화면(Decision Board)으로"
                 >
-                  ↙
+                  검토하기 →
                 </button>
               ) : (
                 <>
@@ -122,8 +125,9 @@ function App() {
                     className="panel-control-btn"
                     onClick={() => !leftPanelVisible ? setLeftPanelVisible(true) : setMaximizedPanel('left')}
                     style={{ marginLeft: leftPanelVisible ? 8 : 'auto' }}
+                    title="스토리보드를 넓게 보기"
                   >
-                    ↗
+                    ← 스토리보드
                   </button>
                   <button
                     className="panel-control-btn"
@@ -172,6 +176,21 @@ function App() {
               </>
             ) : (
               <div className="decision-header-controls">
+                {/* 검토하러 왔으면 돌아갈 길이 있어야 한다. 왼쪽 패널이
+                    접혀 있으면 스토리보드가 화면에서 아예 사라진다. */}
+                {!leftPanelVisible && (
+                  <button
+                    type="button"
+                    className="panel-control-btn"
+                    onClick={() => {
+                      setLeftPanelVisible(true)
+                      setMaximizedPanel('left')
+                    }}
+                    title="스토리보드로 돌아가기"
+                  >
+                    ← 스토리보드
+                  </button>
+                )}
                 <div className="decision-view-toggle" aria-label="Board view mode">
                   {[
                     ['storyboard', 'Storyboard'],
