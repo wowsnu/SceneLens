@@ -123,9 +123,21 @@ function App() {
                 <>
                   <button
                     className="panel-control-btn"
-                    onClick={() => !leftPanelVisible ? setLeftPanelVisible(true) : setMaximizedPanel('left')}
+                    onClick={() => {
+                      // 그리는 중이면 그리기를 끝내고 나간다. 패널만 넓히면
+                      // 그리기 화면에 남은 채 왼쪽만 커져 어디에 있는지
+                      // 알 수 없게 된다.
+                      if (drawingWorkspaceOpen) {
+                        closeDrawingWorkspace()
+                        setLeftPanelVisible(true)
+                        setMaximizedPanel('left')
+                        return
+                      }
+                      if (!leftPanelVisible) setLeftPanelVisible(true)
+                      else setMaximizedPanel('left')
+                    }}
                     style={{ marginLeft: leftPanelVisible ? 8 : 'auto' }}
-                    title="스토리보드를 넓게 보기"
+                    title={drawingWorkspaceOpen ? '그리기를 끝내고 패널로' : '스토리보드를 넓게 보기'}
                   >
                     ← 스토리보드
                   </button>
