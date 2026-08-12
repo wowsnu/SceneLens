@@ -139,6 +139,13 @@
   letter-spacing: 1.2px;
   text-transform: uppercase;
   color: var(--text-muted);
+  /* 자리가 모자라면 제목이 줄어든다. 버튼은 눌러야 하지만 제목은 읽기만
+     하면 되므로, 잘리는 쪽이 여기여야 한다. 다만 'NAR…'까지 줄면 무슨
+     화면인지 알 수 없으므로 바닥을 둔다. */
+  min-width: 5.5rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .panel-control-btn {
@@ -154,6 +161,10 @@
   display: flex;
   align-items: center;
   gap: 4px;
+  /* 헤더가 좁아지면 글자가 줄바꿈돼 두 줄이 된다("← 스토리보 / 드").
+     버튼은 줄지 않게 두고, 넘치면 헤더가 가로로 흐르게 한다. */
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 
 .panel-control-btn:hover {
