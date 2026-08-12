@@ -1277,8 +1277,12 @@ const PLATFORM_SCENE_STATE = {
   environment: {
     name: '장면 공통',
     facts: [
+      // 서버의 ENVIRONMENT_LABELS와 같은 이름을 쓴다. 빠뜨리면 그 씬에서는
+      // 그림체를 정할 칸 자체가 없다.
       { label: '시간', value: '밤' },
+      { label: '날씨', value: '', open: true },
       { label: '조명 기준', value: '드문드문한 형광등', shared: true },
+      { label: '그림체', value: '', open: true, shared: true },
     ],
   },
 }
@@ -1392,11 +1396,13 @@ const SCENE_STATE = {
   environment: {
     name: '장면 공통',
     facts: [
+      // 항목 이름은 서버(scene_state.py의 ENVIRONMENT_LABELS)와 같아야 한다.
+      // '그림체'는 패널 생성이 그림체를 읽어 가는 이름이므로, 여기서 다르게
+      // 부르면 값을 채워도 그림에 반영되지 않는다.
       { label: '시간', value: '밤' },
-      { label: '계절', value: '아직 지정되지 않음', open: true },
       { label: '날씨', value: '비' },
       { label: '조명 기준', value: '형광등 · 간헐적 깜빡임', shared: true },
-      { label: '그림체·렌더 톤', value: '아직 지정되지 않음', open: true, shared: true },
+      { label: '그림체', value: '', open: true, shared: true },
     ],
   },
 }
