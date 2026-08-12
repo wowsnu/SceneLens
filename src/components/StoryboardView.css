@@ -3891,3 +3891,40 @@
   background: rgba(232, 130, 130, 0.16);
   color: rgba(240, 160, 160, 0.95);
 }
+
+/* 그림체. 모든 패널에 똑같이 걸리므로 컷별 값과 나란히 두지 않고
+   그리기 직전인 생성 바에 둔다. */
+.generation-style {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.generation-style > span {
+  flex-shrink: 0;
+  color: rgba(255, 255, 255, 0.38);
+  font-size: 10.5px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.generation-style input {
+  width: 190px;
+  padding: 6px 9px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.28);
+  color: rgba(255, 255, 255, 0.85);
+  font-family: inherit;
+  font-size: 11.5px;
+}
+
+.generation-style input::placeholder {
+  color: rgba(255, 255, 255, 0.3);
+}
+
+.generation-style input:focus {
+  border-color: rgba(126, 200, 160, 0.5);
+  outline: none;
+}

@@ -39,6 +39,16 @@ STYLE = (
 )
 
 
+def _decodable(value: str) -> bool:
+    """base64로 읽히는가. 파일 경로가 섞여 들어오는 일이 있다."""
+    try:
+        # validate=True 없이는 '/img/x.png' 같은 경로도 통과한다 —
+        # base64 문자만으로 이뤄져 길이만 맞으면 디코드되기 때문이다.
+        return bool(value) and bool(base64.b64decode(value, validate=True))
+    except (ValueError, TypeError):
+        return False
+
+
 def _describe(ref) -> str:
     """레퍼런스가 무엇인지 한 줄로. 도면은 그림이 아니라 배치도임을 밝힌다."""
     if ref.kind == "layout":
@@ -91,7 +101,9 @@ async def generate_panel(request: PanelImageRequest) -> PanelImageResponse:
 
     client = AsyncOpenAI(api_key=api_key)
 
-    if request.references:
+    if request.references and any(
+        _decodable(ref.image) for ref in request.references
+    ):
         # 레퍼런스가 있으면 그것을 물려 그린다. 글로만 기준을 주면 컷마다
         # 다른 얼굴이 나온다 — 같은 인물로 이어지려면 그림이 기준이어야 한다.
         who = ", ".join(
@@ -128,10 +140,18 @@ async def generate_panel(request: PanelImageRequest) -> PanelImageResponse:
                 "background, no silhouettes."
             )
         parts.insert(1, " ".join(note))
-        files = [
-            (f"{ref.kind}-{i}.png", base64.b64decode(ref.image), "image/png")
-            for i, ref in enumerate(request.references)
-        ]
+        files = []
+        for i, ref in enumerate(request.references):
+            try:
+                files.append((
+                    f"{ref.kind}-{i}.png",
+                    base64.b64decode(ref.image, validate=True),
+                    "image/png",
+                ))
+            except (ValueError, TypeError):
+                # 레퍼런스 하나가 깨졌다고 패널을 못 그리면 안 된다.
+                # 그림은 나오되 그 인물만 기준 없이 그려진다.
+                print(f"[panel-image] skipping unreadable reference: {ref.name}")
         result = await client.images.edit(
             model="gpt-image-1",
             image=files,

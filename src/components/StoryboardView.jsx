@@ -93,7 +93,12 @@ const rasterizeLayout = (svgDataUrl) => new Promise((resolve) => {
 })
 
 // 화면은 data URL로 들고 있고 서버는 base64만 받는다.
-const stripDataUrl = (value = '') => value.replace(/^data:image\/\w+;base64,/, '')
+// 파일 경로('/img/x.png')를 들고 있는 레퍼런스도 있어, base64가 아닌 것은
+// 걸러낸다 — 그대로 보내면 서버가 디코드하다 500으로 끝난다.
+const stripDataUrl = (value = '') => {
+  if (!value.startsWith('data:image/')) return ''
+  return value.replace(/^data:image\/\w+;base64,/, '')
+}
 
 function SceneFactRow({ fact, onCommit, cutOptions = [], onAddChange, onRemoveChange }) {
   const [draft, setDraft] = useState(fact.value || '')
@@ -972,6 +977,21 @@ export default function StoryboardView() {
   // 어느 패널이 생성 중인가. 여러 장을 한 번에 만들 수 있어 shotId별로 둔다.
   const [panelGenPending, setPanelGenPending] = useState({})
   const [panelGenError, setPanelGenError] = useState(null)
+
+  // 그림체는 미장센의 환경 항목에 산다. 여기서 고쳐도 같은 값이므로
+  // 두 화면이 어긋나지 않는다.
+  const sceneStyle = activeSceneState.environment?.facts
+    ?.find((fact) => fact.label === '그림체' && !fact.open)?.value || ''
+  const [styleDraft, setStyleDraft] = useState(sceneStyle)
+  const [syncedStyle, setSyncedStyle] = useState(sceneStyle)
+  if (syncedStyle !== sceneStyle) {
+    setSyncedStyle(sceneStyle)
+    setStyleDraft(sceneStyle)
+  }
+  const commitStyle = () => {
+    const next = styleDraft.trim()
+    if (next !== sceneStyle) setSceneFact('environment', '그림체', next)
+  }
   const generatingCount = Object.keys(panelGenPending).length
   const isGenerating = generatingCount > 0
   const handledScriptEditorRequestKey = useRef(0)
@@ -1146,7 +1166,9 @@ export default function StoryboardView() {
         kind: 'character',
         image: stripDataUrl(character.image),
       }))
-    if (scene.location?.image) {
+      // 레퍼런스로 만든 그림만 물린다. 예제 데이터의 파일 경로는 여기서 빠진다.
+      .filter((entry) => entry.image)
+    if (stripDataUrl(scene.location?.image || '')) {
       refs.push({
         name: scene.location.name || '공간',
         kind: 'location',
@@ -2098,6 +2120,23 @@ export default function StoryboardView() {
               </strong>
               <p>Existing drawings and imported images stay untouched.</p>
             </div>
+            {/* 그림체는 모든 패널에 똑같이 걸린다. 인물·소품 목록에 섞여
+                있으면 성격이 달라 보이지 않고, 정작 그림을 그리는 이 화면에서
+                손댈 수가 없다. 값은 미장센의 '그림체'와 같은 자리를 쓴다. */}
+            <label className="generation-style">
+              <span>그림체</span>
+              <input
+                type="text"
+                value={styleDraft}
+                placeholder="기본 · 흑백 러프 연필 스케치"
+                onChange={(event) => setStyleDraft(event.target.value)}
+                onBlur={commitStyle}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter') event.currentTarget.blur()
+                  if (event.key === 'Escape') setStyleDraft(sceneStyle)
+                }}
+              />
+            </label>
             <div className="generation-scope-tabs" aria-label="Generation scope">
               <button
                 type="button"
@@ -2998,7 +3037,12 @@ export default function StoryboardView() {
                           <strong>환경</strong>
                           <em>씬 전체</em>
                         </div>
-                        {activeSceneState.environment.facts.map((fact) => (
+                        {/* 그림체는 여기 두지 않는다. 인물 외형·소품과 성격이
+                            다르고(모든 패널에 똑같이 걸린다), 그리기 직전인
+                            Panels 생성 바에서 정하는 것이 자연스럽다. */}
+                        {activeSceneState.environment.facts
+                          .filter((fact) => fact.label !== '그림체')
+                          .map((fact) => (
                           <SceneFactRow
                             key={fact.label}
                             fact={fact}
