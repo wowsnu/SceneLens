@@ -312,3 +312,105 @@ defer` 판정이 붙는다 (`DecisionBoard.jsx:1076`이 `creatorIntent`를 받�
 다관점 검토를 시작할 때 이미 적는 것이고, 관객 읽기가 나온 **뒤에** 옆에
 놓고 본다. 4.5의 문제의식(의도가 읽혔는가)은 이 순서로 성립한다 — 의도를
 따로 선언하게 만드는 단계를 더할 필요가 없다.
+
+---
+
+## 4.6 실험 로그 스펙 (2026-08-13)
+
+평가에서 재는 것과 그것을 만들어 내는 이벤트. 구현은 `src/store/studyLog.js`.
+
+**설문으로만 얻는 것.** Selected CSI(Exploration, Expressiveness, Results
+Worth Effort)와 주관 평가(판단 용이성, 패널 너머 수정 가능성, 관객 관점
+검토, 통제감)는 상호작용에서 관찰되지 않는다. 로그로 추정하지 않는다.
+
+**로그에서 추정하지 않는 것.** Revise / Retain / Defer 중 **Retain과
+Defer는 시스템 로그로 확정할 수 없다.** 수정이 없었다는 사실은 남지만,
+그것이 의도적 유지인지 그냥 넘어간 것인지는 구별되지 않는다. 실제 수정
+발생만 로그로 확인하고, **수정하지 않은 이유는 인터뷰에서 받는다.**
+(판정 버튼을 누른 것 자체는 `verdict`로 남지만, 이는 "버튼을 눌렀다"는
+사실이지 "의도적으로 유지했다"의 증거가 아니다.)
+
+### 1. Edit Event
+
+사용자가 실제로 무언가를 바꿀 때마다.
+
+| 필드 | 값 |
+|---|---|
+| `t` | timestamp |
+| `condition` | 실험 조건 |
+| `target` | panel_id 또는 shot_id |
+| `action` | edit_type — `merge` / `split` / `reorder` / `insert` / `requirement` / `prompt` / `draw` |
+| `level` | `element` / `shot` / `seam` / `sequence` |
+| `lens` | `narrative` / `mise` / `camera` / `editing` |
+| `source` | `manual`(self-initiated) / `diagnosis` / `viewer` |
+| `regeneration` | yes / no |
+
+여기서 나오는 것: lens별 수정 수·비율, level별 수정 수·비율,
+beyond-panel edit ratio, regeneration count, repeated regeneration.
+
+`beyondPanel`은 `level !== 'element'`로 파생한다. 저장하지 않고 계산해도
+되지만, 분석 때 매번 다시 정의하지 않도록 이벤트에 함께 남긴다.
+
+### 2. Scaffolding Event
+
+SceneLens의 기능을 실제로 **썼을 때**. SceneLens-only mechanism analysis에
+쓰인다 — 베이스라인에는 없는 기능이므로 조건 간 비교가 아니라 이 시스템
+안에서 무엇이 쓰였는지를 본다.
+
+| 필드 | 값 |
+|---|---|
+| `t` | timestamp |
+| `feature` | `lens` / `criterion` / `alternative` / `diagnosis` / `cross_lens` / `viewer` |
+| `action` | `open` / `view` / `select` / `accept` / `modify` / `reject` |
+| `target` | decision_id 또는 shot_id |
+
+여기서 나오는 것: 어떤 lens를 얼마나 썼는지, criterion·alternative 사용,
+diagnosis의 수용·수정·거부, cross-lens 사용.
+
+**`accept` / `modify` / `reject`가 핵심이다.** 제안을 판정하게 한다는 것이
+DG1 P2의 주장인데, 그것이 실제로 일어났는지는 이 세 값의 분포로만 보인다.
+제안을 그대로 받았는지(accept), 고쳐 썼는지(modify), 버렸는지(reject).
+
+### 3. Viewer Event
+
+Viewer는 따로, 더 자세히 남긴다.
+
+| 필드 | 값 |
+|---|---|
+| `t` | timestamp |
+| `storyboard_version` | 그때 읽은 스토리보드 버전 |
+| `divergence_id` | 제시된 divergence 또는 reading 항목 |
+| `subsequent_edit_id` | 이 읽기 뒤 처음 일어난 수정. 없으면 null |
+
+`subsequent_edit_id`가 있으면 그 edit에서 layer와 lens를 따라간다 —
+Viewer 이후 수정된 층위의 분포가 여기서 나온다. 별도로 중복해 적지 않는다.
+
+**버전을 남기는 이유.** Viewer가 읽은 것은 그 시점의 스토리보드다. 이후
+수정이 그 읽기에 대한 반응인지 판단하려면 무엇을 보고 말한 것인지가
+있어야 한다.
+
+### 최소 스펙
+
+실제 구현은 Edit / Scaffolding 두 종류에 Viewer만 추가하면 된다.
+Regeneration은 별도 이벤트로도 두지만, Edit Event의 `regeneration`
+필드와 중복이 아니다 — 전자는 "다시 그렸다"는 사건이고 후자는 "이 수정이
+재생성을 동반했다"는 속성이다.
+
+### 구현 상태
+
+| 이벤트 | 상태 |
+|---|---|
+| Edit — 이음새 4종(merge/split/reorder/insert) | 있음 |
+| Edit — 렌즈별 컷 요구 | 있음 |
+| Edit — 프롬프트 직접 수정, 그리기 | **없음** |
+| Edit — `condition` 필드 | **없음** (실험 조건을 세션 시작 때 받아야 한다) |
+| Scaffolding | **없음** |
+| Viewer — 호출, 판정 | 있음 |
+| Viewer — `storyboard_version`, `divergence_id`, `subsequent_edit_id` | **없음** |
+| Regeneration — 횟수, 반복 여부 | 있음 |
+| Regeneration — 전후 version id | **없음** |
+| 내보내기 (`Ctrl+Shift+E`) / 초기화 (`Ctrl+Shift+R`) | 있음 |
+
+`route` 이벤트는 스펙에 없지만 남긴다. 진단에서 고칠 자리로 **이동한 것**과
+실제로 **고친 것**은 다르다. 합치면 이동만 하고 고치지 않은 경우가 수정으로
+세어져 Viewer 활용률이 부풀려진다.
