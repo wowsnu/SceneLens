@@ -1,0 +1,234 @@
+/* 실험자만 보는 창. 참가자 화면 위에 뜨므로 작업을 가리지 않게 한쪽에 붙인다. */
+.study-log-panel {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  z-index: 9000;
+  display: flex;
+  flex-direction: column;
+  width: 420px;
+  max-height: min(76vh, 720px);
+  border: 1px solid rgba(150, 190, 210, 0.35);
+  border-radius: 10px;
+  background: rgba(16, 20, 26, 0.97);
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.5);
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 11.5px;
+}
+
+.study-log-panel header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 11px 13px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.study-log-panel header strong {
+  display: block;
+  font-size: 12.5px;
+  letter-spacing: 0.02em;
+}
+
+.study-log-panel header span {
+  display: block;
+  margin-top: 3px;
+  color: rgba(255, 255, 255, 0.45);
+  font-size: 10.5px;
+}
+
+.study-log-panel header > button {
+  flex-shrink: 0;
+  padding: 2px 7px;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.study-log-panel header > button:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.9);
+}
+
+/* 조건은 세션 시작 전에 정해야 한다. 여기서 바로 고칠 수 있게 둔다. */
+.study-log-condition {
+  padding: 1px 6px;
+  border: 1px solid rgba(150, 190, 210, 0.4);
+  border-radius: 4px;
+  background: rgba(150, 190, 210, 0.14);
+  color: rgba(186, 220, 234, 0.95);
+  font-family: inherit;
+  font-size: 10px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.study-log-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px 13px;
+}
+
+.study-log-body h4 {
+  margin: 0 0 6px;
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.study-log-body section + section {
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.study-log-body dl {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 5px 12px;
+  margin: 0 0 15px;
+}
+
+.study-log-body dl div {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  padding-bottom: 3px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.study-log-body dt {
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 10.5px;
+}
+
+.study-log-body dd {
+  margin: 0;
+  font-size: 11.5px;
+  font-weight: 700;
+}
+
+.study-log-dist {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin: 0 0 15px;
+  padding: 0;
+  list-style: none;
+}
+
+.study-log-dist li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 8px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 11px;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.study-log-dist li span {
+  color: rgba(255, 255, 255, 0.62);
+  font-size: 10.5px;
+}
+
+.study-log-dist li em {
+  color: rgba(186, 220, 234, 0.95);
+  font-size: 10.5px;
+  font-style: normal;
+  font-weight: 700;
+}
+
+.study-log-dist li.empty,
+.study-log-events li.empty {
+  border: none;
+  background: none;
+  color: rgba(255, 255, 255, 0.3);
+  font-size: 10.5px;
+}
+
+.study-log-events {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.study-log-events li {
+  display: grid;
+  grid-template-columns: 56px 62px 1fr;
+  gap: 7px;
+  align-items: baseline;
+  padding: 4px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.study-log-time {
+  color: rgba(255, 255, 255, 0.3);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 9.5px;
+}
+
+.study-log-type {
+  padding: 1px 5px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.07);
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 9.5px;
+  text-align: center;
+}
+
+/* 수정과 생성은 눈에 띄어야 한다. 8.7이 실제로 세는 것이다. */
+.study-log-type.is-edit {
+  background: rgba(120, 200, 160, 0.18);
+  color: rgba(150, 225, 190, 0.95);
+}
+
+.study-log-type.is-panel_generate {
+  background: rgba(225, 170, 110, 0.18);
+  color: rgba(240, 195, 140, 0.95);
+}
+
+.study-log-type.is-scaffold {
+  background: rgba(150, 190, 210, 0.16);
+  color: rgba(186, 220, 234, 0.9);
+}
+
+.study-log-detail {
+  color: rgba(255, 255, 255, 0.55);
+  font-size: 10px;
+  overflow-wrap: anywhere;
+}
+
+.study-log-panel footer {
+  display: flex;
+  gap: 7px;
+  padding: 10px 13px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.study-log-panel footer button {
+  flex: 1;
+  padding: 6px 10px;
+  border: 1px solid rgba(150, 190, 210, 0.4);
+  border-radius: 5px;
+  background: rgba(150, 190, 210, 0.14);
+  color: rgba(186, 220, 234, 0.95);
+  font-family: inherit;
+  font-size: 10.5px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.study-log-panel footer .study-log-reset {
+  flex: 0 0 auto;
+  border-color: rgba(232, 168, 168, 0.35);
+  background: rgba(232, 168, 168, 0.1);
+  color: rgba(238, 180, 180, 0.9);
+}

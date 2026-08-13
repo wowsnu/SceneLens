@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import StoryboardView from './components/StoryboardView'
 import DecisionBoard from './components/DecisionBoard'
+import StudyLogPanel from './components/StudyLogPanel'
 import CenterPanel from './components/CenterPanel'
 import useStore from './store/useStore'
 import { exportLog, summarize, resetLog, setCondition, condition } from './store/studyLog'
@@ -8,6 +9,8 @@ import './App.css'
 
 function App() {
   const [isFullscreen, setIsFullscreen] = useState(false)
+  // 실험자만 여는 창. 로그가 쌓이는지 세션 중에 확인할 수 있어야 한다.
+  const [studyLogOpen, setStudyLogOpen] = useState(false)
   const [boardView, setBoardView] = useState('split')
   const maximizedPanel = useStore((s) => s.maximizedPanel)
   const setMaximizedPanel = useStore((s) => s.setMaximizedPanel)
@@ -26,6 +29,7 @@ function App() {
 
   // 실험 로그 내보내기. 참가자에게 보이는 버튼을 두면 과제 중에 눈에
   // 걸리므로 단축키로만 연다 — 실험자가 세션 끝에 누른다.
+  //   Ctrl+Shift+L  로그 창 열기·닫기
   //   Ctrl+Shift+E  내보내기 (요약은 콘솔에도 찍는다)
   //   Ctrl+Shift+R  다음 참가자를 위해 비우기 (확인을 받는다)
   // 실험 조건은 세션이 시작되기 전에 정해져야 한다. URL로 넘기면
@@ -42,6 +46,10 @@ function App() {
         event.preventDefault()
         const next = window.prompt('실험 조건', condition())
         if (next) setCondition(next)
+      }
+      if (event.key === 'L' || event.key === 'l') {
+        event.preventDefault()
+        setStudyLogOpen((open) => !open)
       }
       if (event.key === 'E' || event.key === 'e') {
         event.preventDefault()
@@ -279,6 +287,8 @@ function App() {
         </section>
 
       </main>
+
+      {studyLogOpen && <StudyLogPanel onClose={() => setStudyLogOpen(false)} />}
     </div>
   )
 }
