@@ -3,6 +3,7 @@ import StoryboardView from './components/StoryboardView'
 import DecisionBoard from './components/DecisionBoard'
 import CenterPanel from './components/CenterPanel'
 import useStore from './store/useStore'
+import { exportLog, summarize, resetLog } from './store/studyLog'
 import './App.css'
 
 function App() {
@@ -22,6 +23,33 @@ function App() {
   const activeBeat = useStore((s) => s.activeBeat)
   const zenMode = useStore((s) => s.zenMode)
   const setZenMode = useStore((s) => s.setZenMode)
+
+  // 실험 로그 내보내기. 참가자에게 보이는 버튼을 두면 과제 중에 눈에
+  // 걸리므로 단축키로만 연다 — 실험자가 세션 끝에 누른다.
+  //   Ctrl+Shift+E  내보내기 (요약은 콘솔에도 찍는다)
+  //   Ctrl+Shift+R  다음 참가자를 위해 비우기 (확인을 받는다)
+  useEffect(() => {
+    const onKey = (event) => {
+      if (!event.ctrlKey || !event.shiftKey) return
+      if (event.key === 'E' || event.key === 'e') {
+        event.preventDefault()
+        const payload = exportLog()
+        console.log('[study] exported', payload.summary)
+      }
+      if (event.key === 'R' || event.key === 'r') {
+        event.preventDefault()
+        // 지우면 되돌릴 수 없다. 요약을 먼저 보여 주고 묻는다.
+        const { edits, regeneration } = summarize()
+        const ok = window.confirm(
+          `수정 ${edits.total}건, 생성 ${regeneration.total}건의 기록을 지웁니다.\n`
+          + '내보내지 않았다면 되돌릴 수 없습니다. 계속할까요?',
+        )
+        if (ok) resetLog()
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
 
   const isLabMode = centerTab === 'guidance'
   const drawingFocused = drawingWorkspaceOpen && maximizedPanel === 'center'

@@ -11,6 +11,7 @@ import SceneOverview from './SceneOverview'
 import SpatialMap from './SpatialMap'
 import { requestDirectingReview, requestViewerReflection } from '../services/api'
 import './DecisionBoard.css'
+import { logEvent, normalizeLevel } from '../store/studyLog'
 
 // Narrative만 사용자와 직접 협업하는 상위 Agent로 드러낸다.
 // 하위 생성 모듈은 내부적으로 Agent일 수 있지만 UI에서는 같은 장면을
@@ -1579,6 +1580,7 @@ export default function DecisionBoard({ boardView = 'split' }) {
   }
 
   const runLensReview = async () => {
+    logEvent('review', { mode: 'single' })
     if (!lensAnalysisEnabled || lensIntentDirty || lensReviewLoading) return
     const reviewKey = lensReviewKey
     const requestId = Date.now()
@@ -1675,6 +1677,7 @@ export default function DecisionBoard({ boardView = 'split' }) {
   }
 
   const runMultiReview = async () => {
+    logEvent('review', { mode: 'multi' })
     if (multiReviewIntentDirty || multiReviewLoading) return
     const scopeKey = multiReviewScopeKey
     const requestId = Date.now()
@@ -1777,6 +1780,7 @@ export default function DecisionBoard({ boardView = 'split' }) {
   // 관계는 따로 부른다. 렌즈 셋만 50초, 관계까지 하면 70초라 결과를
   // 보기까지 너무 오래 기다린다.
   const runRelateReview = async () => {
+    logEvent('review', { mode: 'relate' })
     const scopeKey = multiReviewScopeKey
     const run = multiReviewRuns[scopeKey]
     if (!run?.lensResults || run.relating) return
@@ -2049,6 +2053,9 @@ export default function DecisionBoard({ boardView = 'split' }) {
       return
     }
     const panelOrders = renderedShots.map((shot) => shot.order)
+    // 이 뒤에 오는 수정이 관객 읽기에서 나온 것인지 세려면 확인 시점이
+    // 필요하다.
+    logEvent('viewer_read', { panels: panelOrders.length })
     setViewerStatus('loading')
     setViewerError('')
     try {
@@ -2116,6 +2123,9 @@ export default function DecisionBoard({ boardView = 'split' }) {
   }
 
   const routeViewerFinding = (route, panelOrderOrOrders, finding = {}) => {
+    // Viewer 확인이 실제 수정으로 이어졌는지를 재려면, 관객 읽기에서
+    // 출발한 이동임을 표시해 두어야 한다.
+    logEvent('route', { source: 'viewer', route, level: finding.level || null })
     const panelOrders = [...new Set(
       (Array.isArray(panelOrderOrOrders) ? panelOrderOrOrders : [panelOrderOrOrders])
         .filter((panelOrder) => Number.isInteger(panelOrder) && panelOrder > 0 && panelOrder <= shots.length),
@@ -2164,10 +2174,21 @@ export default function DecisionBoard({ boardView = 'split' }) {
   }
 
   const updateViewerDecision = (decisionId, changes) => {
+    // Difference != Error. 세 판정의 분포가 관객 관점 검토의 결과다.
+    if (changes.verdict) {
+      logEvent('verdict', { target: decisionId, verdict: changes.verdict })
+    }
     saveViewerDecision(decisionId, changes)
   }
 
   const routeDiagnosisTool = (tool, diagnosis) => {
+    // 진단에서 고칠 자리로 보낸 것. 아직 수정은 아니므로 edit이 아니다.
+    logEvent('route', {
+      source: 'diagnosis',
+      route: tool,
+      lens: diagnosis.lens || null,
+      level: normalizeLevel(diagnosis.level),
+    })
     const panelTarget = diagnosis.targets
       .map((target) => target.split('.', 1)[0])
       .find((target) => /^S\d+$/.test(target))

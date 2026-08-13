@@ -22,6 +22,7 @@ import useStore, {
   PROBLEM_LAYERS,
 } from '../store/useStore'
 import './StoryboardView.css'
+import { logEvent } from '../store/studyLog'
 
 const EMPTY_SHOTS = []
 
@@ -1374,6 +1375,13 @@ export default function StoryboardView() {
         if (!prompt?.effective) throw new Error('이 패널에 연결된 컷이 없습니다')
         // shared(씬 기준)를 함께 보낸다. 이것을 빼면 컷마다 인물과 공간이
         // 따로 해석돼, 미장센이 기준을 세운 의미가 없어진다.
+        // 이 패널에 이미 그림이 있었으면 다시 그리는 것이다. 반복
+        // 재생성 횟수는 이 시스템이 패널 재생성에 얼마나 기대는지를
+        // 재는 값이라 생성 전에 남겨야 한다.
+        logEvent('panel_generate', {
+          target: shot.cutPlanItemId || shot.id,
+          repeat: Boolean(shot.image),
+        })
         const image = await generatePanelImage(prompt.effective, {
           shared: prompt.shared || '',
           previous: previous?.effective || '',

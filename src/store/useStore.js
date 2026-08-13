@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { logEdit } from './studyLog'
 
 // 씬 서술. 대사는 두지 않는다 — 정지 이미지가 담을 수 없고, 스토리보드가
 // 평가하려는 것도 아니다. 말하는 장면은 말하는 모습으로 적는다.
@@ -2409,7 +2410,9 @@ const useStore = create((set, get) => ({
       }
     }),
   })),
-  updateCutRequirement: (itemId, lensId, text) => set((state) => ({
+  updateCutRequirement: (itemId, lensId, text) => {
+    logEdit({ lens: lensId, level: 'element', target: itemId, action: 'requirement' })
+    return set((state) => ({
     cutPlan: state.cutPlan.map((item) => {
       if (item.id !== itemId) return item
       const current = item.requirements?.[lensId] || createCutRequirement(
@@ -2430,10 +2433,21 @@ const useStore = create((set, get) => ({
         },
       }
     }),
-  })),
+  }))
+  },
   // fields를 주면 그 내용으로 채운다. 빈 컷을 만들어 두면 대개 비어 있는
   // 채로 남으므로, 편집이 제안한 내용을 그대로 받아 넣을 수 있게 한다.
-  addCutPlanItem: (afterItemId = null, beat = 0, fields = {}) => set((state) => {
+  addCutPlanItem: (afterItemId = null, beat = 0, fields = {}) => {
+    // 제안을 받아 넣었는지, 빈 컷을 직접 만들었는지 구분해 둔다.
+    logEdit({
+      lens: 'editing',
+      level: 'shot',
+      target: afterItemId,
+      action: 'insert',
+      source: 'seam',
+      proposed: Boolean(fields.content),
+    })
+    return set((state) => {
     const next = [...state.cutPlan]
     const index = afterItemId
       ? next.findIndex((item) => item.id === afterItemId)
@@ -2448,7 +2462,8 @@ const useStore = create((set, get) => ({
       ...fields,
     }))
     return { cutPlan: reorderCutPlan(next) }
-  }),
+  })
+  },
   // 진단을 받아 촬영에 수정본을 묻는다. 어느 크기로 바꿀지는 그 컷이
   // 무엇을 보여주려는지 봐야 정해진다 — 코드로 "한 칸 벌린다"고 두면
   // 내용과 무관한 처방이 된다.
@@ -2539,7 +2554,9 @@ const useStore = create((set, get) => ({
   // 사이 이음새는 컷 안이 되므로 사라진다. 다만 거기 적힌 '생략된 것'은
   // 이제 한 컷 안에서 일어나는 일이므로 내용으로 옮긴다 — 그냥 지우면
   // 기록해 둔 것이 조용히 사라진다.
-  mergeCuts: (firstCutId, { content = null } = {}) => set((state) => {
+  mergeCuts: (firstCutId, { content = null } = {}) => {
+    logEdit({ lens: 'editing', level: 'shot', target: firstCutId, action: 'merge', source: 'seam' })
+    return set((state) => {
     const index = state.cutPlan.findIndex((item) => item.id === firstCutId)
     if (index < 0 || index >= state.cutPlan.length - 1) return {}
 
@@ -2596,12 +2613,15 @@ const useStore = create((set, get) => ({
     }
 
     return { ...next, cutPlan: nextCutPlan, seams: nextSeams }
-  }),
+  })
+  },
 
   // 분할: 하나의 컷에 압축된 사건을 둘 이상의 단계로 나눈다.
   // 새로 생기는 이음새는 '컷 · 연속'이 기본이다 — 한 컷을 쪼갠 것이므로
   // 그 사이에 시간이 흐르지 않았다.
-  splitCut: (cutId) => set((state) => {
+  splitCut: (cutId) => {
+    logEdit({ lens: 'editing', level: 'shot', target: cutId, action: 'split', source: 'seam' })
+    return set((state) => {
     const index = state.cutPlan.findIndex((item) => item.id === cutId)
     if (index < 0) return {}
     const source = state.cutPlan[index]
@@ -2636,12 +2656,15 @@ const useStore = create((set, get) => ({
     })
 
     return { ...next, cutPlan: nextCutPlan }
-  }),
+  })
+  },
 
   // 이음새에서의 순서 바꾸기 (DG2 P2 reorder). moveCutPlanItem은 컷 표만
   // 다시 세우고 패널과 이음새는 그대로 두는데, 그림이 이미 있는 단계에서는
   // 그러면 컷과 그림이 어긋난다. 여기서는 셋을 함께 옮긴다.
-  swapCutsAtSeam: (firstCutId) => set((state) => {
+  swapCutsAtSeam: (firstCutId) => {
+    logEdit({ lens: 'editing', level: 'seam', target: firstCutId, action: 'reorder', source: 'seam' })
+    return set((state) => {
     const index = state.cutPlan.findIndex((item) => item.id === firstCutId)
     if (index < 0 || index >= state.cutPlan.length - 1) return {}
 
@@ -2665,7 +2688,8 @@ const useStore = create((set, get) => ({
     // 이음새는 앞 패널에 붙는다. 두 패널이 자리를 바꾸면 그 사이의
     // 이음새는 여전히 '사이'에 있으므로 그대로 두고, 바깥쪽 둘만 따라간다.
     return { ...next, cutPlan: reorderCutPlan(nextPlan) }
-  }),
+  })
+  },
 
   moveCutPlanItem: (itemId, direction) => set((state) => {
     const index = state.cutPlan.findIndex((item) => item.id === itemId)
