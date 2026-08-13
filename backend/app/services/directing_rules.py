@@ -246,6 +246,79 @@ LENS_RULES: dict[DirectingLens, tuple[DirectingRule, ...]] = {
             ),
         ),
     ),
+    # 서사는 그림이 아니라 대본을 본다. 나머지 셋은 패널이 있어야 판단할
+    # 수 있지만, 서사가 묻는 것은 "이 사건이 단계로 서 있는가"라서 컷 플랜
+    # 이전에도 성립한다. 그래서 이 렌즈만 생성 전에 쓸 수 있다.
+    "narrative": (
+        DirectingRule(
+            id="narrative-beat-progression",
+            label="사건의 단계와 진전",
+            criterion="이 Beat에서 상황이 실제로 달라지는가?",
+            trigger=(
+                "Beat 안의 줄들이 같은 상태를 다시 말할 뿐 상황을 진전시키지 않거나, "
+                "한 Beat에 서로 다른 국면이 겹쳐 있어 어디서 달라졌는지 짚을 수 없다."
+            ),
+            reject_when=(
+                "머무름 자체가 의도된 정체·긴장이거나, 진전이 다음 Beat에서 일어나도록 "
+                "쓰였거나, 반복이 강조를 위한 것인 경우."
+            ),
+            theory_refs=(
+                ("b_1_dialogue", "t_book_pg113_01"),
+                ("b_1_dialogue", "t_book_pg29_01"),
+            ),
+        ),
+        DirectingRule(
+            id="narrative-action-visibility",
+            label="화면에 보이는 행동으로 쓰였는가",
+            criterion="이 줄이 그릴 수 있는 행동으로 적혀 있는가?",
+            trigger=(
+                "인물의 상태·감정·관계가 행동이 아니라 설명으로 적혀 있어, 무엇을 "
+                "그려야 그 내용이 전달되는지 화면 근거가 정해지지 않는다."
+            ),
+            reject_when=(
+                "그 줄이 장면 설정이나 공간 서술이어서 행동을 요구하지 않거나, 이미 "
+                "다른 줄이 그 상태를 행동으로 보여 주는 경우."
+            ),
+            theory_refs=(
+                ("b_1_dialogue", "t_book_pg29_01"),
+                ("b_1_dialogue", "t_book_pg39_01"),
+            ),
+        ),
+        DirectingRule(
+            id="narrative-information-reveal",
+            label="정보가 드러나는 자리",
+            criterion="관객이 이것을 알아야 할 때 알게 되는가?",
+            trigger=(
+                "뒤의 사건을 이해하는 데 필요한 정보가 대본에 아직 나오지 않았거나, "
+                "필요한 시점보다 앞서 밝혀져 그 사건이 걸리는 힘을 잃는다."
+            ),
+            reject_when=(
+                "의도적으로 늦추거나 숨긴 정보이거나, 이 장면 밖에서 이미 확립된 "
+                "정보이거나, 관객이 몰라도 사건이 읽히는 경우."
+            ),
+            theory_refs=(
+                ("b_1_dialogue", "t_book_pg32_01"),
+                ("b_1_dialogue", "t_book_pg33_02"),
+            ),
+        ),
+        DirectingRule(
+            id="narrative-causal-link",
+            label="사건 사이의 인과",
+            criterion="앞의 사건이 뒤의 사건을 불러오는가?",
+            trigger=(
+                "이어지는 두 사건 사이에 이유가 적혀 있지 않아, 뒤의 사건이 앞의 것과 "
+                "무관하게 일어난 것으로 읽힌다."
+            ),
+            reject_when=(
+                "인과가 아니라 병치·대조로 놓인 것이거나, 이유를 뒤에 밝히려고 "
+                "일부러 비워 둔 경우."
+            ),
+            theory_refs=(
+                ("b_1_dialogue", "t_book_pg29_01"),
+                ("b_1_dialogue", "t_book_pg32_01"),
+            ),
+        ),
+    ),
 }
 
 

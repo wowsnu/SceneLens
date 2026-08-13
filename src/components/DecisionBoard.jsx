@@ -1138,6 +1138,15 @@ const RULE_DESTINATIONS = {
   // 대본에 없는 단계가 빠진 것이면 서사가 답해야 한다.
   'editing-information-order': ['seam', 'narrative'],
   'editing-visual-rhythm': ['split', 'seam'],
+
+  // 서사 — 대본에서 고친다. 그림이 아직 없어도 성립하는 진단이므로
+  // 목적지도 패널이 아니라 대본이다.
+  'narrative-beat-progression': ['script', 'narrative'],
+  'narrative-action-visibility': ['script', 'narrative'],
+  'narrative-information-reveal': ['script', 'narrative'],
+  // 인과가 빠진 자리는 컷 사이이기도 하다 — 대본에 단계를 더할 수도,
+  // 이음새에 컷을 넣을 수도 있다.
+  'narrative-causal-link': ['script', 'seam'],
 }
 
 const DESTINATION_LABELS = {
@@ -1149,6 +1158,7 @@ const DESTINATION_LABELS = {
   merge: '앞 컷과 합치기',
   split: '컷 나누기',
   narrative: '서사에 물어보기',
+  script: '대본 고치기',
   arrow: '카메라 화살표',
 }
 
@@ -2267,12 +2277,15 @@ export default function DecisionBoard({ boardView = 'split' }) {
     // 그림을 다 그려 놓고 텍스트 단계로 되돌아갈 이유가 없다.
     // 화면을 옮기지 않고 서사에게 묻는다. 컷을 고쳐서 될 일이 아니라
     // 대본에 없는 단계가 빠진 경우다 — 제안은 대본 자리에 뜬다.
-    if (tool === 'narrative') {
+    if (tool === 'narrative' || tool === 'script') {
       const beat = targetShot.scriptBeat ?? 0
+      // 어느 렌즈가 지적했는지 밝힌다. 서사 자신의 진단을 '편집 검토에서'라고
+      // 넘기면 서사가 자기 지적을 남의 것으로 받는다.
+      const from = { narrative: '서사', mise: '미장센', camera: '촬영', editing: '편집' }
       requestNarrativeSuggestions({
         beat,
         narrativeRequest: (
-          `편집 검토에서 이런 지적이 나왔습니다: ${diagnosis.diagnosis}\n`
+          `${from[diagnosis.lens] || '연출'} 검토에서 이런 지적이 나왔습니다: ${diagnosis.diagnosis}\n`
           + `${diagnosis.suggested_action}\n`
           + '이 Beat의 대본에서 무엇을 더하거나 고치면 되는지 제안해 주세요.'
         ),

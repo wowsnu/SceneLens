@@ -437,7 +437,7 @@ class StoryStructureResponse(BaseModel):
 # 미장센·촬영·편집 에이전트의 개별 판단과 합의/충돌, 감독의 선택 지점을
 # 하나의 응답으로 전달한다. 관객 검토는 의도 비공개 흐름이므로 별도 API를 쓴다.
 
-DirectingLens = Literal["mise", "camera", "editing"]
+DirectingLens = Literal["mise", "camera", "editing", "narrative"]
 # "relate"는 이미 나온 렌즈 판단들 사이의 관계만 본다. 렌즈 분석과 나누는
 # 이유는 시간이다 — 셋을 돌리는 데만 50초가 걸려, 관계까지 한 번에 하면
 # 결과를 보기까지 70초를 기다린다.
@@ -453,7 +453,9 @@ DirectingLevelStatus = Literal["keep", "check", "change"]
 
 class DirectingReviewPanel(BaseModel):
     id: str
-    image: str
+    # 서사는 대본과 컷 내용을 보고 판단하므로 그림이 없어도 성립한다.
+    # 나머지 세 렌즈는 화면 근거가 있어야 하므로 analyze_lens에서 막는다.
+    image: Optional[str] = None
     context: Optional[str] = None
     directing_notes: Optional[str] = None
     scene_id: Optional[str] = None

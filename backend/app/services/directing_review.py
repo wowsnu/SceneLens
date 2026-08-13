@@ -35,6 +35,7 @@ DEFAULT_LENS_MODELS = {
     "camera": "gpt-5.4",
     "mise": "gpt-5.4-mini",
     "editing": "gpt-5.4",
+    "narrative": "gpt-5.4-mini",
 }
 THEORY_DB_PATH = Path(__file__).parent.parent / "db" / "theory_db.json"
 
@@ -201,6 +202,26 @@ scene_structure를 사용하세요. attribute는 `S3.character_position`, `S3.pr
 서로 다른 장소의 패널을 같은 공간의 블로킹 연속성 문제로 취급하지 마세요. 사건 설명상
 현재 컷의 역할이 `궁지에 몰림`이라면 다음 컷의 `깨달음`이나 `돌진` 동작을 미리 블로킹에
 넣으라고 요구하지 마세요.""",
+    "narrative": """당신은 SceneLens의 서사 렌즈 에이전트입니다.
+대본이 사건의 단계로 서 있는지만 검토하세요. 각 Beat에서 상황이 실제로 달라지는지,
+줄이 그릴 수 있는 행동으로 적혀 있는지, 뒤의 사건을 이해하는 데 필요한 정보가 제때
+나오는지, 이어지는 사건 사이에 이유가 있는지를 다룹니다.
+
+**당신은 이야기를 만들지 않습니다.** 감독이 쓴 사건을 다른 사건으로 바꾸자고 하지
+마세요. 새 인물·새 장소·새 사건·반전을 제안하지 마세요. 무엇을 쓸지는 감독이 정합니다.
+당신이 보는 것은 쓰인 것이 사건의 단계로 읽히는가입니다.
+
+**패널 그림을 판단하지 마세요.** 구도·조명·인물 배치·컷 크기는 다른 렌즈의 일입니다.
+그림이 함께 주어져도 대본이 무엇을 요구하는지를 확인하는 데만 쓰세요. 화면이 대본과
+다르면 그것은 미장센이나 촬영의 문제이므로 questions에 남기세요.
+
+attribute는 한 줄 안의 문제(그 줄이 행동으로 쓰이지 않음)에, shot_structure는 단계가
+빠졌거나 한 Beat에 겹쳤을 때, shot_relation은 이어지는 두 사건 사이의 인과에,
+scene_structure는 장면 전체의 정보 공개 순서에 사용하세요.
+
+대사를 쓰지 마세요. 스토리보드는 정지 이미지이므로 말은 담기지 않습니다. 말하는 장면은
+말하는 모습으로 다룹니다.""",
+
     "editing": """당신은 SceneLens의 편집 렌즈 에이전트입니다.
 제공된 패널 순서를 하나의 컷 배열로 보고 편집 관점에서만 검토하세요. 컷 사이 시선·화면
 방향·동작·공간·시간의 연결, 정보가 공개되는 순서, 반응 컷과 인서트의 필요성, 컷의
@@ -601,6 +622,13 @@ async def analyze_lens(
     if lens not in LENS_PROMPTS:
         raise UnsupportedReviewModeError(f"The {lens} lens is not connected yet.")
 
+    # 서사만 그림 없이 판단한다. 나머지 셋은 화면 근거로 진단하므로,
+    # 그림이 없으면 진단이 대본 추측이 된다.
+    if lens != "narrative" and not any(panel.image for panel in request.panels):
+        raise UnsupportedReviewModeError(
+            f"The {lens} lens needs rendered panels."
+        )
+
     intent = (request.intent or "").strip()
     theory_packet = _theory_packet(lens, intent)
     ordered_scope = " → ".join(
@@ -647,10 +675,19 @@ async def analyze_lens(
                         f"{panel.directing_notes or '입력되지 않음'}"
                     ),
                 },
-                {
-                    "type": "image_url",
-                    "image_url": {"url": _panel_image_url(panel.image), "detail": "high"},
-                },
+                # 그림이 없을 수 있다. 서사는 대본만으로 판단하므로 생성 전에도
+                # 돌아간다 — 이때 빈 image_url을 보내면 요청이 깨진다.
+                *(
+                    [{
+                        "type": "image_url",
+                        "image_url": {
+                            "url": _panel_image_url(panel.image),
+                            "detail": "high",
+                        },
+                    }]
+                    if panel.image
+                    else []
+                ),
             ]
         )
 
@@ -783,13 +820,13 @@ CROSS_LENS_SCHEMA = {
                 "properties": {
                     "first_lens": {
                         "type": "string",
-                        "enum": ["mise", "camera", "editing"],
+                        "enum": ["mise", "camera", "editing", "narrative"],
                     },
                     "reason": {"type": "string"},
                     # 먼저 고친 뒤 다시 봐야 하는 렌즈. 없으면 빈 배열.
                     "then": {
                         "type": "array",
-                        "items": {"type": "string", "enum": ["mise", "camera", "editing"]},
+                        "items": {"type": "string", "enum": ["mise", "camera", "editing", "narrative"]},
                     },
                 },
             },
@@ -811,17 +848,17 @@ CROSS_LENS_SCHEMA = {
                         "summary": {"type": "string"},
                         "lenses": {
                             "type": "array",
-                            "items": {"type": "string", "enum": ["mise", "camera", "editing"]},
+                            "items": {"type": "string", "enum": ["mise", "camera", "editing", "narrative"]},
                         },
                         "diagnosis_ids": {"type": "array", "items": {"type": "string"}},
                         # consequence가 아니면 null.
                         "source_lens": {
                             "type": ["string", "null"],
-                            "enum": ["mise", "camera", "editing", None],
+                            "enum": ["mise", "camera", "editing", "narrative", None],
                         },
                         "affected_lens": {
                             "type": ["string", "null"],
-                            "enum": ["mise", "camera", "editing", None],
+                            "enum": ["mise", "camera", "editing", "narrative", None],
                         },
                     },
                 },
@@ -967,7 +1004,7 @@ async def _review_all_lenses(request: DirectingReviewRequest) -> DirectingReview
     한 번에 다 보게 하지 않는 이유: 어느 관점의 판단인지 섞인다. 각자
     판단해야 렌즈가 독립적이고, 그 뒤에 관계를 물어야 연결이 드러난다.
     """
-    lenses: list[DirectingLens] = ["mise", "camera", "editing"]
+    lenses: list[DirectingLens] = ["narrative", "mise", "camera", "editing"]
     outcomes = await asyncio.gather(
         *(analyze_lens(request, lens) for lens in lenses),
         return_exceptions=True,
