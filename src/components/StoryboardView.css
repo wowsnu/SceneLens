@@ -3928,3 +3928,94 @@
   border-color: rgba(126, 200, 160, 0.5);
   outline: none;
 }
+
+/* 컷 구성 점검. 서사가 먼저 짚는 자리다 — 그림이 없는 지금이 가장 싸다. */
+.narrative-rail-check {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.narrative-rail-check > button {
+  width: 100%;
+  padding: 7px 10px;
+  border: 1px solid rgba(245, 158, 11, 0.45);
+  border-radius: 6px;
+  background: rgba(245, 158, 11, 0.12);
+  color: rgba(250, 200, 120, 0.95);
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.narrative-rail-check > button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.narrative-rail-check-summary {
+  margin: 9px 0 7px;
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 10.5px;
+  line-height: 1.55;
+}
+
+.narrative-rail-check-empty,
+.narrative-rail-check-error {
+  margin: 9px 0 0;
+  font-size: 10.5px;
+  line-height: 1.5;
+}
+
+.narrative-rail-check-empty {
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.narrative-rail-check-error {
+  color: rgba(232, 168, 168, 0.9);
+}
+
+.narrative-rail-check-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.narrative-rail-check-list li {
+  margin-bottom: 7px;
+  padding: 8px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.narrative-rail-check-list li span {
+  color: rgba(250, 200, 120, 0.85);
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+}
+
+.narrative-rail-check-list li em {
+  margin-left: 6px;
+  color: rgba(255, 255, 255, 0.38);
+  font-size: 9.5px;
+  font-style: normal;
+}
+
+.narrative-rail-check-list li strong {
+  display: block;
+  margin-top: 4px;
+  color: rgba(255, 255, 255, 0.88);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.5;
+}
+
+.narrative-rail-check-list li p {
+  margin: 4px 0 0;
+  color: rgba(255, 255, 255, 0.45);
+  font-size: 10px;
+  line-height: 1.5;
+}

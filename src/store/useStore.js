@@ -3067,6 +3067,34 @@ const useStore = create((set, get) => ({
   // 하나를 수락하면 나머지 제안은 버린다. 남은 것들의 인덱스가 이미
   // 무효라, 이어서 수락하면 엉뚱한 줄에 적용된다.
   clearNarrativeSuggestions: () => set({ narrativeSuggestions: [], narrativeAnswered: false }),
+  // 컷 플랜 점검. 서사가 먼저 짚는다 — 감독이 요청을 쓰지 않아도 된다.
+  //
+  // 서사는 세 렌즈와 나란한 네 번째가 아니라 그 위에 있다. 미장센·촬영·
+  // 편집은 그려진 화면을 보고 판단하지만 서사는 무엇을 그릴지가 정해지기
+  // 전에 판단한다. 그래서 Decision Board가 아니라 컷 플랜에 붙는다.
+  narrativeCheck: null,
+  narrativeCheckPending: false,
+  narrativeCheckError: null,
+  clearNarrativeCheck: () => set({ narrativeCheck: null, narrativeCheckError: null }),
+  requestNarrativeCheck: async () => {
+    const state = get()
+    if (state.cutPlan.length === 0 || state.narrativeCheckPending) return
+    set({ narrativeCheckPending: true, narrativeCheckError: null })
+    try {
+      const { checkNarrative } = await import('../services/api.js')
+      logScaffold({ feature: 'lens', action: 'open', lens: 'narrative', stage: 'cutplan' })
+      const result = await checkNarrative({
+        cuts: state.cutPlan,
+        sceneIntention: state.sceneIntention || '',
+        script: state.screenplay.map((element) => element.text).join('\n'),
+      })
+      set({ narrativeCheck: result, narrativeCheckPending: false })
+    } catch (error) {
+      // 점검은 실패해도 작업이 멈추면 안 된다. mock으로 채우지도 않는다 —
+      // 서사가 짚지 않은 것을 짚은 것처럼 보이면 판단이 오염된다.
+      set({ narrativeCheckPending: false, narrativeCheckError: error.message })
+    }
+  },
   requestNarrativeSuggestions: async (input = {}) => {
     const state = get()
     const requestKey = state.narrativeSuggestionRequestKey + 1

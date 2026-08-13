@@ -259,6 +259,35 @@ export async function suggestNarrative({
   return toNarrativeSuggestions(data, { beatElements, targetBeat, requestKey })
 }
 
+// 컷 플랜 점검. 요청에 답하는 것이 아니라 서사가 먼저 짚는다.
+// 그림이 없어도 되므로 컷 플랜 단계에서 돈다 — 고치기 가장 싼 자리다.
+export async function checkNarrative({ cuts, sceneIntention = '', script = '' }) {
+  const data = await fetchWithTimeout(`${API_BASE}/narrative/check`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      cuts: cuts.map((cut, index) => ({
+        id: cut.id,
+        order: index + 1,
+        content: cut.content || '',
+        purpose: cut.purpose || '',
+        characters: cut.characters || '',
+      })),
+      scene_intention: sceneIntention,
+      script,
+    }),
+  }, 90000)
+  return {
+    summary: data.summary || '',
+    findings: (data.findings || []).map((finding) => ({
+      ruleId: finding.rule_id,
+      cutIds: finding.cut_ids || [],
+      finding: finding.finding,
+      suggestedAction: finding.suggested_action,
+    })),
+  }
+}
+
 // --- 줄콘티: Beat → 컷 ----------------------------------------------------
 // 샷 크기·앵글·카메라는 여기서 정하지 않는다. 촬영이 정한다.
 export async function planCuts({ heading, beats, cast = [], sceneIntention = '', time = '', place = '' }) {

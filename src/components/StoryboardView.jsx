@@ -24,6 +24,14 @@ import useStore, {
 import './StoryboardView.css'
 import { logEdit, logEvent } from '../store/studyLog'
 
+// 규칙 id를 그대로 보이면 감독이 읽을 것이 아니다.
+const NARRATIVE_RULE_LABELS = {
+  'narrative-beat-progression': '사건의 단계',
+  'narrative-action-visibility': '그릴 수 있게 쓰였는가',
+  'narrative-information-reveal': '정보가 드러나는 자리',
+  'narrative-causal-link': '사건 사이의 인과',
+}
+
 const EMPTY_SHOTS = []
 
 
@@ -850,6 +858,10 @@ export default function StoryboardView() {
   const scriptEditorRequestKey = useStore((s) => s.scriptEditorRequestKey)
   const narrativeSuggestions = useStore((s) => s.narrativeSuggestions)
   const requestNarrativeSuggestions = useStore((s) => s.requestNarrativeSuggestions)
+  const requestNarrativeCheck = useStore((s) => s.requestNarrativeCheck)
+  const narrativeCheck = useStore((s) => s.narrativeCheck)
+  const narrativeCheckPending = useStore((s) => s.narrativeCheckPending)
+  const narrativeCheckError = useStore((s) => s.narrativeCheckError)
   const dismissNarrativeSuggestion = useStore((s) => s.dismissNarrativeSuggestion)
   const updateFlowShotById = useStore((s) => s.updateFlowShotById)
   const setPendingCanvasImage = useStore((s) => s.setPendingCanvasImage)
@@ -2868,6 +2880,48 @@ export default function StoryboardView() {
                           ? '샷 정하는 중…'
                           : cutPlan.length > 0 ? '컷 플랜 이어서' : '컷 플랜 만들기'}
                     </button>
+
+                    {/* 서사가 먼저 짚는다. 그림이 없는 지금이 고치기 가장
+                        싼 자리다 — 다 그린 뒤에 "이 컷은 필요 없다"는 말을
+                        들으면 그린 것을 버려야 한다. */}
+                    {cutPlan.length > 0 && (
+                      <div className="narrative-rail-check">
+                        <button
+                          type="button"
+                          onClick={requestNarrativeCheck}
+                          disabled={narrativeCheckPending}
+                        >
+                          {narrativeCheckPending ? '컷 구성 보는 중…' : '컷 구성 점검'}
+                        </button>
+                        {narrativeCheckError && (
+                          <p className="narrative-rail-check-error">
+                            {narrativeCheckError}
+                          </p>
+                        )}
+                        {narrativeCheck && narrativeCheck.findings.length === 0 && (
+                          <p className="narrative-rail-check-empty">
+                            사건의 단계로는 걸리는 것이 없습니다.
+                          </p>
+                        )}
+                        {narrativeCheck && narrativeCheck.findings.length > 0 && (
+                          <>
+                            <p className="narrative-rail-check-summary">
+                              {narrativeCheck.summary}
+                            </p>
+                            <ul className="narrative-rail-check-list">
+                              {narrativeCheck.findings.map((finding) => (
+                                <li key={finding.ruleId}>
+                                  <span>{NARRATIVE_RULE_LABELS[finding.ruleId] || '서사'}</span>
+                                  <em>{finding.cutIds.join(', ')}</em>
+                                  <strong>{finding.finding}</strong>
+                                  <p>{finding.suggestedAction}</p>
+                                </li>
+                              ))}
+                            </ul>
+                          </>
+                        )}
+                      </div>
+                    )}
                   </>
                 ) : (
                   <p>

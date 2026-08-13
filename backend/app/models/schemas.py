@@ -697,6 +697,40 @@ class NarrativeSuggestionResponse(BaseModel):
     suggestions: List[NarrativeSuggestionItem]
 
 
+class NarrativeCheckCut(BaseModel):
+    """컷 플랜의 컷 하나. 그림은 없다 — 아직 그리기 전이다."""
+    id: str
+    order: int
+    content: str
+    purpose: Optional[str] = ""
+    characters: Optional[str] = ""
+
+
+class NarrativeCheckRequest(BaseModel):
+    cuts: List[NarrativeCheckCut] = Field(min_length=1)
+    scene_intention: Optional[str] = ""
+    script: Optional[str] = ""
+
+
+class NarrativeCheckFinding(BaseModel):
+    rule_id: Literal[
+        "narrative-beat-progression",
+        "narrative-action-visibility",
+        "narrative-information-reveal",
+        "narrative-causal-link",
+    ]
+    # 이 지적이 걸린 컷. 인과·정보 순서는 둘 이상이 될 수 있다.
+    cut_ids: List[str] = Field(min_length=1)
+    finding: str
+    # 무엇을 하면 되는가. 대본을 고칠지 컷을 더할지가 여기서 갈린다.
+    suggested_action: str
+
+
+class NarrativeCheckResponse(BaseModel):
+    summary: str
+    findings: List[NarrativeCheckFinding]
+
+
 # --- Cut plan: Beat → 컷 --------------------------------------------------
 # Beat는 이야기의 국면, Cut은 한 화면이다. 한 Beat가 몇 컷이 되는지가
 # 연출 판단이고, 그것이 줄콘티가 하는 일이다.
