@@ -5602,3 +5602,34 @@ button.active .lens-glass::after {
   color: rgba(236, 180, 180, 0.92);
   font-size: 11.5px;
 }
+
+/* 고칠 곳과 그리로 가는 길. 판정 버튼과 줄을 나눠 둔다 —
+   판정은 기록이고 이동은 선택이다. */
+.multi-review-tension-where {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.multi-review-tension-where strong {
+  color: rgba(216, 170, 98, 0.95);
+  font-size: 11.5px;
+  font-weight: 700;
+}
+
+.multi-review-tension-where button {
+  padding: 4px 10px;
+  border: 1px solid rgba(216, 170, 98, 0.4);
+  border-radius: 5px;
+  background: transparent;
+  color: rgba(222, 186, 138, 0.9);
+  font-family: inherit;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.multi-review-tension-where button:hover {
+  background: rgba(216, 170, 98, 0.16);
+}

@@ -3652,9 +3652,31 @@ export default function DecisionBoard({ boardView = 'split' }) {
                   </header>
                   <p>{relation.summary}</p>
                   {relation.type === 'consequence' && (
-                    <strong className="multi-review-tension-where">
-                      고칠 곳은 {lensName(relation.source_lens)}입니다
-                    </strong>
+                    <div className="multi-review-tension-where">
+                      <strong>고칠 곳은 {lensName(relation.source_lens)}입니다</strong>
+                      {/* 판정과 이동을 나눈다. 관계 여럿을 판정하는 중에
+                          화면이 튀면 하던 일이 끊긴다. */}
+                      <button
+                        type="button"
+                        onClick={() => choosePrimaryLens(frontLensId(relation.source_lens))}
+                      >
+                        {lensName(relation.source_lens)}에서 이어서 보기 →
+                      </button>
+                    </div>
+                  )}
+                  {/* 충돌은 원인이 한쪽에 있지 않다. 양쪽으로 가는 길을 둔다. */}
+                  {relation.type !== 'consequence' && relation.lenses?.length > 0 && (
+                    <div className="multi-review-tension-where">
+                      {relation.lenses.map((lens) => (
+                        <button
+                          key={lens}
+                          type="button"
+                          onClick={() => choosePrimaryLens(frontLensId(lens))}
+                        >
+                          {lensName(lens)}에서 보기 →
+                        </button>
+                      ))}
+                    </div>
                   )}
                   {/* AI가 말하고 끝나면 판결이 된다. 감독이 답할 자리를
                       두고, 그 답은 다음 분석에 함께 보낸다 (DG1 P2). */}
