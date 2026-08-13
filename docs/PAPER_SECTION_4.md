@@ -88,8 +88,8 @@ beat / cut / cut의 역할 / 주요 인물 / shot 등을 textual plan으로 먼�
 **After generation — Lens Analysis**
 4 cinematic lenses — Narrative / Mise-en-scène / Cinematography / Editing.
 생성된 결과에 실제로 구현된 directing decisions를 lens별로 분석한다.
-**[구현]** `directing_review.py`. 단 narrative는 규칙이 없어 다관점에서
-빠져 있다 (아래 미비점 참고).
+**[구현]** `directing_review.py`. 네 렌즈 모두 규칙을 갖는다. narrative만
+그림 없이도 판단하므로 생성 전 컷 플랜 단계에서도 쓸 수 있다.
 
 **Decision card**
 - 현재 어떤 decision이 구현되어 있는지
@@ -283,14 +283,34 @@ S3의 그림이 S4의 내용에 붙는다. 새 함수는 컷과 패널을 함께
 인데, 순서 바꾸기와 컷 넣기를 하려면 여전히 컷 플랜 표로 되돌아가야 한다.
 **seam에 둘을 추가해야 사양대로다.**
 
-**3. narrative 렌즈가 다관점에 없다.**
-- 사양 4.3: 4 lenses (Narrative 포함)
-- 코드: `LENS_RULES`에 `mise / camera / editing` 셋뿐. narrative는 규칙이 없다.
+**3. ~~narrative 렌즈가 다관점에 없다~~ — 고침 (2026-08-13)**
 
-다관점은 셋만 돈다. 논문이 "4 lenses"라고 쓰려면 narrative 규칙을 이론에서
-뽑아야 하고, 아니면 "generation 이후 분석은 3 lenses, narrative는 생성 전
-단계에서 작동한다"고 명시해야 한다. 후자가 실제 구조에 가깝다 —
-narrative는 대본과 Beat를 다루지 생성된 이미지를 진단하지 않는다.
+규칙 4개를 만들어 붙였다. 이제 네 렌즈가 다관점을 함께 돈다.
+
+| 규칙 | 묻는 것 |
+|---|---|
+| `narrative-beat-progression` | 이 Beat에서 상황이 실제로 달라지는가? |
+| `narrative-action-visibility` | 이 줄이 그릴 수 있는 행동으로 적혀 있는가? |
+| `narrative-information-reveal` | 관객이 이것을 알아야 할 때 알게 되는가? |
+| `narrative-causal-link` | 앞의 사건이 뒤의 사건을 불러오는가? |
+
+**넷 다 그림 없이 성립한다.** 대본과 컷 내용을 보고 판단하므로 생성
+이전에도 돌아간다 — 이것이 서사 렌즈를 초반에 쓸 수 있게 하는 조건이다.
+`DirectingReviewPanel.image`를 optional로 바꿔 컷 플랜만으로 검토할 수 있게
+했고, 나머지 세 렌즈는 렌더된 패널이 없으면 거절한다. 화면 근거 없이
+프레이밍이나 연속성을 진단하면 대본 추측이 되기 때문이다.
+
+**서사가 하는 일과 하지 않는 일.** 이야기를 만들지 않는다 — 새 인물·새
+장소·새 사건·반전을 제안하지 않는다. 무엇을 쓸지는 감독이 정한다. 서사가
+보는 것은 **쓰인 것이 사건의 단계로 읽히는가**다. 그림도 판단하지 않는다.
+화면이 대본과 다르면 그것은 미장센이나 촬영의 문제이므로 질문으로 넘긴다.
+
+이론 출처는 `b_1_dialogue`(McKee의 *Dialogue*)에서 뽑았다. `b_5`(*Story*)는
+theory DB에 인덱싱된 유닛이 없어 쓸 수 없었다.
+
+**논문 서술.** "4 lenses"로 쓸 수 있다. 다만 **서사만 생성 전후 모두에서
+작동한다**는 점은 밝히는 편이 정확하다 — 나머지 셋은 렌더된 패널을
+요구한다.
 
 **4. Citation rationale이 없다.**
 사양 4.3의 마지막 항목(왜 이 4개인가, pragmatic coverage라는 근거)이
