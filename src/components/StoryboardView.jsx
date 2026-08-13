@@ -22,7 +22,7 @@ import useStore, {
   PROBLEM_LAYERS,
 } from '../store/useStore'
 import './StoryboardView.css'
-import { logEdit, logEvent } from '../store/studyLog'
+import { logEdit, logEvent, logScaffold } from '../store/studyLog'
 
 // 규칙 id를 그대로 보이면 감독이 읽을 것이 아니다.
 const NARRATIVE_RULE_LABELS = {
@@ -1593,6 +1593,32 @@ export default function StoryboardView() {
     setIsEditingRaw(false)
   }
 
+  // 점검에서 나온 지적을 그대로 제안 요청으로 넘긴다. 점검은 무엇이
+  // 문제인지만 말하고, 무엇으로 고칠지는 제안이 낸다.
+  const requestSuggestionForFinding = (finding) => {
+    // 지적이 건 첫 컷의 Beat를 본다. 지금 보고 있는 Beat가 아니라
+    // 문제가 있는 Beat여야 제안이 엉뚱한 줄에 붙지 않는다.
+    const firstCut = cutPlan.find((cut) => cut.id === finding.cutIds[0])
+    const beat = firstCut?.beat ?? activeBeat ?? 0
+    // 점검에서 제안으로 넘어간 것. 지적을 받아들였다는 뜻이다.
+    logScaffold({
+      feature: 'diagnosis',
+      action: 'accept',
+      target: finding.cutIds.join(','),
+      lens: 'narrative',
+    })
+    requestNarrativeSuggestions({
+      beat,
+      narrativeRequest: (
+        `컷 구성 점검에서 이런 지적이 나왔습니다: ${finding.finding}\n`
+        + `${finding.suggestedAction}\n`
+        + '이 Beat의 대본에서 무엇을 더하거나 고치면 되는지 제안해 주세요.'
+      ),
+    })
+    // 제안은 대본 줄 옆에 뜬다. 그 Beat가 보여야 판정할 수 있다.
+    selectBeat(beat)
+  }
+
   const handleNarrativeRequest = () => {
     if (!narrativeRequest.trim()) return
     requestNarrativeSuggestions({ narrativeRequest })
@@ -2915,6 +2941,16 @@ export default function StoryboardView() {
                                   <em>{finding.cutIds.join(', ')}</em>
                                   <strong>{finding.finding}</strong>
                                   <p>{finding.suggestedAction}</p>
+                                  {/* 읽고 끝나면 감독이 다시 옮겨 적어야
+                                      한다. 지적을 그대로 요청으로 넘겨
+                                      제안까지 잇는다. */}
+                                  <button
+                                    type="button"
+                                    onClick={() => requestSuggestionForFinding(finding)}
+                                    disabled={narrativePending}
+                                  >
+                                    {narrativePending ? '제안 받는 중…' : '제안 받기'}
+                                  </button>
                                 </li>
                               ))}
                             </ul>

@@ -4019,3 +4019,26 @@
   font-size: 10px;
   line-height: 1.5;
 }
+
+/* 지적에서 제안으로. 읽고 끝나면 감독이 다시 옮겨 적어야 한다. */
+.narrative-rail-check-list li button {
+  margin-top: 7px;
+  padding: 4px 10px;
+  border: 1px solid rgba(245, 158, 11, 0.4);
+  border-radius: 5px;
+  background: rgba(245, 158, 11, 0.1);
+  color: rgba(250, 200, 120, 0.92);
+  font-family: inherit;
+  font-size: 10px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.narrative-rail-check-list li button:hover:not(:disabled) {
+  background: rgba(245, 158, 11, 0.18);
+}
+
+.narrative-rail-check-list li button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
