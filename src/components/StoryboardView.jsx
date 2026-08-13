@@ -22,7 +22,7 @@ import useStore, {
   PROBLEM_LAYERS,
 } from '../store/useStore'
 import './StoryboardView.css'
-import { logEvent } from '../store/studyLog'
+import { logEdit, logEvent } from '../store/studyLog'
 
 const EMPTY_SHOTS = []
 
@@ -521,6 +521,12 @@ function ShotInspector({
           value={prompt?.effective || ''}
           rows={9}
           onChange={(event) => onChange(cut.id, { promptOverride: event.target.value })}
+          onBlur={(event) => {
+            // 글자마다 남기면 로그가 타건 기록이 된다. 편집을 마쳤을 때
+            // 한 번만 남긴다.
+            if (!event.target.value.trim()) return
+            logEdit({ level: 'element', target: cut.id, action: 'prompt' })
+          }}
           placeholder="컷 내용이 비어 있습니다."
         />
         {prompt?.shared && <p className="shot-inspector-shared">{prompt.shared}</p>}
@@ -2031,6 +2037,11 @@ export default function StoryboardView() {
                                       onChange={(event) => updateCutPlanItem(item.id, {
                                         promptOverride: event.target.value,
                                       })}
+                                      onBlur={(event) => {
+                                        // 편집을 마쳤을 때 한 번만 남긴다.
+                                        if (!event.target.value.trim()) return
+                                        logEdit({ level: 'element', target: item.id, action: 'prompt' })
+                                      }}
                                       placeholder="컷 내용이 비어 있습니다."
                                       aria-label={`Cut ${item.order} prompt`}
                                     />

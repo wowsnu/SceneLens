@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import useStore from '../store/useStore'
 import { reframeSketch } from '../services/api'
 import './StrategyOverlay.css'
+import { logEdit, logScaffold } from '../store/studyLog'
 
 const LABELS = ['A', 'B', 'C']
 const COLORS = ['#10b981', '#8b5cf6', '#ef4444']
@@ -406,6 +407,11 @@ export default function StrategyOverlay() {
       setStrategyError('현재 스케치와 추천 샷 정보가 필요합니다.')
       return
     }
+
+    // 스케치를 바탕으로 제안된 구도를 고른 것. 패널 안의 수정이므로
+    // element 층위다 — beyond-panel 비율의 분모에 들어가야 한다.
+    logScaffold({ feature: 'alternative', action: 'accept', target: `strategy-${idx}` })
+    logEdit({ lens: 'camera', level: 'element', target: `strategy-${idx}`, action: 'draw' })
 
     // CIR이 없으면(Reframe axis 비활성 등) 현재 구도 그대로 두고 mise만 적용.
     const targetCir = shot.cir ? normalizeCir(shot.cir) : normalizeCir(currentCir)

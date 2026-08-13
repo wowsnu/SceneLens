@@ -402,7 +402,8 @@ Regeneration은 별도 이벤트로도 두지만, Edit Event의 `regeneration`
 |---|---|
 | Edit — 이음새 4종(merge/split/reorder/insert) | 있음 |
 | Edit — 렌즈별 컷 요구 | 있음 |
-| Edit — 프롬프트 직접 수정, 그리기 | **없음** |
+| Edit — 프롬프트 직접 수정 | 있음. `onBlur`에 건다 — `onChange`에 걸면 타건 기록이 된다 |
+| Edit — 그리기 | 있음. 스케치로 제안 구도를 고른 시점 (`StrategyOverlay`) |
 | Edit — `condition` 필드 | 있음. `?condition=` 또는 `Ctrl+Shift+C`. 안 정하면 `unset` |
 | Scaffolding — lens / cross_lens / viewer 열기 | 있음 |
 | Scaffolding — diagnosis 수용 | 있음 (고치러 이동한 것을 accept로 본다) |
