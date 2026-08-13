@@ -239,7 +239,18 @@ persona가 아니라 **attention condition**으로 서술해야 이 framing과
 **논문 쪽을 4단계로 고치는 편이 나아 보인다** — 실제로 컷의 존재 문제와
 컷 사이 관계 문제는 개입 지점이 다르다.
 
-**2. seam에 `insert`와 `reorder`가 없다.**
+**2. ~~seam에 `insert`와 `reorder`가 없다~~ — 고침 (2026-08-13)**
+
+seam에 `사이에 컷 넣기` / `두 컷 합치기` / `앞뒤 순서 바꾸기`를 모두 두었다.
+넷 다 실행 전 미리보기를 거친다 (DG2 P3).
+
+순서 바꾸기는 `swapCutsAtSeam`을 새로 만들었다. 기존 `moveCutPlanItem`은
+컷 표만 다시 세우고 패널은 그대로 두는데, 그림이 이미 있는 단계에서는
+S3의 그림이 S4의 내용에 붙는다. 새 함수는 컷과 패널을 함께 옮긴다.
+
+아래는 고치기 전 기록이다.
+
+**~~2. seam에 `insert`와 `reorder`가 없다.~~**
 - 사양 4.4: `insert / split / merge / reorder`
 - 코드: seam에는 `split`과 `merge`만. `moveCutPlanItem`(reorder)과
   `addCutPlanItem`(insert)은 컷 플랜 표에만 있다.

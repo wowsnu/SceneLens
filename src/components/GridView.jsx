@@ -44,6 +44,8 @@ export default function GridView({
   const cutPlan = useStore((s) => s.cutPlan)
   const mergeCuts = useStore((s) => s.mergeCuts)
   const splitCut = useStore((s) => s.splitCut)
+  const addCutPlanItem = useStore((s) => s.addCutPlanItem)
+  const swapCutsAtSeam = useStore((s) => s.swapCutsAtSeam)
   const autoFill = useStore((s) => s.autoFill)
 
   // Build shotId → preview insertions map (when a version is being previewed)
@@ -344,15 +346,37 @@ export default function GridView({
                           onChange={(e) => updateSeam(prevShot.id, { elision: e.target.value })}
                         />
 
-                        {/* 이음새를 없애는 개입. 두 컷이 하나가 되므로
-                            이 이음새는 컷 안이 된다 (DG2 P1 병합). */}
-                        <button
-                          type="button"
-                          className="grid-seam-merge"
-                          onClick={() => openMergePreview(prevShot, shot, i)}
-                        >
-                          두 컷 합치기
-                        </button>
+                        {/* 이음새에서 할 수 있는 구조 개입 (DG2 P2).
+                            넣기·합치기·순서 바꾸기가 모두 컷 사이의 일이므로
+                            여기 모은다 — 컷 플랜 표로 되돌아갈 이유가 없다. */}
+                        <div className="grid-seam-ops">
+                          <button
+                            type="button"
+                            onClick={() => setPendingEdit({
+                              kind: 'insert',
+                              cutId: prevShot.cutPlanItemId,
+                              index: i,
+                            })}
+                          >
+                            사이에 컷 넣기
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => openMergePreview(prevShot, shot, i)}
+                          >
+                            두 컷 합치기
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setPendingEdit({
+                              kind: 'swap',
+                              cutId: prevShot.cutPlanItemId,
+                              index: i,
+                            })}
+                          >
+                            앞뒤 순서 바꾸기
+                          </button>
+                        </div>
                       </div>
                     )}
                   </div>
@@ -532,12 +556,19 @@ export default function GridView({
         if (!cut) return null
         const cutIndex = cutPlan.findIndex((item) => item.id === pendingEdit.cutId)
         const nextCut = cutPlan[cutIndex + 1]
-        const isMerge = pendingEdit.kind === 'merge'
+        const kind = pendingEdit.kind
+        const isMerge = kind === 'merge'
+        const TITLES = {
+          merge: '두 컷 합치기',
+          split: '컷 나누기',
+          insert: '사이에 컷 넣기',
+          swap: '앞뒤 순서 바꾸기',
+        }
 
         return (
           <div className="grid-edit-preview" role="dialog" aria-label="편집 미리보기">
             <header>
-              <strong>{isMerge ? '두 컷 합치기' : '컷 나누기'}</strong>
+              <strong>{TITLES[kind]}</strong>
               <button type="button" onClick={() => setPendingEdit(null)} aria-label="닫기">✕</button>
             </header>
 
@@ -545,7 +576,7 @@ export default function GridView({
               <div className="grid-edit-before">
                 <span>지금</span>
                 <p>{cut.content || '(비어 있음)'}</p>
-                {isMerge && nextCut && <p>{nextCut.content || '(비어 있음)'}</p>}
+                {kind !== 'split' && nextCut && <p>{nextCut.content || '(비어 있음)'}</p>}
               </div>
               <div className="grid-edit-arrow" aria-hidden="true">→</div>
               <div className="grid-edit-after">
@@ -557,6 +588,17 @@ export default function GridView({
                     onChange={(e) => setMergeDraft(e.target.value)}
                     aria-label="합쳐진 내용"
                   />
+                ) : kind === 'swap' ? (
+                  <>
+                    <p>{nextCut?.content || '(비어 있음)'}</p>
+                    <p>{cut.content || '(비어 있음)'}</p>
+                  </>
+                ) : kind === 'insert' ? (
+                  <>
+                    <p>{cut.content || '(비어 있음)'}</p>
+                    <p className="grid-edit-new">새 컷 · 내용은 직접 씁니다</p>
+                    <p>{nextCut?.content || '(비어 있음)'}</p>
+                  </>
                 ) : (
                   <>
                     <p>{cut.content || '(비어 있음)'}</p>
@@ -568,7 +610,7 @@ export default function GridView({
 
             {/* 함께 바뀌는 것. 요청한 변경과 구분해 보여준다. */}
             <ul className="grid-edit-effects">
-              {isMerge ? (
+              {isMerge && (
                 <>
                   <li>컷 {cutPlan.length} → {cutPlan.length - 1}</li>
                   <li>두 컷 사이의 이음새가 사라집니다</li>
@@ -576,11 +618,26 @@ export default function GridView({
                     <li className="warn">S{pendingEdit.index + 1}의 그림이 사라집니다</li>
                   )}
                 </>
-              ) : (
+              )}
+              {kind === 'split' && (
                 <>
                   <li>컷 {cutPlan.length} → {cutPlan.length + 1}</li>
                   <li>사이에 새 이음새가 생깁니다 · 컷 · 연속</li>
                   <li>기존 그림은 앞 컷에 남습니다</li>
+                </>
+              )}
+              {kind === 'insert' && (
+                <>
+                  <li>컷 {cutPlan.length} → {cutPlan.length + 1}</li>
+                  <li>새 컷은 그림이 없습니다 · 나중에 그리거나 생성합니다</li>
+                  <li>이 이음새는 새 컷 뒤로 옮겨집니다</li>
+                </>
+              )}
+              {kind === 'swap' && (
+                <>
+                  <li>컷 수는 그대로입니다</li>
+                  <li className="warn">두 컷의 그림도 함께 자리를 바꿉니다</li>
+                  <li>앞뒤 이음새가 새 순서를 따릅니다</li>
                 </>
               )}
             </ul>
@@ -593,6 +650,10 @@ export default function GridView({
                 onClick={() => {
                   if (isMerge) {
                     mergeCuts(pendingEdit.cutId, { content: mergeDraft })
+                  } else if (kind === 'insert') {
+                    addCutPlanItem(pendingEdit.cutId)
+                  } else if (kind === 'swap') {
+                    swapCutsAtSeam(pendingEdit.cutId)
                   } else {
                     splitCut(pendingEdit.cutId)
                   }
@@ -600,7 +661,7 @@ export default function GridView({
                   setOpenSeamId(null)
                 }}
               >
-                {isMerge ? '합치기' : '나누기'}
+                {{ merge: '합치기', split: '나누기', insert: '넣기', swap: '바꾸기' }[kind]}
               </button>
             </div>
           </div>

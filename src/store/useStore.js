@@ -2634,6 +2634,35 @@ const useStore = create((set, get) => ({
     return { ...next, cutPlan: nextCutPlan }
   }),
 
+  // 이음새에서의 순서 바꾸기 (DG2 P2 reorder). moveCutPlanItem은 컷 표만
+  // 다시 세우고 패널과 이음새는 그대로 두는데, 그림이 이미 있는 단계에서는
+  // 그러면 컷과 그림이 어긋난다. 여기서는 셋을 함께 옮긴다.
+  swapCutsAtSeam: (firstCutId) => set((state) => {
+    const index = state.cutPlan.findIndex((item) => item.id === firstCutId)
+    if (index < 0 || index >= state.cutPlan.length - 1) return {}
+
+    const first = state.cutPlan[index]
+    const second = state.cutPlan[index + 1]
+    const nextPlan = [...state.cutPlan]
+    nextPlan[index] = second
+    nextPlan[index + 1] = first
+
+    // 패널도 같이 옮긴다. 컷만 바꾸면 S3의 그림이 S4의 내용에 붙는다.
+    const next = updateActiveBranchShots(state, (shots) => {
+      const a = shots.findIndex((shot) => shot.cutPlanItemId === first.id)
+      const b = shots.findIndex((shot) => shot.cutPlanItemId === second.id)
+      if (a < 0 || b < 0) return shots
+      const moved = [...shots]
+      moved[a] = shots[b]
+      moved[b] = shots[a]
+      return moved
+    })
+
+    // 이음새는 앞 패널에 붙는다. 두 패널이 자리를 바꾸면 그 사이의
+    // 이음새는 여전히 '사이'에 있으므로 그대로 두고, 바깥쪽 둘만 따라간다.
+    return { ...next, cutPlan: reorderCutPlan(nextPlan) }
+  }),
+
   moveCutPlanItem: (itemId, direction) => set((state) => {
     const index = state.cutPlan.findIndex((item) => item.id === itemId)
     const target = index + direction

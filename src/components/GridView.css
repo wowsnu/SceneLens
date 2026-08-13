@@ -1027,3 +1027,29 @@
   font-size: 10.5px;
   line-height: 1.5;
 }
+
+/* 이음새에서 하는 구조 개입. 넣기·합치기·순서가 모두 컷 사이의 일이다. */
+.grid-seam-ops {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 8px;
+}
+
+.grid-seam-ops button {
+  flex: 1 1 auto;
+  padding: 5px 8px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 5px;
+  background: rgba(255, 255, 255, 0.04);
+  color: rgba(255, 255, 255, 0.72);
+  font-family: inherit;
+  font-size: 10.5px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.grid-seam-ops button:hover {
+  border-color: rgba(255, 255, 255, 0.3);
+  color: rgba(255, 255, 255, 0.95);
+}
