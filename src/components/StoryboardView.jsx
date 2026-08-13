@@ -1080,6 +1080,11 @@ export default function StoryboardView() {
     if (panelToolRequest.tool === 'camera-arrow') {
       setNoteEditingShotId(null)
       setArrowDrawingShotId(shot.id)
+    } else if (panelToolRequest.tool === 'prompt') {
+      // 프롬프트를 고쳐 다시 생성하는 길. 인스펙터에 그 칸이 있다.
+      setArrowDrawingShotId(null)
+      setNoteEditingShotId(null)
+      setInspectedShotId(shot.id)
     } else if (panelToolRequest.tool === 'memo') {
       setArrowDrawingShotId(null)
       const suggested = (panelToolRequest.text || '').trim()

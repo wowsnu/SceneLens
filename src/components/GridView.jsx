@@ -84,7 +84,8 @@ export default function GridView({
   const [hoveredIdx, setHoveredIdx] = useState(null)
   // 열려 있는 이음새 편집기. 한 번에 하나만 연다.
   const [openSeamId, setOpenSeamId] = useState(null)
-
+  // 진단에서 '이음새 열기'를 누르면 그 자리가 펼쳐져야 한다.
+  // 렌더 중에 맞춘다 — effect로 하면 한 번 더 그려진다.
   // 실행 전에 무엇이 바뀌고 무엇이 사라지는지 보여준다 (DG2 P3).
   // 눌러서 바로 실행하면 사용자는 결과만 받게 된다.
   const [pendingEdit, setPendingEdit] = useState(null)
@@ -109,12 +110,32 @@ export default function GridView({
       losesDrawing: Boolean(shot.image),
     })
   }
+  // 진단에서 보낸 이음새 요청. 훅은 조건부 return보다 위에 있어야 한다.
+  const seamFocusRequest = useStore((s) => s.seamFocusRequest)
+  const [handledSeamFocus, setHandledSeamFocus] = useState(null)
+
   const [rangeMode, setRangeMode] = useState(false)   // true = waiting for second tap
   const [rangeAnchor, setRangeAnchor] = useState(null) // first tap index
 
   const branch = branches[activeBranch]
   if (!branch) return null
   const shots = branch.shots
+
+  // 진단에서 보낸 요청. 이음새를 열고, 나누기·합치기면 그 미리보기까지 연다.
+  // 요청은 지우지 않는다 — 처리한 id를 기억하므로 다시 열리지 않는다.
+  if (seamFocusRequest && handledSeamFocus !== seamFocusRequest.id) {
+    setHandledSeamFocus(seamFocusRequest.id)
+    setOpenSeamId(seamFocusRequest.shotId)
+    const index = shots.findIndex((entry) => entry.id === seamFocusRequest.shotId)
+    if (seamFocusRequest.action === 'merge' && index >= 0 && shots[index + 1]) {
+      openMergePreview(shots[index], shots[index + 1], index + 1)
+    } else if (seamFocusRequest.action === 'split' && index >= 0) {
+      const target = shots[index]
+      if (target?.cutPlanItemId) {
+        setPendingEdit({ kind: 'split', cutId: target.cutPlanItemId, index })
+      }
+    }
+  }
 
   const rangeFrom = rangeAnchor !== null && activeShot !== null ? Math.min(rangeAnchor, activeShot) : null
   const rangeTo   = rangeAnchor !== null && activeShot !== null ? Math.max(rangeAnchor, activeShot) : null

@@ -548,6 +548,14 @@
   transition: background 0.15s, transform 0.1s;
 }
 
+.enhance-trigger-btn::after {
+  content: '최소 변경';
+  padding-left: 2px;
+  color: rgba(196, 181, 253, .82);
+  font-size: 9px;
+  font-weight: 700;
+}
+
 .enhance-trigger-btn:hover {
   background: rgba(30, 41, 59, 0.88);
 }
@@ -555,6 +563,11 @@
 .enhance-trigger-btn.loading {
   opacity: 0.6;
   cursor: default;
+}
+
+.enhance-trigger-btn:disabled:not(.loading) {
+  opacity: 0.38;
+  cursor: not-allowed;
 }
 
 .enhance-menu {

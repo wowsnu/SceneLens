@@ -1,5 +1,12 @@
-import { useRef, useEffect, useCallback, useState } from 'react'
-import useStore from '../store/useStore'
+import { useRef, useEffect, useCallback, useMemo, useState } from 'react'
+import useStore, {
+  buildCutPrompt,
+  cutOrderOf,
+  describeLayout,
+  sceneOfBeat,
+  seamKeyFor,
+  selectScenes,
+} from '../store/useStore'
 import { enhanceSketch, segmentLasso, segmentPrepare } from '../services/api'
 import SegmentCutout from './SegmentCutout'
 import './DrawingCanvas.css'
@@ -11,6 +18,11 @@ function loadImage(src) {
     img.onerror = reject
     img.src = src
   })
+}
+
+function stripImageDataUrl(value = '') {
+  if (!value.startsWith('data:image/')) return ''
+  return value.replace(/^data:image\/\w+;base64,/, '')
 }
 
 export default function DrawingCanvas() {
@@ -55,8 +67,93 @@ export default function DrawingCanvas() {
   const [compareImgAspect, setCompareImgAspect] = useState(null) // 원본 이미지 w/h
   const [zoomedImage, setZoomedImage] = useState(null) // { src, label } — 확대(라이트박스)로 볼 이미지
   const screenplay = useStore((s) => s.screenplay)
+  const cutPlan = useStore((s) => s.cutPlan)
+  const sceneIntention = useStore((s) => s.sceneIntention)
+  const scenePromptNote = useStore((s) => s.scenePromptNote)
+  const declarations = useStore((s) => s.declarations)
+  const sceneStates = useStore((s) => s.sceneStates)
+  const seams = useStore((s) => s.seams)
+  const spatialElements = useStore((s) => s.spatialElements)
   const setComparePreview = useStore((s) => s.setComparePreview)
   const clearComparePreview = useStore((s) => s.clearComparePreview)
+
+  // Panel generation and AI 보태기 must see the same current-cut context.
+  // The original canvas remains the primary image; references only help identify
+  // an already-implied person, prop, or place before adding a few strokes.
+  const enhanceContext = useMemo(() => {
+    const cut = cutPlan.find((item) => item.id === activeFlowShot?.cutPlanItemId)
+    if (!cut) return {
+      prompt: '', shared: '', previous: '', references: [], style: '', layout: '',
+    }
+
+    const scriptScenes = selectScenes(screenplay)
+    const scene = sceneOfBeat(scriptScenes, cut.beat)
+    const sceneState = sceneStates[scene?.id] || sceneStates['scene-0']
+    const cutIndex = cutPlan.findIndex((item) => item.id === cut.id)
+    const cutOrder = cutOrderOf(cutPlan)
+    const shotIndex = activeFlowBranch?.shots?.findIndex((shot) => shot.id === activeFlowShot?.id) ?? -1
+    const previousCut = cutIndex > 0 ? cutPlan[cutIndex - 1] : null
+    const seam = shotIndex > 0
+      ? seams[seamKeyFor(activeFlowBranch.shots[shotIndex - 1].id)] || null
+      : null
+    const panelPrompt = buildCutPrompt(cut, {
+      sceneIntention,
+      sceneNote: scenePromptNote,
+      declarations,
+      sceneState,
+      seam,
+      cutIndex,
+      cutOrder,
+    })
+    const previousPrompt = previousCut
+      ? buildCutPrompt(previousCut, {
+        sceneIntention,
+        sceneNote: scenePromptNote,
+        declarations,
+        sceneState: sceneStates[sceneOfBeat(scriptScenes, previousCut.beat)?.id] || sceneStates['scene-0'],
+        seam: null,
+        cutIndex: cutIndex - 1,
+        cutOrder,
+      })
+      : null
+    const cast = (cut.characters || '').split(',').map((name) => name.trim()).filter(Boolean)
+    const references = [
+      ...(sceneState?.characters || [])
+        .filter((character) => character.image && cast.some((name) => name.includes(character.name)))
+        .map((character) => ({
+          name: character.name,
+          kind: 'character',
+          image: stripImageDataUrl(character.image),
+        })),
+      sceneState?.location?.image ? {
+        name: sceneState.location.name || '공간',
+        kind: 'location',
+        image: stripImageDataUrl(sceneState.location.image),
+      } : null,
+    ].filter((reference) => reference?.image).slice(0, 3)
+    const styleFact = sceneState?.environment?.facts?.find((fact) => fact.label === '그림체')
+
+    return {
+      prompt: panelPrompt?.effective || '',
+      shared: panelPrompt?.shared || '',
+      previous: previousPrompt?.effective || '',
+      references,
+      style: styleFact && !styleFact.open ? styleFact.value : '',
+      layout: describeLayout(spatialElements),
+    }
+  }, [
+    activeFlowBranch?.shots,
+    activeFlowShot?.cutPlanItemId,
+    activeFlowShot?.id,
+    cutPlan,
+    declarations,
+    sceneIntention,
+    scenePromptNote,
+    sceneStates,
+    screenplay,
+    seams,
+    spatialElements,
+  ])
 
   // ── Segmentation state ─────────────────────────────────────
   const segmentSession = useStore((s) => s.segmentSession)
@@ -863,7 +960,6 @@ export default function DrawingCanvas() {
     setIsEnhancingLocal(true)
     clearComparePreview()
 
-    const scriptText = screenplay.map((el) => el.text).join('\n')
     const imageBase64 = canvasDataUrl.startsWith('data:') ? canvasDataUrl.split(',')[1] : canvasDataUrl
     const originalImage = canvasDataUrl
 
@@ -872,21 +968,24 @@ export default function DrawingCanvas() {
       originalImage,
       candidateImage: null,
       loading: true,
-      strategyName: 'Enhanced Sketch',
-      recommendationLine: '손그림을 같은 구도로 깔끔하게 정리합니다.',
+      strategyName: 'AI 보태기',
+      recommendationLine: '기존 그림은 그대로 두고, 읽기 어려운 곳에 짧은 선 몇 개만 보탭니다.',
       isEnhancePreview: true,
     })
 
     try {
-      const result = await enhanceSketch(imageBase64, scriptText)
+      const result = await enhanceSketch(imageBase64, {
+        scriptContext: screenplay.map((el) => el.text).join('\n'),
+        ...enhanceContext,
+      })
       const resultImage = `data:image/png;base64,${result.enhanced_image}`
       setComparePreview({
         shotKey: `enhance-${Date.now()}`,
         originalImage,
         candidateImage: resultImage,
         loading: false,
-        strategyName: 'Enhanced Sketch',
-        recommendationLine: '손그림을 같은 구도로 깔끔하게 정리합니다.',
+        strategyName: 'AI 보태기',
+        recommendationLine: '기존 그림은 그대로 두고, 읽기 어려운 곳에 짧은 선 몇 개만 보탭니다.',
         isEnhancePreview: true,
       })
     } catch (err) {
@@ -897,7 +996,7 @@ export default function DrawingCanvas() {
         loading: false,
         error: err.message,
         isEnhancePreview: true,
-        strategyName: 'Enhanced Sketch',
+        strategyName: 'AI 보태기',
       })
     } finally {
       setIsEnhancing(false)
@@ -928,19 +1027,19 @@ export default function DrawingCanvas() {
 
   return (
     <div className="canvas-container" ref={containerRef}>
-      {/* Enhance button — top-right of canvas */}
-      {hasDrawn && !comparePreview && (
+      {/* AI 보태기 — original strokes remain the source of truth. */}
+      {!comparePreview && (
         <div className="enhance-btn-wrap">
           <button
             className={`enhance-trigger-btn ${isEnhancingLocal ? 'loading' : ''}`}
             onClick={handleEnhance}
-            disabled={isEnhancingLocal}
-            title="Enhance sketch"
+            disabled={isEnhancingLocal || !canvasDataUrl}
+            title={canvasDataUrl ? '기존 스케치에 최소한의 보조 스트로크만 추가' : '스케치를 그리거나 패널을 먼저 불러와주세요'}
           >
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/>
             </svg>
-            {isEnhancingLocal ? 'Enhancing…' : 'Enhance Sketch'}
+            {isEnhancingLocal ? '조금 보태는 중…' : 'AI 보태기'}
           </button>
         </div>
       )}
@@ -1052,7 +1151,7 @@ export default function DrawingCanvas() {
                       <img src={comparePreview.candidateImage} alt="Reframed storyboard" />
                       <div className="compare-preview-label">
                         {comparePreview.isEnhancePreview
-                          ? (comparePreview.enhanceMode === 'sketch' ? 'Enhanced Sketch' : 'Photo Reference')
+                          ? (comparePreview.enhanceMode === 'sketch' ? 'AI 보태기' : 'Photo Reference')
                           : 'Reframed'}
                       </div>
                       <span
@@ -1063,7 +1162,7 @@ export default function DrawingCanvas() {
                         onClick={(e) => {
                           e.stopPropagation()
                           const label = comparePreview.isEnhancePreview
-                            ? (comparePreview.enhanceMode === 'sketch' ? 'Enhanced Sketch' : 'Photo Reference')
+                            ? (comparePreview.enhanceMode === 'sketch' ? 'AI 보태기' : 'Photo Reference')
                             : 'Reframed'
                           setZoomedImage({ src: comparePreview.candidateImage, label })
                         }}
@@ -1161,11 +1260,11 @@ export default function DrawingCanvas() {
         </div>
       )}
 
-      {/* Apply / Dismiss for enhance preview */}
+      {/* Apply / Dismiss for conservative add-strokes preview */}
       {comparePreview?.isEnhancePreview && !comparePreview?.loading && comparePreview?.candidateImage && (
         <div className="enhance-action-bar">
-          <button className="enhance-action-dismiss" onClick={clearComparePreview}>Dismiss</button>
-          <button className="enhance-action-apply" onClick={handleApplyEnhance}>Apply to Canvas</button>
+          <button className="enhance-action-dismiss" onClick={clearComparePreview}>그대로 둘게</button>
+          <button className="enhance-action-apply" onClick={handleApplyEnhance}>이 선만 반영</button>
         </div>
       )}
 

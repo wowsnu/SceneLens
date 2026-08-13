@@ -90,10 +90,24 @@ class GenerateOverlayResponse(BaseModel):
     overlay_image: str  # base64-encoded overlay image
 
 # Request: Enhance sketch
+class EnhanceReference(BaseModel):
+    """A character or location reference used only to recognize the current cut."""
+    name: str
+    kind: Literal["character", "location", "layout"]
+    image: str
+
 class EnhanceSketchRequest(BaseModel):
     image: str  # base64-encoded rough sketch
     script_context: str
     intent: Optional[str] = ""
+    # Same cut context used by panel generation. It informs what an existing
+    # ambiguous mark refers to; it never authorizes a redraw.
+    prompt: Optional[str] = ""
+    shared: Optional[str] = ""
+    previous: Optional[str] = ""
+    references: List[EnhanceReference] = []
+    style: Optional[str] = ""
+    layout: Optional[str] = ""
 
 # Response: Enhance sketch
 class EnhanceSketchResponse(BaseModel):
@@ -177,8 +191,11 @@ class ViewerPanelInput(BaseModel):
     """Audience-visible material only; no labels, CIR, or creator context."""
     image: str
 
+ViewerReadingCondition = Literal["first_viewer", "film_literate", "context_close"]
+
 class ViewerInitialReadingRequest(BaseModel):
     panels: List[ViewerPanelInput]
+    reading_conditions: List[ViewerReadingCondition] = ["first_viewer"]
 
 class ViewerReadingStep(BaseModel):
     panel_order: int
@@ -248,8 +265,40 @@ class ViewerInitialReading(BaseModel):
     inferred_assumptions: List[str] = []
     routes: List[str] = []
 
+class ViewerPersonaReading(BaseModel):
+    condition_id: ViewerReadingCondition
+    reading: ViewerInitialReading
+
+class ViewerPerspectiveReading(BaseModel):
+    condition_id: ViewerReadingCondition
+    reading: str
+
+class ViewerPerspectiveDivergence(BaseModel):
+    panel_orders: List[int]
+    shared_cues: List[str]
+    readings: List[ViewerPerspectiveReading]
+    why_it_matters: str
+    issue_kind: Literal[
+        "story_context",
+        "element_visibility",
+        "spatial_relation",
+        "framing_readability",
+        "cut_connection",
+        "information_order",
+    ]
+    suspected_cause: Literal["narrative", "mise", "camera", "editing"]
+    routes: List[Literal["narrative", "mise", "camera", "editing"]] = []
+    scope: Literal["single", "range"] = "single"
+    route_reason: str = ""
+
+class ViewerPerspectiveComparison(BaseModel):
+    common_reading: str
+    divergences: List[ViewerPerspectiveDivergence] = []
+
 class ViewerInitialReadingResponse(BaseModel):
     initial_reading: ViewerInitialReading
+    readings: List[ViewerPersonaReading] = []
+    comparison: Optional[ViewerPerspectiveComparison] = None
 
 
 # ── Segmentation (MobileSAM, click-based) ─────────────────────
@@ -389,13 +438,17 @@ class StoryStructureResponse(BaseModel):
 # 하나의 응답으로 전달한다. 관객 검토는 의도 비공개 흐름이므로 별도 API를 쓴다.
 
 DirectingLens = Literal["mise", "camera", "editing"]
-DirectingReviewMode = Literal["multi", "mise", "camera", "editing"]
+# "relate"는 이미 나온 렌즈 판단들 사이의 관계만 본다. 렌즈 분석과 나누는
+# 이유는 시간이다 — 셋을 돌리는 데만 50초가 걸려, 관계까지 한 번에 하면
+# 결과를 보기까지 70초를 기다린다.
+DirectingReviewMode = Literal["multi", "relate", "mise", "camera", "editing"]
 DirectingDiagnosticLevel = Literal[
     "attribute",
     "shot_structure",
     "shot_relation",
     "scene_structure",
 ]
+DirectingLevelStatus = Literal["keep", "check", "change"]
 
 
 class DirectingReviewPanel(BaseModel):
@@ -406,10 +459,42 @@ class DirectingReviewPanel(BaseModel):
     scene_id: Optional[str] = None
 
 
+class DirectingSettledRelation(BaseModel):
+    """감독이 이미 판정한 관계.
+
+    한 번 정리한 것을 AI가 또 짚으면 판정한 의미가 없다. 다음 검토에
+    함께 보내 같은 지적을 반복하지 않게 한다.
+    """
+
+    diagnosis_ids: List[str] = Field(default_factory=list)
+    summary: str = ""
+    # 감독이 고른 답. "의도한 거야", "촬영을 고칠게" 등.
+    verdict: str = ""
+
+
 class DirectingReviewRequest(BaseModel):
     mode: DirectingReviewMode = "multi"
     panels: List[DirectingReviewPanel] = Field(min_length=1)
     intent: Optional[str] = ""
+    settled: List[DirectingSettledRelation] = Field(default_factory=list, max_length=8)
+    # mode="relate"일 때만 쓴다. 이미 받은 렌즈 결과를 그대로 돌려보낸다 —
+    # 이미지를 다시 올리지 않으므로 관계 찾기는 훨씬 빠르다.
+    lens_results: Optional[Dict[DirectingLens, "DirectingLensResult"]] = None
+
+
+class DirectingAlternative(BaseModel):
+    """한 갈래의 연출 선택.
+
+    기준(criterion)에 어떻게 답하느냐에 따라 갈린다. 서로 배타적이어야
+    선택이 된다 — 함께 할 수 있는 것을 나열하면 그건 조언 목록이다.
+    """
+
+    # 'keep'은 지금 상태를 유지하는 길. 언제나 하나 있어야 한다.
+    kind: Literal["keep", "change"]
+    # 버튼에 붙는 짧은 말. "그대로 두기", "더 넓게 잡기"
+    label: str = Field(min_length=1, max_length=24)
+    # 이 길을 고르면 무엇이 달라지는가. 한 문장.
+    effect: str = Field(min_length=1, max_length=160)
 
 
 class DirectingDiagnosis(BaseModel):
@@ -418,10 +503,36 @@ class DirectingDiagnosis(BaseModel):
     level: DirectingDiagnosticLevel
     targets: List[str] = Field(min_length=1)
     diagnosis: str
+    # 이 판단이 무엇을 보고 내려졌는가. 모델이 아니라 서버가 rule_id로
+    # 채운다 — 기준이 매번 달라지면 같은 문제에 다른 잣대가 적용된다.
+    criterion: str = ""
     evidence: List[str] = Field(min_length=1, max_length=2)
     theory_basis: Optional[str] = None
     theory_source: Optional[str] = None
     suggested_action: str
+    # 갈 수 있는 다른 길. 첫 번째는 언제나 '그대로 두기'다 — 유지도 연출
+    # 결정이고, 선택지에 없으면 진단이 곧 지시가 된다 (design_goal.md DG1 P2).
+    alternatives: List["DirectingAlternative"] = Field(default_factory=list, max_length=3)
+
+    @model_validator(mode="after")
+    def ensure_keep_alternative(self):
+        """'그대로 두기'가 없으면 만들어 맨 앞에 둔다.
+
+        프롬프트로 일러도 모델이 빠뜨릴 때가 있다. 유지가 선택지에서 빠지면
+        진단이 곧 지시가 되어, 감독이 그 판단을 물릴 방법이 없어진다.
+        """
+        if not self.alternatives:
+            return self
+        if not any(item.kind == "keep" for item in self.alternatives):
+            self.alternatives.insert(0, DirectingAlternative(
+                kind="keep",
+                label="그대로 두기",
+                effect="지금 판단을 유지합니다. 위 진단은 감수하는 것이 됩니다.",
+            ))
+            del self.alternatives[3:]
+        # 유지가 첫 번째로 온다 — 무엇을 안 해도 되는지가 먼저 보여야 한다.
+        self.alternatives.sort(key=lambda item: item.kind != "keep")
+        return self
 
     @model_validator(mode="after")
     def validate_multi_panel_levels(self):
@@ -433,23 +544,94 @@ class DirectingDiagnosis(BaseModel):
         return self
 
 
+class DirectingLevelAssessment(BaseModel):
+    """A compact status for every diagnostic level, including levels with no defect."""
+
+    level: DirectingDiagnosticLevel
+    status: DirectingLevelStatus
+    summary: str = Field(min_length=1, max_length=240)
+    # `check`는 화면만으로 판단할 수 없다는 뜻이다. 그것을 요약 문장으로만
+    # 두면 감독이 무엇을 답해야 하는지 알 수 없다 — 보이지 않는 공백은
+    # 질문으로 되돌린다 (design_goal.md DG1 P2).
+    open_question: str = ""
+
+    @model_validator(mode="after")
+    def validate_open_question(self):
+        # 판단이 내려진 층위에 질문이 붙으면 무엇을 답해야 하는지 흐려진다.
+        if self.status != "check":
+            self.open_question = ""
+        return self
+
+
 class DirectingLensResult(BaseModel):
     summary: str
-    diagnoses: List[DirectingDiagnosis] = Field(default_factory=list, max_length=1)
+    level_assessments: List[DirectingLevelAssessment] = Field(min_length=4, max_length=4)
+    diagnoses: List[DirectingDiagnosis] = Field(default_factory=list, max_length=4)
 
     @model_validator(mode="after")
     def validate_unique_diagnosis_ids(self):
         diagnosis_ids = [diagnosis.id for diagnosis in self.diagnoses]
         if len(diagnosis_ids) != len(set(diagnosis_ids)):
             raise ValueError("diagnosis ids must be unique within a lens result")
+        assessment_levels = [assessment.level for assessment in self.level_assessments]
+        expected_levels = {
+            "attribute", "shot_structure", "shot_relation", "scene_structure",
+        }
+        if set(assessment_levels) != expected_levels or len(assessment_levels) != len(expected_levels):
+            raise ValueError("level_assessments must contain each diagnostic level exactly once")
+        diagnosis_levels = [diagnosis.level for diagnosis in self.diagnoses]
+        if len(diagnosis_levels) != len(set(diagnosis_levels)):
+            raise ValueError("only one diagnosis is allowed per diagnostic level")
+        status_by_level = {assessment.level: assessment.status for assessment in self.level_assessments}
+        if any(status_by_level[diagnosis.level] != "change" for diagnosis in self.diagnoses):
+            raise ValueError("a diagnosis must belong to a change-level assessment")
+        changed_levels = {
+            assessment.level
+            for assessment in self.level_assessments
+            if assessment.status == "change"
+        }
+        if changed_levels != set(diagnosis_levels):
+            raise ValueError("every change-level assessment must include one diagnosis")
         return self
 
 
 class DirectingCommonFinding(BaseModel):
-    type: Literal["agreement", "conflict"]
+    """렌즈 사이의 관계.
+
+    'agreement | conflict'만으로는 결과만 말하고 관계를 말하지 못한다.
+    한 렌즈의 결정이 다른 렌즈의 판단을 어떻게 바꾸는지가 드러나야
+    네 렌즈가 독립적 평가자가 아니라 연결된 시선이 된다.
+    """
+
+    type: Literal["agreement", "conflict", "consequence"]
     summary: str
     lenses: List[DirectingLens] = Field(min_length=2)
     diagnosis_ids: List[str] = Field(min_length=2)
+    # consequence일 때: 어느 렌즈의 결정이 원인이고 어느 쪽이 그 영향을 받는가.
+    # 방향이 있어야 어디를 고쳐야 하는지가 정해진다.
+    source_lens: Optional[DirectingLens] = None
+    affected_lens: Optional[DirectingLens] = None
+
+    @model_validator(mode="after")
+    def validate_consequence_direction(self):
+        if self.type == "consequence" and not (self.source_lens and self.affected_lens):
+            raise ValueError("consequence finding must name source_lens and affected_lens")
+        if self.type == "consequence" and self.source_lens == self.affected_lens:
+            raise ValueError("consequence must relate two different lenses")
+        return self
+
+
+class DirectingOrder(BaseModel):
+    """어느 렌즈부터 손댈 것인가.
+
+    세 렌즈가 각자 문제를 짚으면 감독은 어디부터 열어야 할지 모른다.
+    관계가 그 순서를 정한다 — 원인을 먼저 고쳐야 결과가 따라 달라진다.
+    """
+
+    first_lens: DirectingLens
+    reason: str
+    # 먼저 고친 뒤 다시 봐야 하는 렌즈. 원인이 바뀌면 결과도 바뀐다.
+    then: List[DirectingLens] = Field(default_factory=list)
 
 
 class DirectingChoiceOption(BaseModel):
@@ -486,6 +668,8 @@ class DirectingQuestion(BaseModel):
 class DirectingReviewResponse(BaseModel):
     lens_results: Dict[DirectingLens, DirectingLensResult]
     common_findings: List[DirectingCommonFinding] = Field(default_factory=list)
+    # 다관점에서만 나온다. 관계를 근거로 어느 렌즈부터 볼지 제안한다.
+    order: Optional[DirectingOrder] = None
     directing_choices: List[DirectingChoice] = Field(default_factory=list)
     questions: List[DirectingQuestion] = Field(default_factory=list)
 

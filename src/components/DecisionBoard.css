@@ -1785,6 +1785,80 @@ button.active .lens-glass::after {
   line-height: 1.6;
 }
 
+.directing-level-list {
+  display: grid;
+  gap: 7px;
+}
+
+.directing-level-card {
+  overflow: hidden;
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  border-radius: 8px;
+  background: rgba(15, 23, 42, 0.34);
+}
+
+.directing-level-card > summary {
+  display: grid;
+  grid-template-columns: 78px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 9px;
+  padding: 10px 11px;
+  cursor: pointer;
+  list-style: none;
+}
+
+.directing-level-card > summary::-webkit-details-marker {
+  display: none;
+}
+
+.directing-level-card > summary > span {
+  color: rgba(226, 232, 240, 0.9);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.directing-level-card > summary > p {
+  overflow: hidden;
+  margin: 0;
+  color: rgba(203, 213, 225, 0.76);
+  font-size: 12.5px;
+  line-height: 1.4;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.directing-level-card > summary > em {
+  padding: 4px 7px;
+  border-radius: 999px;
+  font-size: 10.5px;
+  font-style: normal;
+  font-weight: 850;
+  white-space: nowrap;
+}
+
+.directing-level-card.clear > summary > em {
+  background: rgba(52, 211, 153, 0.13);
+  color: #a7f3d0;
+}
+
+.directing-level-card.check > summary > em {
+  background: rgba(96, 165, 250, 0.14);
+  color: #bfdbfe;
+}
+
+.directing-level-card.has-issue {
+  border-color: rgba(251, 191, 36, 0.24);
+}
+
+.directing-level-card.has-issue > summary > em {
+  background: rgba(251, 191, 36, 0.14);
+  color: #fde68a;
+}
+
+.directing-level-card .directing-diagnosis-card {
+  margin: 0 9px 9px;
+}
+
 .directing-diagnosis-card {
   display: grid;
   gap: 12px;
@@ -4452,6 +4526,60 @@ button.active .lens-glass::after {
   line-height: 1.55;
 }
 
+.viewer-reading-conditions {
+  width: min(100%, 680px);
+  display: grid;
+  gap: 9px;
+  margin-top: 19px;
+  padding: 11px;
+  border: 1px solid rgba(165, 180, 252, .14);
+  border-radius: 9px;
+  background: rgba(15, 23, 42, .28);
+}
+
+.viewer-reading-conditions > header {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.viewer-reading-conditions header > div { display: grid; gap: 2px; }
+.viewer-reading-conditions header span { color: #c4b5fd; font-size: 9.5px; font-weight: 850; }
+.viewer-reading-conditions header strong { color: rgba(241, 245, 249, .92); font-size: 12px; }
+.viewer-reading-conditions header small { max-width: 235px; color: rgba(148, 163, 184, .65); font-size: 9.5px; line-height: 1.35; text-align: right; }
+
+.viewer-reading-conditions > div {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 7px;
+}
+
+.viewer-reading-conditions button {
+  position: relative;
+  display: grid;
+  align-content: start;
+  gap: 4px;
+  min-width: 0;
+  min-height: 116px;
+  padding: 10px;
+  border: 1px solid rgba(148, 163, 184, .15);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, .022);
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 140ms ease, background 140ms ease;
+}
+
+.viewer-reading-conditions button:hover { border-color: rgba(165, 180, 252, .38); background: rgba(99, 102, 241, .06); }
+.viewer-reading-conditions button.selected { border-color: rgba(167, 139, 250, .62); background: rgba(109, 40, 217, .12); box-shadow: inset 0 0 0 1px rgba(167, 139, 250, .12); }
+.viewer-reading-conditions button > span { position: absolute; top: 8px; right: 8px; color: rgba(196, 181, 253, .72); font-size: 12px; font-weight: 900; }
+.viewer-reading-conditions button.selected > span { color: #ddd6fe; }
+.viewer-reading-conditions button > strong { padding-right: 14px; color: rgba(241, 245, 249, .9); font-size: 11px; line-height: 1.3; }
+.viewer-reading-conditions button > p { margin: 0; color: rgba(203, 213, 225, .67); font-size: 10px; line-height: 1.45; }
+.viewer-reading-conditions button > small { margin-top: auto; color: rgba(147, 197, 253, .75); font-size: 9px; line-height: 1.35; }
+
 .viewer-run-button,
 .viewer-rerun-button {
   align-self: flex-start;
@@ -4471,6 +4599,11 @@ button.active .lens-glass::after {
 .viewer-rerun-button:disabled { cursor: not-allowed; opacity: .55; }
 
 .viewer-report { display: grid; gap: 10px; }
+
+.viewer-reading-tabs { display: flex; flex-wrap: wrap; gap: 6px; }
+.viewer-reading-tabs button { padding: 6px 9px; border: 1px solid rgba(148, 163, 184, .2); border-radius: 999px; background: rgba(15, 23, 42, .42); color: rgba(203, 213, 225, .72); font-size: 10px; font-weight: 750; cursor: pointer; }
+.viewer-reading-tabs button:hover { border-color: rgba(167, 139, 250, .48); color: rgba(241, 245, 249, .9); }
+.viewer-reading-tabs button.active { border-color: rgba(167, 139, 250, .66); background: rgba(109, 40, 217, .16); color: #ede9fe; }
 
 .viewer-whole-reading {
   padding: 12px;
@@ -4605,6 +4738,51 @@ button.active .lens-glass::after {
 .viewer-review-points > button:hover { border-color: rgba(251, 191, 36, .34); background: rgba(245, 158, 11, .09); }
 .viewer-review-points > button strong { color: #fde68a; font-size: 9.5px; white-space: nowrap; }
 .viewer-review-points > button span { color: rgba(226, 232, 240, .75); font-size: 10.5px; line-height: 1.4; }
+
+.viewer-perspective-comparison { display: grid; gap: 8px; padding: 11px; border: 1px solid rgba(167, 139, 250, .18); border-radius: 9px; background: linear-gradient(135deg, rgba(76, 29, 149, .12), rgba(15, 23, 42, .3)); }
+.viewer-perspective-comparison > header { display: grid; gap: 3px; }
+.viewer-perspective-comparison > header span { color: #ddd6fe; font-size: 10px; font-weight: 850; }
+.viewer-perspective-comparison > header p { margin: 0; color: rgba(226, 232, 240, .78); font-size: 10.5px; line-height: 1.45; }
+.viewer-perspective-comparison article { display: grid; grid-template-columns: 42px minmax(0, 1fr); gap: 8px; padding-top: 8px; border-top: 1px solid rgba(167, 139, 250, .13); }
+.viewer-perspective-comparison article > button { height: 24px; padding: 0 5px; border: 1px solid rgba(167, 139, 250, .27); border-radius: 6px; background: rgba(109, 40, 217, .1); color: #ddd6fe; font-size: 9px; font-weight: 850; cursor: pointer; }
+.viewer-perspective-comparison article > div { display: grid; gap: 5px; }
+.viewer-perspective-comparison article small { color: rgba(196, 181, 253, .7); font-size: 9px; line-height: 1.35; }
+.viewer-perspective-comparison article p { display: grid; gap: 2px; margin: 0; color: rgba(226, 232, 240, .78); font-size: 10.5px; line-height: 1.42; }
+.viewer-perspective-comparison article p strong { color: rgba(241, 245, 249, .9); font-size: 9px; }
+.viewer-perspective-comparison article em { color: rgba(147, 197, 253, .77); font-size: 9.5px; font-style: normal; line-height: 1.4; }
+.viewer-divergence-routes { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 2px; }
+.viewer-divergence-routes button { padding: 4px 6px; border: 1px solid rgba(125, 211, 252, .18); border-radius: 5px; background: rgba(14, 116, 144, .1); color: rgba(186, 230, 253, .9); font-size: 9px; font-weight: 750; cursor: pointer; }
+.viewer-divergence-routes button:hover { border-color: rgba(125, 211, 252, .42); background: rgba(14, 116, 144, .18); }
+
+.viewer-decision-layer { display: grid; gap: 9px; padding: 12px; border: 1px solid rgba(74, 222, 128, .16); border-radius: 10px; background: linear-gradient(135deg, rgba(20, 83, 45, .13), rgba(15, 23, 42, .32)); }
+.viewer-decision-layer > header { display: grid; gap: 3px; }
+.viewer-decision-layer > header span { color: #bbf7d0; font-size: 10px; font-weight: 850; }
+.viewer-decision-layer > header strong { color: rgba(240, 253, 244, .94); font-size: 12px; }
+.viewer-decision-layer > header p { margin: 0; color: rgba(203, 213, 225, .68); font-size: 10px; line-height: 1.45; }
+.viewer-decision-card { display: grid; gap: 8px; padding: 10px; border: 1px solid rgba(74, 222, 128, .16); border-radius: 8px; background: rgba(15, 23, 42, .32); }
+.viewer-decision-card > header { display: flex; align-items: start; justify-content: space-between; gap: 8px; }
+.viewer-decision-card > header > div { display: grid; gap: 2px; }
+.viewer-decision-card > header span { color: rgba(187, 247, 208, .78); font-size: 9px; font-weight: 800; }
+.viewer-decision-card > header strong { color: rgba(241, 245, 249, .9); font-size: 11px; }
+.viewer-decision-card > header em { padding: 4px 6px; border-radius: 999px; background: rgba(52, 211, 153, .12); color: #bbf7d0; font-size: 9px; font-style: normal; font-weight: 850; white-space: nowrap; }
+.viewer-decision-card > header em.revise { background: rgba(251, 191, 36, .13); color: #fde68a; }
+.viewer-decision-card > header em.defer { background: rgba(148, 163, 184, .12); color: #cbd5e1; }
+.viewer-decision-layers { display: grid; gap: 5px; }
+.viewer-decision-layers p { display: grid; gap: 2px; margin: 0; color: rgba(226, 232, 240, .75); font-size: 10px; line-height: 1.42; }
+.viewer-decision-layers strong { color: rgba(196, 181, 253, .88); font-size: 9px; }
+.viewer-decision-layers .creator-intent { padding: 7px 8px; border-left: 2px solid rgba(74, 222, 128, .48); background: rgba(22, 101, 52, .1); }
+.viewer-decision-layers .creator-intent strong { color: #bbf7d0; }
+.viewer-decision-actions { display: flex; flex-wrap: wrap; gap: 5px; }
+.viewer-decision-actions button { padding: 5px 7px; border: 1px solid rgba(148, 163, 184, .18); border-radius: 5px; background: rgba(255, 255, 255, .025); color: rgba(226, 232, 240, .75); font-size: 9.5px; font-weight: 750; cursor: pointer; }
+.viewer-decision-actions button:hover { border-color: rgba(134, 239, 172, .45); color: rgba(240, 253, 244, .95); }
+.viewer-decision-actions button.active { border-color: rgba(74, 222, 128, .52); background: rgba(22, 163, 74, .14); color: #dcfce7; }
+.viewer-decision-note { display: grid; gap: 4px; }
+.viewer-decision-note > span { color: rgba(187, 247, 208, .78); font-size: 9px; font-weight: 800; }
+.viewer-decision-note textarea { min-height: 48px; resize: vertical; border: 1px solid rgba(148, 163, 184, .16); border-radius: 6px; padding: 7px; background: rgba(2, 6, 23, .34); color: rgba(241, 245, 249, .88); font: inherit; font-size: 10px; line-height: 1.4; }
+.viewer-decision-note textarea:focus { outline: 1px solid rgba(74, 222, 128, .55); border-color: rgba(74, 222, 128, .4); }
+.viewer-decision-routes { display: flex; flex-wrap: wrap; gap: 5px; }
+.viewer-decision-routes button { padding: 5px 7px; border: 1px solid rgba(251, 191, 36, .22); border-radius: 5px; background: rgba(245, 158, 11, .08); color: #fde68a; font-size: 9px; font-weight: 800; cursor: pointer; }
+.viewer-decision-routes button:hover { border-color: rgba(251, 191, 36, .46); background: rgba(245, 158, 11, .14); }
 
 .viewer-reading-steps { display: grid; gap: 8px; margin: 12px 0; padding: 0; list-style: none; }
 .viewer-reading-steps li button { width: 100%; display: grid; grid-template-columns: 27px 1fr; gap: 8px; border: 0; padding: 5px; border-radius: 5px; background: transparent; color: inherit; text-align: left; cursor: pointer; }
@@ -4746,6 +4924,13 @@ button.active .lens-glass::after {
     grid-template-columns: 1fr;
     gap: 3px;
   }
+}
+
+@media (max-width: 640px) {
+  .viewer-reading-conditions > header { align-items: start; flex-direction: column; }
+  .viewer-reading-conditions header small { max-width: none; text-align: left; }
+  .viewer-reading-conditions > div { grid-template-columns: 1fr; }
+  .viewer-reading-conditions button { min-height: 0; }
 }
 
 /* --- 씬 안의 상태 변화 (DG2 P2) ----------------------------------------
@@ -5167,4 +5352,253 @@ button.active .lens-glass::after {
   margin: 6px 0 0;
   color: rgba(232, 168, 168, 0.9);
   font-size: 10.5px;
+}
+
+/* 판단 기준. 진단보다 먼저 읽혀야 한다 — 무엇을 보고 그렇게 판단했는지
+   알아야 그 판단에 동의하거나 반박할 수 있다. */
+.directing-criterion {
+  margin: 0 0 6px;
+  padding-left: 9px;
+  border-left: 2px solid rgba(216, 170, 98, 0.5);
+  color: rgba(216, 170, 98, 0.9);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+/* 감독만 답할 수 있는 것. 진단이 아니라 되돌린 질문이므로 다르게 보인다. */
+.directing-open-question {
+  margin: 8px 0 0;
+  padding: 9px 11px;
+  border: 1px dashed rgba(150, 190, 210, 0.4);
+  border-radius: 7px;
+  background: rgba(150, 190, 210, 0.06);
+  color: rgba(186, 220, 234, 0.95);
+  font-size: 11.5px;
+  line-height: 1.55;
+}
+
+/* 갈 수 있는 길. 하나를 고르는 것이지 전부 하는 것이 아니다. */
+.directing-alternatives {
+  margin-top: 10px;
+  padding-top: 9px;
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.directing-alternatives > span {
+  display: block;
+  margin-bottom: 6px;
+  color: rgba(255, 255, 255, 0.34);
+  font-size: 10px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.directing-alternatives ul {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.directing-alternatives li {
+  padding: 7px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+/* 유지는 아무것도 안 하는 길이라 다른 선택과 성격이 다르다. */
+.directing-alternatives li.is-keep {
+  border-style: dashed;
+  border-color: rgba(255, 255, 255, 0.16);
+  background: transparent;
+}
+
+.directing-alternatives strong {
+  display: block;
+  margin-bottom: 2px;
+  color: rgba(255, 255, 255, 0.86);
+  font-size: 11.5px;
+}
+
+.directing-alternatives li.is-keep strong {
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.directing-alternatives p {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.45);
+  font-size: 10.5px;
+  line-height: 1.5;
+}
+
+/* 한쪽 렌즈의 결정이 다른 쪽 판단을 만든 경우. 방향이 있어 고칠 곳이
+   정해진다 — 영향받은 쪽을 고치면 증상만 사라진다. */
+.multi-review-tension.is-consequence {
+  border-color: rgba(216, 170, 98, 0.32);
+}
+
+.multi-review-tension-where {
+  display: block;
+  margin-top: 8px;
+  color: rgba(216, 170, 98, 0.95);
+  font-size: 11.5px;
+  font-weight: 700;
+}
+
+/* 관계가 없는 것도 정보다. 비워 두면 고장으로 읽힌다. */
+.multi-review-empty {
+  margin: 10px 0 0;
+  padding: 12px 14px;
+  border: 1px dashed rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  color: rgba(255, 255, 255, 0.42);
+  font-size: 11.5px;
+  line-height: 1.55;
+}
+
+/* 어느 렌즈부터 볼 것인가. 세 카드보다 먼저 읽혀야 한다. */
+.multi-review-order {
+  margin-bottom: 12px;
+  padding: 12px 14px;
+  border: 1px solid rgba(216, 170, 98, 0.34);
+  border-radius: 9px;
+  background: rgba(216, 170, 98, 0.07);
+}
+
+.multi-review-order header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.multi-review-order header span {
+  color: rgba(216, 170, 98, 0.9);
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+}
+
+.multi-review-order header em {
+  padding: 1px 7px;
+  border-radius: 4px;
+  background: rgba(216, 170, 98, 0.2);
+  color: rgba(230, 195, 140, 0.98);
+  font-size: 10px;
+  font-style: normal;
+  font-weight: 700;
+}
+
+.multi-review-order-go {
+  padding: 6px 13px;
+  border: 1px solid rgba(216, 170, 98, 0.5);
+  border-radius: 6px;
+  background: rgba(216, 170, 98, 0.16);
+  color: rgba(232, 198, 145, 0.98);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.multi-review-order-go:hover {
+  background: rgba(216, 170, 98, 0.26);
+}
+
+.multi-review-order p {
+  margin: 8px 0 0;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 11.5px;
+  line-height: 1.55;
+}
+
+.multi-review-order-then {
+  color: rgba(255, 255, 255, 0.38) !important;
+  font-size: 10.5px !important;
+}
+
+/* 관계에 대한 감독의 판정. AI가 말하고 끝나면 판결이 된다. */
+.multi-review-verdict {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+  padding-top: 9px;
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.multi-review-verdict button {
+  padding: 5px 11px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 6px;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.55);
+  font-family: inherit;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.multi-review-verdict button:hover {
+  border-color: rgba(255, 255, 255, 0.28);
+  color: rgba(255, 255, 255, 0.85);
+}
+
+/* 고른 것. 다시 누르면 무를 수 있다. */
+.multi-review-verdict button.selected {
+  border-color: rgba(216, 170, 98, 0.6);
+  background: rgba(216, 170, 98, 0.18);
+  color: rgba(232, 198, 145, 0.98);
+  font-weight: 700;
+}
+
+/* 관계 찾기. 렌즈 판단을 먼저 읽고, 필요할 때 누른다. */
+.multi-review-relate {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.multi-review-relate button {
+  flex-shrink: 0;
+  padding: 6px 13px;
+  border: 1px solid rgba(216, 170, 98, 0.45);
+  border-radius: 6px;
+  background: rgba(216, 170, 98, 0.14);
+  color: rgba(228, 190, 138, 0.98);
+  font-family: inherit;
+  font-size: 11.5px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.multi-review-relate button:hover:not(:disabled) {
+  background: rgba(216, 170, 98, 0.24);
+}
+
+.multi-review-relate button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.multi-review-relate > span {
+  color: rgba(255, 255, 255, 0.38);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+/* 본 뒤에 패널이 바뀌었다. 옛 분석이 최신인 것처럼 남으면 안 된다. */
+.multi-review-outdated {
+  margin: 0 0 10px;
+  padding: 8px 12px;
+  border: 1px solid rgba(232, 168, 168, 0.28);
+  border-radius: 7px;
+  background: rgba(232, 168, 168, 0.07);
+  color: rgba(236, 180, 180, 0.92);
+  font-size: 11.5px;
 }

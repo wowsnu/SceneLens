@@ -2,7 +2,6 @@ import { useState } from 'react'
 import useStore from '../store/useStore'
 import DrawingToolbar from './DrawingToolbar'
 import DrawingCanvas from './DrawingCanvas'
-import IntentBar from './IntentBar'
 import StrategyOverlay from './StrategyOverlay'
 import './CenterPanel.css'
 
@@ -58,9 +57,6 @@ export default function CenterPanel({ showScriptPanel = true }) {
         </div>
         <div className="canvas-container">
           <DrawingCanvas />
-        </div>
-        <div className="intent-bar-row">
-          <IntentBar />
         </div>
       </div>
     </div>

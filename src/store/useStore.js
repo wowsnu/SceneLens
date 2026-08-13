@@ -2849,6 +2849,15 @@ const useStore = create((set, get) => ({
   // 도구 상태 자체는 StoryboardView의 로컬 UI 상태이고, store에는 사용자가
   // 실제로 남긴 화살표·메모만 영속한다.
   panelToolRequest: null,
+  // 어느 이음새를 열어 보라는 요청. 진단에서 바로 그 자리로 가기 위한 것 —
+  // 편집 문제는 컷 사이에 있으므로 컷 플랜 표로 되돌아갈 이유가 없다.
+  // action이 'merge'/'split'이면 그 미리보기까지 연다. 나누고 합치는 도구가
+  // 이미 이음새에 있으므로, 진단은 그 자리로 보내기만 하면 된다.
+  seamFocusRequest: null,
+  requestSeamFocus: (shotId, action = null) => set({
+    seamFocusRequest: { id: `seam-focus-${Date.now()}`, shotId, action },
+  }),
+
   requestPanelTool: (shotId, tool, payload = {}) => set({
     panelToolRequest: {
       id: `panel-tool-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
@@ -3887,6 +3896,19 @@ const useStore = create((set, get) => ({
   viewerFindingHandoff: null,
   setViewerFindingHandoff: (finding) => set({ viewerFindingHandoff: finding }),
   clearViewerFindingHandoff: () => set({ viewerFindingHandoff: null }),
+  // Viewer의 읽힘과 제작자 판단을 분리해 둔다. Viewer를 닫거나 다시
+  // 분석해도, 같은 씬·브랜치·컷 범위에 남긴 결정과 메모는 유지된다.
+  viewerDecisions: {},
+  saveViewerDecision: (decisionId, changes) => set((state) => ({
+    viewerDecisions: {
+      ...state.viewerDecisions,
+      [decisionId]: {
+        ...(state.viewerDecisions[decisionId] || {}),
+        ...changes,
+        updatedAt: Date.now(),
+      },
+    },
+  })),
   storyboardPanelsVisible: true,
   setStoryboardPanelsVisible: (visible) => set({
     storyboardPanelsVisible: visible,

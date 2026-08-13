@@ -21,6 +21,12 @@ async def enhance_sketch_endpoint(request: EnhanceSketchRequest):
             request.image,
             request.script_context,
             request.intent,
+            prompt=request.prompt,
+            shared=request.shared,
+            previous=request.previous,
+            references=request.references,
+            style=request.style,
+            layout=request.layout,
         )
         return EnhanceSketchResponse(enhanced_image=enhanced_image)
     except Exception as e:

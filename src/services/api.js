@@ -82,11 +82,24 @@ export async function theoryAnswer(cir, intent, scriptContext = '') {
   }, 30000)
 }
 
-export async function enhanceSketch(imageBase64, scriptContext, intent = '') {
+export async function enhanceSketch(imageBase64, {
+  scriptContext = '', intent = '', prompt = '', shared = '', previous = '',
+  references = [], style = '', layout = '',
+} = {}) {
   return fetchWithTimeout(`${API_BASE}/enhance-sketch`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ image: imageBase64, script_context: scriptContext, intent }),
+    body: JSON.stringify({
+      image: imageBase64,
+      script_context: scriptContext,
+      intent,
+      prompt,
+      shared,
+      previous,
+      references,
+      style,
+      layout,
+    }),
   }, 60000)
 }
 
@@ -178,19 +191,23 @@ export async function requestAutoFillRange({ shots, scriptContext, intent, userP
   }, FILL_TIMEOUT)
 }
 
-export async function requestViewerReflection({ panels }) {
+export async function requestViewerReflection({ panels, readingConditions = ['first_viewer'] }) {
   return fetchWithTimeout(`${API_BASE}/viewer/reflection`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ panels }),
-  }, 120000)
+    body: JSON.stringify({ panels, reading_conditions: readingConditions }),
+  }, 240000)
 }
 
-export async function requestDirectingReview({ mode, panels, intent = '' }) {
+export async function requestDirectingReview({
+  mode, panels, intent = '', settled = [], lensResults = null,
+}) {
   return fetchWithTimeout(`${API_BASE}/directing-review`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ mode, panels, intent }),
+    // settled는 감독이 이미 판정한 관계다. 다시 짚지 않게 함께 보낸다.
+    // lensResults는 mode='relate'일 때만 쓴다 — 이미지를 다시 올리지 않는다.
+    body: JSON.stringify({ mode, panels, intent, settled, lens_results: lensResults }),
   }, 180000)
 }
 

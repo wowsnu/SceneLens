@@ -580,14 +580,18 @@ def _gemini_generate_image(prompt: str, input_image_bytes: bytes = None) -> byte
     raise ValueError("Gemini did not return an image")
 
 
-SKETCH_QUALITY_EXAMPLE_PATH = EXAMPLES_DIR / "sketch_target_quality.png"
-
 async def enhance_sketch(
     image_base64: str,
     script_context: str,
     intent: str = "",
+    prompt: str = "",
+    shared: str = "",
+    previous: str = "",
+    references: list = None,
+    style: str = "",
+    layout: str = "",
 ) -> str:
-    """Enhance a rough sketch. Returns base64 PNG."""
+    """Conservatively add a few readable strokes to a sketch. Returns base64 PNG."""
     if image_base64.startswith('data:'):
         image_base64 = image_base64.split(',')[1]
 
@@ -598,24 +602,46 @@ async def enhance_sketch(
 [Scene Context]
 {script_context}
 
-[Director's Intent]
-{intent or 'Clean up the sketch while keeping the same rough storyboard quality as the reference'}
+[Current cut — use only to recognize elements already visible, never to add new ones]
+{prompt}
 
-The FIRST image attached is the TARGET QUALITY REFERENCE — match this level of finish exactly.
-The SECOND image is the director's rough sketch to enhance.
+[Shared scene basis]
+{shared}
+
+[Previous cut, for continuity only]
+{previous}
+
+[Layout basis]
+{layout}
+
+[Requested drawing style]
+{style}
+
+[Optional screenplay context — use only to recognize elements already visible, never to add new ones]
+{script_context}
+
+[Optional Director Note — never use this to alter the existing composition]
+{intent or 'No extra instruction. Preserve the sketch and add only a few helpful strokes if needed.'}
+
+Image 1 is the director's original sketch and is the source of truth. Any later images are character,
+location, or layout references for recognizing what is already implied in image 1. Do not copy, redraw,
+or add anything from those references unless image 1 already clearly implies it. Make only the tiny
+additions permitted above.
 """
 
     client = get_client()
 
     contents = [prompt]
 
-    # Attach quality reference example first
-    if SKETCH_QUALITY_EXAMPLE_PATH.exists():
-        ref_bytes = SKETCH_QUALITY_EXAMPLE_PATH.read_bytes()
-        contents.append(types.Part.from_bytes(data=ref_bytes, mime_type='image/png'))
-
-    # Then attach the actual sketch
+    # The original always comes first so visual identity, crop, and existing
+    # strokes remain authoritative. Later references only resolve ambiguity.
     contents.append(types.Part.from_bytes(data=image_bytes, mime_type='image/png'))
+    for ref in references or []:
+        try:
+            ref_bytes = base64.b64decode(ref.image, validate=True)
+            contents.append(types.Part.from_bytes(data=ref_bytes, mime_type='image/png'))
+        except (ValueError, TypeError):
+            print(f"[enhance-sketch] skipping unreadable {getattr(ref, 'kind', 'reference')} reference")
 
     response = client.models.generate_content(
         model='gemini-2.5-flash-image',
