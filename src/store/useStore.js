@@ -2431,7 +2431,9 @@ const useStore = create((set, get) => ({
       }
     }),
   })),
-  addCutPlanItem: (afterItemId = null, beat = 0) => set((state) => {
+  // fields를 주면 그 내용으로 채운다. 빈 컷을 만들어 두면 대개 비어 있는
+  // 채로 남으므로, 편집이 제안한 내용을 그대로 받아 넣을 수 있게 한다.
+  addCutPlanItem: (afterItemId = null, beat = 0, fields = {}) => set((state) => {
     const next = [...state.cutPlan]
     const index = afterItemId
       ? next.findIndex((item) => item.id === afterItemId)
@@ -2441,7 +2443,9 @@ const useStore = create((set, get) => ({
       beat: anchorBeat,
       content: '',
       purpose: '',
-      provenance: 'User',
+      // 제안을 받아 넣었으면 사용자가 쓴 것이 아니다.
+      provenance: fields.content ? 'AI' : 'User',
+      ...fields,
     }))
     return { cutPlan: reorderCutPlan(next) }
   }),

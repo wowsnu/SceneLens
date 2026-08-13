@@ -293,6 +293,29 @@ export async function designShots({ heading, cuts, script = '', sceneIntention =
   return { shots: data.shots, coverage: data.coverage || null }
 }
 
+// --- 편집: 이음새에 넣을 컷 --------------------------------------------------
+// 빈 컷을 만들어 두면 대개 비어 있는 채로 남는다. 무엇을 넣어야 하는지는
+// 앞뒤 컷에 이미 드러나 있다.
+export async function suggestSeamInsert({
+  beforeContent = '', beforePurpose = '', afterContent = '', afterPurpose = '',
+  elision = '', script = '', diagnosis = '',
+}) {
+  const data = await fetchWithTimeout(`${API_BASE}/seam-insert`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      before_content: beforeContent,
+      before_purpose: beforePurpose,
+      after_content: afterContent,
+      after_purpose: afterPurpose,
+      elision,
+      script,
+      diagnosis,
+    }),
+  }, 60000)
+  return data.candidates || []
+}
+
 // --- 미장센: 공간 배치 ------------------------------------------------------
 // 그림이 아니라 좌표를 받는다. 그리는 것은 SpatialMap이 한다.
 export async function buildSpaceLayout({ heading, script, locationFacts = '' }) {

@@ -39,6 +39,7 @@ export default function GridView({
   const openAutoFill = useStore((s) => s.openAutoFill)
   const gapFills = useStore((s) => s.gapFills)
   const seams = useStore((s) => s.seams)
+  const screenplay = useStore((s) => s.screenplay)
   const updateSeam = useStore((s) => s.updateSeam)
   const clearSeam = useStore((s) => s.clearSeam)
   const cutPlan = useStore((s) => s.cutPlan)
@@ -93,6 +94,12 @@ export default function GridView({
   const [pendingEdit, setPendingEdit] = useState(null)
   // 합쳐질 내용. AI가 이어붙인 것을 기본값으로 두되 고칠 수 있게 한다.
   const [mergeDraft, setMergeDraft] = useState('')
+  // 넣을 컷의 후보. 빈 컷을 만들어 두면 대개 비어 있는 채로 남는다 —
+  // 무엇을 넣어야 하는지는 앞뒤 컷에 이미 드러나 있다.
+  const [insertCandidates, setInsertCandidates] = useState([])
+  const [insertChoice, setInsertChoice] = useState(null)
+  const [insertPending, setInsertPending] = useState(false)
+  const [insertError, setInsertError] = useState(null)
 
   // 미리보기를 열 때 초안을 만든다. 두 컷 사이에 생략해 둔 것이 있으면
   // 그것도 넣는다 — 합치면 그 일이 한 컷 안에서 일어나기 때문이다.
@@ -115,6 +122,35 @@ export default function GridView({
   // 진단에서 보낸 이음새 요청. 훅은 조건부 return보다 위에 있어야 한다.
   const seamFocusRequest = useStore((s) => s.seamFocusRequest)
   const [handledSeamFocus, setHandledSeamFocus] = useState(null)
+
+  // 이음새의 '생략된 것'을 함께 넘긴다 — 감독이 직접 적어 둔 것이라
+  // 무엇이 빠졌는지 가장 곧게 말해 준다.
+  const prevShotOf = (edit) => (edit ? shots[edit.index - 1] : null)
+
+  const requestInsertCandidates = async (cut, nextCut, prevShot) => {
+    setInsertPending(true)
+    setInsertError(null)
+    try {
+      const { suggestSeamInsert } = await import('../services/api')
+      const seam = prevShot ? seams[seamKeyFor(prevShot.id)] : null
+      const candidates = await suggestSeamInsert({
+        beforeContent: cut?.content || '',
+        beforePurpose: cut?.purpose || '',
+        afterContent: nextCut?.content || '',
+        afterPurpose: nextCut?.purpose || '',
+        elision: seam?.elision || '',
+        script: screenplay
+          .filter((element) => element.type === 'action')
+          .map((element) => element.text)
+          .join('\n'),
+      })
+      setInsertCandidates(candidates)
+    } catch (error) {
+      setInsertError(error.message)
+    } finally {
+      setInsertPending(false)
+    }
+  }
 
   const [rangeMode, setRangeMode] = useState(false)   // true = waiting for second tap
   const [rangeAnchor, setRangeAnchor] = useState(null) // first tap index
@@ -352,11 +388,16 @@ export default function GridView({
                         <div className="grid-seam-ops">
                           <button
                             type="button"
-                            onClick={() => setPendingEdit({
-                              kind: 'insert',
-                              cutId: prevShot.cutPlanItemId,
-                              index: i,
-                            })}
+                            onClick={() => {
+                              setInsertCandidates([])
+                              setInsertChoice(null)
+                              setInsertError(null)
+                              setPendingEdit({
+                                kind: 'insert',
+                                cutId: prevShot.cutPlanItemId,
+                                index: i,
+                              })
+                            }}
                           >
                             사이에 컷 넣기
                           </button>
@@ -596,7 +637,9 @@ export default function GridView({
                 ) : kind === 'insert' ? (
                   <>
                     <p>{cut.content || '(비어 있음)'}</p>
-                    <p className="grid-edit-new">새 컷 · 내용은 직접 씁니다</p>
+                    <p className="grid-edit-new">
+                      {insertChoice?.content || '새 컷 · 아래에서 고르거나 직접 씁니다'}
+                    </p>
                     <p>{nextCut?.content || '(비어 있음)'}</p>
                   </>
                 ) : (
@@ -607,6 +650,39 @@ export default function GridView({
                 )}
               </div>
             </div>
+
+            {/* 무엇을 넣을지. 앞뒤 컷과 이음새의 '생략된 것'에서 나온다. */}
+            {kind === 'insert' && (
+              <div className="grid-edit-candidates">
+                <div className="grid-edit-candidates-head">
+                  <span>무엇을 넣을까요</span>
+                  <button
+                    type="button"
+                    onClick={() => requestInsertCandidates(cut, nextCut, prevShotOf(pendingEdit))}
+                    disabled={insertPending}
+                  >
+                    {insertPending ? '보는 중…' : insertCandidates.length ? '다시 제안' : '편집에 물어보기'}
+                  </button>
+                </div>
+                {insertError && <p className="grid-edit-error">{insertError}</p>}
+                {insertCandidates.map((candidate) => {
+                  const chosen = insertChoice?.content === candidate.content
+                  return (
+                    <button
+                      key={candidate.content}
+                      type="button"
+                      className={`grid-edit-candidate${chosen ? ' selected' : ''}`}
+                      aria-pressed={chosen}
+                      onClick={() => setInsertChoice(chosen ? null : candidate)}
+                    >
+                      <strong>{candidate.content}</strong>
+                      <em>{candidate.purpose}{candidate.characters ? ` · ${candidate.characters}` : ''}</em>
+                      <span>{candidate.reason}</span>
+                    </button>
+                  )
+                })}
+              </div>
+            )}
 
             {/* 함께 바뀌는 것. 요청한 변경과 구분해 보여준다. */}
             <ul className="grid-edit-effects">
@@ -651,7 +727,11 @@ export default function GridView({
                   if (isMerge) {
                     mergeCuts(pendingEdit.cutId, { content: mergeDraft })
                   } else if (kind === 'insert') {
-                    addCutPlanItem(pendingEdit.cutId)
+                    addCutPlanItem(pendingEdit.cutId, cut.beat, insertChoice ? {
+                      content: insertChoice.content,
+                      purpose: insertChoice.purpose,
+                      characters: insertChoice.characters,
+                    } : {})
                   } else if (kind === 'swap') {
                     swapCutsAtSeam(pendingEdit.cutId)
                   } else {

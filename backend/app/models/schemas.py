@@ -746,6 +746,28 @@ class ReferenceImageRequest(BaseModel):
 class ReferenceImageResponse(BaseModel):
     image: str      # base64 PNG
 
+class SeamInsertRequest(BaseModel):
+    """두 컷 사이에 넣을 컷을 제안받는다."""
+
+    before_content: str = ""
+    before_purpose: str = ""
+    after_content: str = ""
+    after_purpose: str = ""
+    # 이음새에 적어 둔 '생략된 것'. 있으면 가장 곧은 근거다.
+    elision: Optional[str] = ""
+    script: Optional[str] = ""
+    # 진단에서 넘어온 경우, 왜 이 자리에 컷이 필요한지.
+    diagnosis: Optional[str] = ""
+
+class SeamInsertCandidate(BaseModel):
+    content: str
+    purpose: str = ""
+    characters: str = ""
+    reason: str = ""
+
+class SeamInsertResponse(BaseModel):
+    candidates: List[SeamInsertCandidate] = []
+
 class SpaceLayoutRequest(BaseModel):
     heading: str
     script: str

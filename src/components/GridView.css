@@ -1053,3 +1053,93 @@
   border-color: rgba(255, 255, 255, 0.3);
   color: rgba(255, 255, 255, 0.95);
 }
+
+/* 넣을 컷의 후보. 빈 컷을 만들어 두면 대개 비어 있는 채로 남는다. */
+.grid-edit-candidates {
+  margin-top: 10px;
+  padding-top: 9px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.grid-edit-candidates-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 7px;
+}
+
+.grid-edit-candidates-head span {
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 10.5px;
+  letter-spacing: 0.03em;
+}
+
+.grid-edit-candidates-head button {
+  padding: 4px 10px;
+  border: 1px solid rgba(150, 190, 210, 0.45);
+  border-radius: 5px;
+  background: rgba(150, 190, 210, 0.14);
+  color: rgba(186, 220, 234, 0.95);
+  font-family: inherit;
+  font-size: 10.5px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.grid-edit-candidates-head button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.grid-edit-candidate {
+  display: block;
+  width: 100%;
+  margin-bottom: 6px;
+  padding: 8px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.02);
+  color: inherit;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.grid-edit-candidate:hover {
+  border-color: rgba(255, 255, 255, 0.24);
+}
+
+.grid-edit-candidate.selected {
+  border-color: rgba(150, 190, 210, 0.6);
+  background: rgba(150, 190, 210, 0.12);
+}
+
+.grid-edit-candidate strong {
+  display: block;
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 11.5px;
+  line-height: 1.45;
+}
+
+.grid-edit-candidate em {
+  display: block;
+  margin-top: 3px;
+  color: rgba(186, 220, 234, 0.8);
+  font-size: 10px;
+  font-style: normal;
+}
+
+.grid-edit-candidate span {
+  display: block;
+  margin-top: 4px;
+  color: rgba(255, 255, 255, 0.42);
+  font-size: 10px;
+  line-height: 1.5;
+}
+
+.grid-edit-error {
+  margin: 0 0 6px;
+  color: rgba(232, 168, 168, 0.9);
+  font-size: 10.5px;
+}
