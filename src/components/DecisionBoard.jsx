@@ -11,7 +11,7 @@ import SceneOverview from './SceneOverview'
 import SpatialMap from './SpatialMap'
 import { requestDirectingReview, requestViewerReflection } from '../services/api'
 import './DecisionBoard.css'
-import { logEvent, logScaffold, normalizeLevel } from '../store/studyLog'
+import { logEvent, logScaffold, normalizeLevel, storyboardVersion } from '../store/studyLog'
 
 // Narrative만 사용자와 직접 협업하는 상위 Agent로 드러낸다.
 // 하위 생성 모듈은 내부적으로 Agent일 수 있지만 UI에서는 같은 장면을
@@ -1196,7 +1196,22 @@ function DirectingReviewResult({ run, onTool }) {
               className={`directing-level-card ${statusClass[assessment.status]}`}
               open={assessment.status === 'change' || Boolean(assessment.open_question)}
             >
-              <summary>
+              {/* 기준은 이 카드를 펴야 보인다. summary 클릭만 센다 —
+                  기본 열림인 details는 마운트 때 onToggle이 한 번 발생해서
+                  감독이 열지 않은 것까지 '봤다'로 세어진다. 접는 클릭도
+                  들어오므로 열려 있던 카드를 접은 경우는 뺀다. */}
+              <summary
+                onClick={(event) => {
+                  const closing = event.currentTarget.parentElement?.open
+                  if (closing || !diagnosis?.criterion) return
+                  logScaffold({
+                    feature: 'criterion',
+                    action: 'view',
+                    target: diagnosis.rule_id || assessment.level,
+                    lens: diagnosis.lens || null,
+                  })
+                }}
+              >
                 <span>{DIAGNOSTIC_LEVEL_LABELS[assessment.level]}</span>
                 <p>{assessment.summary}</p>
                 <em>{statusLabel[assessment.status]}</em>
@@ -2058,7 +2073,10 @@ export default function DecisionBoard({ boardView = 'split' }) {
     const panelOrders = renderedShots.map((shot) => shot.order)
     // 이 뒤에 오는 수정이 관객 읽기에서 나온 것인지 세려면 확인 시점이
     // 필요하다.
-    logEvent('viewer_read', { panels: panelOrders.length })
+    logEvent('viewer_read', {
+      panels: panelOrders.length,
+      storyboard_version: storyboardVersion(renderedShots),
+    })
     logScaffold({ feature: 'viewer', action: 'open', panels: panelOrders.length })
     setViewerStatus('loading')
     setViewerError('')
@@ -2100,6 +2118,16 @@ export default function DecisionBoard({ boardView = 'split' }) {
           panel_orders: divergence.panel_orders.map(mapPanelOrder),
         })),
       } : null
+      // 무엇을 보고 말한 것인지 남긴다. 이후 수정이 이 읽기에 대한
+      // 반응인지 판단하려면 읽은 스토리보드가 특정돼야 한다. 패널의
+      // 이미지가 바뀌면 다른 버전이므로, 읽은 패널의 이미지로 버전을
+      // 만든다.
+      logEvent('viewer_result', {
+        storyboard_version: storyboardVersion(renderedShots),
+        divergences: (comparison?.divergences || []).map((divergence, index) => (
+          divergence.id || `d${index + 1}`
+        )),
+      })
       setViewerReport({
         initial_reading: readings[0].reading,
         readings,

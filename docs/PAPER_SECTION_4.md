@@ -408,11 +408,12 @@ Regeneration은 별도 이벤트로도 두지만, Edit Event의 `regeneration`
 | Scaffolding — lens / cross_lens / viewer 열기 | 있음 |
 | Scaffolding — diagnosis 수용 | 있음 (고치러 이동한 것을 accept로 본다) |
 | Scaffolding — alternative select / accept / reject | 있음 (이음새 제안, 삽입 후보) |
-| Scaffolding — criterion 조회 | **없음** |
+| Scaffolding — criterion 조회 | 있음. 진단 카드를 편 클릭만 센다 |
 | Viewer — 호출, 판정 | 있음 |
-| Viewer — `storyboard_version`, `divergence_id`, `subsequent_edit_id` | **없음** |
+| Viewer — `storyboard_version`, `divergence_id` | 있음 |
+| Viewer — `subsequent_edit_id` | 있음. 저장하지 않고 `summarize`에서 잇는다 |
 | Regeneration — 횟수, 반복 여부 | 있음 |
-| Regeneration — 전후 version id | **없음** |
+| Regeneration — 전후 version id | **없음** (`storyboardVersion`으로 만들 수는 있다) |
 | 내보내기 (`Ctrl+Shift+E`) / 초기화 (`Ctrl+Shift+R`) | 있음 |
 
 `route` 이벤트는 스펙에 없지만 남긴다. 진단에서 고칠 자리로 **이동한 것**과

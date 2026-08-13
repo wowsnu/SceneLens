@@ -101,14 +101,17 @@ export const readLog = () => readJSON(STORAGE_KEY, [])
  */
 export const logEvent = (type, payload = {}) => {
   if (typeof window === 'undefined') return null
+  const log = readLog()
   const event = {
+    // 이벤트끼리 서로를 가리킬 수 있어야 한다 — Viewer 읽기 뒤에 온
+    // 첫 수정이 무엇인지가 분석에서 필요하다.
+    id: `e${log.length + 1}`,
     t: Date.now(),
     session: sessionId(),
     condition: condition(),
     type,
     ...payload,
   }
-  const log = readLog()
   log.push(event)
   writeJSON(STORAGE_KEY, log)
   return event
@@ -134,6 +137,24 @@ export const logEdit = ({ lens = null, level, target = null, source = 'manual', 
 )
 
 /**
+ * 이 스토리보드가 어떤 상태였는지를 짧은 값으로 만든다.
+ *
+ * Viewer가 읽은 것은 그 시점의 스토리보드다. 이후 수정이 그 읽기에
+ * 대한 반응인지 판단하려면 무엇을 보고 말한 것인지가 있어야 한다.
+ * 이미지가 바뀌면 다른 버전이므로 패널 순서와 이미지로 만든다.
+ */
+export const storyboardVersion = (shots = []) => {
+  const basis = shots
+    .map((shot) => `${shot.order}:${(shot.image || '').slice(-24)}`)
+    .join('|')
+  let hash = 0
+  for (let i = 0; i < basis.length; i += 1) {
+    hash = ((hash << 5) - hash + basis.charCodeAt(i)) | 0
+  }
+  return `v${Math.abs(hash).toString(36)}`
+}
+
+/**
  * SceneLens의 기능을 실제로 쓴 것.
  *
  * feature  lens / criterion / alternative / diagnosis / cross_lens / viewer
@@ -157,11 +178,30 @@ export const summarize = (log = readLog()) => {
 
   // Viewer 확인 뒤에 온 수정만 센다. 확인이 실제 수정으로 이어졌는가.
   const firstViewerRead = log.find((e) => e.type === 'viewer_read')
+  const firstReadAt = firstViewerRead ? log.indexOf(firstViewerRead) : -1
   const afterViewer = firstViewerRead
-    ? edits.filter((e) => e.t >= firstViewerRead.t && e.source === 'viewer')
+    ? edits.filter((e) => log.indexOf(e) > firstReadAt && e.source === 'viewer')
     : []
 
   const scaffolds = log.filter((e) => e.type === 'scaffold')
+
+  // 읽기 하나하나에 대해 그 뒤 처음 일어난 수정을 잇는다. 저장하지 않고
+  // 여기서 잇는 이유는, 수정은 읽기보다 나중에 일어나므로 읽기를 남기는
+  // 시점에는 아직 존재하지 않기 때문이다.
+  const reads = log.filter((e) => e.type === 'viewer_read').map((read) => {
+    // 같은 밀리초에 찍힌 이벤트가 있으므로 시각만으로는 앞뒤가 갈리지
+    // 않는다. 기록된 순서로 본다.
+    const readAt = log.indexOf(read)
+    const next = edits.find((edit) => log.indexOf(edit) > readAt)
+    return {
+      viewer_read_id: read.id,
+      storyboard_version: read.storyboard_version || null,
+      subsequent_edit_id: next?.id || null,
+      // 그 수정이 어느 층위·렌즈였는지. 없으면 읽고 아무것도 바꾸지 않은 것이다.
+      level: next?.level || null,
+      lens: next?.lens || null,
+    }
+  })
 
   return {
     session: sessionId(),
@@ -193,6 +233,9 @@ export const summarize = (log = readLog()) => {
       // Viewer 확인 이후 실제 수정으로 이어진 비율
       editsAfterRead: afterViewer.length,
       levelsAfterRead: count(afterViewer, 'level'),
+      // 읽기별로 그 뒤 첫 수정. 수정이 없었던 읽기는 null로 남는다 —
+      // 의도적 유지인지 그냥 지나친 것인지는 로그로 알 수 없다.
+      byRead: reads,
     },
   }
 }
