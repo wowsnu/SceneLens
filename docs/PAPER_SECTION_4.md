@@ -439,3 +439,115 @@ Regeneration은 별도 이벤트로도 두지만, Edit Event의 `regeneration`
 `route` 이벤트는 스펙에 없지만 남긴다. 진단에서 고칠 자리로 **이동한 것**과
 실제로 **고친 것**은 다르다. 합치면 이동만 하고 고치지 않은 경우가 수정으로
 세어져 Viewer 활용률이 부풀려진다.
+
+---
+
+## 8.7 Analysis Plan — 로그로 계산되는가 (2026-08-13)
+
+분석은 두 갈래다. **Comparative Analysis**는 Baseline과 SceneLens의 작업
+방식 차이를, **Mechanism Analysis**는 SceneLens의 개별 scaffolding이 실제
+작업에서 어떻게 쓰였는지를 본다.
+
+각 항목이 어느 값에서 나오는지, 그리고 **로그로 답할 수 없는 것이
+무엇인지**를 함께 적는다. 후자를 로그로 억지로 추정하면 근거가 아니라
+착시가 된다.
+
+### 1. Problem Diagnosis — 정성 분석
+
+**로그가 주는 답이 아니다.** think-aloud와 인터뷰가 주 자료이고, 수정
+로그는 그 발견이 실제 행동으로 이어졌는지 확인하는 **보조 자료**다.
+
+| 분석 대상 | 로그의 역할 |
+|---|---|
+| 이전에 고려하지 않던 문제를 새로 인식한 사례 | 없음 — 인터뷰 |
+| 문제를 보는 기준이 달라진 사례 | 없음 — think-aloud |
+| 네 관점이 판단에 영향을 준 방식 | 보조: `scaffolding.byFeature`, `edits.byLens` |
+| 새로 인식한 문제가 수정으로 이어진 사례 | 보조: `scaffolding.followups` |
+| 인식했지만 수정하지 않은 이유 | **이유는 없음.** `followups[].edits`가 비어 있다는 사실만 |
+
+마지막 항목이 중요하다. **"수정하지 않았다"는 로그에 남지만 "왜"는 남지
+않는다.** 의도적 유지인지 그냥 넘어간 것인지 구별되지 않으므로, 이 자리를
+인터뷰로 채워야 한다. `followups`는 인터뷰에서 물을 자리를 짚어 주는
+용도다 — "이 기능을 보고 아무것도 안 고치셨는데, 왜였나요."
+
+### 2. Level of Intervention — 두 조건 비교
+
+| 측정값 | 나오는 곳 |
+|---|---|
+| Narrative / Mise / Cinematography / Editing 수정 수·비율 | `edits.byLens` |
+| Attribute-level 수정 | `edits.byLevel.element` |
+| Shot-existence 수정 | `edits.byLevel.shot` |
+| Inter-shot relation 수정 | `edits.byLevel.seam` |
+| Scene-level 수정 | `edits.byLevel.sequence` |
+| **Beyond-panel edit ratio** | `edits.beyondPanelRatio` |
+| 전체 panel regeneration 횟수 | `regeneration.total` |
+| 동일 panel 반복 regeneration | `regeneration.repeats`, `regeneration.byPanel` |
+| **전체 수정 중 regeneration 비율** | `regeneration.shareOfAllRevisions` |
+
+**분모 주의.** `shareOfAllRevisions`의 분모는 `edits + generates`다.
+재생성은 `edit` 이벤트로 세지 않으므로 더해야 전체 수정 행동이 된다.
+
+**해석 원칙.** 수정 횟수가 많을수록 좋다고 읽지 않는다. 보는 것은
+**분포**다 — 수정이 패널 속성에 몰리는가, 컷 구성·컷 관계·씬 구조까지
+퍼지는가.
+
+### 3. Audience-Oriented Reflection — SceneLens only
+
+Baseline에 대응 기능이 없으므로 조건 비교가 아니다.
+
+| 분석 대상 | 나오는 곳 |
+|---|---|
+| Viewer 사용 시점과 횟수 | `viewer.reads`, 이벤트의 `t` |
+| Viewer 이후 수정이 발생한 사례 | `viewer.byRead[].subsequent_edit_id` |
+| 이후 수정된 Layer와 Lens | `viewer.byRead[].level` / `.lens` |
+| 판단이나 수정 방향이 달라진 사례 | **없음 — 인터뷰** |
+| 확인했지만 수정하지 않은 이유 | **없음.** `subsequent_edit_id: null`이라는 사실만 |
+
+**빈도를 성과로 읽지 않는다.** 핵심은 Viewer가 준 관객 관점이 실제
+재검토와 수정으로 **어떻게** 연결되었는가이고, 그 '어떻게'는 인터뷰에서
+나온다. `byRead`는 어느 읽기를 물어볼지 고르는 데 쓴다.
+
+Viewer의 예상 독해와 실제 인간 관객 독해의 일치도는 여기가 아니라 별도
+pipeline evaluation에서 다룬다.
+
+### 4. SceneLens Mechanism Analysis
+
+| 분석 대상 | 나오는 곳 |
+|---|---|
+| Directorial Lens 사용 | `scaffolding.byFeature.lens` |
+| criterion 확인 및 활용 | `byFeature.criterion` + `followups` |
+| decision alternative 선택·수정 | `byAction`의 `select` / `accept` / `reject` |
+| system diagnosis 수용·수정·거부 | `byFeature.diagnosis` + `byAction` |
+| cross-lens relation 확인 | `byFeature.cross_lens` |
+| Viewer Agent 사용 | `byFeature.viewer` |
+| **각 scaffolding 사용 이후 발생한 수정** | `scaffolding.followedByEdit`, `scaffolding.followups` |
+
+`followedByEdit`은 기능별로 `{used, ledToEdit}`을 준다. 예:
+
+```
+lens         사용 1회 -> 수정 이어짐 0회
+criterion    사용 1회 -> 수정 이어짐 1회
+diagnosis    사용 1회 -> 수정 이어짐 1회
+alternative  사용 1회 -> 수정 이어짐 0회
+viewer       사용 1회 -> 수정 이어짐 1회
+```
+
+**귀속 규칙.** 어떤 scaffolding을 쓴 뒤 **다음 scaffolding을 쓰기
+전까지**의 수정을 그 기능의 몫으로 본다. 그 뒤의 수정은 다른 기능을 보고
+한 것일 수 있기 때문이다. 느슨한 규칙이므로 **인과가 아니라 인접**으로
+읽어야 하고, 인과 주장은 think-aloud로 뒷받침해야 한다.
+
+**이 분석의 위치.** Baseline과의 성능 비교가 아니다. Comparative
+Analysis에서 나타난 작업 방식의 변화를 **SceneLens의 어떤 지원이
+만들어냈는지 설명하는 보조 근거**다.
+
+### 계산되지 않는 것 정리
+
+로그로 답할 수 없어 인터뷰·think-aloud가 반드시 필요한 것:
+
+1. 문제를 **새로 인식했는지** (인식은 행동을 남기지 않는다)
+2. 문제를 보는 **기준이 달라졌는지**
+3. 수정하지 **않은 이유** (Retain인지 Defer인지 방치인지)
+4. Viewer 결과로 **판단이 달라졌는지** (수정이 없어도 달라졌을 수 있다)
+
+로그가 하는 일은 이 질문들을 **어디에 대고 물을지 짚어 주는 것**이다.

@@ -185,6 +185,28 @@ export const summarize = (log = readLog()) => {
 
   const scaffolds = log.filter((e) => e.type === 'scaffold')
 
+  // 각 scaffolding을 쓴 뒤 무엇을 고쳤는가. 8.7-4가 묻는 것은 기능이
+  // 얼마나 쓰였는지가 아니라, 그 기능이 수정으로 이어졌는지다.
+  // 다음 scaffolding 전까지를 그 기능의 몫으로 본다 — 그 뒤의 수정은
+  // 다른 기능을 보고 한 것일 수 있다.
+  const scaffoldFollowups = scaffolds.map((scaffold) => {
+    const at = log.indexOf(scaffold)
+    const nextScaffoldAt = scaffolds
+      .map((other) => log.indexOf(other))
+      .find((index) => index > at)
+    const window = edits.filter((edit) => {
+      const editAt = log.indexOf(edit)
+      return editAt > at && (nextScaffoldAt === undefined || editAt < nextScaffoldAt)
+    })
+    return {
+      feature: scaffold.feature,
+      action: scaffold.action,
+      target: scaffold.target || null,
+      // 이 기능을 쓴 뒤 실제로 고친 것. 비어 있으면 보고 넘어간 것이다.
+      edits: window.map((edit) => ({ id: edit.id, lens: edit.lens, level: edit.level })),
+    }
+  })
+
   // 읽기 하나하나에 대해 그 뒤 처음 일어난 수정을 잇는다. 저장하지 않고
   // 여기서 잇는 이유는, 수정은 읽기보다 나중에 일어나므로 읽기를 남기는
   // 시점에는 아직 존재하지 않기 때문이다.
@@ -212,6 +234,19 @@ export const summarize = (log = readLog()) => {
       total: scaffolds.length,
       byFeature: count(scaffolds, 'feature'),
       byAction: count(scaffolds, 'action'),
+      // 기능별로 그 뒤 수정이 따라온 비율. 쓰인 횟수가 아니라 쓰여서
+      // 무엇이 달라졌는지를 본다.
+      followedByEdit: scaffoldFollowups.reduce((acc, entry) => {
+        const prior = acc[entry.feature] || { used: 0, ledToEdit: 0 }
+        return {
+          ...acc,
+          [entry.feature]: {
+            used: prior.used + 1,
+            ledToEdit: prior.ledToEdit + (entry.edits.length > 0 ? 1 : 0),
+          },
+        }
+      }, {}),
+      followups: scaffoldFollowups,
     },
     edits: {
       total: edits.length,
@@ -226,6 +261,12 @@ export const summarize = (log = readLog()) => {
       total: generates.length,
       repeats: generates.filter((e) => e.repeat).length,
       byPanel: count(generates, 'target'),
+      // 전체 수정 중 재생성이 차지하는 비율. 패널을 다시 그리는 것으로
+      // 문제를 푸는 쪽에 얼마나 기대는지를 본다. 분모는 수정과 재생성을
+      // 합한 것이다 — 재생성은 edit으로 세지 않으므로 더해야 한다.
+      shareOfAllRevisions: (edits.length + generates.length)
+        ? generates.length / (edits.length + generates.length)
+        : 0,
     },
     viewer: {
       reads: log.filter((e) => e.type === 'viewer_read').length,
