@@ -22,6 +22,7 @@
 
 const STORAGE_KEY = 'scenelens.study.log'
 const SESSION_KEY = 'scenelens.study.session'
+const CONDITION_KEY = 'scenelens.study.condition'
 
 /** 이 수정이 패널 안의 일인가, 그 너머인가. */
 export const BEYOND_PANEL_LEVELS = ['shot', 'seam', 'sequence']
@@ -72,6 +73,19 @@ export const sessionId = () => {
   return id
 }
 
+/**
+ * 실험 조건. 조건 간 비교를 하려면 모든 이벤트에 붙어 있어야 한다.
+ * 세션 시작 때 실험자가 정한다 — URL에 `?condition=scenelens`로 넘기거나
+ * Ctrl+Shift+C로 입력한다. 정하지 않으면 'unset'으로 남아, 분석 때
+ * 조건 없는 세션을 바로 골라낼 수 있다.
+ */
+export const condition = () => readJSON(CONDITION_KEY, null) || 'unset'
+
+export const setCondition = (value) => {
+  writeJSON(CONDITION_KEY, value)
+  return value
+}
+
 export const readLog = () => readJSON(STORAGE_KEY, [])
 
 /**
@@ -90,6 +104,7 @@ export const logEvent = (type, payload = {}) => {
   const event = {
     t: Date.now(),
     session: sessionId(),
+    condition: condition(),
     type,
     ...payload,
   }
@@ -118,6 +133,19 @@ export const logEdit = ({ lens = null, level, target = null, source = 'manual', 
   })
 )
 
+/**
+ * SceneLens의 기능을 실제로 쓴 것.
+ *
+ * feature  lens / criterion / alternative / diagnosis / cross_lens / viewer
+ * action   open / view / select / accept / modify / reject
+ *
+ * accept / modify / reject가 핵심이다. 제안을 판정하게 한다는 것이
+ * DG1 P2의 주장인데, 그것이 실제로 일어났는지는 이 셋의 분포로만 보인다.
+ */
+export const logScaffold = ({ feature, action, target = null, ...rest }) => (
+  logEvent('scaffold', { feature, action, target, ...rest })
+)
+
 /** 실험자가 세션 끝에 받아 가는 것. */
 export const summarize = (log = readLog()) => {
   const edits = log.filter((e) => e.type === 'edit')
@@ -133,9 +161,18 @@ export const summarize = (log = readLog()) => {
     ? edits.filter((e) => e.t >= firstViewerRead.t && e.source === 'viewer')
     : []
 
+  const scaffolds = log.filter((e) => e.type === 'scaffold')
+
   return {
     session: sessionId(),
+    condition: condition(),
     events: log.length,
+    // 어떤 기능을 얼마나 썼는가. 제안을 받아들였는가 버렸는가.
+    scaffolding: {
+      total: scaffolds.length,
+      byFeature: count(scaffolds, 'feature'),
+      byAction: count(scaffolds, 'action'),
+    },
     edits: {
       total: edits.length,
       byLens: count(edits, 'lens'),
@@ -182,6 +219,7 @@ export const resetLog = () => {
   try {
     window.localStorage.removeItem(STORAGE_KEY)
     window.localStorage.removeItem(SESSION_KEY)
+    window.localStorage.removeItem(CONDITION_KEY)
   } catch {
     // 못 지워도 앱은 계속 돌아간다.
   }

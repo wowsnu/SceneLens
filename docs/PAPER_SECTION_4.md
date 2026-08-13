@@ -403,8 +403,11 @@ Regeneration은 별도 이벤트로도 두지만, Edit Event의 `regeneration`
 | Edit — 이음새 4종(merge/split/reorder/insert) | 있음 |
 | Edit — 렌즈별 컷 요구 | 있음 |
 | Edit — 프롬프트 직접 수정, 그리기 | **없음** |
-| Edit — `condition` 필드 | **없음** (실험 조건을 세션 시작 때 받아야 한다) |
-| Scaffolding | **없음** |
+| Edit — `condition` 필드 | 있음. `?condition=` 또는 `Ctrl+Shift+C`. 안 정하면 `unset` |
+| Scaffolding — lens / cross_lens / viewer 열기 | 있음 |
+| Scaffolding — diagnosis 수용 | 있음 (고치러 이동한 것을 accept로 본다) |
+| Scaffolding — alternative select / accept / reject | 있음 (이음새 제안, 삽입 후보) |
+| Scaffolding — criterion 조회 | **없음** |
 | Viewer — 호출, 판정 | 있음 |
 | Viewer — `storyboard_version`, `divergence_id`, `subsequent_edit_id` | **없음** |
 | Regeneration — 횟수, 반복 여부 | 있음 |

@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { logEdit } from './studyLog'
+import { logEdit, logScaffold } from './studyLog'
 
 // 씬 서술. 대사는 두지 않는다 — 정지 이미지가 담을 수 없고, 스토리보드가
 // 평가하려는 것도 아니다. 말하는 장면은 말하는 모습으로 적는다.
@@ -2872,7 +2872,9 @@ const useStore = create((set, get) => ({
   },
 
   // 수락해야 이음새가 된다. 거부는 제안을 목록에서 지울 뿐이다.
-  acceptSeamProposal: (id) => set((state) => {
+  acceptSeamProposal: (id) => {
+    logScaffold({ feature: 'alternative', action: 'accept', target: id })
+    return set((state) => {
     const proposal = state.seamProposals.find((entry) => entry.id === id)
     if (!proposal) return {}
     return {
@@ -2887,11 +2889,15 @@ const useStore = create((set, get) => ({
       },
       seamProposals: state.seamProposals.filter((entry) => entry.id !== id),
     }
-  }),
+  })
+  },
 
-  rejectSeamProposal: (id) => set((state) => ({
+  rejectSeamProposal: (id) => {
+    logScaffold({ feature: 'alternative', action: 'reject', target: id })
+    return set((state) => ({
     seamProposals: state.seamProposals.filter((entry) => entry.id !== id),
-  })),
+  }))
+  },
 
   clearSeamProposals: () => set({ seamProposals: [] }),
 

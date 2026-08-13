@@ -3,7 +3,7 @@ import StoryboardView from './components/StoryboardView'
 import DecisionBoard from './components/DecisionBoard'
 import CenterPanel from './components/CenterPanel'
 import useStore from './store/useStore'
-import { exportLog, summarize, resetLog } from './store/studyLog'
+import { exportLog, summarize, resetLog, setCondition, condition } from './store/studyLog'
 import './App.css'
 
 function App() {
@@ -28,9 +28,21 @@ function App() {
   // 걸리므로 단축키로만 연다 — 실험자가 세션 끝에 누른다.
   //   Ctrl+Shift+E  내보내기 (요약은 콘솔에도 찍는다)
   //   Ctrl+Shift+R  다음 참가자를 위해 비우기 (확인을 받는다)
+  // 실험 조건은 세션이 시작되기 전에 정해져야 한다. URL로 넘기면
+  // 참가자를 앉히기 전에 정해지므로 가장 안전하다.
+  useEffect(() => {
+    const fromUrl = new URLSearchParams(window.location.search).get('condition')
+    if (fromUrl) setCondition(fromUrl)
+  }, [])
+
   useEffect(() => {
     const onKey = (event) => {
       if (!event.ctrlKey || !event.shiftKey) return
+      if (event.key === 'C' || event.key === 'c') {
+        event.preventDefault()
+        const next = window.prompt('실험 조건', condition())
+        if (next) setCondition(next)
+      }
       if (event.key === 'E' || event.key === 'e') {
         event.preventDefault()
         const payload = exportLog()

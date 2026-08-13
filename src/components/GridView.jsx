@@ -7,6 +7,7 @@ import useStore, {
 } from '../store/useStore'
 import { GapGhostCell } from './GapFillPanel'
 import './GridView.css'
+import { logScaffold } from '../store/studyLog'
 
 const TECHNIQUE_LABEL = {
   match_cut: '매치컷',
@@ -673,7 +674,15 @@ export default function GridView({
                       type="button"
                       className={`grid-edit-candidate${chosen ? ' selected' : ''}`}
                       aria-pressed={chosen}
-                      onClick={() => setInsertChoice(chosen ? null : candidate)}
+                      onClick={() => {
+                        logScaffold({
+                          feature: 'alternative',
+                          action: chosen ? 'reject' : 'select',
+                          target: pendingEdit.cutId,
+                          purpose: candidate.purpose,
+                        })
+                        setInsertChoice(chosen ? null : candidate)
+                      }}
                     >
                       <strong>{candidate.content}</strong>
                       <em>{candidate.purpose}{candidate.characters ? ` · ${candidate.characters}` : ''}</em>
@@ -727,6 +736,14 @@ export default function GridView({
                   if (isMerge) {
                     mergeCuts(pendingEdit.cutId, { content: mergeDraft })
                   } else if (kind === 'insert') {
+                    logScaffold({
+                      feature: 'alternative',
+                      // 후보를 받아 넣었으면 accept, 안 받고 빈 컷을 만들었으면
+                      // 제안을 쓰지 않은 것이다.
+                      action: insertChoice ? 'accept' : 'reject',
+                      target: pendingEdit.cutId,
+                      proposed: insertCandidates.length > 0,
+                    })
                     addCutPlanItem(pendingEdit.cutId, cut.beat, insertChoice ? {
                       content: insertChoice.content,
                       purpose: insertChoice.purpose,

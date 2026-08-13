@@ -11,7 +11,7 @@ import SceneOverview from './SceneOverview'
 import SpatialMap from './SpatialMap'
 import { requestDirectingReview, requestViewerReflection } from '../services/api'
 import './DecisionBoard.css'
-import { logEvent, normalizeLevel } from '../store/studyLog'
+import { logEvent, logScaffold, normalizeLevel } from '../store/studyLog'
 
 // Narrative만 사용자와 직접 협업하는 상위 Agent로 드러낸다.
 // 하위 생성 모듈은 내부적으로 Agent일 수 있지만 UI에서는 같은 장면을
@@ -1581,6 +1581,7 @@ export default function DecisionBoard({ boardView = 'split' }) {
 
   const runLensReview = async () => {
     logEvent('review', { mode: 'single' })
+    logScaffold({ feature: 'lens', action: 'open', mode: 'single' })
     if (!lensAnalysisEnabled || lensIntentDirty || lensReviewLoading) return
     const reviewKey = lensReviewKey
     const requestId = Date.now()
@@ -1678,6 +1679,7 @@ export default function DecisionBoard({ boardView = 'split' }) {
 
   const runMultiReview = async () => {
     logEvent('review', { mode: 'multi' })
+    logScaffold({ feature: 'lens', action: 'open', mode: 'multi' })
     if (multiReviewIntentDirty || multiReviewLoading) return
     const scopeKey = multiReviewScopeKey
     const requestId = Date.now()
@@ -1781,6 +1783,7 @@ export default function DecisionBoard({ boardView = 'split' }) {
   // 보기까지 너무 오래 기다린다.
   const runRelateReview = async () => {
     logEvent('review', { mode: 'relate' })
+    logScaffold({ feature: 'cross_lens', action: 'open', mode: 'relate' })
     const scopeKey = multiReviewScopeKey
     const run = multiReviewRuns[scopeKey]
     if (!run?.lensResults || run.relating) return
@@ -2056,6 +2059,7 @@ export default function DecisionBoard({ boardView = 'split' }) {
     // 이 뒤에 오는 수정이 관객 읽기에서 나온 것인지 세려면 확인 시점이
     // 필요하다.
     logEvent('viewer_read', { panels: panelOrders.length })
+    logScaffold({ feature: 'viewer', action: 'open', panels: panelOrders.length })
     setViewerStatus('loading')
     setViewerError('')
     try {
@@ -2188,6 +2192,13 @@ export default function DecisionBoard({ boardView = 'split' }) {
       route: tool,
       lens: diagnosis.lens || null,
       level: normalizeLevel(diagnosis.level),
+    })
+    // 진단대로 고치러 갔다는 것은 그 진단을 받아들였다는 뜻이다.
+    logScaffold({
+      feature: 'diagnosis',
+      action: 'accept',
+      target: diagnosis.id || null,
+      lens: diagnosis.lens || null,
     })
     const panelTarget = diagnosis.targets
       .map((target) => target.split('.', 1)[0])
