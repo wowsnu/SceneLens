@@ -3007,7 +3007,9 @@ const useStore = create((set, get) => ({
   requestNarrativeSuggestions: async (input = {}) => {
     const state = get()
     const requestKey = state.narrativeSuggestionRequestKey + 1
-    const targetBeat = state.activeBeat ?? 0
+    // 진단에서 부를 때는 그 컷의 Beat를 봐야 한다. 지금 보고 있는 Beat가
+    // 아니라 문제가 있는 Beat다.
+    const targetBeat = input.beat ?? state.activeBeat ?? 0
     const beatElements = state.screenplay
       .map((element, globalIdx) => ({ ...element, globalIdx }))
       .filter((element) => (element.beat ?? 0) === targetBeat)

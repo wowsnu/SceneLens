@@ -1131,9 +1131,11 @@ const RULE_DESTINATIONS = {
 
   // 편집 — 문제가 컷 사이에 있고, 나누기·합치기도 이음새에 있다.
   // 컷 플랜으로 되돌아가면 그림이 안 보이고 표 전체가 열린다.
-  'editing-shot-function': ['merge', 'split', 'seam'],
+  'editing-shot-function': ['merge', 'split', 'narrative'],
   'editing-cut-continuity': ['seam', 'split'],
-  'editing-information-order': ['seam', 'cutplan'],
+  // 정보 순서는 이야기 층위일 수 있다. 컷을 옮겨서 될 일이 아니라
+  // 대본에 없는 단계가 빠진 것이면 서사가 답해야 한다.
+  'editing-information-order': ['seam', 'narrative'],
   'editing-visual-rhythm': ['split', 'seam'],
 }
 
@@ -1145,6 +1147,7 @@ const DESTINATION_LABELS = {
   seam: '이음새 열기',
   merge: '앞 컷과 합치기',
   split: '컷 나누기',
+  narrative: '서사에 물어보기',
   arrow: '카메라 화살표',
 }
 
@@ -1366,9 +1369,11 @@ export default function DecisionBoard({ boardView = 'split' }) {
   const updateFlowShotById = useStore((s) => s.updateFlowShotById)
   const requestPanelTool = useStore((s) => s.requestPanelTool)
   const requestSeamFocus = useStore((s) => s.requestSeamFocus)
+  const requestNarrativeSuggestions = useStore((s) => s.requestNarrativeSuggestions)
   const openDrawingWorkspace = useStore((s) => s.openDrawingWorkspace)
   const reopenCutPlan = useStore((s) => s.reopenCutPlan)
   const backToScript = useStore((s) => s.backToScript)
+  const setActiveBeat = useStore((s) => s.setActiveBeat)
   const setMaximizedPanel = useStore((s) => s.setMaximizedPanel)
   const setLeftPanelVisible = useStore((s) => s.setLeftPanelVisible)
   const setZenMode = useStore((s) => s.setZenMode)
@@ -2200,6 +2205,26 @@ export default function DecisionBoard({ boardView = 'split' }) {
 
     // 편집 문제는 컷 사이에 있다. 이 화면의 그리드에서 그 이음새를 연다 —
     // 그림을 다 그려 놓고 텍스트 단계로 되돌아갈 이유가 없다.
+    // 화면을 옮기지 않고 서사에게 묻는다. 컷을 고쳐서 될 일이 아니라
+    // 대본에 없는 단계가 빠진 경우다 — 제안은 대본 자리에 뜬다.
+    if (tool === 'narrative') {
+      const beat = targetShot.scriptBeat ?? 0
+      requestNarrativeSuggestions({
+        beat,
+        narrativeRequest: (
+          `편집 검토에서 이런 지적이 나왔습니다: ${diagnosis.diagnosis}\n`
+          + `${diagnosis.suggested_action}\n`
+          + '이 Beat의 대본에서 무엇을 더하거나 고치면 되는지 제안해 주세요.'
+        ),
+      })
+      // 제안은 대본 자리에 뜬다. 대본이 보여야 판정할 수 있다.
+      setActiveBeat(beat)
+      backToScript()
+      setLeftPanelVisible(true)
+      setMaximizedPanel('left')
+      return
+    }
+
     if (tool === 'seam' || tool === 'merge' || tool === 'split') {
       // 이음새는 앞 컷에 붙는다. 합치기도 앞 컷 기준이다.
       // 나누기는 그 컷 자체를 쪼개므로 대상 컷을 그대로 쓴다.
