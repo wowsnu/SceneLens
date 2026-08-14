@@ -29,13 +29,14 @@ def _fact(labels):
     return {
         "type": "object",
         "additionalProperties": False,
-        "required": ["label", "value", "open"],
+        "required": ["label", "value", "open", "changes"],
         "properties": {
             "label": {"type": "string", "enum": labels},
             # 대본에서 읽히는 값. 정해지지 않았으면 빈 문자열.
             "value": {"type": "string"},
             # 대본이 정하지 않은 항목인가. 비워 둔 것과 누락은 다르다.
             "open": {"type": "boolean"},
+            "changes": {"type": "array", "items": {"type": "object", "additionalProperties": False, "required": ["at_cut", "value"], "properties": {"at_cut": {"type": "integer", "minimum": 1}, "value": {"type": "string"}}}},
         },
     }
 
@@ -164,6 +165,12 @@ PROMPT = """당신은 미장센 담당입니다. 대본을 읽고 이 씬의 기
 길면 정작 그 컷이 무엇을 보여주는지가 묻힙니다.
 문장이 아니라 **명사구**로 씁니다. 마침표를 찍지 마세요.
 
+**컷 플랜이 함께 주어지면 장면 공통의 `시간`만 변화 초안으로 잡으세요.**
+시간 외 모든 fact의 changes는 반드시 []로 두세요. 시간 changes에는 처음 값과 실제로
+달라지는 것만 넣습니다. at_cut은 변화가 시작되는 컷 번호(1부터), value는 그때의
+짧은 새 값입니다. 변화가 없거나 컷 플랜에 근거가 없으면 []로 두세요. 처음 컷의
+값을 changes에 다시 넣지 마세요.
+
 **대본에 없는 것을 지어내지 마세요.**
 대본이 정하지 않은 항목은 value를 비우고 open을 true로 하세요.
 **항목 자체는 빼지 말고 빈 채로 두세요** — 무엇이 아직 안 정해졌는지
@@ -275,6 +282,8 @@ async def build_scene_state(request: SceneStateRequest) -> SceneStateResponse:
     user_content = f"[씬] {request.heading}\n\n[대본]\n{request.script}"
     if request.scene_intention:
         user_content += f"\n\n[장면 의도] {request.scene_intention}"
+    if request.cut_plan:
+        user_content += f"\n\n[컷 플랜]\n{request.cut_plan}"
 
     client = AsyncOpenAI(api_key=api_key)
     response = await client.chat.completions.create(

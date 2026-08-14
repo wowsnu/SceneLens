@@ -944,11 +944,13 @@ class SceneStateRequest(BaseModel):
     heading: str
     script: str
     scene_intention: Optional[str] = ""
+    cut_plan: Optional[str] = ""
 
 class SceneFact(BaseModel):
     label: str
     value: str = ""
     open: bool = False                      # 대본이 정하지 않은 항목
+    changes: List[dict] = []
 
 class SceneCharacter(BaseModel):
     name: str
