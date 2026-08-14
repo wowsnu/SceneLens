@@ -1393,14 +1393,9 @@ export default function StoryboardView() {
   const allBlankShots = flowShots
     .map((shot, shotIdx) => ({ shot, shotIdx }))
     .filter(({ shot, shotIdx }) => !getShotVisual(shot, shotIdx))
-  const activeBeatShots = flowShots
-    .map((shot, shotIdx) => ({ shot, shotIdx }))
-    .filter(({ shot }) => (shot.scriptBeat ?? 0) === activeBeat)
-  const scopeShots = generationScope === 'beat'
-      ? activeBeatShots
-      : generationScope === 'selected'
-        ? selectedShots
-        : allBlankShots
+  const scopeShots = generationScope === 'selected'
+      ? selectedShots
+      : allBlankShots
   const eligibleScopeShots = scopeShots.filter(({ shot, shotIdx }) => !getShotVisual(shot, shotIdx))
   const viewerTestTargets = allBlankShots.slice(0, VIEWER_TEST_PANEL_IMAGES.length)
   const currentShotIds = new Set(flowShots.map((shot) => shot.id))
@@ -2527,16 +2522,6 @@ export default function StoryboardView() {
             <div className="generation-scope-tabs" aria-label="Generation scope">
               <button
                 type="button"
-                className={generationScope === 'beat' ? 'active' : ''}
-                onClick={() => {
-                  setGenerationScope('beat')
-                  setSelectedShotIds([])
-                }}
-              >
-                현재 구간 · {activeBeatShots.length}
-              </button>
-              <button
-                type="button"
                 className={generationScope === 'selected' ? 'active' : ''}
                 onClick={() => {
                   setGenerationScope('selected')
@@ -2592,13 +2577,9 @@ export default function StoryboardView() {
               >
                 {isGenerating ? `그리는 중… · ${generatingCount}` : (
                   <>
-                    {generationScope === 'all'
-                      ? 'Generate storyboard draft'
-                      : generationScope === 'beat'
-                        ? '현재 구간 생성'
-                        : generationScope === 'selected'
-                          ? 'Generate selected'
-                          : 'Generate storyboard draft'}
+                    {generationScope === 'selected'
+                      ? 'Generate selected'
+                      : 'Generate storyboard draft'}
                     {eligibleScopeShots.length > 0 ? ` · ${eligibleScopeShots.length}` : ''}
                   </>
                 )}
