@@ -3034,9 +3034,18 @@ export default function StoryboardView() {
                       대본이 준비됐습니다. 그림 전에 이 장면을 몇 개의 컷으로
                       나눌지 정하고, 이어서 촬영이 각 컷의 샷을 정합니다.
                     </p>
+
+                    {/* 컷으로 나누기 전에 대본이 사건의 단계로 서 있는지
+                        본다. 여기서 고치는 것이 가장 싸다 — 컷 플랜도
+                        그림도 아직 없다. 컷 플랜을 만들기 전부터 보인다. */}
+                    {scriptLines.length > 0 && renderNarrativeCheck('script')}
+
+                    {/* 다음 단계로 넘어가는 버튼은 맨 아래에 둔다. 위에서
+                        대본을 손볼 것이 없는지 보고 나서 누르는 순서다 —
+                        먼저 놓으면 점검을 지나쳐 컷부터 만들게 된다. */}
                     <button
                       type="button"
-                      className="narrative-rail-primary"
+                      className="narrative-rail-primary narrative-rail-next"
                       onClick={cutPlan.length > 0 ? clearCutPlanStageOverride : requestCutPlan}
                       disabled={cutPlanRunPending}
                     >
@@ -3046,11 +3055,6 @@ export default function StoryboardView() {
                           ? '샷 정하는 중…'
                           : cutPlan.length > 0 ? '컷 플랜 이어서' : '컷 플랜 만들기'}
                     </button>
-
-                    {/* 컷으로 나누기 전에 대본이 사건의 단계로 서 있는지
-                        본다. 여기서 고치는 것이 가장 싸다 — 컷 플랜도
-                        그림도 아직 없다. 컷 플랜을 만들기 전부터 보인다. */}
-                    {scriptLines.length > 0 && renderNarrativeCheck('script')}
                   </>
                 ) : (
                   <>

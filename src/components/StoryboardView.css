@@ -4098,3 +4098,8 @@
   opacity: 0.45;
   cursor: default;
 }
+
+/* 다음 단계 버튼은 점검 아래에 온다. 위와 붙어 보이지 않게 띄운다. */
+.narrative-rail-primary.narrative-rail-next {
+  margin-top: 12px;
+}
