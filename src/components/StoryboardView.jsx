@@ -1602,6 +1602,14 @@ export default function StoryboardView() {
     setSceneIntention(rawSceneIntention.trim())
     setScreenplay(newScreenplay)
     setIsEditingRaw(false)
+
+    // 이어서 바로 씬·Beat로 나눈다. 별도 버튼으로 두면 그 버튼이 뜨는
+    // 조건(헤딩 없음 + Beat 하나)에 걸려 사라지는 경우가 있고, 그때는
+    // 살을 붙이는 단계 자체를 건너뛰게 된다.
+    //
+    // 결과는 바로 적용되지 않고 초안으로 뜬다 — 감독이 확인해야
+    // 대본이 된다 (DG1 P2).
+    requestStoryStructure()
   }
 
   // 점검에서 나온 지적을 그대로 제안 요청으로 넘긴다. 점검은 무엇이
@@ -1866,9 +1874,9 @@ export default function StoryboardView() {
                 <button
                   className="apply-btn"
                   onClick={handleUploadScript}
-                  disabled={!rawText.trim()}
+                  disabled={!rawText.trim() || structurePending}
                 >
-                  Continue
+                  {structurePending ? '읽는 중…' : 'Continue'}
                 </button>
               </div>
             </div>
