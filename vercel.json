@@ -6,7 +6,7 @@
   "rewrites": [
     {
       "source": "/api/:path*",
-      "destination": "https://scenelens.duckdns.org/api/:path*"
+      "destination": "https://scenelens-api.onrender.com/api/:path*"
     }
   ]
 }
