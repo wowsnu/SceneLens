@@ -120,6 +120,19 @@
   opacity: 0.34;
 }
 
+.scope-mode-fixed {
+  display: grid;
+  place-items: center;
+  height: 26px;
+  padding: 0 10px;
+  border: 1px solid rgba(167, 139, 250, 0.28);
+  border-radius: 6px;
+  background: rgba(109, 40, 217, 0.12);
+  color: #ddd6fe;
+  font-size: 10px;
+  font-weight: 800;
+}
+
 .scope-shot-strip {
   min-width: 0;
   display: flex;
@@ -2564,6 +2577,67 @@ button.active .lens-glass::after {
   color: #fff;
 }
 
+.mise-spatial-stage-tabs {
+  flex: 0 0 auto;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  min-height: 43px;
+  padding: 7px 18px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  background: #17171b;
+}
+
+.mise-spatial-stage-tabs > span {
+  color: rgba(148, 163, 184, 0.78);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+}
+
+.mise-spatial-stage-tabs > div {
+  display: flex;
+  min-width: 0;
+  gap: 5px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.mise-spatial-stage-tabs > div::-webkit-scrollbar {
+  display: none;
+}
+
+.mise-spatial-stage-tabs button {
+  flex: 0 0 auto;
+  min-height: 27px;
+  padding: 0 9px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.04);
+  color: rgba(203, 213, 225, 0.78);
+  font-size: 10.5px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.mise-spatial-stage-tabs button:hover {
+  border-color: rgba(110, 231, 183, 0.46);
+  color: #fff;
+}
+
+.mise-spatial-stage-tabs button.is-active {
+  border-color: rgba(110, 231, 183, 0.7);
+  background: rgba(16, 185, 129, 0.16);
+  color: #a7f3d0;
+}
+
+.mise-spatial-stage-tabs small {
+  color: rgba(148, 163, 184, 0.62);
+  font-size: 10px;
+  white-space: nowrap;
+}
+
 .mise-spatial-editor-canvas {
   flex: 1;
   min-height: 0;
@@ -4555,6 +4629,11 @@ button.active .lens-glass::after {
   gap: 7px;
 }
 
+.viewer-reading-condition-card { position: relative; min-width: 0; }
+.viewer-reading-condition-card > button:first-child { width: 100%; height: 100%; }
+.viewer-custom-condition-remove { position: absolute !important; top: 5px; right: 5px; z-index: 1; width: 19px !important; min-height: 19px !important; height: 19px !important; padding: 0 !important; border-color: rgba(248, 113, 113, .3) !important; border-radius: 999px !important; background: rgba(127, 29, 29, .2) !important; color: #fecaca !important; text-align: center !important; font-size: 13px !important; line-height: 16px !important; }
+.viewer-custom-condition-remove:hover { border-color: rgba(248, 113, 113, .6) !important; background: rgba(127, 29, 29, .38) !important; }
+
 .viewer-reading-conditions button {
   position: relative;
   display: grid;
@@ -4578,7 +4657,31 @@ button.active .lens-glass::after {
 .viewer-reading-conditions button.selected > span { color: #ddd6fe; }
 .viewer-reading-conditions button > strong { padding-right: 14px; color: rgba(241, 245, 249, .9); font-size: 11px; line-height: 1.3; }
 .viewer-reading-conditions button > p { margin: 0; color: rgba(203, 213, 225, .67); font-size: 10px; line-height: 1.45; }
+.viewer-reading-conditions button > p > strong { display: block; margin-bottom: 2px; color: rgba(147, 197, 253, .82); font-size: 9px; font-weight: 800; }
 .viewer-reading-conditions button > small { margin-top: auto; color: rgba(147, 197, 253, .75); font-size: 9px; line-height: 1.35; }
+
+.viewer-custom-condition-form { overflow: hidden; border: 1px dashed rgba(167, 139, 250, .3); border-radius: 8px; background: rgba(76, 29, 149, .045); }
+.viewer-custom-condition-form summary { display: grid; grid-template-columns: 23px minmax(0, 1fr) auto; align-items: center; gap: 7px; min-height: 42px; padding: 7px 9px; color: inherit; cursor: pointer; list-style: none; }
+.viewer-custom-condition-form summary::-webkit-details-marker { display: none; }
+.viewer-custom-condition-form summary > span { display: grid; width: 20px; height: 20px; place-items: center; border: 1px solid rgba(167, 139, 250, .38); border-radius: 50%; color: #ddd6fe; font-size: 14px; line-height: 1; }
+.viewer-custom-condition-form summary > div { display: grid; gap: 1px; }
+.viewer-custom-condition-form summary strong { color: rgba(241, 245, 249, .9); font-size: 10.5px; }
+.viewer-custom-condition-form summary small { color: rgba(148, 163, 184, .7); font-size: 9px; line-height: 1.3; }
+.viewer-custom-condition-form summary em { color: rgba(196, 181, 253, .76); font-size: 9px; font-style: normal; font-weight: 750; }
+.viewer-custom-condition-form[open] { border-style: solid; border-color: rgba(167, 139, 250, .38); background: rgba(76, 29, 149, .075); }
+.viewer-custom-condition-form[open] summary { border-bottom: 1px solid rgba(167, 139, 250, .14); }
+.viewer-custom-condition-fields { display: grid; grid-template-columns: minmax(170px, .8fr) minmax(0, 1.7fr); gap: 8px; padding: 9px; }
+.viewer-custom-condition-fields label { display: grid; gap: 4px; min-width: 0; }
+.viewer-custom-condition-fields label > span { color: rgba(196, 181, 253, .82); font-size: 9px; font-weight: 800; }
+.viewer-custom-condition-fields input,
+.viewer-custom-condition-fields textarea { width: 100%; box-sizing: border-box; border: 1px solid rgba(148, 163, 184, .18); border-radius: 6px; padding: 7px 8px; background: rgba(2, 6, 23, .32); color: rgba(241, 245, 249, .9); font: inherit; font-size: 10px; }
+.viewer-custom-condition-fields textarea { min-height: 55px; resize: vertical; line-height: 1.4; }
+.viewer-custom-condition-fields input:focus,
+.viewer-custom-condition-fields textarea:focus { outline: 1px solid rgba(167, 139, 250, .58); border-color: rgba(167, 139, 250, .45); }
+.viewer-custom-condition-actions { grid-column: 1 / -1; display: flex; align-items: center; justify-content: space-between; gap: 9px; }
+.viewer-custom-condition-actions > small { color: rgba(253, 230, 138, .76); font-size: 9px; line-height: 1.35; }
+.viewer-custom-condition-actions > button { min-height: 28px; padding: 0 9px; border: 1px solid rgba(167, 139, 250, .42); border-radius: 6px; background: rgba(109, 40, 217, .16); color: #ede9fe; font-size: 9.5px; font-weight: 800; cursor: pointer; }
+.viewer-custom-condition-actions > button:disabled { cursor: not-allowed; opacity: .45; }
 
 .viewer-run-button,
 .viewer-rerun-button {
@@ -4931,6 +5034,8 @@ button.active .lens-glass::after {
   .viewer-reading-conditions header small { max-width: none; text-align: left; }
   .viewer-reading-conditions > div { grid-template-columns: 1fr; }
   .viewer-reading-conditions button { min-height: 0; }
+  .viewer-custom-condition-fields { grid-template-columns: 1fr; }
+  .viewer-custom-condition-actions { align-items: start; flex-direction: column; }
 }
 
 /* --- 씬 안의 상태 변화 (DG2 P2) ----------------------------------------
@@ -4943,57 +5048,76 @@ button.active .lens-glass::after {
 }
 
 .mise-fact-timeline {
+  display: grid;
+  gap: 6px;
+  margin-top: 8px;
+  padding: 8px;
+  border: 1px solid rgba(126, 200, 160, 0.14);
+  border-radius: 7px;
+  background: rgba(16, 185, 129, 0.035);
+}
+
+.mise-fact-timeline > header {
   display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 5px;
-  padding-left: 2px;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
 }
 
-.mise-fact-change {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  padding: 2px 5px 2px 7px;
-  border: 1px solid rgba(126, 200, 160, 0.32);
-  border-radius: 999px;
-  background: rgba(126, 200, 160, 0.07);
-  color: rgba(255, 255, 255, 0.72);
-  font-size: 10.5px;
-}
+.mise-fact-timeline > header > span { color: rgba(150, 220, 185, 0.94); font-size: 9px; font-weight: 850; }
+.mise-fact-timeline > header > small { color: rgba(148, 163, 184, 0.66); font-size: 8.5px; text-align: right; }
 
-.mise-fact-change em {
-  color: rgba(150, 220, 185, 0.95);
-  font-style: normal;
-  font-weight: 800;
-}
-
-.mise-fact-change button {
-  width: 14px;
-  height: 14px;
+.mise-fact-timeline > ol {
+  display: grid;
+  gap: 0;
+  margin: 0;
   padding: 0;
-  border: 0;
-  border-radius: 50%;
-  background: transparent;
-  color: rgba(255, 255, 255, 0.35);
-  font-size: 9px;
-  cursor: pointer;
+  list-style: none;
 }
 
-.mise-fact-change button:hover:not(:disabled) {
-  background: rgba(255, 255, 255, 0.12);
-  color: rgba(255, 255, 255, 0.9);
+.mise-fact-timeline > ol > li {
+  position: relative;
+  display: grid;
+  grid-template-columns: 19px minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 6px;
+  min-height: 35px;
+  padding: 4px 0;
 }
+
+.mise-fact-timeline > ol > li + li::before {
+  content: '';
+  position: absolute;
+  top: -7px;
+  left: 9px;
+  width: 1px;
+  height: 10px;
+  background: rgba(126, 200, 160, 0.32);
+}
+
+.mise-fact-stage-dot { display: grid; width: 18px; height: 18px; place-items: center; border: 1px solid rgba(126, 200, 160, 0.35); border-radius: 50%; background: rgba(16, 185, 129, 0.12); color: rgba(187, 247, 208, 0.95); font-size: 8.5px; font-weight: 850; }
+.mise-fact-timeline > ol > li.initial .mise-fact-stage-dot { border-color: rgba(148, 163, 184, 0.33); background: rgba(148, 163, 184, 0.1); color: rgba(226, 232, 240, 0.82); }
+.mise-fact-timeline > ol > li > div { display: grid; min-width: 0; gap: 1px; }
+.mise-fact-timeline > ol > li small { color: rgba(150, 220, 185, 0.78); font-size: 8.5px; font-weight: 750; }
+.mise-fact-timeline > ol > li.initial small { color: rgba(148, 163, 184, 0.72); }
+.mise-fact-timeline > ol > li strong { overflow: hidden; color: rgba(241, 245, 249, 0.87); font-size: 10px; font-weight: 650; line-height: 1.3; text-overflow: ellipsis; white-space: nowrap; }
+.mise-fact-stage-edit,
+.mise-fact-stage-remove { border: 0; background: transparent; color: rgba(203, 213, 225, 0.58); font-size: 8.5px; font-weight: 750; cursor: pointer; }
+.mise-fact-stage-edit:hover:not(:disabled) { color: rgba(187, 247, 208, 0.96); }
+.mise-fact-stage-remove { width: 16px; height: 18px; padding: 0; color: rgba(252, 165, 165, 0.66); font-size: 12px; }
+.mise-fact-stage-remove:hover:not(:disabled) { color: #fecaca; }
 
 .mise-fact-add-change {
-  padding: 2px 8px;
-  border: 1px dashed rgba(255, 255, 255, 0.22);
-  border-radius: 999px;
-  background: transparent;
-  color: rgba(255, 255, 255, 0.45);
+  justify-self: start;
+  min-height: 24px;
+  padding: 0 7px;
+  border: 1px dashed rgba(126, 200, 160, 0.34);
+  border-radius: 5px;
+  background: rgba(16, 185, 129, 0.06);
+  color: rgba(187, 247, 208, 0.8);
   font-family: inherit;
-  font-size: 10px;
-  font-weight: 700;
+  font-size: 9px;
+  font-weight: 800;
   cursor: pointer;
 }
 
@@ -5003,7 +5127,8 @@ button.active .lens-glass::after {
 }
 
 .mise-fact-add-change:disabled,
-.mise-fact-change button:disabled {
+.mise-fact-stage-edit:disabled,
+.mise-fact-stage-remove:disabled {
   opacity: 0.35;
   cursor: default;
 }

@@ -142,19 +142,26 @@ function App() {
             <div className="panel-header">
               {leftPanelVisible && <span className="panel-title">📜 NARRATIVE</span>}
               {/* 화살표만 두면 어디로 가는 버튼인지 알 수 없다. 이 전환은
-                  '패널을 넓게 보기'와 '검토 화면으로 가기'라는 두 가지 일이다. */}
+                  '패널을 넓게 보기'와 '검토 화면으로 가기'라는 두 가지 일이다.
+                  뒤쪽은 패널을 접었다 펴는 버튼들과 같은 모양이면 안 된다 —
+                  만드는 일에서 검토하는 일로 넘어가는 자리이고, 렌즈로
+                  결정을 살펴보고 관객이 어떻게 읽는지 보는 단계 전체가
+                  거기서 열린다. */}
               {maximizedPanel === 'left' ? (
                 <button
-                  className="panel-control-btn"
+                  className="panel-control-btn stage-forward-btn"
                   onClick={() => {
                     clearStoryboardShotSelection()
                     setMaximizedPanel(null)
                     setLeftPanelVisible(false)
                   }}
                   style={{ marginLeft: 'auto' }}
-                  title="검토 화면(Decision Board)으로"
+                  title="렌즈로 결정을 검토하고 관객이 어떻게 읽는지 봅니다"
                 >
-                  검토하기 →
+                  검토로 넘어가기
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <path d="m9 18 6-6-6-6" />
+                  </svg>
                 </button>
               ) : (
                 <>
@@ -256,14 +263,11 @@ function App() {
                     </button>
                   ))}
                 </div>
+                {/* Focus 버튼은 뺐다. 헤더에 버튼이 많아 정작 눌러야 할
+                    것이 묻힌다. Z 키로 여전히 들어갈 수 있고, 들어간
+                    화면에는 나오는 버튼이 따로 있다. */}
                 <button type="button" className="panel-control-btn" onClick={openDrawingWorkspace}>
                   Edit Shot
-                </button>
-                <button className="panel-control-btn" onClick={() => setZenMode(true)} title="Focus (Z)">
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/>
-                  </svg>
-                  Focus
                 </button>
               </div>
             )}

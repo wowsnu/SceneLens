@@ -172,6 +172,42 @@
   color: var(--text-main);
 }
 
+/* 만드는 일에서 검토하는 일로 넘어가는 자리. 접기·펼치기 버튼과 같은
+   무게로 두면 단계가 바뀌는 것이 보이지 않는다. 색과 채움으로 든다 —
+   헤더 안이라 크기는 크게 못 키운다. */
+.stage-forward-btn {
+  border-color: rgba(216, 170, 98, 0.5);
+  background: rgba(216, 170, 98, 0.14);
+  color: #e6c38c;
+  font-size: 12px;
+  font-weight: 750;
+  padding: 4px 10px 4px 13px;
+}
+
+.stage-forward-btn:hover {
+  border-color: rgba(216, 170, 98, 0.75);
+  background: rgba(216, 170, 98, 0.24);
+  color: #f0d5a8;
+}
+
+/* 화살표가 살짝 나아간다 — 나가는 길이라는 것을 움직임으로도 말한다. */
+.stage-forward-btn svg {
+  transition: transform 0.18s ease;
+}
+
+.stage-forward-btn:hover svg {
+  transform: translateX(2px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .stage-forward-btn svg {
+    transition: none;
+  }
+  .stage-forward-btn:hover svg {
+    transform: none;
+  }
+}
+
 .decision-header-controls {
   margin-left: auto;
   display: flex;

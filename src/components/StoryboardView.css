@@ -367,6 +367,23 @@
   color: #e0e7ff;
 }
 
+/* 격자 보기 토글. 다른 액션과 같은 줄에 있으므로 톤을 맞춘다. */
+.generation-grid-toggle {
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.04);
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.generation-grid-toggle:hover {
+  border-color: rgba(255, 255, 255, 0.26);
+}
+
+.generation-grid-toggle[aria-pressed="true"] {
+  border-color: rgba(150, 190, 210, 0.5);
+  background: rgba(150, 190, 210, 0.16);
+  color: rgba(186, 220, 234, 0.95);
+}
+
 .generation-viewer-test {
   border: 1px solid rgba(250, 204, 21, 0.38);
   background: rgba(250, 204, 21, 0.1);
@@ -1646,10 +1663,10 @@
   height: 34px;
   display: grid;
   place-items: center;
-  border: 1px solid rgba(216, 170, 98, 0.3);
+  border: 1px solid rgba(251, 113, 133, 0.34);
   border-radius: 8px;
-  background: rgba(216, 170, 98, 0.08);
-  color: #e1bd85;
+  background: rgba(251, 113, 133, 0.09);
+  color: #fecdd3;
   font-family: 'Courier Prime', ui-monospace, monospace;
   font-size: 13px;
   font-weight: 800;
@@ -1683,9 +1700,9 @@
 }
 
 .script-draft-actions .use-draft {
-  border-color: rgba(216, 170, 98, 0.34);
-  background: rgba(216, 170, 98, 0.1);
-  color: #e6c38c;
+  border-color: rgba(251, 113, 133, 0.38);
+  background: rgba(251, 113, 133, 0.11);
+  color: #fecdd3;
 }
 
 
@@ -1991,10 +2008,10 @@
   height: 32px;
   display: grid;
   place-items: center;
-  border: 1px solid rgba(216, 170, 98, 0.34);
+  border: 1px solid rgba(251, 113, 133, 0.4);
   border-radius: 9px;
-  background: rgba(216, 170, 98, 0.09);
-  color: #e7c58f;
+  background: rgba(251, 113, 133, 0.11);
+  color: #fecdd3;
   font-family: 'Courier Prime', ui-monospace, monospace;
   font-size: 14px;
   font-weight: 800;
@@ -2161,16 +2178,27 @@
   width: 100%;
   margin: 7px 0 12px;
   padding: 11px 14px;
-  border: 1px solid rgba(216, 170, 98, 0.34);
+  border: 1px solid rgba(251, 113, 133, 0.4);
   border-radius: 7px;
-  background: rgba(216, 170, 98, 0.1);
-  color: #e6c38c;
+  background: rgba(251, 113, 133, 0.11);
+  color: #fecdd3;
   font-size: 13px;
   font-weight: 750;
   cursor: pointer;
 }
 
 .narrative-rail-primary:hover {
+  border-color: rgba(251, 113, 133, 0.64);
+  background: rgba(251, 113, 133, 0.18);
+}
+
+.narrative-rail-primary.is-cutplan {
+  border-color: rgba(216, 170, 98, 0.34);
+  background: rgba(216, 170, 98, 0.1);
+  color: #e6c38c;
+}
+
+.narrative-rail-primary.is-cutplan:hover {
   border-color: rgba(216, 170, 98, 0.55);
   background: rgba(216, 170, 98, 0.16);
 }
@@ -2204,7 +2232,7 @@
 
 .screenplay-draft-beat {
   margin: 16px 0 8px;
-  color: rgba(216, 170, 98, 0.6);
+  color: rgba(251, 113, 133, 0.68);
   font-size: 10px;
   font-weight: 800;
   letter-spacing: 0.08em;
@@ -2223,9 +2251,9 @@
      스스로 대지 않으면 점검의 아래 구분선에 카드가 달라붙는다. */
   margin: 12px 14px 0;
   padding: 10px;
-  border: 1px solid rgba(216, 170, 98, 0.18);
+  border: 1px solid rgba(251, 113, 133, 0.22);
   border-radius: 8px;
-  background: rgba(216, 170, 98, 0.045);
+  background: rgba(251, 113, 133, 0.05);
 }
 
 .narrative-rail-proposal-status > span {
@@ -2235,8 +2263,8 @@
   display: grid;
   place-items: center;
   border-radius: 7px;
-  background: rgba(216, 170, 98, 0.12);
-  color: #e7c58f;
+  background: rgba(251, 113, 133, 0.14);
+  color: #fecdd3;
   font-size: 10px;
   font-weight: 800;
 }
@@ -2291,7 +2319,7 @@
 }
 
 .narrative-rail-composer textarea:focus {
-  border-color: rgba(216, 170, 98, 0.42);
+  border-color: rgba(251, 113, 133, 0.46);
 }
 
 .narrative-rail-composer > div {
@@ -2313,18 +2341,18 @@
   align-items: center;
   gap: 5px;
   padding: 0 10px 0 12px;
-  border: 1px solid rgba(216, 170, 98, 0.38);
+  border: 1px solid rgba(251, 113, 133, 0.42);
   border-radius: 7px;
-  background: rgba(216, 170, 98, 0.1);
-  color: #e7c58f;
+  background: rgba(251, 113, 133, 0.11);
+  color: #fecdd3;
   font-size: 11px;
   font-weight: 780;
   cursor: pointer;
 }
 
 .narrative-rail-composer button:hover:not(:disabled) {
-  border-color: rgba(216, 170, 98, 0.62);
-  background: rgba(216, 170, 98, 0.16);
+  border-color: rgba(251, 113, 133, 0.66);
+  background: rgba(251, 113, 133, 0.18);
   color: #fff;
 }
 
@@ -2374,8 +2402,8 @@
   display: grid;
   place-items: center;
   border-radius: 999px;
-  background: rgba(216, 170, 98, 0.14);
-  color: #d9b67f;
+  background: rgba(251, 113, 133, 0.16);
+  color: #fecdd3;
   font-size: 9px;
   font-style: normal;
   font-weight: 800;
@@ -2395,15 +2423,15 @@
   margin: 8px 0 12px;
   padding: 10px 12px;
   border-radius: 8px;
-  border: 1px solid rgba(216, 170, 98, 0.28);
-  background: rgba(216, 170, 98, 0.045);
+  border: 1px solid rgba(251, 113, 133, 0.3);
+  background: rgba(251, 113, 133, 0.05);
   font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 }
 
 .narrative-suggestion-kind {
   display: block;
   margin-bottom: 7px;
-  color: rgba(216, 170, 98, 0.9);
+  color: rgba(251, 113, 133, 0.92);
   font-size: 11px;
   font-weight: 750;
 }
@@ -2454,13 +2482,13 @@
 }
 
 .narrative-suggestion-actions .accept {
-  border-color: rgba(216, 170, 98, 0.55);
-  background: rgba(216, 170, 98, 0.16);
-  color: #e1bd85;
+  border-color: rgba(251, 113, 133, 0.58);
+  background: rgba(251, 113, 133, 0.17);
+  color: #fecdd3;
 }
 
 .narrative-suggestion-actions .accept:hover {
-  background: rgba(216, 170, 98, 0.26);
+  background: rgba(251, 113, 133, 0.28);
 }
 
 
@@ -3202,6 +3230,15 @@
   text-align: center;
 }
 
+.rail-agent--narrative .rail-agent-badge {
+  background: rgba(251, 113, 133, 0.18);
+  color: rgba(251, 113, 133, 0.96);
+}
+
+.rail-agent--narrative .rail-agent-badge.is-open {
+  border-color: rgba(251, 113, 133, 0.48);
+}
+
 /* 아직 정하지 않은 것이 남았다는 표시. */
 .rail-agent-badge.is-open {
   background: transparent;
@@ -3397,7 +3434,7 @@
    원문은 그대로 둔다 (DG1 P2). */
 .structure-draft-review {
   margin: 22px 0 16px;
-  border: 1px solid rgba(216, 170, 98, 0.24);
+  border: 1px solid rgba(251, 113, 133, 0.26);
   border-radius: 10px;
   background: #111114;
   overflow: hidden;
@@ -3410,7 +3447,7 @@
   gap: 12px;
   padding: 14px 16px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.07);
-  background: rgba(216, 170, 98, 0.035);
+  background: rgba(251, 113, 133, 0.04);
 }
 
 .structure-draft-review > header > div:nth-child(2) {
@@ -3419,7 +3456,7 @@
 }
 
 .structure-draft-review > header > div:nth-child(2) > span {
-  color: rgba(216, 170, 98, 0.72);
+  color: rgba(251, 113, 133, 0.76);
   font-size: 10px;
   font-weight: 760;
   letter-spacing: 0.07em;
@@ -3448,8 +3485,8 @@
 .structure-draft-scene {
   margin: 18px 0 10px;
   padding-bottom: 7px;
-  border-bottom: 1px solid rgba(216, 170, 98, 0.3);
-  color: rgba(216, 170, 98, 0.95);
+  border-bottom: 1px solid rgba(251, 113, 133, 0.34);
+  color: rgba(251, 113, 133, 0.96);
   font-size: 13px;
   font-weight: 800;
   letter-spacing: 0.02em;
@@ -3485,7 +3522,7 @@
   margin: 26px 0 14px;
   padding: 0 0 9px;
   border: 0;
-  border-bottom: 1px solid rgba(216, 170, 98, 0.3);
+  border-bottom: 1px solid rgba(251, 113, 133, 0.34);
   background: transparent;
   font-family: Inter, -apple-system, sans-serif;
   text-align: left;
@@ -3493,13 +3530,13 @@
 }
 
 .sb-scene-label:hover {
-  border-bottom-color: rgba(216, 170, 98, 0.55);
+  border-bottom-color: rgba(251, 113, 133, 0.58);
 }
 
 .sb-scene-caret {
   padding: 0 !important;
   background: transparent !important;
-  color: rgba(216, 170, 98, 0.6) !important;
+  color: rgba(251, 113, 133, 0.68) !important;
   font-size: 10px !important;
 }
 
@@ -3526,8 +3563,8 @@
   flex-shrink: 0;
   padding: 2px 7px;
   border-radius: 4px;
-  background: rgba(216, 170, 98, 0.16);
-  color: rgba(216, 170, 98, 0.95);
+  background: rgba(251, 113, 133, 0.16);
+  color: rgba(251, 113, 133, 0.96);
   font-size: 9.5px;
   font-weight: 800;
   letter-spacing: 0.07em;
@@ -4168,10 +4205,10 @@
 .narrative-rail-check > button {
   width: 100%;
   padding: 9px 10px;
-  border: 1px solid rgba(245, 158, 11, 0.45);
+  border: 1px solid rgba(251, 113, 133, 0.48);
   border-radius: 6px;
-  background: rgba(245, 158, 11, 0.12);
-  color: rgba(250, 200, 120, 0.95);
+  background: rgba(251, 113, 133, 0.11);
+  color: #fecdd3;
   font-family: inherit;
   font-size: 12.5px;
   font-weight: 700;
@@ -4223,7 +4260,7 @@
 /* 고른 카드는 테두리만 바뀐다. 배경까지 칠하면 대본 줄의 표시와 함께
    두 군데가 켜진 것으로 읽힌다. */
 .narrative-rail-check-list li.is-open {
-  border-color: rgba(245, 158, 11, 0.75);
+  border-color: rgba(251, 113, 133, 0.78);
   background: #131317;
 }
 
@@ -4284,10 +4321,10 @@
 .narrative-rail-check-list li button:not(.narrative-rail-check-open) {
   margin-top: 7px;
   padding: 4px 10px;
-  border: 1px solid rgba(245, 158, 11, 0.4);
+  border: 1px solid rgba(251, 113, 133, 0.44);
   border-radius: 5px;
-  background: rgba(245, 158, 11, 0.1);
-  color: rgba(250, 200, 120, 0.92);
+  background: rgba(251, 113, 133, 0.11);
+  color: #fecdd3;
   font-family: inherit;
   font-size: 11.5px;
   font-weight: 700;
@@ -4295,7 +4332,7 @@
 }
 
 .narrative-rail-check-list li button:not(.narrative-rail-check-open):hover:not(:disabled) {
-  background: rgba(245, 158, 11, 0.18);
+  background: rgba(251, 113, 133, 0.19);
 }
 
 .narrative-rail-check-list li button:not(.narrative-rail-check-open):disabled {
@@ -4319,12 +4356,101 @@
      border를 주고 왼쪽만 두껍게 한다.
      배경은 칠하지 않는다 — 아래에 제안 카드가 이미 서 있어서 줄까지
      칠하면 한 지적에 강조가 둘이 된다. 읽는 것은 대본이다. */
-  border: 1px solid rgba(245, 158, 11, 0.55);
-  border-left: 3px solid rgba(245, 158, 11, 0.85);
+  border: 1px solid rgba(251, 113, 133, 0.58);
+  border-left: 3px solid rgba(251, 113, 133, 0.88);
 }
 
 /* AI가 채운 줄이면서 지적도 걸린 경우. 지적 쪽을 앞세운다 —
    지금 감독이 볼 것은 고칠 곳이다. */
 .sb-script-action.is-filled.is-flagged {
-  border-left-color: rgba(245, 158, 11, 0.75);
+  border-left-color: rgba(251, 113, 133, 0.78);
+}
+
+/* 패널 한눈에 보기. 전체 생성은 한 번에 나오는데 Beat마다 한 줄씩 쌓아
+   보여 주면 이어지는지 알 수 없다. */
+.sb-panel-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 18px 24px 36px;
+}
+
+/* 좁아지면 칸을 줄인다. 3열을 고집하면 패널이 알아볼 수 없이 작아진다. */
+@media (max-width: 900px) {
+  .sb-panel-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.sb-panel-grid-item {
+  position: relative;
+  display: block;
+  padding: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.025);
+  color: inherit;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.sb-panel-grid-item:hover {
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.sb-panel-grid-item.is-active {
+  border-color: rgba(150, 190, 210, 0.65);
+}
+
+.sb-panel-grid-item img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border-radius: 7px;
+  object-fit: cover;
+  background: #0c0c0f;
+}
+
+/* 아직 안 그린 컷도 자리를 지킨다 — 빠진 것이 보여야 무엇이 남았는지 안다. */
+.sb-panel-grid-blank {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border: 1px dashed rgba(255, 255, 255, 0.14);
+  border-radius: 7px;
+  color: rgba(255, 255, 255, 0.28);
+  font-size: 11px;
+}
+
+.sb-panel-grid-order {
+  position: absolute;
+  top: 14px;
+  left: 14px;
+  z-index: 1;
+  min-width: 20px;
+  padding: 1px 6px;
+  border-radius: 9px;
+  background: rgba(0, 0, 0, 0.72);
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 10.5px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.sb-panel-grid-item em {
+  margin-top: 7px;
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 11px;
+  font-style: normal;
+  line-height: 1.5;
+  /* 컷 내용이 길면 격자가 들쭉날쭉해진다. 두 줄까지만 보인다. */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }

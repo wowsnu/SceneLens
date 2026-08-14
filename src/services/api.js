@@ -191,11 +191,19 @@ export async function requestAutoFillRange({ shots, scriptContext, intent, userP
   }, FILL_TIMEOUT)
 }
 
-export async function requestViewerReflection({ panels, readingConditions = ['first_viewer'] }) {
+export async function requestViewerReflection({
+  panels,
+  readingConditions = ['first_viewer'],
+  customConditions = [],
+}) {
   return fetchWithTimeout(`${API_BASE}/viewer/reflection`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ panels, reading_conditions: readingConditions }),
+    body: JSON.stringify({
+      panels,
+      reading_conditions: readingConditions,
+      custom_conditions: customConditions,
+    }),
   }, 240000)
 }
 

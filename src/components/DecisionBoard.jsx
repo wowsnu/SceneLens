@@ -77,20 +77,17 @@ const VIEWER_READING_CONDITIONS = [
   {
     id: 'first_viewer',
     title: '처음 보는 관객',
-    description: '사전 정보 없이 인물·행동·관계를 따라갑니다.',
-    focus: '무슨 일이 벌어지는지 따라갈 수 있나',
+    attention: '사전 정보 없이, 인물이 누구고 지금 무슨 일이 벌어지는지 따라간다.',
   },
   {
     id: 'film_literate',
     title: '영화에 익숙한 관객',
-    description: '프레이밍, 반복, 생략과 여백도 단서로 읽습니다.',
-    focus: '모호함이 긴장이나 의미로 작동하나',
+    attention: '프레이밍·반복·생략이 어떤 기대나 긴장을 만드는지 살핀다.',
   },
   {
     id: 'context_close',
-    title: '이야기와 가까운 관객',
-    description: '장소·직업·주제와 관련된 현실 단서를 살핍니다.',
-    focus: '이야기 맥락에서 놓친 단서가 있나',
+    title: '상황을 꼼꼼히 보는 관객',
+    attention: '장소와 인물의 상황이 화면만으로 납득되는지 살핀다.',
   },
 ]
 
@@ -427,6 +424,39 @@ const MOCK_MISE_SPATIAL_ELEMENTS = [
   { id: 'jaein-marker', type: 'marker', x: 360, y: 500, label: '재', color: '#10b981', waypoints: [] },
   { id: 'minho-marker', type: 'marker', x: 785, y: 335, label: '민', color: '#f59e0b', waypoints: [] },
 ]
+
+const cloneSpatialElements = (elements) => elements.map((element) => ({
+  ...element,
+  waypoints: element.waypoints?.map((waypoint) => ({ ...waypoint })),
+}))
+
+// 씬 상태의 모든 변화 시작점을 하나의 공간 단계로 합친다. 인물의 상태와
+// 조명 변화가 같은 컷에서 시작하면, 그 컷부터는 같은 2D 배치를 고른다.
+const spatialStagesFor = (sceneState, shots, sceneId) => {
+  const factGroups = [
+    ...(sceneState?.characters || []).flatMap((character) => character.facts || []),
+    ...(sceneState?.location?.facts || []),
+    ...(sceneState?.environment?.facts || []),
+  ]
+  const starts = new Set([0])
+  factGroups.forEach((fact) => {
+    ;(fact.changes || []).forEach((change) => {
+      const index = shots.findIndex((shot) => shot.cutPlanItemId === change.cutId)
+      if (index > 0) starts.add(index)
+    })
+  })
+  const indexes = [...starts].sort((left, right) => left - right)
+  return indexes.map((start, index) => {
+    const nextStart = indexes[index + 1] ?? shots.length
+    const end = Math.max(start, nextStart - 1)
+    const cutId = start === 0 ? 'initial' : shots[start]?.cutPlanItemId || `shot-${start}`
+    return {
+      id: `${sceneId || 'scene'}:${cutId}`,
+      start,
+      label: start === end ? `S${start + 1}` : `S${start + 1}–S${end + 1}`,
+    }
+  })
+}
 
 const MOCK_MISE_ENTITY_PRESETS = [
   { label: '재', color: '#10b981', full: '재인' },
@@ -931,41 +961,105 @@ function buildMockRangePlan(pattern, scopedShots) {
 function SceneFactChanges({ fact, group, characterId = null, shots, onAdd, onRemove, disabled = false }) {
   if (fact.open) return null
 
+  const orderedChanges = (fact.changes || [])
+    .map((change) => ({
+      ...change,
+      shotIndex: shots.findIndex((shot) => shot.cutPlanItemId === change.cutId),
+    }))
+    .filter((change) => change.shotIndex >= 0)
+    .sort((left, right) => left.shotIndex - right.shotIndex)
+  const stages = [
+    { id: 'initial', value: fact.value, shotIndex: 0, initial: true },
+    ...orderedChanges,
+  ]
+  const usedCutIds = new Set(orderedChanges.map((change) => change.cutId))
+  const lastChangeIndex = orderedChanges[orderedChanges.length - 1]?.shotIndex ?? 0
+  const nextShot = shots.find((shot, index) => (
+    index > lastChangeIndex && shot.cutPlanItemId && !usedCutIds.has(shot.cutPlanItemId)
+  )) || shots.find((shot) => shot.cutPlanItemId && !usedCutIds.has(shot.cutPlanItemId))
+
+  const rangeLabel = (stage, index) => {
+    if (stage.initial) {
+      const firstChange = orderedChanges[0]
+      if (!firstChange || firstChange.shotIndex <= 0) return '처음 상태'
+      return firstChange.shotIndex === 1 ? 'S1' : `S1–S${firstChange.shotIndex}`
+    }
+    const next = stages[index + 1]
+    const from = stage.shotIndex + 1
+    const to = next ? next.shotIndex : shots.length
+    return from === to ? `S${from}` : `S${from}–S${to}`
+  }
+
+  const openStageEditor = (stage) => {
+    onAdd({
+      group,
+      characterId,
+      label: fact.label,
+      cutId: stage.cutId,
+      originalCutId: stage.cutId,
+      takenCutIds: [...usedCutIds],
+      value: stage.value,
+      editing: true,
+    })
+  }
+
   return (
-    <div className="mise-fact-timeline">
-      {(fact.changes || []).map((change) => {
-        // 변화는 컷 id로 기록된다. 컷이 밀려도 엉뚱한 자리에 걸리지 않는다.
-        const index = shots.findIndex((shot) => shot.cutPlanItemId === change.cutId)
-        const label = index >= 0 ? `S${index + 1}~` : '지워진 컷'
-        return (
-          <span key={change.cutId} className="mise-fact-change">
-            <em>{label}</em>
-            {change.value}
-            <button
-              type="button"
-              disabled={disabled}
-              aria-label={`${label} 변화 삭제`}
-              onClick={() => onRemove(group, fact.label, change.cutId, { characterId })}
-            >✕</button>
-          </span>
-        )
-      })}
+    <section className="mise-fact-timeline" aria-label={`${fact.label} 상태 진행`}>
+      <header>
+        <span>상태 진행</span>
+        <small>각 단계는 다음 변화 전까지 유지됩니다.</small>
+      </header>
+      <ol>
+        {stages.map((stage, index) => {
+          const isInitial = stage.initial
+          const label = rangeLabel(stage, index)
+          const nextLabel = isInitial ? '처음 값' : `${label}부터`
+          return (
+            <li key={stage.id || stage.cutId} className={isInitial ? 'initial' : ''}>
+              <span className="mise-fact-stage-dot">{index + 1}</span>
+              <div>
+                <small>{nextLabel}</small>
+                <strong>{stage.value || '아직 정하지 않음'}</strong>
+              </div>
+              {!isInitial && (
+                <button
+                  type="button"
+                  className="mise-fact-stage-edit"
+                  disabled={disabled}
+                  onClick={() => openStageEditor(stage)}
+                >수정</button>
+              )}
+              {!isInitial && (
+                <button
+                  type="button"
+                  className="mise-fact-stage-remove"
+                  disabled={disabled}
+                  aria-label={`${label} 상태 삭제`}
+                  onClick={() => onRemove(group, fact.label, stage.cutId, { characterId })}
+                >×</button>
+              )}
+            </li>
+          )
+        })}
+      </ol>
       <button
         type="button"
         className="mise-fact-add-change"
-        disabled={disabled}
+        disabled={disabled || !nextShot}
         onClick={() => onAdd({
           group,
           characterId,
           label: fact.label,
-          // 첫 컷은 '처음 값'이 맡으므로 두 번째 컷을 기본으로 한다.
-          cutId: (shots[1] || shots[0])?.cutPlanItemId || null,
+          cutId: nextShot?.cutPlanItemId || null,
+          originalCutId: null,
+          takenCutIds: [...usedCutIds],
           value: '',
+          editing: false,
         })}
       >
-        + 변화
+        + 다음 상태
       </button>
-    </div>
+    </section>
   )
 }
 
@@ -1348,6 +1442,8 @@ export default function DecisionBoard({ boardView = 'split' }) {
   const addFactChange = useStore((s) => s.addFactChange)
   const setSpatialElements = useStore((s) => s.setSpatialElements)
   const spatialElements = useStore((s) => s.spatialElements)
+  const spatialLayoutsByStage = useStore((s) => s.spatialLayoutsByStage)
+  const setSpatialLayoutForStage = useStore((s) => s.setSpatialLayoutForStage)
   const requestSpaceLayout = useStore((s) => s.requestSpaceLayout)
   const spaceLayoutPending = useStore((s) => s.spaceLayoutPending)
   const spaceLayoutError = useStore((s) => s.spaceLayoutError)
@@ -1367,6 +1463,8 @@ export default function DecisionBoard({ boardView = 'split' }) {
   const [editingCharacterId, setEditingCharacterId] = useState(null)
   const [characterDraft, setCharacterDraft] = useState(null)
   const [spatialEditorOpen, setSpatialEditorOpen] = useState(false)
+  const [activeSpatialStageId, setActiveSpatialStageId] = useState(null)
+  const [spatialEditorVersion, setSpatialEditorVersion] = useState(0)
   const [selectedStagingMoveIds, setSelectedStagingMoveIds] = useState([])
   const [selectedEditingOperationIds, setSelectedEditingOperationIds] = useState([])
   const [miseSpatialElements, setMiseSpatialElements] = useState(() => (
@@ -1380,6 +1478,8 @@ export default function DecisionBoard({ boardView = 'split' }) {
   const [rangeEnd, setRangeEnd] = useState(0)
   const [selectedReadingConditionIds, setSelectedReadingConditionIds] = useState(['first_viewer'])
   const [activeReadingConditionId, setActiveReadingConditionId] = useState('first_viewer')
+  const [customReadingConditions, setCustomReadingConditions] = useState([])
+  const [customReadingConditionDraft, setCustomReadingConditionDraft] = useState({ label: '', instruction: '' })
   const [lensIntents, setLensIntents] = useState(() => (
     CREATIVE_LENSES.reduce((acc, lens) => ({ ...acc, [lens.id]: '' }), {})
   ))
@@ -1413,6 +1513,10 @@ export default function DecisionBoard({ boardView = 'split' }) {
   const activeBranch = scene?.activeBranch ?? 0
   const branch = scene?.branches?.[activeBranch]
   const shots = branch?.shots || []
+  const spatialStages = useMemo(
+    () => spatialStagesFor(sceneState, shots, scene?.id),
+    [scene?.id, sceneState, shots],
+  )
   const scriptScenes = useMemo(() => selectScenes(screenplay), [screenplay])
   const scopeFrom = Math.min(rangeStart, rangeEnd)
   const scopeTo = Math.max(rangeStart, rangeEnd)
@@ -1538,7 +1642,7 @@ export default function DecisionBoard({ boardView = 'split' }) {
       .join(' · ')
     updateLensIntent(
       primaryLens.id,
-      `의도 비공개 순차 읽기 ${panelLabel}: ${interpretation}\n화면 근거: ${cues}\n이 읽힘이 생기는 이유와 조정할 방법을 검토해줘.`,
+      `의도 비공개 관객 관점 ${panelLabel}: ${interpretation}\n화면 근거: ${cues}\n이 읽힘이 생기는 이유와 조정할 방법을 검토해줘.`,
     )
   }
 
@@ -1906,11 +2010,55 @@ export default function DecisionBoard({ boardView = 'split' }) {
     closeCharacterDetails()
   }
 
+  const spatialLayoutForStage = useCallback((stageId) => {
+    const stageIndex = spatialStages.findIndex((stage) => stage.id === stageId)
+    // 새 단계는 직전 단계의 배치를 출발점으로 쓴다. 그래서 "변화"가
+    // 완전히 새 도면을 만드는 일이 아니라, 필요한 부분만 움직이는 일이 된다.
+    for (let index = stageIndex; index >= 0; index -= 1) {
+      const saved = spatialLayoutsByStage[spatialStages[index]?.id]
+      if (saved?.length) return saved
+    }
+    return spatialElements.length > 0 ? spatialElements : miseSpatialElements
+  }, [miseSpatialElements, spatialElements, spatialLayoutsByStage, spatialStages])
+
+  const selectSpatialStage = useCallback((stageId) => {
+    const nextElements = cloneSpatialElements(spatialLayoutForStage(stageId))
+    setActiveSpatialStageId(stageId)
+    setMiseSpatialElements(nextElements)
+    // 기존 생성 흐름도 현재 선택한 단계의 도면을 기준으로 삼는다.
+    setSpatialElements(nextElements)
+    // SpatialMap은 초기 도면을 내부 state로 관리하므로, 단계 전환 때만 새로 연다.
+    setSpatialEditorVersion((version) => version + 1)
+  }, [setSpatialElements, spatialLayoutForStage])
+
   const updateMiseSpatialElements = useCallback((elements) => {
-    setMiseSpatialElements(elements)
+    const nextElements = cloneSpatialElements(elements)
+    setMiseSpatialElements(nextElements)
     // 스토어에도 올린다. 패널 생성이 이 배치를 프롬프트로 옮겨 쓴다.
-    setSpatialElements(elements)
-  }, [setSpatialElements])
+    setSpatialElements(nextElements)
+    if (activeSpatialStageId) setSpatialLayoutForStage(activeSpatialStageId, nextElements)
+  }, [activeSpatialStageId, setSpatialElements, setSpatialLayoutForStage])
+
+  const openSpatialEditor = () => {
+    const currentStage = [...spatialStages]
+      .reverse()
+      .find((stage) => stage.start <= activeShot) || spatialStages[0]
+    if (currentStage) selectSpatialStage(currentStage.id)
+    setSpatialEditorOpen(true)
+  }
+
+  const proposeSpatialLayout = async () => {
+    await requestSpaceLayout()
+    // AI 제안은 스토어에 한 번 기록된 뒤, 여기서만 캔버스에 명시적으로 반영한다.
+    // 캔버스 자신의 변경을 제안으로 되받지 않아 렌더 루프가 생기지 않는다.
+    const proposed = useStore.getState().spatialElements
+    if (proposed.length === 0) return
+
+    const nextElements = cloneSpatialElements(proposed)
+    setMiseSpatialElements(nextElements)
+    if (activeSpatialStageId) setSpatialLayoutForStage(activeSpatialStageId, nextElements)
+    setSpatialEditorVersion((version) => version + 1)
+  }
 
   const selectScopeShot = (shotIdx) => {
     setViewerReport(null)
@@ -2025,9 +2173,18 @@ export default function DecisionBoard({ boardView = 'split' }) {
   )
 
   const openViewerReflection = () => {
-    if (shots.length === 0) return
+    // DG3의 관객 관점은 한 장의 이미지를 평가하는 기능이 아니라, 장면이
+    // 이어지며 어떻게 독해되는지를 보는 기능이다. 따라서 최소 두 패널의
+    // 범위를 강제한다.
+    if (shots.length < 2) return
     setCameraPreview(null)
     setReviewOpen(false)
+    if (scopeMode !== 'range' || rangeStart === rangeEnd) {
+      const start = activeShot >= shots.length - 1 ? Math.max(0, activeShot - 1) : activeShot
+      setRangeStart(start)
+      setRangeEnd(Math.min(shots.length - 1, start + 1))
+    }
+    setScopeMode('range')
     setViewerSnapshot({
       sceneId: scene?.id,
       sceneLabel: scene?.label || 'Current scene',
@@ -2049,8 +2206,25 @@ export default function DecisionBoard({ boardView = 'split' }) {
       if (current.includes(conditionId)) {
         return current.length === 1 ? current : current.filter((id) => id !== conditionId)
       }
+      if (current.length >= 3) return current
       return [...current, conditionId]
     })
+  }
+
+  const addCustomReadingCondition = () => {
+    const label = customReadingConditionDraft.label.trim()
+    const instruction = customReadingConditionDraft.instruction.trim()
+    if (!label || !instruction || selectedReadingConditionIds.length >= 3) return
+    const id = `custom_${Date.now().toString(36)}`
+    setCustomReadingConditions((current) => [...current, { id, label, instruction }])
+    setSelectedReadingConditionIds((current) => [...current, id])
+    setCustomReadingConditionDraft({ label: '', instruction: '' })
+  }
+
+  const removeCustomReadingCondition = (conditionId) => {
+    if (selectedReadingConditionIds.length === 1 && selectedReadingConditionIds[0] === conditionId) return
+    setCustomReadingConditions((current) => current.filter((condition) => condition.id !== conditionId))
+    setSelectedReadingConditionIds((current) => current.filter((id) => id !== conditionId))
   }
 
   const selectReviewMode = (mode) => {
@@ -2074,6 +2248,11 @@ export default function DecisionBoard({ boardView = 'split' }) {
   ))
 
   const runViewerReflection = async () => {
+    if (selectedSnapshotShots.length < 2) {
+      setViewerStatus('error')
+      setViewerError('관객 관점은 두 컷 이상을 선택해야 합니다.')
+      return
+    }
     const renderedShots = selectedSnapshotShots.filter((shot) => Boolean(shot.image))
     if (renderedShots.length === 0) {
       setViewerStatus('error')
@@ -2098,7 +2277,12 @@ export default function DecisionBoard({ boardView = 'split' }) {
       )
       const result = await requestViewerReflection({
         panels: panelImages.map((image) => ({ image })),
-        readingConditions: selectedReadingConditionIds,
+        readingConditions: selectedReadingConditionIds.filter((id) => (
+          VIEWER_READING_CONDITIONS.some((condition) => condition.id === id)
+        )),
+        customConditions: customReadingConditions.filter((condition) => (
+          selectedReadingConditionIds.includes(condition.id)
+        )),
       })
       const mapPanelOrder = (panelOrder) => panelOrders[panelOrder - 1] || panelOrder
       const remapReading = (reading) => ({
@@ -2149,7 +2333,7 @@ export default function DecisionBoard({ boardView = 'split' }) {
       setViewerStatus('ready')
     } catch (error) {
       setViewerStatus('error')
-      setViewerError(error.message || '순차 읽기 결과를 불러오지 못했습니다.')
+      setViewerError(error.message || '관객 관점 결과를 불러오지 못했습니다.')
     }
   }
 
@@ -2185,7 +2369,7 @@ export default function DecisionBoard({ boardView = 'split' }) {
       scope,
       shotId: target?.id || null,
       beat: target?.scriptBeat ?? 0,
-      title: finding.title || '순차 읽기에서 가져온 해석',
+      title: finding.title || '관객 관점에서 가져온 해석',
       interpretations: finding.interpretations || [],
       visibleCues: finding.visibleCues || [],
       uncertainties: finding.uncertainties || [],
@@ -2269,7 +2453,7 @@ export default function DecisionBoard({ boardView = 'split' }) {
 
     // 배치 문제는 컷 플랜 표에 고칠 것이 없다. 2D 구조도로 보낸다.
     if (tool === 'layout') {
-      setSpatialEditorOpen(true)
+      openSpatialEditor()
       return
     }
 
@@ -2320,7 +2504,8 @@ export default function DecisionBoard({ boardView = 'split' }) {
     entry.condition_id === activeReadingConditionId
   )) || viewerReadings[0] || null
   const activeViewerReading = activeViewerEntry?.reading || viewerReport?.initial_reading || null
-  const activeViewerCondition = VIEWER_READING_CONDITIONS.find((condition) => (
+  const allViewerReadingConditions = [...VIEWER_READING_CONDITIONS, ...customReadingConditions]
+  const activeViewerCondition = allViewerReadingConditions.find((condition) => (
     condition.id === activeViewerEntry?.condition_id
   ))
   const viewerDecisionScope = `${scene?.id || activeScene}:${branch?.id || activeBranch}`
@@ -2339,51 +2524,101 @@ export default function DecisionBoard({ boardView = 'split' }) {
   }))
 
   const viewerReflectionPane = viewerSnapshot ? (
-    <div className="viewer-reflection-shell" aria-label="의도 비공개 순차 읽기">
+    <div className="viewer-reflection-shell" aria-label="의도 비공개 관객 관점">
       <header className="viewer-reflection-heading">
         <div>
-          <span>순차 읽기</span>
+          <span>관객 관점</span>
           <h2>컷이 이어질수록 해석은 어떻게 바뀔까요?</h2>
-          <p>선택한 읽기 조건은 실제 집단을 대표하지 않으며, 제작 의도 없이 같은 패널을 다르게 주목해 읽습니다.</p>
+          <p>제작 의도 없이 패널 흐름을 읽고, 해석이 바뀌는 지점을 찾습니다.</p>
         </div>
       </header>
 
       {!viewerReport ? (
         <section className="viewer-reflection-placeholder">
-          <span>의도 비공개 · 순차 읽기</span>
+          <span>의도 비공개 · 관객 관점</span>
           <strong>선택한 마지막 컷까지 해석이 만들어지는 과정을 따라갑니다.</strong>
-          <p>시각적 단서에서 시작해 현재 가설이 강화되거나 바뀌는 지점, 갈림과 남은 질문을 기록합니다.</p>
           <section className="viewer-reading-conditions" aria-label="읽기 조건 선택">
             <header>
               <div>
-                <span>읽기 조건</span>
-                <strong>어떤 관점의 읽기를 비교할까요?</strong>
+                <span>관객 시선</span>
+                <strong>어떤 관객의 읽기를 함께 볼까요?</strong>
               </div>
-              <small>선택한 조건은 서로의 결과를 보지 않고 같은 패널을 따로 읽습니다.</small>
+              <small>각 시선은 실제 사람을 대표하지 않고, 화면에서 먼저 볼 것을 다르게 둡니다.</small>
             </header>
-            <div>
-              {VIEWER_READING_CONDITIONS.map((condition) => {
+            <div className="viewer-reading-condition-grid">
+              {allViewerReadingConditions.map((condition) => {
                 const selected = selectedReadingConditionIds.includes(condition.id)
+                const custom = !VIEWER_READING_CONDITIONS.some((item) => item.id === condition.id)
                 return (
-                  <button
-                    key={condition.id}
-                    type="button"
-                    className={selected ? 'selected' : ''}
-                    aria-pressed={selected}
-                    onClick={() => toggleReadingCondition(condition.id)}
-                  >
-                    <span>{selected ? '✓' : '+'}</span>
-                    <strong>{condition.title}</strong>
-                    <p>{condition.description}</p>
-                    <small>{condition.focus}</small>
-                  </button>
+                  <div key={condition.id} className="viewer-reading-condition-card">
+                    <button
+                      type="button"
+                      className={selected ? 'selected' : ''}
+                      aria-pressed={selected}
+                      onClick={() => toggleReadingCondition(condition.id)}
+                    >
+                      <span>{selected ? '✓' : '+'}</span>
+                      <strong>{condition.title || condition.label}</strong>
+                      <p><strong>먼저 보는 것</strong>{condition.attention || condition.instruction}</p>
+                    </button>
+                    {custom && (
+                      <button
+                        type="button"
+                        className="viewer-custom-condition-remove"
+                        aria-label={`${condition.label} 읽기 조건 삭제`}
+                        onClick={() => removeCustomReadingCondition(condition.id)}
+                      >×</button>
+                    )}
+                  </div>
                 )
               })}
             </div>
+            <details className="viewer-custom-condition-form">
+              <summary>
+                <span>＋</span>
+                <div>
+                  <strong>새 관객 시선 만들기</strong>
+                  <small>이 관객이 화면에서 무엇을 먼저 볼지 정합니다.</small>
+                </div>
+                <em>직접 추가</em>
+              </summary>
+              <div className="viewer-custom-condition-fields">
+                <label>
+                  <span>관객 이름</span>
+                  <input
+                    value={customReadingConditionDraft.label}
+                    onChange={(event) => setCustomReadingConditionDraft((current) => ({ ...current, label: event.target.value }))}
+                    placeholder="예: 공간 관계를 꼼꼼히 보는 관객"
+                    maxLength={60}
+                  />
+                </label>
+                <label>
+                  <span>먼저 보는 것</span>
+                  <textarea
+                    value={customReadingConditionDraft.instruction}
+                    onChange={(event) => setCustomReadingConditionDraft((current) => ({ ...current, instruction: event.target.value }))}
+                    placeholder="예: 인물·출입구·중요한 물체의 위치 관계가 이어지는지 살핀다."
+                    maxLength={360}
+                  />
+                </label>
+                <div className="viewer-custom-condition-actions">
+                  {selectedReadingConditionIds.length >= 3 && <small>세 관객 시선을 모두 선택했어요. 하나를 해제하면 추가할 수 있습니다.</small>}
+                  <button
+                    type="button"
+                    onClick={addCustomReadingCondition}
+                    disabled={
+                      !customReadingConditionDraft.label.trim()
+                      || !customReadingConditionDraft.instruction.trim()
+                      || selectedReadingConditionIds.length >= 3
+                    }
+                  >이 시선으로 읽기</button>
+                </div>
+              </div>
+            </details>
           </section>
           {viewerError && <p className="viewer-error">{viewerError}</p>}
           <button type="button" className="viewer-run-button" onClick={runViewerReflection} disabled={viewerStatus === 'loading'}>
-            {viewerStatus === 'loading' ? '읽는 중…' : '순차 읽기 시작'}
+            {viewerStatus === 'loading' ? '읽는 중…' : '관객 관점 분석'}
           </button>
         </section>
       ) : (
@@ -2391,7 +2626,7 @@ export default function DecisionBoard({ boardView = 'split' }) {
           {viewerReadings.length > 1 && (
             <div className="viewer-reading-tabs" role="tablist" aria-label="읽기 조건 결과">
               {viewerReadings.map((entry) => {
-                const condition = VIEWER_READING_CONDITIONS.find((item) => item.id === entry.condition_id)
+                const condition = allViewerReadingConditions.find((item) => item.id === entry.condition_id)
                 const active = entry.condition_id === activeViewerEntry?.condition_id
                 return (
                   <button
@@ -2402,14 +2637,14 @@ export default function DecisionBoard({ boardView = 'split' }) {
                     className={active ? 'active' : ''}
                     onClick={() => setActiveReadingConditionId(entry.condition_id)}
                   >
-                    {condition?.title || entry.condition_id}
+                    {condition?.title || condition?.label || entry.condition_id}
                   </button>
                 )
               })}
             </div>
           )}
           <section className="viewer-whole-reading">
-            <span>{activeViewerCondition ? `${activeViewerCondition.title}의 흐름` : '새눈이가 따라간 흐름'}</span>
+            <span>{activeViewerCondition ? `${activeViewerCondition.title || activeViewerCondition.label}의 흐름` : '새눈이가 따라간 흐름'}</span>
             <p>{activeViewerReading.summary}</p>
             <details>
               <summary>마지막에는 이렇게 이해했어</summary>
@@ -2479,12 +2714,12 @@ export default function DecisionBoard({ boardView = 'split' }) {
                   <div>
                     <small>함께 본 단서 · {divergence.shared_cues.join(' · ')}</small>
                     {divergence.readings.map((conditionReading, readingIndex) => {
-                      const condition = VIEWER_READING_CONDITIONS.find((item) => (
+                      const condition = allViewerReadingConditions.find((item) => (
                         item.id === conditionReading.condition_id
                       ))
                       return (
                         <p key={`${readingIndex}-${conditionReading.condition_id}`}>
-                          <strong>{condition?.title || '다른 읽기'}</strong>{conditionReading.reading}
+                          <strong>{condition?.title || condition?.label || '다른 읽기'}</strong>{conditionReading.reading}
                         </p>
                       )
                     })}
@@ -2535,7 +2770,7 @@ export default function DecisionBoard({ boardView = 'split' }) {
             </section>
           )}
           <button type="button" className="viewer-rerun-button" onClick={runViewerReflection} disabled={viewerStatus === 'loading'}>
-            순차 읽기 다시 하기
+            관객 관점 다시 보기
           </button>
         </section>
       )}
@@ -2602,35 +2837,41 @@ export default function DecisionBoard({ boardView = 'split' }) {
     <div className="decision-board">
       <section className="scope-panel" aria-label="Scope selection">
         <div className="scope-panel-copy">
-          <span>검토 대상</span>
+          <span>{reviewMode === 'viewer' ? '관객 관점 범위' : '검토 대상'}</span>
           <strong>
-            {scope.mode === 'range'
+            {reviewMode === 'viewer' || scope.mode === 'range'
               ? `S${scopeFrom + 1}–S${scopeTo + 1}`
               : `S${activeShot + 1} · ${currentShot?.label || 'Current shot'}`}
           </strong>
         </div>
         <div className="scope-controls">
           <div className="scope-mode-toggle">
-            <button
-              type="button"
-              className={scopeMode === 'single' ? 'active' : ''}
-              onClick={() => switchScopeMode('single')}
-            >
-              한 컷
-            </button>
-            <button
-              type="button"
-              className={scopeMode === 'range' ? 'active' : ''}
-              onClick={() => switchScopeMode('range')}
-              disabled={reviewMode === 'staging' && miseWorkspace === 'shot'}
-              title={
-                reviewMode === 'staging' && miseWorkspace === 'shot'
-                    ? 'Shot Staging Range는 다음 단계에서 추가됩니다.'
-                    : undefined
-              }
-            >
-              범위
-            </button>
+            {reviewMode === 'viewer' ? (
+              <span className="scope-mode-fixed">연속 범위만</span>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  className={scopeMode === 'single' ? 'active' : ''}
+                  onClick={() => switchScopeMode('single')}
+                >
+                  한 컷
+                </button>
+                <button
+                  type="button"
+                  className={scopeMode === 'range' ? 'active' : ''}
+                  onClick={() => switchScopeMode('range')}
+                  disabled={reviewMode === 'staging' && miseWorkspace === 'shot'}
+                  title={
+                    reviewMode === 'staging' && miseWorkspace === 'shot'
+                        ? 'Shot Staging Range는 다음 단계에서 추가됩니다.'
+                        : undefined
+                  }
+                >
+                  범위
+                </button>
+              </>
+            )}
           </div>
           {scopeMode === 'range' && (
             <div className="scope-shot-strip">
@@ -2693,9 +2934,9 @@ export default function DecisionBoard({ boardView = 'split' }) {
                 className={reviewMode === 'viewer' ? 'active audience' : 'audience'}
                 onClick={() => selectReviewMode('viewer')}
                 aria-pressed={reviewMode === 'viewer'}
-                disabled={shots.length === 0}
+                disabled={shots.length < 2}
               >
-                순차 읽기
+                관객 관점
               </button>
             </div>
           </nav>
@@ -2731,10 +2972,10 @@ export default function DecisionBoard({ boardView = 'split' }) {
               </div>
               {viewerFindingHandoff
                 && ({ mise: 'staging', camera: 'camera', editing: 'editing' }[viewerFindingHandoff.route] === primaryLens.id) && (
-                <section className="viewer-handoff-card" aria-label="순차 읽기에서 가져온 문제">
+                <section className="viewer-handoff-card" aria-label="관객 관점에서 가져온 문제">
                   <header>
-                    <span>순차 읽기 · {(viewerFindingHandoff.panelOrders || [viewerFindingHandoff.panelOrder]).map((panelOrder) => `S${panelOrder}`).join(' · ')}</span>
-                    <button type="button" onClick={clearViewerFindingHandoff} aria-label="순차 읽기 카드 닫기">×</button>
+                    <span>관객 관점 · {(viewerFindingHandoff.panelOrders || [viewerFindingHandoff.panelOrder]).map((panelOrder) => `S${panelOrder}`).join(' · ')}</span>
+                    <button type="button" onClick={clearViewerFindingHandoff} aria-label="관객 관점 카드 닫기">×</button>
                   </header>
                   <strong>{viewerFindingHandoff.interpretations?.[0] || viewerFindingHandoff.title}</strong>
                   <p><em>시각적 근거</em>{viewerFindingHandoff.visibleCues?.join(' · ') || '특정 근거 없음'}</p>
@@ -3399,7 +3640,7 @@ export default function DecisionBoard({ boardView = 'split' }) {
                         <button type="button" onClick={() => setChangeDraft(null)}>✕</button>
                       </header>
                       <label>
-                        <span>어느 컷부터</span>
+                        <span>이 상태가 시작되는 컷</span>
                         <select
                           value={changeDraft.cutId || ''}
                           onChange={(event) => setChangeDraft({
@@ -3410,7 +3651,14 @@ export default function DecisionBoard({ boardView = 'split' }) {
                           {/* 컷과 이어지지 않은 패널은 고를 수 없다.
                               변화는 컷 id로 기록되기 때문이다. */}
                           {shots.filter((shot) => shot.cutPlanItemId).map((shot, index) => (
-                            <option key={shot.id} value={shot.cutPlanItemId}>
+                            <option
+                              key={shot.id}
+                              value={shot.cutPlanItemId}
+                              disabled={
+                                shot.cutPlanItemId !== changeDraft.originalCutId
+                                && changeDraft.takenCutIds?.includes(shot.cutPlanItemId)
+                              }
+                            >
                               S{index + 1} · {shot.label}
                             </option>
                           ))}
@@ -3439,10 +3687,18 @@ export default function DecisionBoard({ boardView = 'split' }) {
                             changeDraft.value.trim(),
                             { characterId: changeDraft.characterId },
                           )
+                          if (changeDraft.originalCutId && changeDraft.originalCutId !== changeDraft.cutId) {
+                            removeFactChange(
+                              changeDraft.group,
+                              changeDraft.label,
+                              changeDraft.originalCutId,
+                              { characterId: changeDraft.characterId },
+                            )
+                          }
                           setChangeDraft(null)
                         }}
                       >
-                        추가
+                        {changeDraft.editing ? '이 단계 저장' : '다음 단계 추가'}
                       </button>
                     </div>
                   )}
@@ -3457,7 +3713,7 @@ export default function DecisionBoard({ boardView = 'split' }) {
                       <button
                         type="button"
                         className="mise-location-preview"
-                        onClick={() => setSpatialEditorOpen(true)}
+                        onClick={openSpatialEditor}
                         aria-label="지하철 관제실 2D 공간 편집기 열기"
                       >
                         <span className="mise-location-preview-caption">
@@ -3615,7 +3871,7 @@ export default function DecisionBoard({ boardView = 'split' }) {
                   />
                 </label>
                 <div className="multi-review-intent-footer">
-                  <p>교차 검토에만 사용하며 순차 읽기에는 전달하지 않습니다.</p>
+                  <p>교차 검토에만 사용하며 관객 관점에는 전달하지 않습니다.</p>
                   <button
                     type="button"
                     onClick={submitMultiReviewIntent}
@@ -3818,16 +4074,34 @@ export default function DecisionBoard({ boardView = 'split' }) {
               <span>Mise-en-scène · Location</span>
               <strong>{sceneState.location.name} 2D 배치</strong>
             </div>
-            <p>도형과 인물을 드래그해 장면의 공간 기준을 정합니다.</p>
+            <p>상태 단계를 고른 뒤, 그 단계에서 바뀌는 배치만 움직입니다.</p>
             <button type="button" onClick={() => setSpatialEditorOpen(false)}>↙ Scene State로 돌아가기</button>
           </header>
+          <div className="mise-spatial-stage-tabs" role="tablist" aria-label="2D 배치 상태 단계">
+            <span>상태 단계</span>
+            <div>
+              {spatialStages.map((stage) => (
+                <button
+                  key={stage.id}
+                  type="button"
+                  role="tab"
+                  aria-selected={activeSpatialStageId === stage.id}
+                  className={activeSpatialStageId === stage.id ? 'is-active' : ''}
+                  onClick={() => selectSpatialStage(stage.id)}
+                >
+                  {stage.label}
+                </button>
+              ))}
+            </div>
+            <small>새 단계는 직전 배치에서 이어집니다.</small>
+          </div>
           <div className="mise-spatial-editor-canvas">
             <SpatialMap
+              key={`${activeSpatialStageId || 'initial'}:${spatialEditorVersion}`}
               initialElements={miseSpatialElements}
               initialEntityPresets={MOCK_MISE_ENTITY_PRESETS}
               onElementsChange={updateMiseSpatialElements}
-              proposedElements={spatialElements.length > 0 ? spatialElements : null}
-              onProposeLayout={requestSpaceLayout}
+              onProposeLayout={proposeSpatialLayout}
               proposePending={spaceLayoutPending}
               proposeNote={spaceLayoutError
                 ? `AI 호출 실패 · ${spaceLayoutError}`

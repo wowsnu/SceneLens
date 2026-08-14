@@ -1958,6 +1958,15 @@ const useStore = create((set, get) => ({
   // 배치를 그림에 반영하려면 스토어에 있어야 한다.
   spatialElements: [],
   setSpatialElements: (elements) => set({ spatialElements: elements }),
+  // 한 씬 안에서도 상태 단계마다 배치가 달라질 수 있다. 키는
+  // `sceneId:변화시작컷Id`라서 컷이 삽입돼도 단계의 대상은 유지된다.
+  spatialLayoutsByStage: {},
+  setSpatialLayoutForStage: (stageId, elements) => set((state) => ({
+    spatialLayoutsByStage: {
+      ...state.spatialLayoutsByStage,
+      [stageId]: elements,
+    },
+  })),
   sceneStateStoryKey: '',
   // 지금 보고 있는 씬. activeBeat에서 파생시키면 둘이 어긋날 수 없다 —
   // Beat를 고르는 것이 곧 씬을 고르는 것이다.

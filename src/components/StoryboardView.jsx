@@ -886,6 +886,8 @@ export default function StoryboardView() {
   const narrativeCheck = useStore((s) => s.narrativeCheck)
   // 지금 펼쳐 둔 지적. 누른 것만 대본에 표시된다.
   const [openFindingId, setOpenFindingId] = useState(null)
+  // 패널을 격자로 모아 본다. 컷 하나씩만 보면 이어지는지 알 수 없다.
+  const [panelGridView, setPanelGridView] = useState(false)
   const narrativeCheckPending = useStore((s) => s.narrativeCheckPending)
   const narrativeCheckError = useStore((s) => s.narrativeCheckError)
   const dismissNarrativeSuggestion = useStore((s) => s.dismissNarrativeSuggestion)
@@ -2542,6 +2544,17 @@ export default function StoryboardView() {
               </button>
             </div>
             <div className="generation-bar-actions">
+              {/* 전체 생성은 한 번에 나오는데 화면은 Beat마다 한 줄씩
+                  쌓아 보여 준다. 이어지는지 보려면 늘어놓고 봐야 한다. */}
+              <button
+                type="button"
+                className="generation-grid-toggle"
+                aria-pressed={panelGridView}
+                onClick={() => setPanelGridView((on) => !on)}
+                title={panelGridView ? '대본과 나란히 보기' : '패널만 격자로 모아 보기'}
+              >
+                {panelGridView ? '대본과 함께' : '한눈에 보기'}
+              </button>
               <button
                 type="button"
                 className="generation-viewer-test"
@@ -2594,7 +2607,35 @@ export default function StoryboardView() {
             </section>
           )}
 
-          {!isCutPlanStage && beats.map((beatGroup, i) => {
+          {/* 패널만 격자로 모은다. Beat 경계를 넘어 한 줄로 늘어놓아야
+              컷이 이어지는지 보인다 — Beat마다 끊어 두면 그 안에서만
+              비교하게 된다. */}
+          {showStoryboardPanels && panelGridView && !drawingWorkspaceOpen && (
+            <section className="sb-panel-grid" aria-label="패널 한눈에 보기">
+              {flowShots.map((shot, shotIdx) => {
+                const cut = cutPlan.find((item) => item.id === shot.cutPlanItemId)
+                return (
+                  <button
+                    type="button"
+                    key={shot.id || shotIdx}
+                    className={`sb-panel-grid-item${activeShot === shotIdx ? ' is-active' : ''}`}
+                    onClick={() => {
+                      setFlowActiveShot(shotIdx)
+                      setInspectedShotId(shot.id)
+                    }}
+                  >
+                    <span className="sb-panel-grid-order">{shotIdx + 1}</span>
+                    {shot.image
+                      ? <img src={shot.image} alt={`패널 ${shotIdx + 1}`} />
+                      : <span className="sb-panel-grid-blank">비어 있음</span>}
+                    <em>{cut?.content || ''}</em>
+                  </button>
+                )
+              })}
+            </section>
+          )}
+
+          {!isCutPlanStage && !(showStoryboardPanels && panelGridView) && beats.map((beatGroup, i) => {
             // 접힌 씬의 Beat는 그리지 않는다. 씬을 여는 Beat는 남겨야
             // 헤더가 보이고 다시 펼 수 있다.
             if (isSceneCollapsed(beatGroup.beat)) return null
@@ -3152,7 +3193,7 @@ export default function StoryboardView() {
                 대본을 고치게 되고, 그 단계에서 정한 컷 분해와 어긋난다.
                 컷 구성 점검은 Editing으로 옮겼다. */}
             {cutStage === 'script' && (
-            <section className={`rail-agent${openAgent === 'narrative' ? ' open' : ''}`}>
+            <section className={`rail-agent rail-agent--narrative${openAgent === 'narrative' ? ' open' : ''}`}>
               <button
                 type="button"
                 className="rail-agent-head"
@@ -3617,7 +3658,7 @@ export default function StoryboardView() {
                   {scriptHasShape && (
                     <button
                       type="button"
-                      className="narrative-rail-primary"
+                      className="narrative-rail-primary is-cutplan"
                       onClick={cutPlan.length > 0 ? clearCutPlanStageOverride : requestCutPlan}
                       disabled={cutPlanRunPending}
                     >
@@ -3652,7 +3693,7 @@ export default function StoryboardView() {
                   )}
                   <button
                     type="button"
-                    className="narrative-rail-primary"
+                    className="narrative-rail-primary is-cutplan"
                     onClick={acceptCutPlan}
                     disabled={cutPlanRunPending}
                   >

@@ -41,8 +41,6 @@ export default function SpatialMap({
   initialEntityPresets = INITIAL_PRESETS,
   onElementsChange,
   showShotNodes = true,
-  // 미장센이 제안한 배치. 들어오면 화면을 그것으로 갈아 끼운다.
-  proposedElements = null,
   onProposeLayout,
   proposePending = false,
   proposeNote = '',
@@ -69,13 +67,6 @@ export default function SpatialMap({
   const [newCharName, setNewCharName] = useState('')
 
   const [elements, setElements] = useState(() => cloneElements(initialElements))
-  // 배치 제안이 들어오면 화면도 따라가야 한다. elements는 처음 한 번만
-  // 초기화되므로 스토어가 바뀌어도 그대로 남는다.
-  const [syncedProposal, setSyncedProposal] = useState(null)
-  if (proposedElements && proposedElements !== syncedProposal) {
-    setSyncedProposal(proposedElements)
-    setElements(cloneElements(proposedElements))
-  }
 
   const [nodePositions, setNodePositions] = useState({})
   const [drawingPreview, setDrawingPreview] = useState(null)
