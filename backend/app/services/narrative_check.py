@@ -84,8 +84,18 @@ cut_ids에는 그 지적이 걸린 컷의 id를 씁니다. 인과나 정보 순�
 **그림 이야기를 하지 마세요.** 구도·샷 크기·조명·인물 배치는 다른 담당의
 일입니다. 컷의 내용이 무엇을 요구하는지만 봅니다.
 
-suggested_action은 무엇을 하면 되는지 한 문장으로 씁니다. 대본의 줄을
-고치는 일인지, 컷을 하나 더하는 일인지가 드러나게 쓰세요.
+**짧게 쓰세요. 길면 읽히지 않습니다.**
+- finding: **한 문장, 60자 안쪽.** 무엇이 문제인지만 씁니다.
+- suggested_action: **한 문장, 50자 안쪽.** 무엇을 하면 되는지만 씁니다.
+- summary: **한 문장, 60자 안쪽.**
+
+쉬운 말로 쓰세요. 감독이 읽는 것이지 이론서가 아닙니다.
+  ✓ "2번과 3번 컷이 같은 상태를 반복해요"
+  ✗ "연속된 컷에서 서사적 국면 전환이 부재하여 정체가 발생합니다"
+  ✓ "'불안해한다'는 그릴 수가 없어요"
+  ✗ "인물의 내면 상태가 시각적 근거 없이 서술되어 있습니다"
+
+컷을 가리킬 때는 번호로 씁니다 — "2번 컷". id를 문장에 쓰지 마세요.
 
 대사를 쓰지 마세요. 스토리보드는 정지 이미지이므로 말은 담기지 않습니다.
 한국어로 답하세요."""
@@ -132,6 +142,17 @@ async def check_narrative(request: NarrativeCheckRequest) -> NarrativeCheckRespo
         finding for finding in result.findings
         if all(cut_id in known for cut_id in finding.cut_ids)
     ]
+
+    # 프롬프트로 길이를 부탁해도 지켜지지 않는다. 레일은 좁아서 긴
+    # 문장이 오면 읽히지 않는다.
+    def clip(text: str, limit: int) -> str:
+        text = " ".join(text.split())
+        return text if len(text) <= limit else text[: limit - 1].rstrip() + "…"
+
+    result.summary = clip(result.summary, 70)
+    for finding in result.findings:
+        finding.finding = clip(finding.finding, 75)
+        finding.suggested_action = clip(finding.suggested_action, 60)
 
     # 규칙 하나당 하나만 남긴다. 같은 규칙으로 여러 번 짚으면 같은 말이
     # 반복되고, 감독이 무엇부터 볼지 정하기 어려워진다.

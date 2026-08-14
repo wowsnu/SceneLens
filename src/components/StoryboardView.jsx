@@ -26,10 +26,10 @@ import { logEdit, logEvent, logScaffold } from '../store/studyLog'
 
 // 규칙 id를 그대로 보이면 감독이 읽을 것이 아니다.
 const NARRATIVE_RULE_LABELS = {
-  'narrative-beat-progression': '사건의 단계',
-  'narrative-action-visibility': '그릴 수 있게 쓰였는가',
-  'narrative-information-reveal': '정보가 드러나는 자리',
-  'narrative-causal-link': '사건 사이의 인과',
+  'narrative-beat-progression': '이야기가 제자리예요',
+  'narrative-action-visibility': '그릴 수 없게 쓰였어요',
+  'narrative-information-reveal': '알려주는 때가 안 맞아요',
+  'narrative-causal-link': '앞뒤가 안 이어져요',
 }
 
 const EMPTY_SHOTS = []
@@ -1595,6 +1595,19 @@ export default function StoryboardView() {
 
   // 점검에서 나온 지적을 그대로 제안 요청으로 넘긴다. 점검은 무엇이
   // 문제인지만 말하고, 무엇으로 고칠지는 제안이 낸다.
+  // 컷 id는 내부 식별자다. 화면에 그대로 내보내면 읽을 것이 아니고,
+  // 감독이 어느 컷인지 찾을 수도 없다.
+  const cutLabelsOf = (cutIds) => {
+    const numbers = cutIds
+      .map((cutId) => cutPlan.findIndex((cut) => cut.id === cutId))
+      .filter((index) => index >= 0)
+      .map((index) => index + 1)
+    if (numbers.length === 0) return ''
+    return numbers.length > 2
+      ? `${numbers[0]}–${numbers[numbers.length - 1]}번 컷`
+      : `${numbers.join(', ')}번 컷`
+  }
+
   const requestSuggestionForFinding = (finding) => {
     // 지적이 건 첫 컷의 Beat를 본다. 지금 보고 있는 Beat가 아니라
     // 문제가 있는 Beat여야 제안이 엉뚱한 줄에 붙지 않는다.
@@ -1617,6 +1630,14 @@ export default function StoryboardView() {
     })
     // 제안은 대본 줄 옆에 뜬다. 그 Beat가 보여야 판정할 수 있다.
     selectBeat(beat)
+    // 고를 Beat가 화면 밖이면 어디에 제안이 붙었는지 알 수 없다.
+    // 선택 후 다시 그려질 시간을 준 뒤 그 자리로 옮긴다.
+    window.setTimeout(() => {
+      document.querySelector(`[data-beat="${beat}"]`)?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'center',
+      })
+    }, 80)
   }
 
   const handleNarrativeRequest = () => {
@@ -2300,6 +2321,7 @@ export default function StoryboardView() {
             return (
               <div
                 key={i}
+                data-beat={beatGroup.beat}
                 className={`sb-item ${showStoryboardPanels ? 'layout-expanded panels-matched' : isExpanded ? 'layout-script-focus' : 'layout-sidebar'} ${beatGroup.beat === activeBeat ? 'active-beat' : ''}`}
                 onClick={() => selectBeat(beatGroup.beat)}
               >
@@ -2938,7 +2960,7 @@ export default function StoryboardView() {
                               {narrativeCheck.findings.map((finding) => (
                                 <li key={finding.ruleId}>
                                   <span>{NARRATIVE_RULE_LABELS[finding.ruleId] || '서사'}</span>
-                                  <em>{finding.cutIds.join(', ')}</em>
+                                  <em>{cutLabelsOf(finding.cutIds)}</em>
                                   <strong>{finding.finding}</strong>
                                   <p>{finding.suggestedAction}</p>
                                   {/* 읽고 끝나면 감독이 다시 옮겨 적어야
