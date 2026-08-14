@@ -3061,6 +3061,54 @@ export default function StoryboardView() {
                 ? scriptLines.length > 0 && renderNarrativeCheck('script')
                 : cutPlan.length > 0 && renderNarrativeCheck('cutplan')}
 
+              {/* 요청을 넘긴 뒤 칸이 비므로, 무엇이 진행 중인지 여기서
+                  보인다. 아니면 아무 일도 없는 것처럼 보인다. */}
+              {narrativePending && (
+                <div className="narrative-rail-proposal-status pending">
+                  <span>…</span>
+                  <div>
+                    <strong>Beat {activeBeat + 1} 검토 중</strong>
+                    <p>요청에 맞는 제안을 찾고 있습니다.</p>
+                  </div>
+                </div>
+              )}
+
+              {/* 제안이 하나도 없으면 그 사실을 밝힌다. 요청을 보냈는데
+                  아무 반응이 없으면 고장 난 것으로 보인다. */}
+              {!narrativePending && narrativeAnswered && narrativeSuggestions.length === 0 && (
+                <div className="narrative-rail-proposal-status empty">
+                  <span>—</span>
+                  <div>
+                    <strong>여기서는 할 수 없는 요청입니다</strong>
+                    {/* 갈 곳을 실제로 가리킨다. "대본 단계"처럼 화면에
+                        없는 이름을 대면 사용자가 찾을 수 없다. */}
+                    {/* 문장 안에 strong을 쓰지 않는다 — 이 블록의
+                        strong은 display:block이라 줄이 끊긴다. */}
+                    <p>
+                      서사 에이전트는 Beat {activeBeat + 1} 하나만 다룹니다.
+                      이야기를 더 쓰려면 Script 단계에서 대본을 고치고,
+                      Beat를 나누려면 줄 옆 “+ Split Beat”을 쓰세요.
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {!narrativePending && narrativeSuggestions.length > 0 && (
+                <div className="narrative-rail-proposal-status">
+                  <span>{narrativeSuggestions.length}</span>
+                  <div>
+                    <strong>Proposal ready</strong>
+                    {/* 모델을 못 불렀으면 밝힌다. 규칙 기반 결과를 모델이
+                        만든 것처럼 보이게 두지 않는다. */}
+                    <p>
+                      {narrativeError
+                        ? `AI 호출 실패 · 규칙 기반 제안입니다`
+                        : '대본 안의 관련 위치에 표시했습니다.'}
+                    </p>
+                  </div>
+                </div>
+              )}
+
 
               </div>
               )}
@@ -3382,53 +3430,6 @@ export default function StoryboardView() {
                     대사를 조금씩 고쳐 나가세요.
                   </p>
                 </>
-              )}
-              {/* 요청을 넘긴 뒤 칸이 비므로, 무엇이 진행 중인지 여기서
-                  보인다. 아니면 아무 일도 없는 것처럼 보인다. */}
-              {narrativePending && (
-                <div className="narrative-rail-proposal-status pending">
-                  <span>…</span>
-                  <div>
-                    <strong>Beat {activeBeat + 1} 검토 중</strong>
-                    <p>요청에 맞는 제안을 찾고 있습니다.</p>
-                  </div>
-                </div>
-              )}
-
-              {/* 제안이 하나도 없으면 그 사실을 밝힌다. 요청을 보냈는데
-                  아무 반응이 없으면 고장 난 것으로 보인다. */}
-              {!narrativePending && narrativeAnswered && narrativeSuggestions.length === 0 && (
-                <div className="narrative-rail-proposal-status empty">
-                  <span>—</span>
-                  <div>
-                    <strong>여기서는 할 수 없는 요청입니다</strong>
-                    {/* 갈 곳을 실제로 가리킨다. "대본 단계"처럼 화면에
-                        없는 이름을 대면 사용자가 찾을 수 없다. */}
-                    {/* 문장 안에 strong을 쓰지 않는다 — 이 블록의
-                        strong은 display:block이라 줄이 끊긴다. */}
-                    <p>
-                      서사 에이전트는 Beat {activeBeat + 1} 하나만 다룹니다.
-                      이야기를 더 쓰려면 Script 단계에서 대본을 고치고,
-                      Beat를 나누려면 줄 옆 “+ Split Beat”을 쓰세요.
-                    </p>
-                  </div>
-                </div>
-              )}
-
-              {!narrativePending && narrativeSuggestions.length > 0 && (
-                <div className="narrative-rail-proposal-status">
-                  <span>{narrativeSuggestions.length}</span>
-                  <div>
-                    <strong>Proposal ready</strong>
-                    {/* 모델을 못 불렀으면 밝힌다. 규칙 기반 결과를 모델이
-                        만든 것처럼 보이게 두지 않는다. */}
-                    <p>
-                      {narrativeError
-                        ? `AI 호출 실패 · 규칙 기반 제안입니다`
-                        : '대본 안의 관련 위치에 표시했습니다.'}
-                    </p>
-                  </div>
-                </div>
               )}
             </section>
             </div>
