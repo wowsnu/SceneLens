@@ -5,12 +5,13 @@ python-dotenv
 pillow
 openai
 httpx
-
-# Segmentation (MobileSAM)
-# NOTE: torch / torchvision must be installed separately with the right CUDA build:
-#   pip install torch torchvision --index-url https://download.pytorch.org/whl/cu121
 numpy
-opencv-python
-timm
-cairosvg
-mobile_sam @ git+https://github.com/ChaoningZhang/MobileSAM.git
+
+# Segmentation (MobileSAM) — 배포에서는 뺀다.
+# torch / opencv / timm / cairosvg / mobile_sam 은 무거워서 무료 호스팅에 올라가지
+# 않는다. 이것들은 segmenter.py 안에서 함수 호출 시점에 import 되므로, 없어도
+# 앱은 뜨고 나머지 기능은 모두 동작한다. /api/segment/* 만 실패한다.
+# 오려내기를 다시 쓰려면 아래를 설치한다:
+#   pip install torch torchvision --index-url https://download.pytorch.org/whl/cu121
+#   pip install opencv-python timm cairosvg
+#   pip install "mobile_sam @ git+https://github.com/ChaoningZhang/MobileSAM.git"

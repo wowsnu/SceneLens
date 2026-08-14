@@ -1,0 +1,22 @@
+services:
+  - type: web
+    name: scenelens-api
+    runtime: python
+    plan: free
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /api/health
+    envVars:
+      # 코드가 X | None 문법을 쓰므로 3.10 미만에서는 기동하지 않는다.
+      - key: PYTHON_VERSION
+        value: "3.13.5"
+      # 값은 Render 대시보드에서 넣는다. 저장소에 두지 않는다.
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: RECRAFT_API_KEY
+        sync: false
+      - key: CORS_ORIGINS
+        sync: false
