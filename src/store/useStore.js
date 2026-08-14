@@ -4126,6 +4126,17 @@ const useStore = create((set, get) => ({
       : next,
   })),
   clearStoryboardShotSelection: () => set({ selectedStoryboardShotIds: [] }),
+  // 아직 수락하지 않은 Panels AI 초안. Panels에서는 후보로 남겨 두되,
+  // 관객 분석은 지금 화면에 보이는 그림을 읽어야 하므로 별도로 공유한다.
+  panelDraftImages: {},
+  setPanelDraftImage: (shotId, image) => set((state) => ({
+    panelDraftImages: { ...state.panelDraftImages, [shotId]: image },
+  })),
+  clearPanelDraftImage: (shotId) => set((state) => {
+    const panelDraftImages = { ...state.panelDraftImages }
+    delete panelDraftImages[shotId]
+    return { panelDraftImages }
+  }),
   // 그리기로 들어오기 전에 어느 화면이었는지. 나갈 때 그리로 돌려보낸다 —
   // 늘 분할 화면으로 떨어지면 Panels에서 Draw를 눌렀을 때 다른 곳에 도착한다.
   drawingReturnTo: null,

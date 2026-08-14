@@ -879,6 +879,8 @@ export default function StoryboardView() {
   const openDrawingWorkspace = useStore((s) => s.openDrawingWorkspace)
   const selectedShotIds = useStore((s) => s.selectedStoryboardShotIds)
   const setSelectedShotIds = useStore((s) => s.setSelectedStoryboardShotIds)
+  const setPanelDraftImage = useStore((s) => s.setPanelDraftImage)
+  const clearPanelDraftImage = useStore((s) => s.clearPanelDraftImage)
   const scriptEditorRequestKey = useStore((s) => s.scriptEditorRequestKey)
   const narrativeSuggestions = useStore((s) => s.narrativeSuggestions)
   const requestNarrativeSuggestions = useStore((s) => s.requestNarrativeSuggestions)
@@ -1497,6 +1499,7 @@ export default function StoryboardView() {
             prompt: prompt.effective,
           },
         }))
+        setPanelDraftImage(shot.id, image)
       } catch (error) {
         failures.push(error.message)
       } finally {
@@ -1528,6 +1531,7 @@ export default function StoryboardView() {
       delete next[shotId]
       return next
     })
+    clearPanelDraftImage(shotId)
   }
 
   const acceptPanelCandidate = (shotId) => {
@@ -1549,6 +1553,7 @@ export default function StoryboardView() {
         isAIGenerated: true,
       })
     })
+    currentPanelCandidates.forEach((candidate) => clearPanelDraftImage(candidate.shotId))
     setPanelCandidates((current) => Object.fromEntries(
       Object.entries(current).filter(([shotId]) => !currentShotIds.has(shotId)),
     ))

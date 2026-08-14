@@ -1507,6 +1507,7 @@ export default function DecisionBoard({ boardView = 'split' }) {
   const setViewerFindingHandoff = useStore((s) => s.setViewerFindingHandoff)
   const clearViewerFindingHandoff = useStore((s) => s.clearViewerFindingHandoff)
   const viewerDecisions = useStore((s) => s.viewerDecisions)
+  const panelDraftImages = useStore((s) => s.panelDraftImages)
   const saveViewerDecision = useStore((s) => s.saveViewerDecision)
   const scene = scenes[activeScene]
   const activeShot = scene?.activeShot ?? 0
@@ -2192,7 +2193,9 @@ export default function DecisionBoard({ boardView = 'split' }) {
         id: shot.id,
         order: index + 1,
         label: shot.label || `Shot ${index + 1}`,
-        image: shot.image ?? null,
+        // 아직 수락하지 않은 AI 초안도 Panels 화면에 보이는 현재 패널이다.
+        // 관객 분석은 확정 여부가 아니라 실제로 보고 있는 그림을 읽는다.
+        image: panelDraftImages[shot.id] || shot.image || null,
         cir: { ...(shot.cir || {}) },
         scriptBeat: shot.scriptBeat ?? 0,
       })),
