@@ -1,4 +1,4 @@
-"""서사: 컷 플랜이 사건의 단계로 서 있는지 본다.
+"""그리기 전에 짚는 점검. 대본은 서사가, 컷 플랜은 편집이 본다.
 
 컷 플랜 단계에서 돈다. 그림이 아직 없고, 그래서 여기가 고치기 가장 싼
 자리다 — 패널을 다 그린 뒤에 "이 컷은 필요 없다"는 말을 들으면 그린 것을
@@ -21,54 +21,72 @@ import os
 from openai import AsyncOpenAI
 
 from app.models.schemas import NarrativeCheckRequest, NarrativeCheckResponse
-from app.services.directing_rules import LENS_RULES, rule_prompt
+from app.services.directing_rules import LENS_RULES
 
 
-RESPONSE_SCHEMA = {
-    "name": "narrative_check",
-    "strict": True,
-    "schema": {
-        "type": "object",
-        "additionalProperties": False,
-        "required": ["summary", "findings"],
-        "properties": {
-            "summary": {"type": "string"},
-            "findings": {
-                "type": "array",
-                "maxItems": 4,
-                "items": {
-                    "type": "object",
-                    "additionalProperties": False,
-                    "required": [
-                        "rule_id", "cut_ids", "line_indexes", "finding", "suggested_action",
-                    ],
-                    "properties": {
-                        "rule_id": {
-                            "type": "string",
-                            "enum": [rule.id for rule in LENS_RULES["narrative"]],
+def _rules_block(rules) -> str:
+    """rule_prompt는 렌즈 전체를 낸다. 여기서는 고른 것만 쓴다."""
+    return "\n".join(
+        "\n".join([
+            f"- {rule.id} | {rule.label}",
+            f"  판단 기준: {rule.criterion}",
+            f"  후보 조건: {rule.trigger}",
+            f"  제외 조건: {rule.reject_when}",
+        ])
+        for rule in rules
+    )
+
+
+def _schema(rule_ids: list[str]) -> dict:
+    """단계마다 쓸 수 있는 규칙이 다르므로 enum도 달라진다."""
+    return {
+        "name": "narrative_check",
+        "strict": True,
+        "schema": {
+            "type": "object",
+            "additionalProperties": False,
+            "required": ["summary", "findings"],
+            "properties": {
+                "summary": {"type": "string"},
+                "findings": {
+                    "type": "array",
+                    "maxItems": 4,
+                    "items": {
+                        "type": "object",
+                        "additionalProperties": False,
+                        "required": [
+                            "rule_id", "cut_ids", "line_indexes",
+                            "finding", "suggested_action",
+                        ],
+                        "properties": {
+                            "rule_id": {"type": "string", "enum": rule_ids},
+                            "cut_ids": {
+                                "type": "array",
+                                "items": {"type": "string"},
+                            },
+                            "line_indexes": {
+                                "type": "array",
+                                "items": {"type": "integer"},
+                            },
+                            "finding": {"type": "string"},
+                            "suggested_action": {"type": "string"},
                         },
-                        "cut_ids": {
-                            "type": "array",
-                            "items": {"type": "string"},
-                        },
-                        "line_indexes": {
-                            "type": "array",
-                            "items": {"type": "integer"},
-                        },
-                        "finding": {"type": "string"},
-                        "suggested_action": {"type": "string"},
                     },
                 },
             },
         },
-    },
-}
+    }
 
 
-CUT_INTRO = """당신은 SceneLens의 서사 담당입니다. 컷 플랜이 사건의 단계로 서 있는지
-검토하세요.
+CUT_INTRO = """당신은 SceneLens의 편집 담당입니다. 컷 플랜이 컷의 배열로
+성립하는지 검토하세요.
 
-아직 그림은 없습니다. 컷의 내용만 보고 판단합니다.
+아직 그림은 없습니다. 컷의 내용만 보고 판단합니다. 구도·시선·화면 방향·
+숏 크기는 그림이 있어야 알 수 있으므로 여기서 다루지 마세요 — 그것은
+패널이 생긴 뒤에 봅니다.
+
+여기서 보는 것은 둘입니다. **이 컷이 있어야 하는가**(빠졌거나, 겹치거나,
+한 컷에 너무 눌러 담겼는가), 그리고 **공개 순서가 맞는가**입니다.
 
 cut_ids에는 지적이 걸린 컷의 id를 씁니다. line_indexes는 비워 두세요."""
 
@@ -122,8 +140,8 @@ async def check_narrative(request: NarrativeCheckRequest) -> NarrativeCheckRespo
     if not api_key:
         raise ValueError("OPENAI_API_KEY not found in environment variables")
 
-    # 컷이 있으면 컷 플랜 점검, 없으면 대본 점검이다. 규칙은 같고 보는
-    # 것이 다르다 — 대본 단계에는 아직 컷이 없다.
+    # 컷이 있으면 컷 플랜 점검(편집), 없으면 대본 점검(서사)이다.
+    # 대본 단계에는 컷이 없고, 컷 단위 판단은 편집의 일이다.
     checking_cuts = bool(request.cuts)
 
     body = []
@@ -146,6 +164,17 @@ async def check_narrative(request: NarrativeCheckRequest) -> NarrativeCheckRespo
         for index, line in enumerate(request.lines):
             body.append(f"  [{index}] {line}")
 
+    # 컷 플랜에서는 편집 규칙 중 그림 없이 판단할 수 있는 둘만 쓴다.
+    # 시선·리듬(cut-continuity, visual-rhythm)은 화면이 있어야 하므로
+    # Decision Board로 미룬다.
+    if checking_cuts:
+        rules = [
+            rule for rule in LENS_RULES["editing"]
+            if rule.id in {"editing-shot-function", "editing-information-order"}
+        ]
+    else:
+        rules = list(LENS_RULES["narrative"])
+
     client = AsyncOpenAI(api_key=api_key)
     response = await client.chat.completions.create(
         model="gpt-5.4-mini",
@@ -154,12 +183,15 @@ async def check_narrative(request: NarrativeCheckRequest) -> NarrativeCheckRespo
                 "role": "system",
                 "content": PROMPT.format(
                     intro=CUT_INTRO if checking_cuts else SCRIPT_INTRO,
-                    rules=rule_prompt("narrative"),
+                    rules=_rules_block(rules),
                 ),
             },
             {"role": "user", "content": "\n".join(body)},
         ],
-        response_format={"type": "json_schema", "json_schema": RESPONSE_SCHEMA},
+        response_format={
+            "type": "json_schema",
+            "json_schema": _schema([rule.id for rule in rules]),
+        },
         # gpt-5 계열은 max_tokens를 받지 않는다.
         max_completion_tokens=2000,
     )

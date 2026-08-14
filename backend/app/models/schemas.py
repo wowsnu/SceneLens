@@ -726,6 +726,10 @@ class NarrativeCheckFinding(BaseModel):
         "narrative-action-visibility",
         "narrative-information-reveal",
         "narrative-causal-link",
+        # 컷 플랜 단계는 편집이 본다. 그림 없이 판단할 수 있는 둘만 쓴다 —
+        # 시선·리듬은 화면이 있어야 하므로 Decision Board로 미룬다.
+        "editing-shot-function",
+        "editing-information-order",
     ]
     # 이 지적이 걸린 컷. 인과·정보 순서는 둘 이상이 될 수 있다.
     # 대본 점검에서는 비고 line_indexes가 대신 찬다.

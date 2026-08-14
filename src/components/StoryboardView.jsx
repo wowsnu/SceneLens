@@ -26,10 +26,14 @@ import { logEdit, logEvent, logScaffold } from '../store/studyLog'
 
 // 규칙 id를 그대로 보이면 감독이 읽을 것이 아니다.
 const NARRATIVE_RULE_LABELS = {
+  // 대본 — 서사가 본다.
   'narrative-beat-progression': '이야기가 제자리예요',
   'narrative-action-visibility': '그릴 수 없게 쓰였어요',
   'narrative-information-reveal': '알려주는 때가 안 맞아요',
   'narrative-causal-link': '앞뒤가 안 이어져요',
+  // 컷 플랜 — 편집이 본다. 컷 단위 판단은 편집의 일이다.
+  'editing-shot-function': '이 컷이 필요할까요',
+  'editing-information-order': '보여주는 순서가 아쉬워요',
 }
 
 const EMPTY_SHOTS = []
@@ -947,6 +951,9 @@ export default function StoryboardView() {
   const [isEditingRaw, setIsEditingRaw] = useState(false)
   const [rawText, setRawText] = useState('')
   const [rawSceneIntention, setRawSceneIntention] = useState('')
+  // 장면 전체 지시는 컷 플랜을 확인한 뒤 적용한다. 입력 중인 문장이
+  // 이미 생성된 패널의 기준처럼 보이지 않도록 초안과 적용 값을 분리한다.
+  const [scenePromptNoteDraft, setScenePromptNoteDraft] = useState(scenePromptNote)
   const [narrativeRequest, setNarrativeRequest] = useState('')
   // Script에서는 Narrative가 다음 단계를 안내한다. Cut plan에서는 표가 주 작업
   // 공간이므로 Agents rail과 개별 에이전트를 기본으로 접어 둔다. 단계별 상태를
@@ -1082,6 +1089,10 @@ export default function StoryboardView() {
       return () => window.clearTimeout(timer)
     }
   }, [scriptEditorRequestKey, screenplay, sceneIntention])
+
+  useEffect(() => {
+    setScenePromptNoteDraft(scenePromptNote)
+  }, [scenePromptNote])
 
   useEffect(() => {
     if (!panelToolRequest || handledPanelToolRequestId.current === panelToolRequest.id) return
@@ -1632,12 +1643,18 @@ export default function StoryboardView() {
                   </em>
                   <strong>{finding.finding}</strong>
                   <p>{finding.suggestedAction}</p>
+                  {/* 대본 지적은 대본에서, 컷 지적은 컷에서 고친다.
+                      컷 문제를 대본 제안으로 보내면 자리가 어긋난다. */}
                   <button
                     type="button"
-                    onClick={() => requestSuggestionForFinding(finding, stage)}
-                    disabled={narrativePending}
+                    onClick={() => (isScript
+                      ? requestSuggestionForFinding(finding, stage)
+                      : goToFindingCut(finding))}
+                    disabled={isScript && narrativePending}
                   >
-                    {narrativePending ? '제안 받는 중…' : '제안 받기'}
+                    {isScript
+                      ? (narrativePending ? '제안 받는 중…' : '제안 받기')
+                      : '이 컷 보기'}
                   </button>
                 </li>
               ))}
@@ -1671,6 +1688,23 @@ export default function StoryboardView() {
     return numbers.length > 2
       ? `${numbers[0]}–${numbers[numbers.length - 1]}번째 줄`
       : `${numbers.join(', ')}번째 줄`
+  }
+
+  // 컷 지적은 그 컷 자리로 보낸다. 어느 컷인지 모르면 고칠 수 없다.
+  const goToFindingCut = (finding) => {
+    const cutId = finding.cutIds?.[0]
+    if (!cutId) return
+    const cut = cutPlan.find((item) => item.id === cutId)
+    if (cut) selectBeat(cut.beat)
+    // 옮기기만 하면 어느 줄인지 모른다. 그 컷을 골라 둔다.
+    setSelectedCutId(cutId)
+    logScaffold({ feature: 'diagnosis', action: 'accept', target: cutId, lens: 'editing' })
+    window.setTimeout(() => {
+      document.querySelector(`[data-cut-id="${cutId}"]`)?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'center',
+      })
+    }, 80)
   }
 
   const requestSuggestionForFinding = (finding, stage = 'cutplan') => {
@@ -1938,6 +1972,35 @@ export default function StoryboardView() {
                 </div>
               </header>
 
+              {/* 컷을 확인한 뒤 추가하는 공통 연출 기준이다. 대본 단계의
+                  sceneIntention과 달리, 컷 분해 자체는 다시 바꾸지 않는다. */}
+              <div className="cut-plan-scene-note">
+                <div className="cut-plan-scene-note-heading">
+                  <label htmlFor="scene-prompt-note">장면 전체 지시</label>
+                  <p>적용 후 다음 샷 설계와 패널 생성에 공통으로 반영됩니다.</p>
+                </div>
+                <textarea
+                  id="scene-prompt-note"
+                  value={scenePromptNoteDraft}
+                  onChange={(event) => setScenePromptNoteDraft(event.target.value)}
+                  placeholder="예: 초반에는 인물 사이 거리를 유지하고, 위협이 드러난 뒤에는 프레임 안에서 압박한다."
+                />
+                <div className="cut-plan-scene-note-actions">
+                  <span>
+                    {scenePromptNoteDraft.trim() === scenePromptNote.trim()
+                      ? (scenePromptNote.trim() ? '적용됨' : '아직 장면 전체 지시가 없습니다')
+                      : '변경 사항이 아직 적용되지 않았습니다'}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setScenePromptNote(scenePromptNoteDraft.trim())}
+                    disabled={scenePromptNoteDraft.trim() === scenePromptNote.trim()}
+                  >
+                    지시 적용
+                  </button>
+                </div>
+              </div>
+
               <div className="cut-plan-table-wrap">
                 <table className="cut-plan-table">
                   <thead>
@@ -2002,6 +2065,7 @@ export default function StoryboardView() {
                         {!collapsed && group.items.map(({ item, index }) => (
                         <Fragment key={item.id}>
                         <tr
+                          data-cut-id={item.id}
                           className={`provenance-row-${item.provenance.toLowerCase()}${selectedCutId === item.id ? ' selected' : ''}`}
                           onClick={() => setSelectedCutId(
                             selectedCutId === item.id ? null : item.id,
@@ -2195,18 +2259,6 @@ export default function StoryboardView() {
                     )
                   })}
                 </table>
-              </div>
-
-              {/* 조명·그림체는 컷마다 반복하지 않고 장면 전체에 한 번 건다. */}
-              <div className="cut-plan-scene-note">
-                <label htmlFor="scene-prompt-note">장면 전체 지시</label>
-                <input
-                  id="scene-prompt-note"
-                  type="text"
-                  value={scenePromptNote}
-                  onChange={(event) => setScenePromptNote(event.target.value)}
-                  placeholder="모든 컷에 적용 (예: 차가운 형광등, 거친 연필 스케치)"
-                />
               </div>
 
               <footer className="cut-plan-footer">

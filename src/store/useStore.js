@@ -831,7 +831,7 @@ export const buildCutPrompt = (cut, {
   // 장면 전체에 걸리는 지시는 컷마다 반복하지 않고 따로 둔다.
   const shared = [
     sceneIntention && `장면 의도: ${sceneIntention}`,
-    sceneNote,
+    sceneNote && `장면 전체 연출 지시: ${sceneNote}`,
     referenceLine,
     constraints.length > 0 && `고정: ${constraints.join(', ')}`,
   ]
@@ -856,6 +856,15 @@ export const buildCutPrompt = (cut, {
     reference,
   }
 }
+
+// 대본 단계의 의도와 컷 플랜 뒤에 추가한 연출 지시는 출처와 쓰임이 다르다.
+// 다만 샷을 설계할 때는 둘 다 장면을 가로지르는 기준이므로 함께 보낸다.
+// 컷을 나누는 요청에는 이 함수를 쓰지 않는다 — 후속 지시가 과거의 컷 분해를
+// 몰래 바꾸면 안 된다.
+const composeShotDirection = (sceneIntention = '', scenePromptNote = '') => [
+  sceneIntention.trim() && `대본 단계 장면 의도: ${sceneIntention.trim()}`,
+  scenePromptNote.trim() && `컷 플랜 이후 장면 전체 연출 지시: ${scenePromptNote.trim()}`,
+].filter(Boolean).join('\n')
 
 // --- 촬영 렌즈: 커버리지 진단 -------------------------------------------
 // 촬영이 담당하는 shotSize·angle·cameraMove는 이미 컷 표의 컬럼이다.
@@ -2349,7 +2358,7 @@ const useStore = create((set, get) => ({
           heading: scene.heading,
           cuts,
           script,
-          sceneIntention: state.sceneIntention || '',
+          sceneIntention: composeShotDirection(state.sceneIntention || '', state.scenePromptNote || ''),
         })
         bySceneId.set(scene.id, { cuts, shots, coverage })
       }
@@ -2497,7 +2506,7 @@ const useStore = create((set, get) => ({
         targetIndexes: finding.cutIds
           .map((id) => cuts.findIndex((cut) => cut.id === id))
           .filter((index) => index >= 0),
-        sceneIntention: state.sceneIntention || '',
+        sceneIntention: composeShotDirection(state.sceneIntention || '', state.scenePromptNote || ''),
       })
       // 순번은 요청에 준 씬 안의 자리다. 컷 id로 되돌려야 표에 적용된다.
       const edits = result.edits
@@ -3089,7 +3098,14 @@ const useStore = create((set, get) => ({
     set({ narrativeCheckPending: true, narrativeCheckError: null, narrativeCheck: null })
     try {
       const { checkNarrative } = await import('../services/api.js')
-      logScaffold({ feature: 'lens', action: 'open', lens: 'narrative', stage })
+      // 대본은 서사가, 컷 플랜은 편집이 본다. 렌즈를 섞으면 8.7의
+      // 렌즈별 분포가 틀어진다.
+      logScaffold({
+        feature: 'lens',
+        action: 'open',
+        lens: usingCuts ? 'editing' : 'narrative',
+        stage,
+      })
       const result = await checkNarrative({
         cuts: usingCuts ? state.cutPlan : [],
         lines: usingCuts ? [] : lines,
