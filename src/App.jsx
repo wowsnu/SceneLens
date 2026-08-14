@@ -250,16 +250,6 @@ function App() {
               </>
             ) : (
               <div className="decision-header-controls">
-                {import.meta.env.DEV && hasReviewablePanel && (
-                  <button
-                    type="button"
-                    className="panel-control-btn stage-forward-btn review-test-btn"
-                    onClick={enterReview}
-                    title="이미지 패널로 검토 흐름을 바로 확인합니다"
-                  >
-                    테스트: 검토 보기
-                  </button>
-                )}
                 {/* 검토하러 왔으면 돌아갈 길이 있어야 한다. 왼쪽 패널이
                     접혀 있으면 스토리보드가 화면에서 아예 사라진다. */}
                 {!leftPanelVisible && (
