@@ -2975,6 +2975,41 @@ export default function StoryboardView() {
 
           {narrativeRailOpen ? (
             <div className="rail-agents">
+              {/* 에이전트 목록 위에 둔다. 안에 있으면 지금 어느
+                  에이전트에게 말하는 것인지 구분되지 않는다.
+                  서사에게 묻는 칸이므로 이름을 함께 적는다. */}
+              <div className="narrative-rail-composer">
+                <label htmlFor="narrative-screenplay-request">
+                  Request
+                  <em>Narrative</em>
+                </label>
+                <textarea
+                  id="narrative-screenplay-request"
+                  value={narrativeRequest}
+                  onChange={(event) => {
+                    setNarrativeRequest(event.target.value)
+                    // 새 요청을 쓰기 시작하면 지난 결과를 지운다. 계속 떠
+                    // 있으면 방금 쓴 요청에 대한 답으로 오해된다.
+                    if (narrativeAnswered) clearNarrativeResult()
+                  }}
+                  placeholder="예: 이 Beat를 둘로 나누고 대사를 덜 설명적으로 바꿔줘."
+                  aria-label={`Narrative request for Beat ${activeBeat + 1}`}
+                  rows={3}
+                />
+                <div>
+                  <span>{`Beat ${activeBeat + 1}에 적용`}</span>
+                  <button
+                    type="button"
+                    disabled={!narrativeRequest.trim() || narrativePending}
+                    onClick={handleNarrativeRequest}
+                  >
+                    {narrativePending ? '생각 중…' : 'Propose'}
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="m9 18 6-6-6-6" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
             <section className={`rail-agent${openAgent === 'narrative' ? ' open' : ''}`}>
               <button
                 type="button"
@@ -3022,38 +3057,6 @@ export default function StoryboardView() {
                 </section>
               )}
 
-              {/* 점검보다 위에 둔다. 점검이 짚어 주기 전에도 감독이 먼저
-                  물을 수 있어야 하고, 다음 단계로 넘어가는 버튼은 그 아래에
-                  두어 대본을 손볼 것이 없는지 보고 나서 누르게 한다. */}
-              <div className="narrative-rail-composer">
-                <label htmlFor="narrative-screenplay-request">Request</label>
-                <textarea
-                  id="narrative-screenplay-request"
-                  value={narrativeRequest}
-                  onChange={(event) => {
-                    setNarrativeRequest(event.target.value)
-                    // 새 요청을 쓰기 시작하면 지난 결과를 지운다. 계속 떠
-                    // 있으면 방금 쓴 요청에 대한 답으로 오해된다.
-                    if (narrativeAnswered) clearNarrativeResult()
-                  }}
-                  placeholder="예: 이 Beat를 둘로 나누고 대사를 덜 설명적으로 바꿔줘."
-                  aria-label={`Narrative request for Beat ${activeBeat + 1}`}
-                  rows={3}
-                />
-                <div>
-                  <span>{`Beat ${activeBeat + 1}에 적용`}</span>
-                  <button
-                    type="button"
-                    disabled={!narrativeRequest.trim() || narrativePending}
-                    onClick={handleNarrativeRequest}
-                  >
-                    {narrativePending ? '생각 중…' : 'Propose'}
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="m9 18 6-6-6-6" />
-                    </svg>
-                  </button>
-                </div>
-              </div>
               <section className="narrative-rail-guidance">
                 <span>Next step</span>
                 {/* 대본은 주어진 것에서 시작한다. 다음 단계는 컷 분해다. */}
