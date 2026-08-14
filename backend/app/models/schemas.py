@@ -707,9 +707,17 @@ class NarrativeCheckCut(BaseModel):
 
 
 class NarrativeCheckRequest(BaseModel):
-    cuts: List[NarrativeCheckCut] = Field(min_length=1)
+    # 컷 플랜 점검이면 cuts, 대본 점검이면 lines. 둘 중 하나는 있어야 한다.
+    cuts: List[NarrativeCheckCut] = []
+    lines: List[str] = []
     scene_intention: Optional[str] = ""
     script: Optional[str] = ""
+
+    @model_validator(mode="after")
+    def require_material(self):
+        if not self.cuts and not self.lines:
+            raise ValueError("cuts or lines is required")
+        return self
 
 
 class NarrativeCheckFinding(BaseModel):
@@ -720,7 +728,10 @@ class NarrativeCheckFinding(BaseModel):
         "narrative-causal-link",
     ]
     # 이 지적이 걸린 컷. 인과·정보 순서는 둘 이상이 될 수 있다.
-    cut_ids: List[str] = Field(min_length=1)
+    # 대본 점검에서는 비고 line_indexes가 대신 찬다.
+    cut_ids: List[str] = []
+    # 대본 점검에서 이 지적이 걸린 줄 번호(0부터).
+    line_indexes: List[int] = []
     finding: str
     # 무엇을 하면 되는가. 대본을 고칠지 컷을 더할지가 여기서 갈린다.
     suggested_action: str

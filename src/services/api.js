@@ -261,7 +261,11 @@ export async function suggestNarrative({
 
 // 컷 플랜 점검. 요청에 답하는 것이 아니라 서사가 먼저 짚는다.
 // 그림이 없어도 되므로 컷 플랜 단계에서 돈다 — 고치기 가장 싼 자리다.
-export async function checkNarrative({ cuts, sceneIntention = '', script = '' }) {
+// cuts를 주면 컷 플랜 점검, lines를 주면 대본 점검. 규칙은 같고 보는
+// 것이 다르다 — 대본 단계에는 아직 컷이 없다.
+export async function checkNarrative({
+  cuts = [], lines = [], sceneIntention = '', script = '',
+}) {
   const data = await fetchWithTimeout(`${API_BASE}/narrative/check`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -273,6 +277,7 @@ export async function checkNarrative({ cuts, sceneIntention = '', script = '' })
         purpose: cut.purpose || '',
         characters: cut.characters || '',
       })),
+      lines,
       scene_intention: sceneIntention,
       script,
     }),
@@ -282,6 +287,7 @@ export async function checkNarrative({ cuts, sceneIntention = '', script = '' })
     findings: (data.findings || []).map((finding) => ({
       ruleId: finding.rule_id,
       cutIds: finding.cut_ids || [],
+      lineIndexes: finding.line_indexes || [],
       finding: finding.finding,
       suggestedAction: finding.suggested_action,
     })),

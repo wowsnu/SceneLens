@@ -3076,19 +3076,27 @@ const useStore = create((set, get) => ({
   narrativeCheckPending: false,
   narrativeCheckError: null,
   clearNarrativeCheck: () => set({ narrativeCheck: null, narrativeCheckError: null }),
-  requestNarrativeCheck: async () => {
+  // stage가 'script'면 대본을, 아니면 컷 플랜을 본다. 규칙은 같다.
+  requestNarrativeCheck: async (stage = 'cutplan') => {
     const state = get()
-    if (state.cutPlan.length === 0 || state.narrativeCheckPending) return
-    set({ narrativeCheckPending: true, narrativeCheckError: null })
+    if (state.narrativeCheckPending) return
+    // 대본 점검은 씬 서술만 본다. 헤딩은 사건이 아니다.
+    const lines = state.screenplay
+      .filter((element) => element.type !== 'scene-heading')
+      .map((element) => element.text)
+    const usingCuts = stage !== 'script'
+    if (usingCuts ? state.cutPlan.length === 0 : lines.length === 0) return
+    set({ narrativeCheckPending: true, narrativeCheckError: null, narrativeCheck: null })
     try {
       const { checkNarrative } = await import('../services/api.js')
-      logScaffold({ feature: 'lens', action: 'open', lens: 'narrative', stage: 'cutplan' })
+      logScaffold({ feature: 'lens', action: 'open', lens: 'narrative', stage })
       const result = await checkNarrative({
-        cuts: state.cutPlan,
+        cuts: usingCuts ? state.cutPlan : [],
+        lines: usingCuts ? [] : lines,
         sceneIntention: state.sceneIntention || '',
-        script: state.screenplay.map((element) => element.text).join('\n'),
+        script: usingCuts ? state.screenplay.map((element) => element.text).join('\n') : '',
       })
-      set({ narrativeCheck: result, narrativeCheckPending: false })
+      set({ narrativeCheck: { ...result, stage }, narrativeCheckPending: false })
     } catch (error) {
       // 점검은 실패해도 작업이 멈추면 안 된다. mock으로 채우지도 않는다 —
       // 서사가 짚지 않은 것을 짚은 것처럼 보이면 판단이 오염된다.

@@ -1595,6 +1595,59 @@ export default function StoryboardView() {
 
   // 점검에서 나온 지적을 그대로 제안 요청으로 넘긴다. 점검은 무엇이
   // 문제인지만 말하고, 무엇으로 고칠지는 제안이 낸다.
+  // 대본 점검과 컷 구성 점검은 같은 규칙을 쓰고 같은 모양으로 보인다.
+  // 다른 것은 무엇을 보느냐뿐이다 — 대본의 줄이냐, 컷 플랜의 컷이냐.
+  const renderNarrativeCheck = (stage) => {
+    const isScript = stage === 'script'
+    // 다른 단계에서 받은 결과가 남아 있으면 지금 화면의 것이 아니다.
+    const result = narrativeCheck?.stage === stage ? narrativeCheck : null
+    return (
+      <div className="narrative-rail-check">
+        <button
+          type="button"
+          onClick={() => requestNarrativeCheck(stage)}
+          disabled={narrativeCheckPending}
+        >
+          {narrativeCheckPending
+            ? (isScript ? '대본 보는 중…' : '컷 구성 보는 중…')
+            : (isScript ? '대본 구성 점검' : '컷 구성 점검')}
+        </button>
+        {narrativeCheckError && (
+          <p className="narrative-rail-check-error">{narrativeCheckError}</p>
+        )}
+        {result && result.findings.length === 0 && (
+          <p className="narrative-rail-check-empty">걸리는 것이 없습니다.</p>
+        )}
+        {result && result.findings.length > 0 && (
+          <>
+            <p className="narrative-rail-check-summary">{result.summary}</p>
+            <ul className="narrative-rail-check-list">
+              {result.findings.map((finding) => (
+                <li key={finding.ruleId}>
+                  <span>{NARRATIVE_RULE_LABELS[finding.ruleId] || '서사'}</span>
+                  <em>
+                    {isScript
+                      ? lineLabelsOf(finding.lineIndexes)
+                      : cutLabelsOf(finding.cutIds)}
+                  </em>
+                  <strong>{finding.finding}</strong>
+                  <p>{finding.suggestedAction}</p>
+                  <button
+                    type="button"
+                    onClick={() => requestSuggestionForFinding(finding, stage)}
+                    disabled={narrativePending}
+                  >
+                    {narrativePending ? '제안 받는 중…' : '제안 받기'}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </>
+        )}
+      </div>
+    )
+  }
+
   // 컷 id는 내부 식별자다. 화면에 그대로 내보내면 읽을 것이 아니고,
   // 감독이 어느 컷인지 찾을 수도 없다.
   const cutLabelsOf = (cutIds) => {
@@ -1608,11 +1661,24 @@ export default function StoryboardView() {
       : `${numbers.join(', ')}번 컷`
   }
 
-  const requestSuggestionForFinding = (finding) => {
-    // 지적이 건 첫 컷의 Beat를 본다. 지금 보고 있는 Beat가 아니라
-    // 문제가 있는 Beat여야 제안이 엉뚱한 줄에 붙지 않는다.
-    const firstCut = cutPlan.find((cut) => cut.id === finding.cutIds[0])
-    const beat = firstCut?.beat ?? activeBeat ?? 0
+  // 대본 점검은 줄 번호를 가리킨다. 헤딩을 뺀 순서이므로 화면의
+  // 줄 번호와 맞추려면 같은 필터를 거쳐야 한다.
+  const scriptLines = screenplay.filter((element) => element.type !== 'scene-heading')
+
+  const lineLabelsOf = (indexes = []) => {
+    const numbers = indexes.filter((index) => index >= 0).map((index) => index + 1)
+    if (numbers.length === 0) return ''
+    return numbers.length > 2
+      ? `${numbers[0]}–${numbers[numbers.length - 1]}번째 줄`
+      : `${numbers.join(', ')}번째 줄`
+  }
+
+  const requestSuggestionForFinding = (finding, stage = 'cutplan') => {
+    // 문제가 있는 Beat여야 제안이 엉뚱한 줄에 붙지 않는다. 지금 보고
+    // 있는 Beat가 아니다.
+    const beat = stage === 'script'
+      ? scriptLines[finding.lineIndexes?.[0] ?? 0]?.beat ?? activeBeat ?? 0
+      : cutPlan.find((cut) => cut.id === finding.cutIds[0])?.beat ?? activeBeat ?? 0
     // 점검에서 제안으로 넘어간 것. 지적을 받아들였다는 뜻이다.
     logScaffold({
       feature: 'diagnosis',
@@ -1623,7 +1689,7 @@ export default function StoryboardView() {
     requestNarrativeSuggestions({
       beat,
       narrativeRequest: (
-        `컷 구성 점검에서 이런 지적이 나왔습니다: ${finding.finding}\n`
+        `${stage === 'script' ? '대본' : '컷'} 구성 점검에서 이런 지적이 나왔습니다: ${finding.finding}\n`
         + `${finding.suggestedAction}\n`
         + '이 Beat의 대본에서 무엇을 더하거나 고치면 되는지 제안해 주세요.'
       ),
@@ -2932,60 +2998,19 @@ export default function StoryboardView() {
                     {/* 서사가 먼저 짚는다. 그림이 없는 지금이 고치기 가장
                         싼 자리다 — 다 그린 뒤에 "이 컷은 필요 없다"는 말을
                         들으면 그린 것을 버려야 한다. */}
-                    {cutPlan.length > 0 && (
-                      <div className="narrative-rail-check">
-                        <button
-                          type="button"
-                          onClick={requestNarrativeCheck}
-                          disabled={narrativeCheckPending}
-                        >
-                          {narrativeCheckPending ? '컷 구성 보는 중…' : '컷 구성 점검'}
-                        </button>
-                        {narrativeCheckError && (
-                          <p className="narrative-rail-check-error">
-                            {narrativeCheckError}
-                          </p>
-                        )}
-                        {narrativeCheck && narrativeCheck.findings.length === 0 && (
-                          <p className="narrative-rail-check-empty">
-                            사건의 단계로는 걸리는 것이 없습니다.
-                          </p>
-                        )}
-                        {narrativeCheck && narrativeCheck.findings.length > 0 && (
-                          <>
-                            <p className="narrative-rail-check-summary">
-                              {narrativeCheck.summary}
-                            </p>
-                            <ul className="narrative-rail-check-list">
-                              {narrativeCheck.findings.map((finding) => (
-                                <li key={finding.ruleId}>
-                                  <span>{NARRATIVE_RULE_LABELS[finding.ruleId] || '서사'}</span>
-                                  <em>{cutLabelsOf(finding.cutIds)}</em>
-                                  <strong>{finding.finding}</strong>
-                                  <p>{finding.suggestedAction}</p>
-                                  {/* 읽고 끝나면 감독이 다시 옮겨 적어야
-                                      한다. 지적을 그대로 요청으로 넘겨
-                                      제안까지 잇는다. */}
-                                  <button
-                                    type="button"
-                                    onClick={() => requestSuggestionForFinding(finding)}
-                                    disabled={narrativePending}
-                                  >
-                                    {narrativePending ? '제안 받는 중…' : '제안 받기'}
-                                  </button>
-                                </li>
-                              ))}
-                            </ul>
-                          </>
-                        )}
-                      </div>
-                    )}
+                    {cutPlan.length > 0 && renderNarrativeCheck('cutplan')}
                   </>
                 ) : (
-                  <p>
-                    Beat {activeBeat + 1}을(를) 보고 있습니다. 이 Beat의 행동과
-                    대사를 조금씩 고쳐 나가세요.
-                  </p>
+                  <>
+                    <p>
+                      Beat {activeBeat + 1}을(를) 보고 있습니다. 이 Beat의 행동과
+                      대사를 조금씩 고쳐 나가세요.
+                    </p>
+                    {/* 컷으로 나누기 전에 대본이 사건의 단계로 서 있는지
+                        본다. 여기서 고치는 것이 가장 싸다 — 컷 플랜도
+                        그림도 아직 없다. */}
+                    {scriptLines.length > 0 && renderNarrativeCheck('script')}
+                  </>
                 )}
                 {/* 요청을 넘긴 뒤 칸이 비므로, 무엇이 진행 중인지 여기서
                     보인다. 아니면 아무 일도 없는 것처럼 보인다. */}
