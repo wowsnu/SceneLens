@@ -318,7 +318,7 @@ function DiagnosisList({
 
 function ScriptLineEditor({
   element, index, onChange, onChangeType, onInsertAfter, onRemove, canRemove, showTools,
-  autoFocus, focusCaret, onFocused, onMoveFocus,
+  autoFocus, focusCaret, onFocused, onMoveFocus, flagged, filled,
 }) {
   const textareaRef = useRef(null)
 
@@ -361,7 +361,7 @@ function ScriptLineEditor({
       )}
       <textarea
         ref={textareaRef}
-        className={`script-line-input sb-script-${element.type}`}
+        className={`script-line-input sb-script-${element.type}${filled ? ' is-filled' : ''}${flagged ? ' is-flagged' : ''}`}
         value={element.text}
         rows={1}
         placeholder="빈 줄"
@@ -2631,6 +2631,8 @@ export default function StoryboardView() {
                             focusCaret={pendingFocus?.caret}
                             onFocused={clearPendingFocus}
                             onMoveFocus={handleMoveFocus}
+                            filled={el.filled}
+                            flagged={flaggedLineIndexes.has(el.globalIdx)}
                           />
                         ) : (
                           <div
