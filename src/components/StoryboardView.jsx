@@ -591,7 +591,7 @@ function ShotInspector({
             )}
           </summary>
           <p className="shot-inspector-deferred-help">
-            이미지 제약이나 후속 공정 구분이 꼭 필요할 때만 확인하세요.
+            무엇을 그림에서 정하고 무엇을 촬영에 넘길지 가릅니다.
           </p>
           <ul>
             {[...deferredDeclarations, ...decidedDeclarations].map((decl) => {

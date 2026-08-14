@@ -1692,11 +1692,32 @@
   height: 100%;
   overflow-y: auto;
   overflow-x: hidden;
+  /* 다른 패널과 같은 다크 스크롤바. 기본 밝은 막대가 뜨면 이 칸만
+     다른 화면처럼 보인다. */
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.16) transparent;
   box-sizing: border-box;
   border-left: 1px solid rgba(255, 255, 255, 0.075);
   background: #101013;
   color: #f4f4f5;
   font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+.shot-inspector::-webkit-scrollbar {
+  width: 8px;
+}
+
+.shot-inspector::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.shot-inspector::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.16);
+}
+
+.shot-inspector::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.26);
 }
 
 .shot-inspector.empty {
