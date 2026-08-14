@@ -1668,20 +1668,26 @@ export default function StoryboardView() {
                     </em>
                     <strong>{finding.finding}</strong>
                   </button>
-                  <p>{finding.suggestedAction}</p>
-                  {/* 대본 지적은 대본에서, 컷 지적은 컷에서 고친다.
-                      컷 문제를 대본 제안으로 보내면 자리가 어긋난다. */}
-                  <button
-                    type="button"
-                    onClick={() => (isScript
-                      ? requestSuggestionForFinding(finding, stage)
-                      : goToFindingCut(finding))}
-                    disabled={isScript && narrativePending}
-                  >
-                    {isScript
-                      ? (narrativePending ? '제안 받는 중…' : '제안 받기')
-                      : '이 컷 보기'}
-                  </button>
+                  {/* 고른 것만 펼친다. 여럿을 한꺼번에 펼쳐 두면 목록이
+                      길어져 무엇을 보고 있는지 흐려진다. */}
+                  {openFindingId === finding.ruleId && (
+                    <>
+                      <p>{finding.suggestedAction}</p>
+                      {/* 대본 지적은 대본에서, 컷 지적은 컷에서 고친다.
+                          컷 문제를 대본 제안으로 보내면 자리가 어긋난다. */}
+                      <button
+                        type="button"
+                        onClick={() => (isScript
+                          ? requestSuggestionForFinding(finding, stage)
+                          : goToFindingCut(finding))}
+                        disabled={isScript && narrativePending}
+                      >
+                        {isScript
+                          ? (narrativePending ? '제안 받는 중…' : '제안 받기')
+                          : '이 컷 보기'}
+                      </button>
+                    </>
+                  )}
                 </li>
               ))}
             </ul>

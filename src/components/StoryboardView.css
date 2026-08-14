@@ -4094,11 +4094,6 @@
   cursor: pointer;
 }
 
-.narrative-rail-check-list li.is-open {
-  border-color: rgba(245, 158, 11, 0.5);
-  background: rgba(245, 158, 11, 0.07);
-}
-
 .narrative-rail-check-list li span {
   color: rgba(250, 200, 120, 0.85);
   font-size: 11.5px;
@@ -4120,6 +4115,11 @@
   font-size: 13px;
   font-weight: 600;
   line-height: 1.5;
+}
+
+/* 접힌 카드는 제목까지만. 펼친 것만 조치와 버튼을 갖는다. */
+.narrative-rail-check-list li:not(.is-open) {
+  padding-bottom: 8px;
 }
 
 .narrative-rail-check-list li p {
