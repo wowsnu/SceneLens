@@ -1261,7 +1261,7 @@ export default function StoryboardView() {
     const cast = (cut.characters || '').split(',').map((n) => n.trim()).filter(Boolean)
     const refs = scene.characters
       .filter((character) => character.image
-        && cast.some((name) => name.includes(character.name)))
+        && cast.some((name) => name.includes(character.name) || character.name.includes(name)))
       .map((character) => ({
         name: character.name,
         kind: 'character',

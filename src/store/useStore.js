@@ -1436,7 +1436,7 @@ export const selectSceneReference = (sceneState, cut, cutIndex = null, cutOrder 
 
   const cast = (cut.characters || '').split(',').map((name) => name.trim()).filter(Boolean)
   const characters = sceneState.characters
-    .filter((character) => cast.some((name) => name.includes(character.name)))
+    .filter((character) => cast.some((name) => name.includes(character.name) || character.name.includes(name)))
     .map((character) => ({
       name: character.name,
       detail: settledFacts(character.facts, cutIndex, cutOrder),
