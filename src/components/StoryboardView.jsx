@@ -1876,7 +1876,7 @@ export default function StoryboardView() {
                   onClick={handleUploadScript}
                   disabled={!rawText.trim() || structurePending}
                 >
-                  {structurePending ? '읽는 중…' : 'Continue'}
+                  {structurePending ? '나누는 중…' : '씬·Beat로 나누기'}
                 </button>
               </div>
             </div>
