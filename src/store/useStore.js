@@ -3241,9 +3241,17 @@ const useStore = create((set, get) => ({
       activeBeat: 0,
     }
   }),
-  dismissNarrativeSuggestion: (suggestionId) => set((state) => ({
-    narrativeSuggestions: state.narrativeSuggestions.filter((suggestion) => suggestion.id !== suggestionId),
-  })),
+  dismissNarrativeSuggestion: (suggestionId) => set((state) => {
+    const remaining = state.narrativeSuggestions
+      .filter((suggestion) => suggestion.id !== suggestionId)
+    return {
+      narrativeSuggestions: remaining,
+      // 마지막 제안을 버리면 목록이 비는데, 그것을 '답이 없었다'와
+      // 같이 두면 "여기서는 할 수 없는 요청입니다"가 뜬다. 버린 것은
+      // 답이 없던 것이 아니라 감독이 판정한 것이다.
+      narrativeAnswered: remaining.length > 0 ? state.narrativeAnswered : false,
+    }
+  }),
   
   // 비트 나누기: 특정 지점에서 대본을 자르고 새 beat에 기본 shot을 하나 만든다.
   splitBeat: (elementIndex) => set((state) => {
