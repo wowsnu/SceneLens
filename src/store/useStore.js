@@ -2159,7 +2159,11 @@ const useStore = create((set, get) => ({
     try {
       // 지연 import — 스토어를 node로 단독 검증할 수 있게 한다.
       const { generateReferenceImage } = await import('../services/api.js')
-      const image = await generateReferenceImage(kind, prompt.effective)
+      // 레퍼런스부터 패널과 같은 그림체로 만든다. 기준 그림이 다른 화풍이면
+      // 패널 생성 때 두 화풍이 서로 경쟁하게 된다.
+      const style = scene.environment?.facts
+        ?.find((fact) => fact.label === '그림체' && !fact.open)?.value || ''
+      const image = await generateReferenceImage(kind, prompt.effective, { style })
       get().updateSceneStateAt(selectActiveSceneId(get()), (current) => (
         kind === 'character'
           ? {
