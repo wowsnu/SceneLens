@@ -4081,6 +4081,13 @@
   background: rgba(255, 255, 255, 0.02);
 }
 
+/* 고른 카드는 테두리만 바뀐다. 배경까지 칠하면 대본 줄의 표시와 함께
+   두 군데가 켜진 것으로 읽힌다. */
+.narrative-rail-check-list li.is-open {
+  border-color: rgba(245, 158, 11, 0.75);
+  background: rgba(255, 255, 255, 0.02);
+}
+
 /* 카드를 눌러 그 지적의 줄을 대본에서 본다. */
 .narrative-rail-check-open {
   display: block;
