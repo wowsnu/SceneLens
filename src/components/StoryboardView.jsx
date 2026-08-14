@@ -1694,6 +1694,15 @@ export default function StoryboardView() {
   // 줄 번호와 맞추려면 같은 필터를 거쳐야 한다.
   const scriptLines = screenplay.filter((element) => element.type !== 'scene-heading')
 
+  // 컷으로 나누려면 나눌 것이 있어야 한다. 이야기를 막 넣은 상태에서
+  // 컷 플랜부터 권하면 뼈대인 채로 그림까지 가고, 그때는 고치는 비용이
+  // 가장 비싸다.
+  //
+  // 기준은 Beat가 둘 이상이고 줄이 어느 정도 있는 것 — 한 덩어리이거나
+  // 서너 줄뿐이면 아직 윤곽이 아니다.
+  const scriptBeatCount = new Set(scriptLines.map((element) => element.beat ?? 0)).size
+  const scriptHasShape = scriptBeatCount >= 2 && scriptLines.length >= 5
+
   // 점검이 짚은 줄을 대본에서 표시한다. 번호만 주면 감독이 세어 찾아야
   // 한다. lineIndexes는 헤딩을 뺀 순번이므로 전체 순번으로 옮긴다.
   const flaggedLineIndexes = (() => {
@@ -3435,25 +3444,28 @@ export default function StoryboardView() {
               ) : cutStage === 'script' ? (
                 <>
                   <p>
-                    대본이 준비됐습니다. 그림 전에 이 장면을 몇 개의 컷으로
-                    나눌지 정하고, 이어서 촬영이 각 컷의 샷을 정합니다.
+                    {scriptHasShape
+                      ? '대본이 준비됐습니다. 그림 전에 이 장면을 몇 개의 컷으로 나눌지 정하고, 이어서 촬영이 각 컷의 샷을 정합니다.'
+                      : '아직 윤곽이 잡히기 전입니다. 위에서 대본을 손보고 나면 컷으로 나눌 수 있습니다.'}
                   </p>
 
-                  {/* 다음 단계로 넘어가는 버튼은 맨 아래에 둔다. 위에서
-                      대본을 손볼 것이 없는지 보고 나서 누르는 순서다 —
-                      먼저 놓으면 점검을 지나쳐 컷부터 만들게 된다. */}
-                  <button
-                    type="button"
-                    className="narrative-rail-primary"
-                    onClick={cutPlan.length > 0 ? clearCutPlanStageOverride : requestCutPlan}
-                    disabled={cutPlanRunPending}
-                  >
-                    {cutPlanPending
-                      ? '컷 나누는 중…'
-                      : cutPlanRunPending
-                        ? '샷 정하는 중…'
-                        : cutPlan.length > 0 ? '컷 플랜 이어서' : '컷 플랜 만들기'}
-                  </button>
+                  {/* 나눌 것이 생긴 뒤에 뜬다. 처음부터 두면 뼈대인 채로
+                      컷부터 만들게 되고, 그림까지 간 뒤에는 고치는 비용이
+                      가장 비싸다. */}
+                  {scriptHasShape && (
+                    <button
+                      type="button"
+                      className="narrative-rail-primary"
+                      onClick={cutPlan.length > 0 ? clearCutPlanStageOverride : requestCutPlan}
+                      disabled={cutPlanRunPending}
+                    >
+                      {cutPlanPending
+                        ? '컷 나누는 중…'
+                        : cutPlanRunPending
+                          ? '샷 정하는 중…'
+                          : cutPlan.length > 0 ? '컷 플랜 이어서' : '컷 플랜 만들기'}
+                    </button>
+                  )}
                 </>
               ) : (
                 <>
