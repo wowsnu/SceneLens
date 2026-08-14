@@ -3008,6 +3008,52 @@ export default function StoryboardView() {
                 </section>
               )}
 
+              {viewerFindingHandoff?.route === 'narrative' && (
+                <section className="narrative-viewer-handoff" aria-label="순차 읽기에서 가져온 문제">
+                  <header>
+                    <span>순차 읽기 · {(viewerFindingHandoff.panelOrders || [viewerFindingHandoff.panelOrder]).map((panelOrder) => `S${panelOrder}`).join(' · ')}</span>
+                    <button type="button" onClick={clearViewerFindingHandoff} aria-label="순차 읽기 카드 닫기">×</button>
+                  </header>
+                  <strong>{viewerFindingHandoff.interpretations?.[0] || viewerFindingHandoff.title}</strong>
+                  <p><em>시각적 근거</em>{viewerFindingHandoff.visibleCues?.join(' · ') || '특정 근거 없음'}</p>
+                  <button type="button" onClick={addViewerFindingToNarrativeRequest}>
+                    요청에 담기
+                  </button>
+                </section>
+              )}
+
+              {/* 점검보다 위에 둔다. 점검이 짚어 주기 전에도 감독이 먼저
+                  물을 수 있어야 하고, 다음 단계로 넘어가는 버튼은 그 아래에
+                  두어 대본을 손볼 것이 없는지 보고 나서 누르게 한다. */}
+              <div className="narrative-rail-composer">
+                <label htmlFor="narrative-screenplay-request">Request</label>
+                <textarea
+                  id="narrative-screenplay-request"
+                  value={narrativeRequest}
+                  onChange={(event) => {
+                    setNarrativeRequest(event.target.value)
+                    // 새 요청을 쓰기 시작하면 지난 결과를 지운다. 계속 떠
+                    // 있으면 방금 쓴 요청에 대한 답으로 오해된다.
+                    if (narrativeAnswered) clearNarrativeResult()
+                  }}
+                  placeholder="예: 이 Beat를 둘로 나누고 대사를 덜 설명적으로 바꿔줘."
+                  aria-label={`Narrative request for Beat ${activeBeat + 1}`}
+                  rows={3}
+                />
+                <div>
+                  <span>{`Beat ${activeBeat + 1}에 적용`}</span>
+                  <button
+                    type="button"
+                    disabled={!narrativeRequest.trim() || narrativePending}
+                    onClick={handleNarrativeRequest}
+                  >
+                    {narrativePending ? '생각 중…' : 'Propose'}
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="m9 18 6-6-6-6" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
               <section className="narrative-rail-guidance">
                 <span>Next step</span>
                 {/* 대본은 주어진 것에서 시작한다. 다음 단계는 컷 분해다. */}
@@ -3116,52 +3162,6 @@ export default function StoryboardView() {
                   </div>
                 )}
               </section>
-
-              {viewerFindingHandoff?.route === 'narrative' && (
-                <section className="narrative-viewer-handoff" aria-label="순차 읽기에서 가져온 문제">
-                  <header>
-                    <span>순차 읽기 · {(viewerFindingHandoff.panelOrders || [viewerFindingHandoff.panelOrder]).map((panelOrder) => `S${panelOrder}`).join(' · ')}</span>
-                    <button type="button" onClick={clearViewerFindingHandoff} aria-label="순차 읽기 카드 닫기">×</button>
-                  </header>
-                  <strong>{viewerFindingHandoff.interpretations?.[0] || viewerFindingHandoff.title}</strong>
-                  <p><em>시각적 근거</em>{viewerFindingHandoff.visibleCues?.join(' · ') || '특정 근거 없음'}</p>
-                  <button type="button" onClick={addViewerFindingToNarrativeRequest}>
-                    요청에 담기
-                  </button>
-                </section>
-              )}
-
-              {/* Next step 바로 아래에 둔다. 제시된 다음 단계와 직접
-                  이어지는 입력이기 때문이다. */}
-              <div className="narrative-rail-composer">
-                <label htmlFor="narrative-screenplay-request">Request</label>
-                <textarea
-                  id="narrative-screenplay-request"
-                  value={narrativeRequest}
-                  onChange={(event) => {
-                    setNarrativeRequest(event.target.value)
-                    // 새 요청을 쓰기 시작하면 지난 결과를 지운다. 계속 떠
-                    // 있으면 방금 쓴 요청에 대한 답으로 오해된다.
-                    if (narrativeAnswered) clearNarrativeResult()
-                  }}
-                  placeholder="예: 이 Beat를 둘로 나누고 대사를 덜 설명적으로 바꿔줘."
-                  aria-label={`Narrative request for Beat ${activeBeat + 1}`}
-                  rows={3}
-                />
-                <div>
-                  <span>{`Beat ${activeBeat + 1}에 적용`}</span>
-                  <button
-                    type="button"
-                    disabled={!narrativeRequest.trim() || narrativePending}
-                    onClick={handleNarrativeRequest}
-                  >
-                    {narrativePending ? '생각 중…' : 'Propose'}
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="m9 18 6-6-6-6" />
-                    </svg>
-                  </button>
-                </div>
-              </div>
 
               </div>
               )}
