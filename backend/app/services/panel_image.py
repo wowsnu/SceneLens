@@ -112,8 +112,10 @@ async def generate_panel(request: PanelImageRequest) -> PanelImageResponse:
         )
         note = [
             f"Reference images are provided: {who}.",
-            "Draw those exact characters and that exact place — keep each "
-            "face, hair, build, clothing and the room identical to the reference.",
+            "These images are identity references, not loose inspiration. Draw "
+            "those exact characters and that exact place — keep each face, hair, "
+            "build, clothing, distinctive features and the room identical to the "
+            "reference in every panel.",
             # 레퍼런스는 서 있는 자세다. 그대로 두면 패널의 행동이 사라진다.
             "The character references show neutral standing poses; do not copy "
             "those poses. Pose and frame them as this panel describes.",

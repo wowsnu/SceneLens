@@ -55,7 +55,14 @@ async def generate_reference(request: ReferenceImageRequest) -> ReferenceImageRe
     if not request.prompt.strip():
         raise ValueError("prompt is empty")
 
-    style = CHARACTER_STYLE if request.kind == "character" else LOCATION_STYLE
+    subject_style = CHARACTER_STYLE if request.kind == "character" else LOCATION_STYLE
+    # Panels에서 선택한 그림체를 레퍼런스에도 같은 우선순위로 적용한다.
+    # 비워 두면 기존의 통일된 흑백 스토리보드 스타일을 유지한다.
+    scene_style = request.style.strip() if request.style else ""
+    style = (
+        f"Scene-wide visual style (use it exactly): {scene_style}. {subject_style}"
+        if scene_style else subject_style
+    )
     # 인물은 서 있는 전신이라 세로가 맞고, 공간은 가로가 맞다.
     size = "1024x1536" if request.kind == "character" else "1536x1024"
 

@@ -808,6 +808,8 @@ class ReferenceImageRequest(BaseModel):
     kind: str
     # 항목 값에서 조립하거나 사용자가 직접 고친 문장.
     prompt: str
+    # 패널과 레퍼런스가 다른 화풍으로 갈라지지 않도록 같은 씬의 그림체를 쓴다.
+    style: Optional[str] = ""
 
 class ReferenceImageResponse(BaseModel):
     image: str      # base64 PNG
