@@ -12,6 +12,8 @@ from typing import Optional
 from openai import AsyncOpenAI
 from pydantic import ValidationError
 
+from app.services.shot_principles import ANGLES, MOVES, SHOT_SIZES
+
 from app.models.schemas import (
     DirectingCommonFinding,
     DirectingLens,
@@ -33,7 +35,9 @@ from app.services.directing_rules import (
 MODEL_OVERRIDE = os.getenv("DIRECTING_REVIEW_MODEL")
 DEFAULT_LENS_MODELS = {
     "camera": "gpt-5.4",
-    "mise": "gpt-5.4-mini",
+    # 미장센은 인물의 자세·시선·공간 배치를 그림에서 직접 읽는다. mini로는
+    # 시선 방향을 사건 설명에서 가져와 답하는 일이 잦았다.
+    "mise": "gpt-5.4",
     "editing": "gpt-5.4",
     "narrative": "gpt-5.4-mini",
 }
@@ -74,6 +78,14 @@ effect와 questions는 모두 짧고 자연스러운 한국어로 씁니다. 한
 보인다고 꾸미지 말고 보이지 않거나 식별되지 않는다고 판정하세요. 사건 설명에 적힌 고유한
 색·형태·위치가 화면에서 확인되지 않으면, 비슷한 일반 물체를 그 소품이라고 이름 붙이지
 마세요.
+
+**시선·고개·몸의 방향은 사건 설명에서 가져오지 마세요.** 이것은 그림에서 직접 확인해야
+하는 것이고, 스토리보드에서 가장 자주 틀리는 부분입니다. 사건 설명에 `시선을 든다`,
+`올려다본다`, `돌아본다`가 적혀 있어도, 그림에서 눈·고개·상체가 실제로 어디를 향하는지
+따로 보고 판정하세요. 그림이 설명과 다르면 **그림을 따르고, 다르다는 사실 자체를
+짚으세요** — 의도한 것이 화면에 없다는 뜻이므로 그것이 진단입니다. 눈동자나 시선을
+선 몇 개로만 그린 컷에서는 방향을 단정하지 말고 `시선 방향이 화면에서 확인되지 않는다`고
+쓰세요. 확인되지 않는 것을 설명대로 읽으면 진단 전체가 틀린 전제 위에 서게 됩니다.
 
 전체 의도는 여러 컷의 역할이 합쳐져 달성될 수 있습니다. 각 패널이 의도의 모든 단계나
 뒤 컷의 행동까지 한 화면 안에서 보여줘야 한다고 가정하지 마세요. 각 패널은 먼저 해당
@@ -148,6 +160,15 @@ targets 규칙:
     ✓ "더 넓게 잡기" / "시점 바꾸기"     ← 둘 다 할 수 없다
     ✗ "크기를 조정" / "조명을 조정"      ← 함께 할 수 있다
   · label은 12자 이내의 짧은 말, effect는 그 길을 고르면 무엇이 달라지는지 한 문장.
+  · **patch에는 그 선택지가 바꾸는 컷 표의 값을 적습니다.** 감독이 화면을 옮기지 않고
+    그 자리에서 적용할 수 있어야 합니다. 바꾸지 않는 항목은 null입니다.
+    허용된 값은 아래 [컷 표의 값] 목록에 있는 것뿐입니다.
+    ✓ "카메라 낮추기" → patch: shot_size=null, angle="Low angle", move=null
+    ✓ "더 넓게 잡기" → patch: shot_size="Wide", angle=null, move=null
+    · **kind="keep"은 언제나 전부 null입니다.** 유지하는 길은 아무것도 바꾸지 않습니다.
+    · 조명·표정·소품·인물 배치처럼 위 세 값으로 표현되지 않는 것은 전부 null로 두세요.
+      억지로 비슷한 값을 넣으면 감독이 누른 것과 다른 것이 바뀝니다. null이면 화면이
+      프롬프트를 고치는 쪽으로 안내합니다.
 - questions는 0~1개입니다. 제공된 의도와 사건 설명에 답이 없고, 답에 따라 수정 방향이
   달라질 때만 질문하세요. 진단이나 suggested_action을 질문형으로 반복하지 마세요.
 - 현재 구성이 의도를 충분히 지지하면 억지로 `change`를 만들지 말고 해당 층위를 keep으로
@@ -371,11 +392,35 @@ LENS_RESPONSE_SCHEMA = {
                             "items": {
                                 "type": "object",
                                 "additionalProperties": False,
-                                "required": ["kind", "label", "effect"],
+                                "required": ["kind", "label", "effect", "patch"],
                                 "properties": {
                                     "kind": {"type": "string", "enum": ["keep", "change"]},
                                     "label": {"type": "string"},
                                     "effect": {"type": "string"},
+                                    # 이 선택지가 컷 표의 어느 값을 바꾸는지.
+                                    # 화면이 그 자리에서 적용할 수 있게 한다 —
+                                    # 없으면 감독이 다른 화면으로 나가야 한다.
+                                    # 샷 값으로 풀리지 않으면 전부 null이고,
+                                    # 그때는 프롬프트를 고치는 쪽으로 간다.
+                                    "patch": {
+                                        "type": "object",
+                                        "additionalProperties": False,
+                                        "required": ["shot_size", "angle", "move"],
+                                        "properties": {
+                                            "shot_size": {
+                                                "type": ["string", "null"],
+                                                "enum": [*SHOT_SIZES, None],
+                                            },
+                                            "angle": {
+                                                "type": ["string", "null"],
+                                                "enum": [*ANGLES, None],
+                                            },
+                                            "move": {
+                                                "type": ["string", "null"],
+                                                "enum": [*MOVES, None],
+                                            },
+                                        },
+                                    },
                                 },
                             },
                         },
@@ -741,6 +786,14 @@ async def analyze_lens(
                 "후보 조건과 제외 조건을 모두 확인하고, 해당 규칙이 없으면 diagnoses를 "
                 "비우세요. 선택한 규칙 ID를 diagnosis.rule_id에 정확히 복사하세요.\n"
                 f"{rule_prompt(lens)}"
+            ),
+            # alternatives의 patch가 쓸 수 있는 값. 컷 표의 셀렉트와 같은
+            # 목록이어야 감독이 누른 것이 그대로 적용된다.
+            (
+                "[컷 표의 값]\n"
+                f"shot_size: {', '.join(SHOT_SIZES)}\n"
+                f"angle: {', '.join(ANGLES)}\n"
+                f"move: {', '.join(MOVES)}"
             ),
             f"[ID 규칙]\n모든 diagnosis와 question의 id는 반드시 `{lens}-`로 시작하세요.",
             f"[감독의 의도]\n{intent or '입력되지 않음'}",

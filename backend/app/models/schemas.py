@@ -491,6 +491,14 @@ class DirectingReviewRequest(BaseModel):
     lens_results: Optional[Dict[DirectingLens, "DirectingLensResult"]] = None
 
 
+class DirectingAlternativePatch(BaseModel):
+    """선택지가 바꾸는 컷 표의 값. 바꾸지 않는 항목은 None."""
+
+    shot_size: Optional[str] = None
+    angle: Optional[str] = None
+    move: Optional[str] = None
+
+
 class DirectingAlternative(BaseModel):
     """한 갈래의 연출 선택.
 
@@ -504,6 +512,9 @@ class DirectingAlternative(BaseModel):
     label: str = Field(min_length=1, max_length=24)
     # 이 길을 고르면 무엇이 달라지는가. 한 문장.
     effect: str = Field(min_length=1, max_length=160)
+    # 이 선택지가 컷 표의 어느 값을 바꾸는가. 화면이 그 자리에서 적용한다.
+    # 전부 null이면 샷 값으로 풀리지 않는 것이고, 프롬프트를 고쳐야 한다.
+    patch: Optional[DirectingAlternativePatch] = None
 
 
 class DirectingDiagnosis(BaseModel):
@@ -785,6 +796,8 @@ class CutPlanRequest(BaseModel):
 
 class PlannedCut(BaseModel):
     beat: int
+    time: str = ""                         # 장면의 시각. 근거가 없으면 빈 문자열
+    place: str = ""                        # 화면의 장소
     content: str                            # 이 화면에 보이는 것
     purpose: str                            # 이 컷이 왜 있는가
     characters: str = ""                    # 화면에 보이는 인물만

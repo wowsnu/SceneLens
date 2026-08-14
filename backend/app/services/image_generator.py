@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Optional
 from google import genai
 from google.genai import types
-from openai import OpenAI
+from openai import AsyncOpenAI, OpenAI
 import httpx
 try:
     from rembg import remove as rembg_remove
@@ -597,7 +597,12 @@ async def enhance_sketch(
 
     image_bytes = base64.b64decode(image_base64)
 
-    prompt = f"""{ENHANCE_PROMPT}
+    reference_inventory = "\n".join(
+        f"- Image {index + 2}: {getattr(ref, 'kind', 'reference')} reference for {getattr(ref, 'name', 'scene element')}"
+        for index, ref in enumerate(references or [])
+    ) or "- No additional reference images."
+
+    edit_prompt = f"""{ENHANCE_PROMPT}
 
 [Scene Context]
 {script_context}
@@ -617,45 +622,55 @@ async def enhance_sketch(
 [Requested drawing style]
 {style}
 
-[Optional screenplay context — use only to recognize elements already visible, never to add new ones]
-{script_context}
+[Reference image inventory]
+{reference_inventory}
 
 [Optional Director Note — never use this to alter the existing composition]
 {intent or 'No extra instruction. Preserve the sketch and add only a few helpful strokes if needed.'}
 
-Image 1 is the director's original sketch and is the source of truth. Any later images are character,
-location, or layout references for recognizing what is already implied in image 1. Do not copy, redraw,
-or add anything from those references unless image 1 already clearly implies it. Make only the tiny
-additions permitted above.
+Image 1 is the director's original sketch and is the source of truth. The later images listed above are
+character, location, or layout references for recognizing what is already implied in image 1. Do not copy,
+redraw, or add anything from those references unless image 1 already clearly implies it. Make only the
+tiny additions permitted above.
 """
 
-    client = get_client()
-
-    contents = [prompt]
+    api_key = os.getenv("OPENAI_API_KEY")
+    if not api_key:
+        raise ValueError("OPENAI_API_KEY not found in environment variables")
 
     # The original always comes first so visual identity, crop, and existing
     # strokes remain authoritative. Later references only resolve ambiguity.
-    contents.append(types.Part.from_bytes(data=image_bytes, mime_type='image/png'))
+    files = [("director-sketch.png", image_bytes, "image/png")]
     for ref in references or []:
         try:
             ref_bytes = base64.b64decode(ref.image, validate=True)
-            contents.append(types.Part.from_bytes(data=ref_bytes, mime_type='image/png'))
+            files.append((f"{ref.kind}-reference.png", ref_bytes, "image/png"))
         except (ValueError, TypeError):
             print(f"[enhance-sketch] skipping unreadable {getattr(ref, 'kind', 'reference')} reference")
 
-    response = client.models.generate_content(
-        model='gemini-2.5-flash-image',
-        contents=contents,
-        config=types.GenerateContentConfig(
-            response_modalities=['TEXT', 'IMAGE'],
-        ),
+    # 패널·레퍼런스와 같은 이미지 모델로 편집한다. 첫 파일은 사용자의
+    # 스케치이고 뒤 파일은 식별 보조용 기준 그림이다.
+    client = AsyncOpenAI(api_key=api_key)
+    result = await client.images.edit(
+        model="gpt-image-1",
+        image=files,
+        prompt=edit_prompt,
+        size="1536x1024",
+        quality="low",
+        n=1,
     )
 
-    for part in response.candidates[0].content.parts:
-        if part.inline_data is not None:
-            return _image_bytes_to_base64(part.inline_data.data)
+    data = result.data[0]
+    if getattr(data, "b64_json", None):
+        return data.b64_json
 
-    raise ValueError("Gemini did not return an image")
+    if getattr(data, "url", None):
+        async with httpx.AsyncClient(timeout=60) as http:
+            response = await http.get(data.url)
+            response.raise_for_status()
+            return _image_bytes_to_base64(response.content)
+
+    raise ValueError("GPT Image returned neither b64_json nor url")
 
 
 async def generate_sketch(

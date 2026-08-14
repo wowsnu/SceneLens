@@ -32,10 +32,13 @@ RESPONSE_SCHEMA = {
                 "items": {
                     "type": "object",
                     "additionalProperties": False,
-                    "required": ["beat", "content", "purpose", "characters"],
+                    "required": ["beat", "time", "place", "content", "purpose", "characters"],
                     "properties": {
                         # 이 컷이 속한 Beat 번호 (0부터).
                         "beat": {"type": "integer"},
+                        # 장면의 시각과 장소. 대본의 시각적 단서에서 판단한다.
+                        "time": {"type": "string"},
+                        "place": {"type": "string"},
                         # 이 컷 한 장에 담기는 것. 화면에서 볼 수 있는 사건.
                         "content": {"type": "string"},
                         # 이 컷이 왜 있는가. 무엇이 읽혀야 하는가.
@@ -62,7 +65,15 @@ Beat와 Cut은 다릅니다:
 - 이어지는 두 줄이 한 화면에 담기면 합칩니다.
 - 중요한 순간은 컷을 더 씁니다. 지나가는 대목은 적게 씁니다.
 
-각 컷에 세 가지를 정하세요:
+각 컷에 다섯 가지를 정하세요:
+
+- time: 이 화면의 시간대. **대본의 시각적 단서를 보고 판단하세요.**
+  씬 헤딩이 없어도 "어두운 골목", "가로등 불빛", "새벽빛"처럼 화면으로
+  알 수 있으면 각각 "밤", "밤", "새벽"으로 씁니다. 단서가 정말 없을
+  때만 빈 문자열로 둡니다. 10자 이내의 짧은 말로 씁니다.
+
+- place: 이 화면의 장소. 대본에서 읽히는 공간 이름을 짧게 씁니다.
+  예: "카페", "골목", "지하 주차장". 근거가 없을 때만 빈 문자열입니다.
 
 - content: **이 화면 한 장에 보이는 것.** 짧은 한 문장.
   카메라를 한 번 눌러 담기는 것만 씁니다.

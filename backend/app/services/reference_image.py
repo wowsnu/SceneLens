@@ -31,6 +31,12 @@ CHARACTER_STYLE = (
     f"Character reference sheet. {BASE_STYLE} "
     "One single standing figure, full body, front view, neutral pose, "
     "arms relaxed at the sides. "
+    # 얼굴이 잘리면 레퍼런스가 아니다. 컷마다 같은 인물로 보이게 하는 것이
+    # 이 그림의 목적인데, 그것을 결정하는 것은 얼굴과 머리다.
+    "FRAMING IS CRITICAL: the entire figure must fit inside the frame, "
+    "from the top of the head to the feet, with clear empty margin above "
+    "the head and below the feet. Do not crop the head, face, or feet. "
+    "Do not zoom in. The figure should occupy about 80% of the frame height. "
     # 성별·나이가 프롬프트에 있으면 반드시 따라야 한다. 이 그림이 모든
     # 패널의 기준이 되므로, 여기서 틀리면 씬 전체가 틀린 채로 이어진다.
     "Follow the stated gender and age exactly. "
