@@ -28,6 +28,14 @@ function App() {
   const activeBeat = useStore((s) => s.activeBeat)
   const zenMode = useStore((s) => s.zenMode)
   const setZenMode = useStore((s) => s.setZenMode)
+  // 테스트 중에는 컷 플랜을 확정하지 않았어도, 실제 이미지 패널이 하나면
+  // 검토 화면을 열어 분석 흐름만 빠르게 확인할 수 있다.
+  const hasReviewablePanel = useStore((s) => {
+    const scene = s.scenes?.[s.activeScene]
+    const branch = scene?.branches?.[scene.activeBranch ?? 0]
+    return Boolean(branch?.shots?.some((shot) => shot.image))
+  })
+  const canEnterReview = cutStage === 'panels' || (import.meta.env.DEV && hasReviewablePanel)
 
   // 실험 로그 내보내기. 참가자에게 보이는 버튼을 두면 과제 중에 눈에
   // 걸리므로 단축키로만 연다 — 실험자가 세션 끝에 누른다.
@@ -82,6 +90,12 @@ function App() {
     } else {
       document.exitFullscreen()
     }
+  }
+
+  const enterReview = () => {
+    clearStoryboardShotSelection()
+    setMaximizedPanel(null)
+    setLeftPanelVisible(false)
   }
 
   useEffect(() => {
@@ -153,15 +167,13 @@ function App() {
               {maximizedPanel === 'left' ? (
                 <button
                   className="panel-control-btn stage-forward-btn"
-                  disabled={cutStage !== 'panels'}
-                  onClick={() => {
-                    clearStoryboardShotSelection()
-                    setMaximizedPanel(null)
-                    setLeftPanelVisible(false)
-                  }}
+                  disabled={!canEnterReview}
+                  onClick={enterReview}
                   style={{ marginLeft: 'auto' }}
                   title={cutStage === 'panels'
                     ? '렌즈로 결정을 검토하고 관객이 어떻게 읽는지 봅니다'
+                    : hasReviewablePanel && import.meta.env.DEV
+                      ? '테스트 이미지 패널로 검토 흐름을 바로 확인합니다'
                     : '패널을 만든 뒤에 검토할 수 있습니다'}
                 >
                   검토로 넘어가기
@@ -238,6 +250,16 @@ function App() {
               </>
             ) : (
               <div className="decision-header-controls">
+                {import.meta.env.DEV && hasReviewablePanel && (
+                  <button
+                    type="button"
+                    className="panel-control-btn stage-forward-btn review-test-btn"
+                    onClick={enterReview}
+                    title="이미지 패널로 검토 흐름을 바로 확인합니다"
+                  >
+                    테스트: 검토 보기
+                  </button>
+                )}
                 {/* 검토하러 왔으면 돌아갈 길이 있어야 한다. 왼쪽 패널이
                     접혀 있으면 스토리보드가 화면에서 아예 사라진다. */}
                 {!leftPanelVisible && (
