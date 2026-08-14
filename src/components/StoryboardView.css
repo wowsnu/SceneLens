@@ -2164,9 +2164,11 @@
 }
 
 .narrative-rail-composer {
-  margin-top: auto;
+  /* 서사 패널 안, 맨 위에 온다. 이 에이전트를 열면 바로 물어볼 수 있는
+     칸이 보여야 누구에게 묻는 것인지가 자리로 드러난다.
+     margin-top:auto를 두면 패널 바닥으로 밀려 그 관계가 끊긴다. */
   padding: 14px;
-  border-top: 1px solid rgba(255, 255, 255, 0.065);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.065);
   background: #0d0d10;
 }
 
