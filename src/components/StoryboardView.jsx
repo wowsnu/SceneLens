@@ -1694,6 +1694,23 @@ export default function StoryboardView() {
   // 줄 번호와 맞추려면 같은 필터를 거쳐야 한다.
   const scriptLines = screenplay.filter((element) => element.type !== 'scene-heading')
 
+  // 점검이 짚은 줄을 대본에서 표시한다. 번호만 주면 감독이 세어 찾아야
+  // 한다. lineIndexes는 헤딩을 뺀 순번이므로 전체 순번으로 옮긴다.
+  const flaggedLineIndexes = (() => {
+    if (narrativeCheck?.stage !== 'script') return new Set()
+    const map = []
+    screenplay.forEach((element, index) => {
+      if (element.type !== 'scene-heading') map.push(index)
+    })
+    const flagged = new Set()
+    narrativeCheck.findings.forEach((finding) => {
+      (finding.lineIndexes || []).forEach((position) => {
+        if (map[position] !== undefined) flagged.add(map[position])
+      })
+    })
+    return flagged
+  })()
+
   const lineLabelsOf = (indexes = []) => {
     const numbers = indexes.filter((index) => index >= 0).map((index) => index + 1)
     if (numbers.length === 0) return ''
@@ -2572,7 +2589,7 @@ export default function StoryboardView() {
                           />
                         ) : (
                           <div
-                            className={`sb-script-${el.type}${el.filled ? ' is-filled' : ''}`}
+                            className={`sb-script-${el.type}${el.filled ? ' is-filled' : ''}${flaggedLineIndexes.has(el.globalIdx) ? ' is-flagged' : ''}`}
                             title={el.filled ? 'AI가 채운 줄입니다' : undefined}
                           >
                             {el.text}

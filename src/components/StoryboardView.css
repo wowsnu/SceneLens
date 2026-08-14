@@ -4119,3 +4119,16 @@
   padding-left: 9px;
   border-left: 2px solid rgba(126, 200, 160, 0.45);
 }
+
+/* 점검이 짚은 줄. 번호만 주면 감독이 세어 찾아야 한다. */
+.sb-script-action.is-flagged {
+  padding-left: 9px;
+  border-left: 2px solid rgba(245, 158, 11, 0.75);
+  background: rgba(245, 158, 11, 0.07);
+}
+
+/* AI가 채운 줄이면서 지적도 걸린 경우. 지적 쪽을 앞세운다 —
+   지금 감독이 볼 것은 고칠 곳이다. */
+.sb-script-action.is-filled.is-flagged {
+  border-left-color: rgba(245, 158, 11, 0.75);
+}
