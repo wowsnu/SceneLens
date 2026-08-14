@@ -4,6 +4,9 @@ services:
     runtime: python
     plan: free
     rootDir: backend
+    # main 에 푸시하면 Render 가 알아서 다시 배포한다.
+    branch: main
+    autoDeploy: true
     buildCommand: pip install -r requirements.txt
     startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
     healthCheckPath: /api/health
