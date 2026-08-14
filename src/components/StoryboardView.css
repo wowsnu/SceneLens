@@ -3989,9 +3989,9 @@
 
 /* 컷 구성 점검. 서사가 먼저 짚는 자리다 — 그림이 없는 지금이 가장 싸다. */
 .narrative-rail-check {
-  margin-top: 10px;
-  padding-top: 10px;
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  /* Request 바로 아래. 그 칸과 한 덩어리로 읽히도록 좌우 여백을 맞춘다. */
+  padding: 12px 14px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.065);
 }
 
 .narrative-rail-check > button {
@@ -4099,9 +4099,4 @@
 .narrative-rail-check-list li button:disabled {
   opacity: 0.45;
   cursor: default;
-}
-
-/* 다음 단계 버튼은 점검 아래에 온다. 위와 붙어 보이지 않게 띄운다. */
-.narrative-rail-primary.narrative-rail-next {
-  margin-top: 12px;
 }

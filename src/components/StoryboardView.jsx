@@ -3054,6 +3054,13 @@ export default function StoryboardView() {
                   </button>
                 </div>
               </div>
+
+              {/* Request가 감독이 묻는 쪽이면 이쪽은 서사가 먼저 짚는
+                  쪽이다. 같은 일의 두 방향이므로 붙여 둔다. */}
+              {cutStage === 'script'
+                ? scriptLines.length > 0 && renderNarrativeCheck('script')
+                : cutPlan.length > 0 && renderNarrativeCheck('cutplan')}
+
               <section className="narrative-rail-guidance">
                 <span>Next step</span>
                 {/* 대본은 주어진 것에서 시작한다. 다음 단계는 컷 분해다. */}
@@ -3081,17 +3088,12 @@ export default function StoryboardView() {
                       나눌지 정하고, 이어서 촬영이 각 컷의 샷을 정합니다.
                     </p>
 
-                    {/* 컷으로 나누기 전에 대본이 사건의 단계로 서 있는지
-                        본다. 여기서 고치는 것이 가장 싸다 — 컷 플랜도
-                        그림도 아직 없다. 컷 플랜을 만들기 전부터 보인다. */}
-                    {scriptLines.length > 0 && renderNarrativeCheck('script')}
-
                     {/* 다음 단계로 넘어가는 버튼은 맨 아래에 둔다. 위에서
                         대본을 손볼 것이 없는지 보고 나서 누르는 순서다 —
                         먼저 놓으면 점검을 지나쳐 컷부터 만들게 된다. */}
                     <button
                       type="button"
-                      className="narrative-rail-primary narrative-rail-next"
+                      className="narrative-rail-primary"
                       onClick={cutPlan.length > 0 ? clearCutPlanStageOverride : requestCutPlan}
                       disabled={cutPlanRunPending}
                     >
@@ -3108,10 +3110,6 @@ export default function StoryboardView() {
                       Beat {activeBeat + 1}을(를) 보고 있습니다. 이 Beat의 행동과
                       대사를 조금씩 고쳐 나가세요.
                     </p>
-                    {/* 컷 단위 판단은 편집의 일이다. 그림이 없는 지금이
-                        고치기 가장 싸다 — 다 그린 뒤에 "이 컷은 필요 없다"는
-                        말을 들으면 그린 것을 버려야 한다. */}
-                    {cutPlan.length > 0 && renderNarrativeCheck('cutplan')}
                   </>
                 )}
                 {/* 요청을 넘긴 뒤 칸이 비므로, 무엇이 진행 중인지 여기서
