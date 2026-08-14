@@ -3082,7 +3082,7 @@ export default function StoryboardView() {
                   rows={3}
                 />
                 <div>
-                  <span>{`Beat ${activeBeat + 1}에 적용`}</span>
+                  <span>{`Beat ${activeBeat + 1} · 전체 대본`}</span>
                   <button
                     type="button"
                     disabled={!narrativeRequest.trim() || narrativePending}
@@ -3126,9 +3126,9 @@ export default function StoryboardView() {
                     {/* 문장 안에 strong을 쓰지 않는다 — 이 블록의
                         strong은 display:block이라 줄이 끊긴다. */}
                     <p>
-                      서사 에이전트는 Beat {activeBeat + 1} 하나만 다룹니다.
-                      이야기를 더 쓰려면 Script 단계에서 대본을 고치고,
-                      Beat를 나누려면 줄 옆 “+ Split Beat”을 쓰세요.
+                      대본 전체를 보고 답합니다. 지금 Beat를 고쳐 달라고
+                      해도 되고, “뒷부분이 급하다”처럼 전체를 두고 말해도
+                      됩니다.
                     </p>
                   </div>
                 </div>

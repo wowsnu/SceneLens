@@ -245,6 +245,7 @@ export async function structureStory(story, sceneIntention = '') {
 // 제안이지 수정이 아니다. 사용자가 수락해야 대본이 바뀐다 (DG1 P2).
 export async function suggestNarrative({
   narrativeRequest, beatElements, targetBeat, requestKey, sceneIntention = '', panelCount = null,
+  scriptBeats = [], beatsByIndex = null,
 }) {
   const data = await fetchWithTimeout(`${API_BASE}/narrative/suggest`, {
     method: 'POST',
@@ -252,11 +253,13 @@ export async function suggestNarrative({
     body: JSON.stringify({
       narrative_request: narrativeRequest,
       beat_lines: beatElements.map((element) => element.text),
+      script_beats: scriptBeats,
+      active_beat: targetBeat,
       scene_intention: sceneIntention,
       panel_count: panelCount,
     }),
   }, 60000)
-  return toNarrativeSuggestions(data, { beatElements, targetBeat, requestKey })
+  return toNarrativeSuggestions(data, { beatElements, targetBeat, requestKey, beatsByIndex })
 }
 
 // 컷 플랜 점검. 요청에 답하는 것이 아니라 서사가 먼저 짚는다.

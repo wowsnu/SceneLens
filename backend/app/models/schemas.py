@@ -679,9 +679,22 @@ class DirectingReviewResponse(BaseModel):
 # --- Narrative suggestion: 지금 Beat에 대한 제안 ---------------------------
 # 제안이지 수정이 아니다. 사용자가 수락해야 대본이 바뀐다 (DG1 P2).
 
+class NarrativeSuggestionBeat(BaseModel):
+    """대본 전체를 Beat 단위로 넘긴다.
+
+    요청이 늘 지금 Beat에 대한 것은 아니다 — "뒷부분이 급하다"처럼 전체를
+    두고 하는 말이면 다른 Beat를 고쳐야 한다.
+    """
+    index: int
+    lines: List[str]
+
+
 class NarrativeSuggestionRequest(BaseModel):
     narrative_request: str                  # 사용자의 요청
     beat_lines: List[str]                   # 지금 Beat의 줄들
+    # 대본 전체. 비어 있으면 지금 Beat만 보고 판단한다.
+    script_beats: List[NarrativeSuggestionBeat] = []
+    active_beat: int = 0
     scene_intention: Optional[str] = ""
     panel_count: Optional[int] = None       # 이 Beat의 현재 패널 수
 
@@ -689,6 +702,8 @@ class NarrativeSuggestionItem(BaseModel):
     type: Literal["split-beat", "insert-script-line", "replace-script-line"]
     title: str
     reason: str
+    # 이 제안이 붙을 Beat. 지금 Beat가 아닐 수 있다.
+    beat: int = -1
     line_index: int = -1                    # Beat 안에서의 줄 번호. 없으면 -1
     original_text: str = ""
     proposed_text: str = ""

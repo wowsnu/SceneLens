@@ -5,18 +5,26 @@
 // 모델은 Beat 안에서의 줄 번호(line_index)를 돌려준다. 화면은 대본 전체
 // 기준의 globalIdx를 쓰므로 여기서 옮긴다 — 그러지 않으면 제안이 엉뚱한
 // 줄에 붙는다.
-export function toNarrativeSuggestions(data, { beatElements, targetBeat, requestKey }) {
+export function toNarrativeSuggestions(
+  data,
+  { beatElements, targetBeat, requestKey, beatsByIndex = null },
+) {
   // 같은 자리에 여러 줄을 넣을 때 순서를 지킨다. 모델이 line_index를
   // 1,2,3으로 주더라도 줄이 하나뿐이면 셋 다 마지막 줄로 떨어지는데,
   // 그대로 두면 나중 제안이 먼저 삽입돼 순서가 뒤집힌다.
   const insertOffsets = new Map()
 
   return data.suggestions.map((item, index) => {
-    const anchor = beatElements[item.line_index] ?? beatElements[beatElements.length - 1]
+    // 요청이 늘 지금 Beat에 대한 것은 아니다. 모델이 고른 Beat가 있으면
+    // 그 Beat의 줄에서 자리를 찾는다 — 지금 Beat에서 찾으면 "뒷부분이
+    // 급하다" 같은 요청의 제안이 엉뚱한 자리에 붙는다.
+    const beat = Number.isInteger(item.beat) && item.beat >= 0 ? item.beat : targetBeat
+    const elements = (beatsByIndex && beatsByIndex.get(beat)) || beatElements
+    const anchor = elements[item.line_index] ?? elements[elements.length - 1]
     const base = {
-      id: `narrative-${requestKey}-${item.type}-${targetBeat}-${index}`,
+      id: `narrative-${requestKey}-${item.type}-${beat}-${index}`,
       type: item.type,
-      beat: targetBeat,
+      beat,
       title: item.title,
       reason: item.reason,
       actionLabel: ACTION_LABEL[item.type] || 'Apply',
@@ -25,7 +33,7 @@ export function toNarrativeSuggestions(data, { beatElements, targetBeat, request
     if (item.type === 'split-beat') {
       // 이 줄부터 새 Beat다. 첫 줄을 가리키면 나눌 것이 없다.
       const at = Math.max(1, item.line_index)
-      return { ...base, elementIndex: beatElements[at]?.globalIdx ?? anchor?.globalIdx }
+      return { ...base, elementIndex: elements[at]?.globalIdx ?? anchor?.globalIdx }
     }
 
     if (item.type === 'insert-script-line') {
@@ -39,7 +47,7 @@ export function toNarrativeSuggestions(data, { beatElements, targetBeat, request
         proposedText: item.proposed_text,
         // 수락 핸들러가 이 객체를 그대로 대본에 끼워 넣는다.
         // 없으면 undefined가 들어가 대본이 깨진다.
-        newElement: { type: 'action', text: item.proposed_text, beat: targetBeat },
+        newElement: { type: 'action', text: item.proposed_text, beat },
       }
     }
 

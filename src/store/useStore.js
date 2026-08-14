@@ -3147,6 +3147,17 @@ const useStore = create((set, get) => ({
     try {
       // 지연 import — 스토어를 node로 단독 검증할 수 있게 한다.
       const { suggestNarrative } = await import('../services/api.js')
+      // 대본 전체를 함께 넘긴다. "뒷부분이 급하다" 같은 요청은 지금
+      // Beat만 봐서는 답할 수 없다.
+      const withIndex = state.screenplay
+        .map((element, globalIdx) => ({ ...element, globalIdx }))
+        .filter((element) => element.type !== 'scene-heading')
+      const beatsByIndex = new Map()
+      withIndex.forEach((element) => {
+        const beat = element.beat ?? 0
+        if (!beatsByIndex.has(beat)) beatsByIndex.set(beat, [])
+        beatsByIndex.get(beat).push(element)
+      })
       const suggestions = await suggestNarrative({
         narrativeRequest,
         beatElements,
@@ -3154,6 +3165,13 @@ const useStore = create((set, get) => ({
         requestKey,
         sceneIntention: state.sceneIntention || '',
         panelCount,
+        beatsByIndex,
+        scriptBeats: [...beatsByIndex.entries()]
+          .sort((left, right) => left[0] - right[0])
+          .map(([index, elements]) => ({
+            index,
+            lines: elements.map((element) => element.text),
+          })),
       })
       set({ narrativeSuggestions: suggestions, narrativePending: false, narrativeAnswered: true })
     } catch (error) {

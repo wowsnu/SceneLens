@@ -35,7 +35,7 @@ RESPONSE_SCHEMA = {
                     "additionalProperties": False,
                     "required": [
                         "type", "title", "reason",
-                        "line_index", "original_text", "proposed_text",
+                        "beat", "line_index", "original_text", "proposed_text",
                     ],
                     "properties": {
                         "type": {
@@ -49,6 +49,7 @@ RESPONSE_SCHEMA = {
                         "title": {"type": "string"},
                         "reason": {"type": "string"},
                         # 이 Beat 안에서 몇 번째 줄인가 (0부터). 해당 없으면 -1.
+                        "beat": {"type": "integer"},
                         "line_index": {"type": "integer"},
                         # replace일 때 원문. 아니면 빈 문자열.
                         "original_text": {"type": "string"},
@@ -75,6 +76,13 @@ PROMPT = """당신은 스토리보드 작업의 서사 담당입니다.
   줄이 하나뿐이어도 그 뒤에 얼마든지 더할 수 있습니다.
 - replace-script-line: 어떤 줄이 의도한 대로 읽히지 않을 때.
   line_index는 바꿀 줄, original_text는 그 원문, proposed_text는 대안입니다.
+
+**어느 Beat를 고칠지 정하세요.** beat에 그 번호를 씁니다.
+- 요청이 지금 Beat에 대한 것이면 그 번호를 씁니다. 대개 이쪽입니다.
+- "뒷부분이 급하다", "처음이 늘어진다"처럼 **전체를 두고 하는 말이면**
+  대본 전체를 읽고 실제로 고쳐야 할 Beat를 고르세요. 여러 Beat에 걸치면
+  제안을 나눠서 각각 다른 beat로 내면 됩니다.
+- line_index는 **그 beat 안에서의** 줄 번호입니다.
 
 당신의 역할은 **큰 틀에 살을 붙이는 것**입니다.
 사용자는 뼈대만 씁니다. "둘이 대치한다" 같은 한 줄에서 그 대치가 화면에서
@@ -126,7 +134,18 @@ async def suggest_narrative(request: NarrativeSuggestionRequest) -> NarrativeSug
         raise ValueError("OPENAI_API_KEY not found in environment variables")
 
     lines = "\n".join(f"[{i}] {line}" for i, line in enumerate(request.beat_lines))
-    user_content = f"[요청]\n{request.narrative_request}\n\n[지금 Beat의 줄]\n{lines}"
+    user_content = (
+        f"[요청]\n{request.narrative_request}\n\n"
+        f"[지금 보고 있는 Beat] {request.active_beat}\n"
+        f"[그 Beat의 줄]\n{lines}"
+    )
+    # 대본 전체를 함께 넘긴다. 요청이 늘 지금 Beat에 대한 것은 아니다.
+    if request.script_beats:
+        whole = []
+        for beat in request.script_beats:
+            whole.append(f"Beat {beat.index}:")
+            whole.extend(f"  [{i}] {line}" for i, line in enumerate(beat.lines))
+        user_content += "\n\n[대본 전체]\n" + "\n".join(whole)
     if request.scene_intention:
         user_content += f"\n\n[장면 의도]\n{request.scene_intention}"
     if request.panel_count is not None:
