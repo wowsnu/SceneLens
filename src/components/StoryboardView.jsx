@@ -3047,10 +3047,10 @@ export default function StoryboardView() {
                           : cutPlan.length > 0 ? '컷 플랜 이어서' : '컷 플랜 만들기'}
                     </button>
 
-                    {/* 서사가 먼저 짚는다. 그림이 없는 지금이 고치기 가장
-                        싼 자리다 — 다 그린 뒤에 "이 컷은 필요 없다"는 말을
-                        들으면 그린 것을 버려야 한다. */}
-                    {cutPlan.length > 0 && renderNarrativeCheck('cutplan')}
+                    {/* 컷으로 나누기 전에 대본이 사건의 단계로 서 있는지
+                        본다. 여기서 고치는 것이 가장 싸다 — 컷 플랜도
+                        그림도 아직 없다. 컷 플랜을 만들기 전부터 보인다. */}
+                    {scriptLines.length > 0 && renderNarrativeCheck('script')}
                   </>
                 ) : (
                   <>
@@ -3058,10 +3058,10 @@ export default function StoryboardView() {
                       Beat {activeBeat + 1}을(를) 보고 있습니다. 이 Beat의 행동과
                       대사를 조금씩 고쳐 나가세요.
                     </p>
-                    {/* 컷으로 나누기 전에 대본이 사건의 단계로 서 있는지
-                        본다. 여기서 고치는 것이 가장 싸다 — 컷 플랜도
-                        그림도 아직 없다. */}
-                    {scriptLines.length > 0 && renderNarrativeCheck('script')}
+                    {/* 컷 단위 판단은 편집의 일이다. 그림이 없는 지금이
+                        고치기 가장 싸다 — 다 그린 뒤에 "이 컷은 필요 없다"는
+                        말을 들으면 그린 것을 버려야 한다. */}
+                    {cutPlan.length > 0 && renderNarrativeCheck('cutplan')}
                   </>
                 )}
                 {/* 요청을 넘긴 뒤 칸이 비므로, 무엇이 진행 중인지 여기서
