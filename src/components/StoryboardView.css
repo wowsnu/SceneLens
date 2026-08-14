@@ -3038,6 +3038,27 @@
   display: flex;
   flex-direction: column;
   overflow-y: auto;
+  /* 다른 패널과 같은 다크 스크롤바. 기본 밝은 막대가 그대로 뜨면
+     이 레일만 다른 화면처럼 보인다. */
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.16) transparent;
+}
+
+.rail-agents::-webkit-scrollbar {
+  width: 8px;
+}
+
+.rail-agents::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.rail-agents::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.16);
+}
+
+.rail-agents::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.26);
 }
 
 .rail-agent {
@@ -4058,6 +4079,24 @@
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 6px;
   background: rgba(255, 255, 255, 0.02);
+}
+
+/* 카드를 눌러 그 지적의 줄을 대본에서 본다. */
+.narrative-rail-check-open {
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: none;
+  background: none;
+  color: inherit;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.narrative-rail-check-list li.is-open {
+  border-color: rgba(245, 158, 11, 0.5);
+  background: rgba(245, 158, 11, 0.07);
 }
 
 .narrative-rail-check-list li span {

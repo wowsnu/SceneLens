@@ -864,6 +864,8 @@ export default function StoryboardView() {
   const requestNarrativeSuggestions = useStore((s) => s.requestNarrativeSuggestions)
   const requestNarrativeCheck = useStore((s) => s.requestNarrativeCheck)
   const narrativeCheck = useStore((s) => s.narrativeCheck)
+  // 지금 펼쳐 둔 지적. 누른 것만 대본에 표시된다.
+  const [openFindingId, setOpenFindingId] = useState(null)
   const narrativeCheckPending = useStore((s) => s.narrativeCheckPending)
   const narrativeCheckError = useStore((s) => s.narrativeCheckError)
   const dismissNarrativeSuggestion = useStore((s) => s.dismissNarrativeSuggestion)
@@ -1646,14 +1648,26 @@ export default function StoryboardView() {
             <p className="narrative-rail-check-summary">{result.summary}</p>
             <ul className="narrative-rail-check-list">
               {result.findings.map((finding) => (
-                <li key={finding.ruleId}>
-                  <span>{NARRATIVE_RULE_LABELS[finding.ruleId] || '서사'}</span>
-                  <em>
-                    {isScript
-                      ? lineLabelsOf(finding.lineIndexes)
-                      : cutLabelsOf(finding.cutIds)}
-                  </em>
-                  <strong>{finding.finding}</strong>
+                <li
+                  key={finding.ruleId}
+                  className={openFindingId === finding.ruleId ? 'is-open' : ''}
+                >
+                  {/* 눌러야 그 지적의 줄이 대본에 표시된다. 한꺼번에
+                      칠하면 어느 표시가 어느 지적인지 알 수 없다. */}
+                  <button
+                    type="button"
+                    className="narrative-rail-check-open"
+                    aria-pressed={openFindingId === finding.ruleId}
+                    onClick={() => selectFinding(finding, stage)}
+                  >
+                    <span>{NARRATIVE_RULE_LABELS[finding.ruleId] || '서사'}</span>
+                    <em>
+                      {isScript
+                        ? lineLabelsOf(finding.lineIndexes)
+                        : cutLabelsOf(finding.cutIds)}
+                    </em>
+                    <strong>{finding.finding}</strong>
+                  </button>
                   <p>{finding.suggestedAction}</p>
                   {/* 대본 지적은 대본에서, 컷 지적은 컷에서 고친다.
                       컷 문제를 대본 제안으로 보내면 자리가 어긋난다. */}
@@ -1705,17 +1719,39 @@ export default function StoryboardView() {
 
   // 점검이 짚은 줄을 대본에서 표시한다. 번호만 주면 감독이 세어 찾아야
   // 한다. lineIndexes는 헤딩을 뺀 순번이므로 전체 순번으로 옮긴다.
+  const selectFinding = (finding, stage) => {
+    const next = openFindingId === finding.ruleId ? null : finding.ruleId
+    setOpenFindingId(next)
+    if (!next) return
+    if (stage !== 'script') {
+      goToFindingCut(finding)
+      return
+    }
+    // 표시한 줄이 화면 밖이면 표시해도 보이지 않는다.
+    const first = scriptLines[finding.lineIndexes?.[0] ?? 0]
+    if (first) selectBeat(first.beat ?? 0)
+    window.setTimeout(() => {
+      document.querySelector('.sb-script-action.is-flagged')?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'center',
+      })
+    }, 80)
+  }
+
   const flaggedLineIndexes = (() => {
     if (narrativeCheck?.stage !== 'script') return new Set()
+    // 고른 지적의 줄만 칠한다. 전부 칠하면 어느 표시가 어느 지적인지
+    // 알 수 없어 표시가 있으나 마나다.
+    const finding = narrativeCheck.findings
+      .find((item) => item.ruleId === openFindingId)
+    if (!finding) return new Set()
     const map = []
     screenplay.forEach((element, index) => {
       if (element.type !== 'scene-heading') map.push(index)
     })
     const flagged = new Set()
-    narrativeCheck.findings.forEach((finding) => {
-      (finding.lineIndexes || []).forEach((position) => {
-        if (map[position] !== undefined) flagged.add(map[position])
-      })
+    ;(finding.lineIndexes || []).forEach((position) => {
+      if (map[position] !== undefined) flagged.add(map[position])
     })
     return flagged
   })()
