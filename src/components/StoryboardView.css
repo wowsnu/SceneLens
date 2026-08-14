@@ -241,7 +241,9 @@
   position: relative;
   z-index: 12;
   display: grid;
-  grid-template-columns: 1fr;
+  /* 설명 · 범위 탭 · 실행 버튼을 한 줄에 둔다. 세로로 쌓으면 패널 목록을
+     밀어내려 그림을 볼 자리가 줄어든다. */
+  grid-template-columns: minmax(0, 1fr) auto auto;
   align-items: center;
   gap: 16px;
   margin: 26px 0 14px;
@@ -817,12 +819,19 @@
 }
 
 @media (max-width: 1150px) {
+  /* 좁아지면 설명만 위로 접고, 탭과 버튼은 계속 같은 줄에 남긴다. */
+  .storyboard-generation-bar,
   .storyboard-generation-bar.expanded {
-    grid-template-columns: 1fr;
+    grid-template-columns: 1fr auto;
+  }
+
+  .generation-bar-copy {
+    grid-column: 1 / -1;
   }
 
   .generation-bar-actions {
-    justify-content: flex-start;
+    justify-content: flex-end;
+    flex-wrap: nowrap;
   }
 
   .generation-scope-tabs {
