@@ -20,7 +20,7 @@ const NARRATIVE_AGENT = {
   id: 'narrative',
   role: 'Narrative Agent',
   displayName: '서사',
-  lens: '정보/서사',
+  lens: '이야기 흐름',
   glyph: '📖',
   tagline: '언제 알게 할 것인가',
   brief: '관객이 무엇을 언제 알게 되는지 본다.',
@@ -33,7 +33,7 @@ const CREATIVE_LENSES = [
     id: 'staging',
     role: 'Mise-en-scène Lens',
     displayName: '미장센',
-    lens: '장면화/블로킹',
+    lens: '인물과 공간',
     glyph: '🎭',
     tagline: '무대를 어떻게 짤 것인가',
     brief: '거리, 시선, 몸의 방향, 사물 관계를 본다.',
@@ -44,7 +44,7 @@ const CREATIVE_LENSES = [
     id: 'camera',
     role: 'Cinematography Lens',
     displayName: '촬영',
-    lens: '카메라/프레이밍/톤',
+    lens: '카메라와 화면',
     glyph: '🎥',
     tagline: '어디서 볼 것인가',
     brief: '어디서, 얼마나 가까이, 어떤 톤으로 볼지 본다.',
@@ -55,7 +55,7 @@ const CREATIVE_LENSES = [
     id: 'editing',
     role: 'Editing Lens',
     displayName: '편집',
-    lens: '편집/리듬',
+    lens: '컷의 연결',
     glyph: '✂️',
     tagline: '어디서 자르고 이을 것인가',
     brief: '몇 컷으로 나누고 어디서 끊을지 본다.',
@@ -67,10 +67,10 @@ const CREATIVE_LENSES = [
 const PERSPECTIVES = [NARRATIVE_AGENT, ...CREATIVE_LENSES]
 
 const DIAGNOSTIC_LEVEL_LABELS = {
-  attribute: '속성',
+  attribute: '이 컷 안',
   shot_structure: '컷 구성',
-  shot_relation: '컷 관계',
-  scene_structure: '씬 구조',
+  shot_relation: '컷 사이',
+  scene_structure: '장면 전체',
 }
 
 const VIEWER_READING_CONDITIONS = [
@@ -120,8 +120,8 @@ const MULTI_LENS_ORDER = [
 ]
 
 const RELATION_LABELS = {
-  consequence: '한쪽이 만든 결과',
-  conflict: '연출 선택',
+  consequence: '한 선택의 영향',
+  conflict: '선택이 갈리는 곳',
   agreement: '같은 판단',
 }
 
@@ -1279,7 +1279,7 @@ function DirectingReviewResult({ run, onTool }) {
       <div className="directing-review-result-heading">
         <div>
           <span>연출 분석</span>
-          <strong>층위별 진단</strong>
+          <strong>어디를 볼지</strong>
         </div>
       </div>
 
@@ -1333,7 +1333,7 @@ function DirectingReviewResult({ run, onTool }) {
                   {/* 무엇을 보고 내린 판단인가. 기준이 드러나야 감독이 그
                       판단 자체를 반박할 수 있다 — 진단만 있으면 판결이 된다. */}
                   {diagnosis.criterion && (
-                    <p className="directing-criterion">{diagnosis.criterion}</p>
+                    <p className="directing-criterion">이 기준으로 봤어요 · {diagnosis.criterion}</p>
                   )}
                   <strong>{diagnosis.diagnosis}</strong>
                   <div className="directing-evidence">

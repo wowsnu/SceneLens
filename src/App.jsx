@@ -3,7 +3,7 @@ import StoryboardView from './components/StoryboardView'
 import DecisionBoard from './components/DecisionBoard'
 import StudyLogPanel from './components/StudyLogPanel'
 import CenterPanel from './components/CenterPanel'
-import useStore from './store/useStore'
+import useStore, { selectCutStage } from './store/useStore'
 import { exportLog, summarize, resetLog, setCondition, condition } from './store/studyLog'
 import './App.css'
 
@@ -11,6 +11,9 @@ function App() {
   const [isFullscreen, setIsFullscreen] = useState(false)
   // 실험자만 여는 창. 로그가 쌓이는지 세션 중에 확인할 수 있어야 한다.
   const [studyLogOpen, setStudyLogOpen] = useState(false)
+  // 검토는 그림이 있어야 성립한다. 렌즈도 관객 읽기도 패널을 보고
+  // 판단하므로, 패널 단계 전에는 넘어갈 자리가 아니다.
+  const cutStage = useStore(selectCutStage)
   const [boardView, setBoardView] = useState('split')
   const maximizedPanel = useStore((s) => s.maximizedPanel)
   const setMaximizedPanel = useStore((s) => s.setMaximizedPanel)
@@ -150,13 +153,16 @@ function App() {
               {maximizedPanel === 'left' ? (
                 <button
                   className="panel-control-btn stage-forward-btn"
+                  disabled={cutStage !== 'panels'}
                   onClick={() => {
                     clearStoryboardShotSelection()
                     setMaximizedPanel(null)
                     setLeftPanelVisible(false)
                   }}
                   style={{ marginLeft: 'auto' }}
-                  title="렌즈로 결정을 검토하고 관객이 어떻게 읽는지 봅니다"
+                  title={cutStage === 'panels'
+                    ? '렌즈로 결정을 검토하고 관객이 어떻게 읽는지 봅니다'
+                    : '패널을 만든 뒤에 검토할 수 있습니다'}
                 >
                   검토로 넘어가기
                   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">

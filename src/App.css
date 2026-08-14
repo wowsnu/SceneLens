@@ -184,7 +184,14 @@
   padding: 4px 10px 4px 13px;
 }
 
-.stage-forward-btn:hover {
+/* 패널을 만들기 전에는 검토할 것이 없다. 누를 수 없다는 것이 보여야
+   왜 안 넘어가는지 알 수 있다. */
+.stage-forward-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.stage-forward-btn:hover:not(:disabled) {
   border-color: rgba(216, 170, 98, 0.75);
   background: rgba(216, 170, 98, 0.24);
   color: #f0d5a8;
@@ -195,7 +202,7 @@
   transition: transform 0.18s ease;
 }
 
-.stage-forward-btn:hover svg {
+.stage-forward-btn:hover:not(:disabled) svg {
   transform: translateX(2px);
 }
 
