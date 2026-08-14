@@ -1994,12 +1994,21 @@ const useStore = create((set, get) => ({
           .map((element) => element.text)
           .join('\n')
         if (!script.trim()) continue
+        const sceneCuts = state.cutPlan.filter((cut) => (
+          cut.beat >= scene.startBeat && cut.beat <= scene.endBeat
+        ))
+        const cutIds = sceneCuts.map((cut) => cut.id)
+        const cutPlan = sceneCuts.map((cut, index) => (
+          `컷 ${index + 1}: 등장 ${cut.characters || '없음'} · ${cut.content || ''}`
+        )).join('\n')
 
         // eslint-disable-next-line no-await-in-loop
         const built = await buildSceneState({
           heading: scene.heading,
           script,
           sceneIntention: state.sceneIntention || '',
+          cutPlan,
+          cutIds,
         })
 
         // 레퍼런스 그림과 직접 고친 프롬프트는 사용자가 만든 것이다.
@@ -2320,6 +2329,10 @@ const useStore = create((set, get) => ({
       // 빈 표를 보다가 값이 뒤늦게 채워진다. 촬영까지 끝내고 한 번에 넘긴다.
       const planned = reorderCutPlan(items.map((item) => createCutPlanItem(item)))
       set({ cutPlan: planned, cutPlanPending: false })
+      // 컷 플랜이 생긴 뒤에야 시간 흐름을 알 수 있다. 앞의 Scene State 읽기는
+      // 인물 명단을 위한 기본값이고, 여기서 한 번 더 읽어 시간 변화 초안을
+      // 자동으로 채운다 — 사용자가 별도 버튼을 누를 일이 아니다.
+      await get().requestSceneStates()
       await get().requestShotDesign()
     } catch (error) {
       set({
