@@ -409,7 +409,9 @@ async def theory_answer(
     v2와 동일한 소스(Context Cache)를 사용해 일관성 확보.
     반환: { answer: str }
     """
-    cache_name = warmup_theory_cache()
+    # 컨텍스트 캐시는 끈다 — 무료 티어에 캐시 저장 한도가 없어 429가 뜬다.
+    # cache_name = warmup_theory_cache()
+    cache_name = None
 
     prompt = f"""당신은 영화 촬영 이론에 정통한 전문가입니다.
 캐시된 영화 이론 서적들을 참고하여 아래 질문에 답하세요.
@@ -635,7 +637,9 @@ async def suggest_strategies_v2(
     Uses cached film theory books and the actual sketch image for analysis.
     `axes`에 따라 축별 지시/출력 스키마를 동적으로 조립한다.
     """
-    cache_name = warmup_theory_cache()
+    # 컨텍스트 캐시는 끈다 — 위 theory_answer 와 같은 이유.
+    # cache_name = warmup_theory_cache()
+    cache_name = None
     normalized_axes, axis_instructions, axis_json_fields = _build_axes_block(
         axes or ["reframe"],
         theory_preference,
@@ -721,7 +725,9 @@ Format:
                 # 캐시가 만료/삭제됨 — 무효화하고 다시 warmup해서 재시도.
                 print(f"[Strategy v2] Cache invalidated ({err_str[:120]}). Rewarming and retrying.")
                 _THEORY_CACHE_NAME = None
-                cache_name = warmup_theory_cache()
+                # 캐시를 끈 동안에는 다시 만들지 않는다.
+                # cache_name = warmup_theory_cache()
+                cache_name = None
                 continue
             if '503' in err_str or 'UNAVAILABLE' in err_str or 'overloaded' in err_str.lower():
                 wait = (attempt + 1) * 3

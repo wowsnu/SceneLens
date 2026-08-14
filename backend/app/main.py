@@ -12,11 +12,11 @@ load_dotenv()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Startup: Warmup the theory cache
-    print("[Main] Starting up... Warming up theory cache.")
-    # Run warmup in a separate thread if it's blocking,
-    # but here we can just call it since it's initial setup.
-    warmup_theory_cache()
+    # 컨텍스트 캐시 워밍업은 끈다 — 무료 티어는 캐시 저장 한도가 0이라 429가 뜬다.
+    # 캐시 없이도 이론 텍스트를 프롬프트에 직접 넣어 답을 만들므로 기능은 그대로다.
+    # print("[Main] Starting up... Warming up theory cache.")
+    # warmup_theory_cache()
+    print("[Main] Starting up... (theory cache disabled)")
 
     # 세그멘테이션(MobileSAM)은 torch를 올려 노트북에서 무겁다. 기본은 끈다.
     # 그리기 도구의 오려내기를 쓸 때만 SEGMENT_WARMUP=1로 켠다 — 끈 상태에서도

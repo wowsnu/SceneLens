@@ -74,7 +74,9 @@ def _clean_json(text: str) -> str:
 
 async def _call_gemini_with_cache(contents: list) -> str:
     """Call gemini-2.5-flash with the Film Theory Library context cache. Returns response text."""
-    cache_name = warmup_theory_cache()
+    # 컨텍스트 캐시는 끈다 — 무료 티어에 캐시 저장 한도가 없어 429가 뜬다.
+    # cache_name = warmup_theory_cache()
+    cache_name = None
     client = get_client()
 
     for attempt in range(3):
