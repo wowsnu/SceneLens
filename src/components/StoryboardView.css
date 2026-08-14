@@ -4112,3 +4112,10 @@
   opacity: 0.45;
   cursor: default;
 }
+
+/* AI가 채운 줄. 구조화를 바로 적용하므로 대본에서도 구분돼야 한다 —
+   감독은 자기가 쓰지 않은 것이 무엇인지 알 수 있어야 한다 (DG1 P3). */
+.sb-script-action.is-filled {
+  padding-left: 9px;
+  border-left: 2px solid rgba(126, 200, 160, 0.45);
+}

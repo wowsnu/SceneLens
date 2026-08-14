@@ -3175,7 +3175,7 @@ const useStore = create((set, get) => ({
   // 않게 한다 — 서버가 없거나 키가 없어도 화면은 돌아가야 한다.
   structurePending: false,
   structureError: null,
-  requestStoryStructure: async () => {
+  requestStoryStructure: async (apply = false) => {
     const state = get()
     const story = state.screenplay.map((line) => line.text.trim()).filter(Boolean).join(' ')
     if (!story) return
@@ -3185,6 +3185,14 @@ const useStore = create((set, get) => ({
       // 지연 import — 스토어를 node로 단독 검증할 수 있게 한다.
       const { structureStory } = await import('../services/api.js')
       const draft = await structureStory(story, state.sceneIntention || '')
+      // apply=true면 확인 단계 없이 바로 대본이 된다. Continue에서 부를
+      // 때가 그렇다 — 방금 이야기를 넘긴 참이라 원문과 나란히 놓고
+      // 판정할 것이 없다. 채운 줄은 filled로 남아 대본에서 표시된다.
+      if (apply) {
+        set({ structureDraft: draft, structurePending: false })
+        get().acceptStructureDraft()
+        return
+      }
       set({ structureDraft: draft, structurePending: false })
     } catch (error) {
       set({
