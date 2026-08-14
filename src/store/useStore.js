@@ -1617,7 +1617,7 @@ export const describeLayout = (elements = []) => {
 // 카메라가 어느 쪽으로 움직이는지는 표시하되 속도와 거리는 정하지 않고,
 // 인물이 어떤 상태인지는 표시하되 연기의 강도는 정하지 않는다.
 export const RESPONSIBILITY_LEVELS = [
-  { id: 'image', label: '이 그림이 정함', hint: '값을 그림에서 확정한다' },
+  { id: 'image', label: '여기서 정함', hint: '값을 그림에서 확정한다' },
   {
     id: 'direction',
     label: '방향만 정함',
