@@ -3175,10 +3175,17 @@ const useStore = create((set, get) => ({
   // 않게 한다 — 서버가 없거나 키가 없어도 화면은 돌아가야 한다.
   structurePending: false,
   structureError: null,
-  requestStoryStructure: async (apply = false) => {
+  // input.story를 주면 그것으로 나눈다. Continue에서 부를 때가 그렇다 —
+  // 아직 screenplay에 넣기 전이어야 나누기 전 대본이 화면에 스치지 않는다.
+  // input.fallback은 실패했을 때 세울 대본이다.
+  requestStoryStructure: async (apply = false, input = null) => {
     const state = get()
-    const story = state.screenplay.map((line) => line.text.trim()).filter(Boolean).join(' ')
-    if (!story) return
+    const story = input?.story
+      || state.screenplay.map((line) => line.text.trim()).filter(Boolean).join(' ')
+    if (!story) {
+      if (input?.fallback) set({ screenplay: input.fallback })
+      return
+    }
 
     set({ structurePending: true, structureError: null, narrativeSuggestions: [] })
     try {
@@ -3190,13 +3197,20 @@ const useStore = create((set, get) => ({
       // 판정할 것이 없다. 채운 줄은 filled로 남아 대본에서 표시된다.
       if (apply) {
         set({ structureDraft: draft, structurePending: false })
+        // acceptStructureDraft가 draft.screenplay로 갈아 끼우므로,
+        // 아직 screenplay가 비어 있어도 여기서 채워진다.
         get().acceptStructureDraft()
         return
       }
       set({ structureDraft: draft, structurePending: false })
     } catch (error) {
+      // Continue 경로에서는 screenplay가 아직 비어 있다. 규칙 기반
+      // 대체본도 재료가 있어야 만들 수 있으므로 fallback을 넘긴다.
+      const source = input?.fallback
+        ? { ...get(), screenplay: input.fallback }
+        : get()
       set({
-        structureDraft: createStoryStructureDraft(get()),
+        structureDraft: createStoryStructureDraft(source),
         structurePending: false,
         structureError: error.message,
       })
@@ -3204,6 +3218,10 @@ const useStore = create((set, get) => ({
       // Continue로 들어온 사람은 그것을 볼 자리가 없다 — 이미 화면이
       // 넘어간 뒤다.
       if (apply) get().acceptStructureDraft()
+      // 규칙 기반마저 비었으면 최소한 쓴 것은 남아야 한다.
+      if (apply && get().screenplay.length === 0 && input?.fallback) {
+        set({ screenplay: input.fallback })
+      }
     }
   },
   dismissStructureDraft: () => set({ structureDraft: null }),
