@@ -50,10 +50,24 @@ COMMON_LENS_PROMPT = """목표는 멋진 대안을 많이 내는 것이 아니�
 의도를 어떻게 지지하거나 방해하는지 화면 근거로 진단하는 것입니다. 보이지 않는 사실을
 만들지 마세요.
 
+사용자에게 바로 보이는 답입니다. 영화를 만드는 사람에게 말하되, 논문·평론 같은 어려운
+말투는 쓰지 마세요. 먼저 화면에서 보이는 사실을 짚고, 그 때문에 무엇이 잘 읽히거나
+헷갈리는지를 평이한 한 문장으로 말하세요. `서사적 기능`, `시각적 위계`, `공간적 관계`,
+`리듬의 변주`, `정보의 위계`처럼 추상적인 말을 답의 중심에 두지 마세요. 꼭 필요한 촬영
+용어도 짧게 풀어 쓰세요. 예: `프레이밍` 대신 `화면에 담긴 범위`, `블로킹` 대신 `인물의
+자리와 움직임`, `시점` 대신 `카메라가 보는 자리`.
+
+summary, level_assessments의 summary, diagnosis, evidence, suggested_action, alternatives의
+effect와 questions는 모두 짧고 자연스러운 한국어로 씁니다. 한 문장에는 한 가지 판단만
+넣고, 수식어를 겹치거나 어려운 이론 용어로 문제를 포장하지 마세요. 이론은 theory_basis
+필드에서만 간단히 언급할 수 있습니다.
+
 감독의 의도는 목표이지 화면에 보이는 사실이 아닙니다. 의도에 언급된 인물·소품·사건이
 모든 패널에 실제로 존재한다고 가정하지 마세요. 각 패널의 사건 설명은 창작자가 제공한
 사실 맥락이며, 이미지에서 보이는 근거와 구분해서 사용하세요. 사건 설명이 없으면 인물의
-이름이나 관계를 추측하지 말고 `전경 인물`, `배경 인물`처럼 보이는 상태로만 지칭하세요.
+이름이나 관계를 추측하지 말고 `화면 왼쪽 인물`, `가까운 쪽 인물`, `문 앞 인물`처럼
+화면에서 확인되는 위치·거리·행동으로만 지칭하세요. `전경 인물`, `배경 인물` 같은 고정
+표현은 반복하지 마세요.
 사건 설명에 행동 주체가 적혀 있다면 주체와 대상을 서로 바꾸지 말고 그대로 유지하세요.
 사건 설명에 소품이나 행동이 적혀 있다는 이유만으로 이미지에서 그것을 보았다고 말하지
 마세요. 먼저 형태·색·위치·자세 같은 독립적인 화면 근거를 찾고, 식별할 수 없으면 작게
@@ -152,9 +166,22 @@ LENS_PROMPTS = {
     "camera": """당신은 SceneLens의 촬영 렌즈 에이전트입니다.
 스토리보드 패널을 촬영 관점에서만 검토하세요. 프레이밍, 숏 사이즈, 카메라 높이와 각도,
 시점, 렌즈와 심도, 카메라 움직임, 화면 방향, 시선축과 연속성을 다룹니다.
+
+촬영 렌즈가 바꾸는 것은 **카메라**입니다. 수정 방향과 선택지에는 기존 컷의 카메라를
+어디에 둘지, 얼마나 가깝게 잡을지, 어느 높이·각도에서 볼지, 화면에 무엇을 담을지,
+어느 방향으로 움직일지만 제안하세요. 인물·소품·가구·공간을 옮기거나 다시 배치하라고
+하지 마세요. 그것은 미장센의 일입니다. 컷을 추가·삽입·삭제·분할·병합·재배열하거나
+`중립 컷을 추가`하라고 하지 마세요. 그것은 편집의 일입니다.
+
+현재 컷의 카메라 선택만으로 해결할 수 없을 때에는 다른 렌즈의 해결책을 대신 내지
+마세요. `확인할 점`으로 두고, 카메라를 바꿔도 해결되지 않는지 감독에게 짧게 물으세요.
+예: `두 사람의 자리가 바뀌지 않는다면, 카메라를 같은 쪽에 두는 것만으로 방향이
+이어지나요?` 촬영에서 새 컷의 필요성을 판단하지 않습니다.
+
 미장센 요소가 보여도 촬영 속성이나 컷 사이 촬영 관계와 직접 관련되지 않으면 진단하지
-마세요. 다만 촬영 관점에서 발견한 원인이 컷의 삽입·삭제·분할·병합이나 씬 전체의 촬영
-설계에 있다면 shot_structure 또는 scene_structure를 사용할 수 있습니다.
+마세요. 여러 컷에 걸친 카메라 설계를 확인해야 하면 shot_structure 또는 scene_structure를
+사용할 수 있지만, 그 경우에도 수정 방향은 컷을 늘리거나 줄이는 말이 아니라 각 컷의
+카메라 선택을 어떻게 맞출지에만 한정하세요.
 인물이 작게 보이는 구도는 고립감·취약성·공간적 위험을 강조할 수 있습니다. 사건 설명상
 필수인 정체·표정·행동이 실제로 읽히지 않는 경우가 아니라면, 피사체가 작다는 이유만으로
 숏 사이즈를 문제 삼지 마세요.
@@ -179,11 +206,22 @@ PAN은 오른쪽→왼쪽 화살표와 일치합니다. 카메라가 왼쪽으�
 공간의 구획과 동선, 소품의 위치와 기능, 세트 구성, 전경·중경·배경의 요소 배치, 화면 안의
 시각적 위계를 다룹니다.
 
+미장센 렌즈가 바꾸는 것은 **화면 안의 인물·소품·공간**입니다. 수정 방향과 선택지에는
+누가 어디에 서는지, 어느 물건을 어디에 두는지, 인물 사이 거리·몸 방향·동선을 어떻게
+잡을지만 제안하세요. 카메라의 위치·숏 크기·각도·렌즈·초점·움직임을 바꾸라고 하지
+마세요. 그것은 촬영의 일입니다. 컷을 추가·삽입·삭제·분할·병합·재배열하라고 하지
+마세요. 그것은 편집의 일입니다.
+
+현재 컷의 배치만으로 해결할 수 없을 때에는 다른 렌즈의 해결책을 대신 내지 마세요.
+`확인할 점`으로 두고, 인물·사물·공간의 배치만 바꿔 해결할 수 있는지 감독에게 짧게
+물으세요.
+
 카메라 각도·숏 사이즈·렌즈 변경을 주된 해결책으로 제안하지 마세요. 공간과 요소를 바꾸어
 해결할 수 없는 경우에는 촬영 관점과 함께 검토할 필요가 있다고 질문으로 남기세요.
 한 컷의 배치 문제는 attribute, 필요한 미장센 단계를 담을 컷의 누락·과잉은
 shot_structure, 컷 사이 배치·동선의 연결은 shot_relation, 씬 전체의 공간·요소 전개는
-scene_structure를 사용하세요. attribute는 `S3.character_position`, `S3.prop.remote`처럼
+scene_structure를 사용하세요. shot_structure를 사용해도 새 컷을 제안하지 말고, 현재
+컷들에서 배치가 맡아야 할 역할이 빠졌는지만 짚으세요. attribute는 `S3.character_position`, `S3.prop.remote`처럼
 대상 요소를 구체적으로 적으세요.
 앞뒤 패널의 사건 설명이 움직임 없음이나 같은 순간을 명시하는데 앉기·서기·넘어짐·장소·
 출입구 위치가 화면에서 달라졌다면, 설명을 그대로 믿지 말고 보이는 상태 충돌을 진단하세요.
@@ -614,6 +652,56 @@ def _validate_referenced_panels(
             )
 
 
+def _validate_remedy_scope(lens: DirectingLens, result: DirectingLensResult) -> None:
+    """Keep a lens from prescribing another lens's work.
+
+    The model may correctly notice a camera-axis symptom but still jump to an
+    editorial bridge shot or move actors around. A retry here is preferable to
+    showing a camera card whose next action opens the wrong workspace.
+    """
+    if lens not in {"camera", "mise"}:
+        return
+
+    remedy_text = "\n".join(
+        piece
+        for diagnosis in result.diagnoses
+        for piece in [
+            diagnosis.suggested_action,
+            *(alternative.label for alternative in diagnosis.alternatives),
+            *(alternative.effect for alternative in diagnosis.alternatives),
+        ]
+    )
+    cut_operation_patterns = (
+        r"(?:컷|숏|쇼트).{0,10}(?:추가|삽입|삭제|분할|병합|재배열)",
+        r"(?:추가|삽입|삭제|분할|병합|재배열).{0,10}(?:컷|숏|쇼트)",
+    )
+    if lens == "camera":
+        forbidden_patterns = (
+            r"(?:인물|사람|배우|소품|물체|가구|배경|공간).{0,12}(?:재|다시 )?배치",
+            r"(?:재|다시 )?배치.{0,12}(?:인물|사람|배우|소품|물체|가구|배경|공간)",
+            r"(?:중립|연결|브리지|반응|인서트)\s*(?:컷|숏|쇼트).{0,10}(?:추가|삽입)",
+            *cut_operation_patterns,
+        )
+        error = (
+            "camera remedies may only change the existing camera's position, framing, "
+            "angle, distance, focus, or movement; do not prescribe staging or editing"
+        )
+    else:
+        forbidden_patterns = (
+            r"카메라.{0,12}(?:위치|자리|각도|거리|이동|움직임|방향)",
+            r"(?:숏\s*크기|앵글|렌즈|프레이밍|초점|심도|팬|틸트|트래킹|줌).{0,12}(?:바꾸|변경|조정|고치)",
+            *cut_operation_patterns,
+        )
+        error = (
+            "mise remedies may only change people, props, or spatial arrangement; "
+            "do not prescribe camera or editing work"
+        )
+    if any(re.search(pattern, remedy_text) for pattern in forbidden_patterns):
+        raise ValueError(
+            error
+        )
+
+
 async def analyze_lens(
     request: DirectingReviewRequest,
     lens: DirectingLens,
@@ -749,6 +837,7 @@ async def analyze_lens(
             _validate_target_paths(request, result, questions)
             _validate_theory_sources(lens, result, theory_packet)
             _validate_referenced_panels(request, result, questions)
+            _validate_remedy_scope(lens, result)
             return result, questions
         except (ValidationError, ValueError) as error:
             if attempt == 2:
@@ -760,11 +849,16 @@ async def analyze_lens(
 
 # 렌즈를 각자 돌린 뒤, 그 결과들 사이의 관계만 따로 본다.
 #
-# 한 번에 네 렌즈를 다 보게 하면 어느 관점의 판단인지 섞인다. 각자 판단한
+# 한 번에 세 렌즈를 다 보게 하면 어느 관점의 판단인지 섞인다. 각자 판단한
 # 뒤에 관계를 묻는 편이 렌즈의 독립성과 연결을 둘 다 지킨다.
 CROSS_LENS_PROMPT = """당신은 SceneLens의 연출 검토를 종합합니다.
 미장센·촬영·편집 렌즈가 각자 내린 판단이 아래에 있습니다. 새 진단을 만들지 말고,
 **이미 나온 판단들 사이의 관계만** 찾으세요.
+
+사용자에게 바로 보이는 답입니다. `원인 렌즈`, `영향받은 렌즈`, `결과적 상관`처럼 분석
+용어를 늘어놓지 말고, 한 선택이 다른 판단에 어떤 영향을 주는지 평이하게 설명하세요.
+summary와 order.reason은 각각 짧은 한 문장으로 씁니다. 예를 들어 `촬영이 인물을 너무
+가깝게 잡아, 두 사람의 거리가 보이지 않는다`처럼 화면에서 시작해 결과를 말하세요.
 
 세 종류의 관계가 있습니다:
 
@@ -1004,7 +1098,9 @@ async def _review_all_lenses(request: DirectingReviewRequest) -> DirectingReview
     한 번에 다 보게 하지 않는 이유: 어느 관점의 판단인지 섞인다. 각자
     판단해야 렌즈가 독립적이고, 그 뒤에 관계를 물어야 연결이 드러난다.
     """
-    lenses: list[DirectingLens] = ["narrative", "mise", "camera", "editing"]
+    # 서사는 이 세 렌즈보다 앞에서 이야기의 단계와 정보 순서를 잡는 별도
+    # 상위 에이전트다. 다관점 패널 검토에는 화면을 직접 다루는 세 관점만 둔다.
+    lenses: list[DirectingLens] = ["mise", "camera", "editing"]
     outcomes = await asyncio.gather(
         *(analyze_lens(request, lens) for lens in lenses),
         return_exceptions=True,
