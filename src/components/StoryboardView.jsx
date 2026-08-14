@@ -923,6 +923,8 @@ export default function StoryboardView() {
   const requestSceneStates = useStore((s) => s.requestSceneStates)
   const sceneStatePending = useStore((s) => s.sceneStatePending)
   const sceneStateError = useStore((s) => s.sceneStateError)
+  const requestReferenceImage = useStore((s) => s.requestReferenceImage)
+  const referenceImagePending = useStore((s) => s.referenceImagePending)
   const setShotNote = useStore((s) => s.setShotNote)
   const addShotArrow = useStore((s) => s.addShotArrow)
   const updateShotArrow = useStore((s) => s.updateShotArrow)
@@ -1028,6 +1030,8 @@ export default function StoryboardView() {
   const [noteEditingShotId, setNoteEditingShotId] = useState(null)
   const [generationScope, setGenerationScope] = useState('all')
   const [panelCandidates, setPanelCandidates] = useState({})
+  const [openReferenceCards, setOpenReferenceCards] = useState({})
+  const [referenceLightbox, setReferenceLightbox] = useState(null)
   // 어느 패널이 생성 중인가. 여러 장을 한 번에 만들 수 있어 shotId별로 둔다.
   const [panelGenPending, setPanelGenPending] = useState({})
   const [panelGenError, setPanelGenError] = useState(null)
@@ -1413,6 +1417,12 @@ export default function StoryboardView() {
         ? current.filter((id) => id !== shotId)
         : [...current, shotId]
     ))
+  }
+
+  const generateReferenceFromCutPlan = async (kind, subjectId = null) => {
+    const cardKey = subjectId || kind
+    await requestReferenceImage(kind, subjectId)
+    setOpenReferenceCards((current) => ({ ...current, [cardKey]: true }))
   }
 
   // 조립한 프롬프트로 실제 그림을 만든다. 씬 기준·책임 선언·이음새·샷이
@@ -2622,20 +2632,26 @@ export default function StoryboardView() {
             <section className="sb-panel-grid" aria-label="패널 한눈에 보기">
               {flowShots.map((shot, shotIdx) => {
                 const cut = cutPlan.find((item) => item.id === shot.cutPlanItemId)
+                // 대본과 함께 보기에서는 아직 확정하지 않은 AI 초안도 바로
+                // 보여 준다. 한눈에 보기도 같은 초안을 읽어야 두 보기의
+                // 상태가 어긋나지 않는다.
+                const candidate = panelCandidates[shot.id]
+                const displayImage = candidate?.image || getShotVisual(shot, shotIdx)
                 return (
                   <button
                     type="button"
                     key={shot.id || shotIdx}
-                    className={`sb-panel-grid-item${activeShot === shotIdx ? ' is-active' : ''}`}
+                    className={`sb-panel-grid-item${activeShot === shotIdx ? ' is-active' : ''}${candidate ? ' has-ai-candidate' : ''}`}
                     onClick={() => {
                       setFlowActiveShot(shotIdx)
                       setInspectedShotId(shot.id)
                     }}
                   >
                     <span className="sb-panel-grid-order">{shotIdx + 1}</span>
-                    {shot.image
-                      ? <img src={shot.image} alt={`패널 ${shotIdx + 1}`} />
+                    {displayImage
+                      ? <img src={displayImage} alt={`패널 ${shotIdx + 1}`} />
                       : <span className="sb-panel-grid-blank">비어 있음</span>}
+                    {candidate && <span className="sb-panel-grid-candidate">AI 초안</span>}
                     <em>{cut?.content || ''}</em>
                   </button>
                 )
@@ -2999,7 +3015,7 @@ export default function StoryboardView() {
                                       handleGeneratePanels([{ shot, shotIdx }], { includeExisting: true })
                                     }}
                                   >
-                                    AI variant
+                                    재생성
                                   </button>
                                 </div>
                               </div>
@@ -3387,38 +3403,73 @@ export default function StoryboardView() {
                   )}
 
                   {hasActiveSceneState ? (
+                  <>
                   <ul className="rail-scene-state">
-                    {activeSceneState.characters.map((character) => (
-                      <li key={character.id}>
-                        <div className="rail-scene-head">
-                          <strong>{character.name}</strong>
-                          <em>{character.summary}</em>
-                        </div>
-                        {character.facts.map((fact) => (
-                          <SceneFactRow
-                            key={fact.label}
-                            fact={fact}
-                            onCommit={(value) => setSceneFact(
-                              'character', fact.label, value, { characterId: character.id },
+                    {activeSceneState.characters.map((character) => {
+                      const referenceOpen = openReferenceCards[character.id] && character.image
+                      return (
+                        <li key={character.id} className={`rail-scene-reference-card${referenceOpen ? ' is-reference-open' : ' is-info-open'}`}>
+                          <div className="rail-reference-card-inner">
+                            <div className="rail-reference-face rail-reference-info">
+                              <div className="rail-scene-head">
+                                <strong>{character.name}</strong>
+                                <em>{character.summary}</em>
+                                <button
+                                  type="button"
+                                  className="rail-reference-trigger"
+                                  onClick={() => (
+                                    character.image
+                                      ? setOpenReferenceCards((current) => ({ ...current, [character.id]: true }))
+                                      : generateReferenceFromCutPlan('character', character.id)
+                                  )}
+                                  disabled={referenceImagePending === character.id}
+                                >
+                                  {referenceImagePending === character.id ? '그리는 중…' : character.image ? '레퍼런스 보기' : '레퍼런스 생성'}
+                                </button>
+                              </div>
+                              {character.facts.map((fact) => (
+                                <SceneFactRow key={fact.label} fact={fact} onCommit={(value) => setSceneFact('character', fact.label, value, { characterId: character.id })} />
+                              ))}
+                            </div>
+                            {character.image && (
+                              <button
+                                type="button"
+                                className="rail-reference-face rail-reference-preview"
+                                onClick={() => setReferenceLightbox({ src: character.image, alt: `${character.name} 레퍼런스`, cardKey: character.id })}
+                                title="크게 보기"
+                              >
+                                <img src={character.image} alt={`${character.name} 레퍼런스`} />
+                              </button>
                             )}
-                          />
-                        ))}
-                      </li>
-                    ))}
+                          </div>
+                        </li>
+                      )
+                    })}
 
-                    <li>
-                      <div className="rail-scene-head">
-                        <strong>{activeSceneState.location.name}</strong>
-                        <em>공간</em>
-                      </div>
-                      {activeSceneState.location.facts.map((fact) => (
-                        <SceneFactRow
-                          key={fact.label}
-                          fact={fact}
-                          onCommit={(value) => setSceneFact('location', fact.label, value)}
-                        />
-                      ))}
-                    </li>
+                    {(() => {
+                      const location = activeSceneState.location
+                      const referenceOpen = openReferenceCards.location && location.image
+                      return (
+                        <li className={`rail-scene-reference-card${referenceOpen ? ' is-reference-open' : ' is-info-open'}`}>
+                          <div className="rail-reference-card-inner">
+                            <div className="rail-reference-face rail-reference-info">
+                              <div className="rail-scene-head">
+                                <strong>{location.name}</strong><em>공간</em>
+                                <button type="button" className="rail-reference-trigger" onClick={() => (location.image ? setOpenReferenceCards((current) => ({ ...current, location: true })) : generateReferenceFromCutPlan('location'))} disabled={referenceImagePending === 'location'}>
+                                  {referenceImagePending === 'location' ? '그리는 중…' : location.image ? '레퍼런스 보기' : '레퍼런스 생성'}
+                                </button>
+                              </div>
+                              {location.facts.map((fact) => <SceneFactRow key={fact.label} fact={fact} onCommit={(value) => setSceneFact('location', fact.label, value)} />)}
+                            </div>
+                            {location.image && (
+                              <button type="button" className="rail-reference-face rail-reference-preview is-location" onClick={() => setReferenceLightbox({ src: location.image, alt: `${location.name} 레퍼런스`, cardKey: 'location' })} title="크게 보기">
+                                <img src={location.image} alt={`${location.name} 레퍼런스`} />
+                              </button>
+                            )}
+                          </div>
+                        </li>
+                      )
+                    })()}
 
                     {activeSceneState.environment?.facts?.length > 0 && (
                       <li>
@@ -3444,6 +3495,7 @@ export default function StoryboardView() {
                       </li>
                     )}
                   </ul>
+                  </>
                   ) : (
                     <p className="rail-coverage-clear">
                       아직 이 이야기의 미장센 기준을 읽지 않았습니다.
@@ -3737,6 +3789,20 @@ export default function StoryboardView() {
             </button>
           )}
         </aside>
+      )}
+      {referenceLightbox && (
+        <div className="reference-lightbox" role="dialog" aria-modal="true" aria-label={`${referenceLightbox.alt} 크게 보기`} onClick={() => setReferenceLightbox(null)}>
+          <div className="reference-lightbox-content" onClick={(event) => event.stopPropagation()}>
+            <img src={referenceLightbox.src} alt={referenceLightbox.alt} />
+            <div className="reference-lightbox-actions">
+              <button type="button" onClick={() => setReferenceLightbox(null)}>닫기</button>
+              <button type="button" onClick={() => {
+                setOpenReferenceCards((current) => ({ ...current, [referenceLightbox.cardKey]: false }))
+                setReferenceLightbox(null)
+              }}>정보 카드 보기</button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )

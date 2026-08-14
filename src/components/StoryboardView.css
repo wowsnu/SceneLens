@@ -3282,6 +3282,114 @@
   overflow-y: auto;
 }
 
+.rail-scene-head .rail-reference-trigger {
+  margin-left: auto;
+  padding: 3px 6px;
+  border: 1px solid rgba(126, 168, 214, 0.4);
+  border-radius: 4px;
+  background: rgba(126, 168, 214, 0.1);
+  color: rgba(190, 216, 242, 0.94);
+  font-size: 9px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.rail-scene-head .rail-reference-trigger:disabled { opacity: .45; cursor: default; }
+
+.rail-reference-preview {
+  display: block;
+  width: 100%;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid rgba(126, 168, 214, 0.4);
+  border-radius: 5px;
+  background: #0d1110;
+  cursor: pointer;
+}
+
+.rail-reference-preview img { display: block; width: 100%; height: 100%; background: #090b0a; object-fit: contain; }
+
+/* 정보 면과 레퍼런스 면의 전환을 카드 뒤집기처럼 읽히게 한다. */
+.rail-scene-reference-card {
+  perspective: 700px;
+}
+
+.rail-reference-card-inner {
+  position: relative;
+  transform-style: preserve-3d;
+  transition: transform 340ms cubic-bezier(.2, .72, .25, 1);
+}
+
+.rail-reference-face {
+  min-width: 0;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
+.rail-reference-info {
+  transform: rotateY(0deg);
+}
+
+.rail-reference-preview {
+  position: absolute;
+  inset: 0;
+  height: 100%;
+  transform: rotateY(180deg);
+}
+
+.rail-scene-reference-card.is-reference-open .rail-reference-card-inner {
+  transform: rotateY(180deg);
+}
+
+.rail-scene-reference-card.is-reference-open .rail-reference-preview img {
+  height: 100%;
+}
+
+.reference-lightbox {
+  position: fixed;
+  z-index: 100;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 30px;
+  background: rgba(4, 6, 8, .82);
+}
+
+.reference-lightbox-content {
+  display: grid;
+  gap: 10px;
+  width: min(900px, 92vw);
+  max-height: calc(100vh - 60px);
+}
+
+.reference-lightbox-content img {
+  display: block;
+  width: 100%;
+  min-height: 0;
+  max-height: calc(100vh - 110px);
+  border-radius: 8px;
+  background: #090b0a;
+  object-fit: contain;
+}
+
+.reference-lightbox-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.reference-lightbox-actions button {
+  min-height: 28px;
+  padding: 4px 9px;
+  border: 1px solid rgba(255, 255, 255, .24);
+  border-radius: 5px;
+  background: rgba(18, 24, 30, .92);
+  color: rgba(255, 255, 255, .9);
+  font-size: 11px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
 /* 에이전트 본문 안에서는 블록 사이 경계선만 남긴다. */
 .rail-agent-body > .narrative-rail-guidance,
 .rail-agent-body > .narrative-rail-context {
@@ -4451,6 +4559,20 @@
   font-size: 10.5px;
   font-weight: 700;
   text-align: center;
+}
+
+/* 아직 확정 전인 생성본도 대본과 함께 보기와 똑같이 보인다. */
+.sb-panel-grid-candidate {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  z-index: 1;
+  padding: 2px 6px;
+  border-radius: 9px;
+  background: rgba(251, 113, 133, 0.88);
+  color: #fff;
+  font-size: 9.5px;
+  font-weight: 800;
 }
 
 .sb-panel-grid-item em {
