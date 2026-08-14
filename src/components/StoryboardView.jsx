@@ -1601,12 +1601,14 @@ export default function StoryboardView() {
 
     setSceneIntention(rawSceneIntention.trim())
     setScreenplay(newScreenplay)
-    setIsEditingRaw(false)
 
-    // 이어서 바로 씬·Beat로 나누고 그대로 적용한다. 방금 이야기를 넘긴
-    // 참이라 원문과 나란히 놓고 판정할 것이 없다 — 판정할 자리는 대본
-    // 자체다. AI가 채운 줄은 filled로 표시되어 대본에서 구분된다.
-    requestStoryStructure(true)
+    // 나눈 결과가 나온 뒤에 넘어간다. 여기서 바로 화면을 넘기면 아직
+    // 나누기 전의 대본이 한 번 떴다가 바뀐다 — 감독은 그것을 결과로
+    // 읽는다.
+    //
+    // AI가 채운 줄은 filled로 표시되어 대본에서 구분되므로, 확인 단계
+    // 없이 적용해도 자기가 쓰지 않은 것을 알 수 있다.
+    requestStoryStructure(true).finally(() => setIsEditingRaw(false))
   }
 
   // 점검에서 나온 지적을 그대로 제안 요청으로 넘긴다. 점검은 무엇이

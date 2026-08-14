@@ -3200,6 +3200,10 @@ const useStore = create((set, get) => ({
         structurePending: false,
         structureError: error.message,
       })
+      // 실패해도 apply면 규칙 기반 결과를 적용한다. 초안만 남겨 두면
+      // Continue로 들어온 사람은 그것을 볼 자리가 없다 — 이미 화면이
+      // 넘어간 뒤다.
+      if (apply) get().acceptStructureDraft()
     }
   },
   dismissStructureDraft: () => set({ structureDraft: null }),
