@@ -2503,6 +2503,18 @@ export default function StoryboardView() {
                 {eligibleScopeShots.length} blank panel{eligibleScopeShots.length === 1 ? '' : 's'} in scope
               </strong>
               <p>Existing drawings and imported images stay untouched.</p>
+              {/* 개발·시연용. 작업 흐름에 끼어들 이유가 없으므로 설명
+                  아래에 작게 둔다. */}
+              {viewerTestTargets.length > 0 && (
+                <button
+                  type="button"
+                  className="generation-viewer-test"
+                  onClick={connectViewerTestPanels}
+                  title="비어 있는 컷에 저장된 관객 검토용 패널을 순서대로 연결합니다"
+                >
+                  테스트 이미지 채우기 · {viewerTestTargets.length}
+                </button>
+              )}
             </div>
             {/* 그림체는 모든 패널에 똑같이 걸린다. 인물·소품 목록에 섞여
                 있으면 성격이 달라 보이지 않고, 정작 그림을 그리는 이 화면에서
@@ -2554,15 +2566,6 @@ export default function StoryboardView() {
                 title={panelGridView ? '대본과 나란히 보기' : '패널만 격자로 모아 보기'}
               >
                 {panelGridView ? '대본과 함께' : '한눈에 보기'}
-              </button>
-              <button
-                type="button"
-                className="generation-viewer-test"
-                disabled={viewerTestTargets.length === 0}
-                onClick={connectViewerTestPanels}
-                title="비어 있는 컷에 저장된 관객 검토용 패널을 순서대로 연결합니다"
-              >
-                테스트 이미지 채우기{viewerTestTargets.length > 0 ? ` · ${viewerTestTargets.length}` : ''}
               </button>
               {selectedShots.length > 0 && (
                 <button

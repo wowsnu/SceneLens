@@ -384,20 +384,31 @@
   color: rgba(186, 220, 234, 0.95);
 }
 
+/* 개발·시연용. 설명 아래에 작은 글씨로 둔다 — 작업 버튼처럼 보이면
+   안 된다. */
 .generation-viewer-test {
-  border: 1px solid rgba(250, 204, 21, 0.38);
-  background: rgba(250, 204, 21, 0.1);
-  color: #fde68a;
+  margin-top: 6px;
+  padding: 0;
+  border: none;
+  background: none;
+  color: rgba(255, 255, 255, 0.26);
+  font-family: inherit;
+  font-size: 10px;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.generation-viewer-test:hover {
+  color: rgba(255, 255, 255, 0.5);
 }
 
 .generation-run:hover:not(:disabled),
-.generation-accept-all:hover,
-.generation-viewer-test:hover:not(:disabled) {
+.generation-accept-all:hover {
   filter: brightness(1.18);
 }
 
-.generation-run:disabled,
-.generation-viewer-test:disabled {
+.generation-run:disabled {
   cursor: not-allowed;
   opacity: 0.35;
 }
