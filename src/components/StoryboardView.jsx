@@ -3061,105 +3061,6 @@ export default function StoryboardView() {
                 ? scriptLines.length > 0 && renderNarrativeCheck('script')
                 : cutPlan.length > 0 && renderNarrativeCheck('cutplan')}
 
-              <section className="narrative-rail-guidance">
-                <span>Next step</span>
-                {/* 대본은 주어진 것에서 시작한다. 다음 단계는 컷 분해다. */}
-                {/* 이야기 한 덩어리로 들어왔으면 씬·비트부터 세운다.
-                    컷을 나누려면 그 단위가 있어야 한다. */}
-                {cutStage === 'script' && needsStructure ? (
-                  <>
-                    <p>
-                      아직 이야기 한 덩어리입니다. 씬과 Beat로 나누면 그
-                      단위로 컷을 정할 수 있습니다.
-                    </p>
-                    <button
-                      type="button"
-                      className="narrative-rail-primary"
-                      onClick={requestStoryStructure}
-                      disabled={structurePending}
-                    >
-                      {structurePending ? '나누는 중…' : '씬·Beat로 나누기'}
-                    </button>
-                  </>
-                ) : cutStage === 'script' ? (
-                  <>
-                    <p>
-                      대본이 준비됐습니다. 그림 전에 이 장면을 몇 개의 컷으로
-                      나눌지 정하고, 이어서 촬영이 각 컷의 샷을 정합니다.
-                    </p>
-
-                    {/* 다음 단계로 넘어가는 버튼은 맨 아래에 둔다. 위에서
-                        대본을 손볼 것이 없는지 보고 나서 누르는 순서다 —
-                        먼저 놓으면 점검을 지나쳐 컷부터 만들게 된다. */}
-                    <button
-                      type="button"
-                      className="narrative-rail-primary"
-                      onClick={cutPlan.length > 0 ? clearCutPlanStageOverride : requestCutPlan}
-                      disabled={cutPlanRunPending}
-                    >
-                      {cutPlanPending
-                        ? '컷 나누는 중…'
-                        : cutPlanRunPending
-                          ? '샷 정하는 중…'
-                          : cutPlan.length > 0 ? '컷 플랜 이어서' : '컷 플랜 만들기'}
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    <p>
-                      Beat {activeBeat + 1}을(를) 보고 있습니다. 이 Beat의 행동과
-                      대사를 조금씩 고쳐 나가세요.
-                    </p>
-                  </>
-                )}
-                {/* 요청을 넘긴 뒤 칸이 비므로, 무엇이 진행 중인지 여기서
-                    보인다. 아니면 아무 일도 없는 것처럼 보인다. */}
-                {narrativePending && (
-                  <div className="narrative-rail-proposal-status pending">
-                    <span>…</span>
-                    <div>
-                      <strong>Beat {activeBeat + 1} 검토 중</strong>
-                      <p>요청에 맞는 제안을 찾고 있습니다.</p>
-                    </div>
-                  </div>
-                )}
-
-                {/* 제안이 하나도 없으면 그 사실을 밝힌다. 요청을 보냈는데
-                    아무 반응이 없으면 고장 난 것으로 보인다. */}
-                {!narrativePending && narrativeAnswered && narrativeSuggestions.length === 0 && (
-                  <div className="narrative-rail-proposal-status empty">
-                    <span>—</span>
-                    <div>
-                      <strong>여기서는 할 수 없는 요청입니다</strong>
-                      {/* 갈 곳을 실제로 가리킨다. "대본 단계"처럼 화면에
-                          없는 이름을 대면 사용자가 찾을 수 없다. */}
-                      {/* 문장 안에 strong을 쓰지 않는다 — 이 블록의
-                          strong은 display:block이라 줄이 끊긴다. */}
-                      <p>
-                        서사 에이전트는 Beat {activeBeat + 1} 하나만 다룹니다.
-                        이야기를 더 쓰려면 Script 단계에서 대본을 고치고,
-                        Beat를 나누려면 줄 옆 “+ Split Beat”을 쓰세요.
-                      </p>
-                    </div>
-                  </div>
-                )}
-
-                {!narrativePending && narrativeSuggestions.length > 0 && (
-                  <div className="narrative-rail-proposal-status">
-                    <span>{narrativeSuggestions.length}</span>
-                    <div>
-                      <strong>Proposal ready</strong>
-                      {/* 모델을 못 불렀으면 밝힌다. 규칙 기반 결과를 모델이
-                          만든 것처럼 보이게 두지 않는다. */}
-                      <p>
-                        {narrativeError
-                          ? `AI 호출 실패 · 규칙 기반 제안입니다`
-                          : '대본 안의 관련 위치에 표시했습니다.'}
-                      </p>
-                    </div>
-                  </div>
-                )}
-              </section>
 
               </div>
               )}
@@ -3428,6 +3329,108 @@ export default function StoryboardView() {
                 )}
               </section>
             )}
+            {/* 다음 단계는 에이전트 목록 밖, 레일 맨 아래에 둔다.
+                어느 에이전트를 열어 두었든 같은 자리에 있어야
+                이 단계에서 나가는 길로 읽힌다. */}
+            <section className="narrative-rail-guidance">
+              <span>Next step</span>
+              {/* 대본은 주어진 것에서 시작한다. 다음 단계는 컷 분해다. */}
+              {/* 이야기 한 덩어리로 들어왔으면 씬·비트부터 세운다.
+                  컷을 나누려면 그 단위가 있어야 한다. */}
+              {cutStage === 'script' && needsStructure ? (
+                <>
+                  <p>
+                    아직 이야기 한 덩어리입니다. 씬과 Beat로 나누면 그
+                    단위로 컷을 정할 수 있습니다.
+                  </p>
+                  <button
+                    type="button"
+                    className="narrative-rail-primary"
+                    onClick={requestStoryStructure}
+                    disabled={structurePending}
+                  >
+                    {structurePending ? '나누는 중…' : '씬·Beat로 나누기'}
+                  </button>
+                </>
+              ) : cutStage === 'script' ? (
+                <>
+                  <p>
+                    대본이 준비됐습니다. 그림 전에 이 장면을 몇 개의 컷으로
+                    나눌지 정하고, 이어서 촬영이 각 컷의 샷을 정합니다.
+                  </p>
+
+                  {/* 다음 단계로 넘어가는 버튼은 맨 아래에 둔다. 위에서
+                      대본을 손볼 것이 없는지 보고 나서 누르는 순서다 —
+                      먼저 놓으면 점검을 지나쳐 컷부터 만들게 된다. */}
+                  <button
+                    type="button"
+                    className="narrative-rail-primary"
+                    onClick={cutPlan.length > 0 ? clearCutPlanStageOverride : requestCutPlan}
+                    disabled={cutPlanRunPending}
+                  >
+                    {cutPlanPending
+                      ? '컷 나누는 중…'
+                      : cutPlanRunPending
+                        ? '샷 정하는 중…'
+                        : cutPlan.length > 0 ? '컷 플랜 이어서' : '컷 플랜 만들기'}
+                  </button>
+                </>
+              ) : (
+                <>
+                  <p>
+                    Beat {activeBeat + 1}을(를) 보고 있습니다. 이 Beat의 행동과
+                    대사를 조금씩 고쳐 나가세요.
+                  </p>
+                </>
+              )}
+              {/* 요청을 넘긴 뒤 칸이 비므로, 무엇이 진행 중인지 여기서
+                  보인다. 아니면 아무 일도 없는 것처럼 보인다. */}
+              {narrativePending && (
+                <div className="narrative-rail-proposal-status pending">
+                  <span>…</span>
+                  <div>
+                    <strong>Beat {activeBeat + 1} 검토 중</strong>
+                    <p>요청에 맞는 제안을 찾고 있습니다.</p>
+                  </div>
+                </div>
+              )}
+
+              {/* 제안이 하나도 없으면 그 사실을 밝힌다. 요청을 보냈는데
+                  아무 반응이 없으면 고장 난 것으로 보인다. */}
+              {!narrativePending && narrativeAnswered && narrativeSuggestions.length === 0 && (
+                <div className="narrative-rail-proposal-status empty">
+                  <span>—</span>
+                  <div>
+                    <strong>여기서는 할 수 없는 요청입니다</strong>
+                    {/* 갈 곳을 실제로 가리킨다. "대본 단계"처럼 화면에
+                        없는 이름을 대면 사용자가 찾을 수 없다. */}
+                    {/* 문장 안에 strong을 쓰지 않는다 — 이 블록의
+                        strong은 display:block이라 줄이 끊긴다. */}
+                    <p>
+                      서사 에이전트는 Beat {activeBeat + 1} 하나만 다룹니다.
+                      이야기를 더 쓰려면 Script 단계에서 대본을 고치고,
+                      Beat를 나누려면 줄 옆 “+ Split Beat”을 쓰세요.
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {!narrativePending && narrativeSuggestions.length > 0 && (
+                <div className="narrative-rail-proposal-status">
+                  <span>{narrativeSuggestions.length}</span>
+                  <div>
+                    <strong>Proposal ready</strong>
+                    {/* 모델을 못 불렀으면 밝힌다. 규칙 기반 결과를 모델이
+                        만든 것처럼 보이게 두지 않는다. */}
+                    <p>
+                      {narrativeError
+                        ? `AI 호출 실패 · 규칙 기반 제안입니다`
+                        : '대본 안의 관련 위치에 표시했습니다.'}
+                    </p>
+                  </div>
+                </div>
+              )}
+            </section>
             </div>
           ) : (
             <button
