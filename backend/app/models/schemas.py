@@ -193,9 +193,16 @@ class ViewerPanelInput(BaseModel):
 
 ViewerReadingCondition = Literal["first_viewer", "film_literate", "context_close"]
 
+class ViewerCustomReadingCondition(BaseModel):
+    """A user-authored attention condition, never creator intent or story context."""
+    id: str = Field(min_length=1, max_length=80)
+    label: str = Field(min_length=1, max_length=60)
+    instruction: str = Field(min_length=1, max_length=360)
+
 class ViewerInitialReadingRequest(BaseModel):
     panels: List[ViewerPanelInput]
     reading_conditions: List[ViewerReadingCondition] = ["first_viewer"]
+    custom_conditions: List[ViewerCustomReadingCondition] = []
 
 class ViewerReadingStep(BaseModel):
     panel_order: int
@@ -266,11 +273,11 @@ class ViewerInitialReading(BaseModel):
     routes: List[str] = []
 
 class ViewerPersonaReading(BaseModel):
-    condition_id: ViewerReadingCondition
+    condition_id: str
     reading: ViewerInitialReading
 
 class ViewerPerspectiveReading(BaseModel):
-    condition_id: ViewerReadingCondition
+    condition_id: str
     reading: str
 
 class ViewerPerspectiveDivergence(BaseModel):

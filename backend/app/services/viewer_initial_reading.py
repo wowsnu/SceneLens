@@ -151,12 +151,11 @@ READING_CONDITIONS = {
         ),
     },
     "context_close": {
-        "label": "이야기와 가까운 관객",
+        "label": "상황을 꼼꼼히 보는 관객",
         "instruction": (
-            "You are attentive to whether the depicted place, work, or social setting "
-            "feels legible to someone familiar with that kind of context. Do not invent "
-            "real-world facts or expertise not visible in the panels; flag only what the "
-            "visible situation does or does not establish."
+            "Attend to whether the depicted place and the characters' situation feel "
+            "legible from the panels themselves. Do not invent real-world facts or expertise; "
+            "flag only what the visible situation does or does not establish."
         ),
     },
 }
@@ -196,10 +195,7 @@ COMPARISON_SCHEMA = {
                                         "additionalProperties": False,
                                         "required": ["condition_id", "reading"],
                                         "properties": {
-                                            "condition_id": {
-                                                "type": "string",
-                                                "enum": ["first_viewer", "film_literate", "context_close"],
-                                            },
+                                            "condition_id": {"type": "string"},
                                             "reading": {"type": "string"},
                                         },
                                     },
@@ -230,15 +226,17 @@ async def _read_condition(
     client: AsyncOpenAI,
     request: ViewerInitialReadingRequest,
     condition_id: str,
+    condition: dict,
 ) -> dict:
     """Read only panel pixels in supplied order; creator intent is unavailable here."""
     api_key = os.getenv("OPENAI_API_KEY")
     if not api_key:
         raise ValueError("OPENAI_API_KEY not found in environment variables")
 
-    condition = READING_CONDITIONS[condition_id]
     prompt = f"""You are seeing storyboard panels for the first time. Read them in the supplied order and write plain, conversational Korean.
 You do not know the creator's intent, script, shot labels, CIR, or production notes. Do not infer them from metadata.
+
+The response is shown directly to a creator. Use everyday Korean for an adult collaborator: clear but not childish. Start from what is visible, then say what it makes you think or feel. Avoid academic or critic-like expressions such as "narrative function," "visual hierarchy," "spatial dynamics," or "interpretive ambiguity." If a film term is truly useful, explain it in ordinary words instead. Keep each sentence focused on one thought.
 
 Your reading condition is: {condition['label']}.
 {condition['instruction']}
@@ -322,11 +320,15 @@ def _normalize_reading(initial: dict, panel_count: int) -> None:
     ))[:2]
 
 
-async def _compare_readings(client: AsyncOpenAI, readings: list[dict]) -> dict:
+async def _compare_readings(
+    client: AsyncOpenAI,
+    readings: list[dict],
+    condition_definitions: dict[str, dict],
+) -> dict:
     records = [
         {
             "condition_id": item["condition_id"],
-            "condition": READING_CONDITIONS[item["condition_id"]]["label"],
+            "condition": condition_definitions[item["condition_id"]]["label"],
             "summary": item["reading"]["summary"],
             "steps": [
                 {
@@ -340,7 +342,7 @@ async def _compare_readings(client: AsyncOpenAI, readings: list[dict]) -> dict:
         }
         for item in readings
     ]
-    prompt = """Compare independent, intention-blind storyboard reading records written by different reading conditions. Write Korean.
+    prompt = """Compare independent, intention-blind storyboard reading records written by different reading conditions. Write Korean in short, everyday sentences for a creator. Do not use academic, critic-like, or demographic language. Say what was seen and how it led to a different reading, rather than naming an abstract analytical concept.
 Do not invent a real audience consensus, demographic fact, screenplay fact, or creator intention. Do not declare a difference a flaw just because the readings differ.
 
 Return one short common_reading only if the records actually share a flow. Then return zero to three divergences only where the conditions reach meaningfully different interpretations at a panel or adjacent panel range. Each readings item must use the matching condition_id and its differing reading in plain language. shared_cues must quote only short visible-cue phrases already present in the records. why_it_matters explains what decision the creator may need to consider, not what they should choose.
@@ -363,10 +365,29 @@ async def read_initially(request: ViewerInitialReadingRequest) -> ViewerInitialR
     if not api_key:
         raise ValueError("OPENAI_API_KEY not found in environment variables")
 
-    condition_ids = list(dict.fromkeys(request.reading_conditions)) or ["first_viewer"]
+    condition_definitions = {**READING_CONDITIONS}
+    for custom in request.custom_conditions:
+        if custom.id in condition_definitions:
+            raise ValueError("A custom reading condition cannot replace a built-in condition")
+        condition_definitions[custom.id] = {
+            "label": custom.label,
+            "instruction": (
+                "Attend to the following user-specified aspect of the visible evidence: "
+                f"{custom.instruction}. This is an attention instruction only, not story context or creator intent."
+            ),
+        }
+    condition_ids = list(dict.fromkeys([
+        *request.reading_conditions,
+        *(custom.id for custom in request.custom_conditions),
+    ])) or ["first_viewer"]
+    if len(condition_ids) > 3:
+        raise ValueError("Viewer reflection supports at most three independent reading conditions")
     client = AsyncOpenAI(api_key=api_key)
     raw_readings = await asyncio.gather(
-        *[_read_condition(client, request, condition_id) for condition_id in condition_ids],
+        *[
+            _read_condition(client, request, condition_id, condition_definitions[condition_id])
+            for condition_id in condition_ids
+        ],
     )
     readings = []
     for condition_id, reading in zip(condition_ids, raw_readings):
@@ -375,7 +396,7 @@ async def read_initially(request: ViewerInitialReadingRequest) -> ViewerInitialR
 
     comparison = None
     if len(readings) > 1:
-        comparison = await _compare_readings(client, readings)
+        comparison = await _compare_readings(client, readings, condition_definitions)
         for divergence in comparison["divergences"]:
             divergence["panel_orders"] = normalize_viewer_panel_orders(
                 divergence["panel_orders"],
