@@ -2000,26 +2000,11 @@
 .narrative-rail-context > span,
 .narrative-rail-guidance > span,
 .narrative-rail-composer > label {
-  display: flex;
-  align-items: center;
-  gap: 7px;
   color: rgba(255, 255, 255, 0.34);
   font-size: 10px;
   font-weight: 760;
   letter-spacing: 0.09em;
   text-transform: uppercase;
-}
-
-/* 누구에게 묻는 칸인지 밝힌다. 에이전트 밖에 있으면 구분되지 않는다. */
-.narrative-rail-composer > label em {
-  padding: 1px 6px;
-  border: 1px solid rgba(245, 158, 11, 0.4);
-  border-radius: 9px;
-  background: rgba(245, 158, 11, 0.12);
-  color: rgba(250, 200, 120, 0.92);
-  font-size: 9.5px;
-  font-style: normal;
-  letter-spacing: 0.04em;
 }
 
 .narrative-rail-context > p {
@@ -2179,9 +2164,9 @@
 }
 
 .narrative-rail-composer {
+  margin-top: auto;
   padding: 14px;
-  /* 에이전트 목록 위에 있으므로 아래쪽을 가른다. */
-  border-bottom: 1px solid rgba(255, 255, 255, 0.065);
+  border-top: 1px solid rgba(255, 255, 255, 0.065);
   background: #0d0d10;
 }
 
