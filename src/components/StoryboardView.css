@@ -1327,39 +1327,70 @@
   font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 }
 
-.cut-plan-review > header {
+/* 제목 블록을 없애고 보조 버튼만 남겼다. 표가 주인공인 화면이므로
+   도구 줄은 오른쪽에 붙여 표 위를 비워 둔다. */
+.cut-plan-toolbar {
   display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 14px 16px;
+  justify-content: flex-end;
+  gap: 6px;
+  padding: 10px 16px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.07);
-  background: rgba(216, 170, 98, 0.035);
 }
 
-.cut-plan-review > header > div:nth-child(2) {
-  min-width: 0;
-  flex: 1;
+.cut-plan-toolbar button {
+  padding: 5px 11px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 6px;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.6);
+  font-family: inherit;
+  font-size: 11.5px;
+  font-weight: 600;
+  cursor: pointer;
 }
 
-.cut-plan-review > header > div:nth-child(2) span {
-  color: rgba(216, 170, 98, 0.72);
-  font-size: 10px;
-  font-weight: 760;
-  letter-spacing: 0.07em;
-  text-transform: uppercase;
+.cut-plan-toolbar button:hover {
+  border-color: rgba(255, 255, 255, 0.22);
+  color: rgba(255, 255, 255, 0.85);
 }
 
-.cut-plan-review > header strong {
-  display: block;
-  margin-top: 2px;
-  color: rgba(255, 255, 255, 0.88);
-  font-size: 14px;
+/* 접힌 채로도 값이 들어 있으면 알 수 있어야 한다 — 열어 보지 않으면
+   이후 생성에 무엇이 걸려 있는지 모른 채 넘어간다. */
+.cut-plan-scene-note-toggle.is-open,
+.cut-plan-scene-note-toggle.has-value {
+  border-color: rgba(216, 170, 98, 0.4);
+  color: rgba(230, 195, 140, 0.92);
 }
 
-.cut-plan-review > header p {
-  margin: 3px 0 0;
-  color: rgba(255, 255, 255, 0.46);
-  font-size: 12px;
+.cut-plan-scene-note-toggle i {
+  display: inline-block;
+  width: 4px;
+  height: 4px;
+  margin-left: 5px;
+  border-radius: 50%;
+  background: rgba(216, 170, 98, 0.85);
+  vertical-align: middle;
+}
+
+/* 다시 나누는 중. 표가 아직 이전 결과라는 것을 밝힌다. */
+.cut-plan-rerun-note {
+  margin: 0;
+  padding: 9px 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+  background: rgba(216, 170, 98, 0.07);
+  color: rgba(230, 195, 140, 0.92);
+  font-size: 11.5px;
+  line-height: 1.45;
+}
+
+/* 규칙 기반이거나 검토를 건너뛴 결과. 모델이 정한 것처럼 보이면 안 된다. */
+.cut-plan-origin-note {
+  margin: 0;
+  padding: 9px 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+  background: rgba(216, 140, 98, 0.07);
+  color: rgba(216, 140, 98, 0.9);
+  font-size: 11.5px;
   line-height: 1.45;
 }
 
@@ -1466,14 +1497,15 @@
   color: #e6c38c;
 }
 
-/* 장면 전체 지시는 표 아래에 한 번만 둔다. */
+/* 장면 전체 지시. 기본은 접혀 있고 도구 줄의 버튼으로 연다.
+   위에 도구 줄의 아래 선이 이미 있어 border-top을 두지 않는다. */
 .cut-plan-scene-note {
   display: grid;
   grid-template-columns: minmax(180px, 0.36fr) minmax(0, 1fr) auto;
   align-items: center;
   gap: 12px;
   padding: 13px 16px;
-  border-top: 1px solid rgba(255, 255, 255, 0.07);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
   background: rgba(255, 255, 255, 0.012);
 }
 
@@ -2029,10 +2061,24 @@
   background: #0d0d10;
 }
 
+/* 설명과 버튼을 같은 크기로 둔다. 이 문단이 버튼보다 작으면 정작 읽어야
+   할 안내가 뒤로 물러나고 버튼만 남는다. */
 .narrative-rail-guidance > p {
   margin: 7px 0 14px;
-  color: rgba(255, 255, 255, 0.56);
+  color: rgba(255, 255, 255, 0.62);
   font-size: 12px;
+  line-height: 1.6;
+}
+
+/* 확정 전에 짚어줄 것. 막지는 않으므로 경고색까지 가지 않고, 설명문과
+   구분될 만큼만 든다. */
+.narrative-rail-guidance > .narrative-rail-caution {
+  margin: 0 0 12px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  background: rgba(216, 140, 98, 0.1);
+  color: rgba(230, 175, 130, 0.92);
+  font-size: 11.5px;
   line-height: 1.55;
 }
 
@@ -2077,15 +2123,18 @@
 }
 
 /* 다음 단계를 사용자가 물어보지 않아도 누를 수 있게 한다. */
+/* 이 단계에서 나가는 버튼이다. 설명문(12px)보다 한 단계만 위에 둔다 —
+   더 키우면 10px 라벨·12px 설명과 층이 어긋나 버튼만 떠 보인다.
+   눈에 띄는 것은 대부분 색과 폭(width:100%)이 맡는다. */
 .narrative-rail-primary {
   width: 100%;
-  margin: 4px 0 12px;
-  padding: 9px 12px;
+  margin: 7px 0 12px;
+  padding: 11px 14px;
   border: 1px solid rgba(216, 170, 98, 0.34);
   border-radius: 7px;
   background: rgba(216, 170, 98, 0.1);
   color: #e6c38c;
-  font-size: 11.5px;
+  font-size: 13px;
   font-weight: 750;
   cursor: pointer;
 }
@@ -2139,6 +2188,9 @@
   display: flex;
   align-items: center;
   gap: 9px;
+  /* 점검 블록 바로 아래에 온다. rail-agent-body에 gap이 없어 여백을
+     스스로 대지 않으면 점검의 아래 구분선에 카드가 달라붙는다. */
+  margin: 12px 14px 0;
   padding: 10px;
   border: 1px solid rgba(216, 170, 98, 0.18);
   border-radius: 8px;
@@ -2177,8 +2229,9 @@
 .narrative-rail-composer {
   /* 서사 패널 안, 맨 위에 온다. 이 에이전트를 열면 바로 물어볼 수 있는
      칸이 보여야 누구에게 묻는 것인지가 자리로 드러난다.
-     margin-top:auto를 두면 패널 바닥으로 밀려 그 관계가 끊긴다. */
-  padding: 14px 14px 0;
+     margin-top:auto를 두면 패널 바닥으로 밀려 그 관계가 끊긴다.
+     아래 여백을 0으로 두면 Propose 줄이 다음 블록의 구분선에 붙는다. */
+  padding: 14px 14px 4px;
   background: #0d0d10;
 }
 
@@ -2917,13 +2970,6 @@
   font-weight: 800;
 }
 
-.rail-lens-lead {
-  margin: 0 0 12px;
-  color: rgba(255, 255, 255, 0.5);
-  font-size: 11.5px;
-  line-height: 1.55;
-}
-
 .rail-scene-state {
   display: flex;
   flex-direction: column;
@@ -3102,7 +3148,12 @@
   font-weight: 700;
 }
 
-.rail-agent-head span:not(.narrative-agent-mark):not(.lens-agent-mark) {
+/* 에이전트 부제(`Scene state`, `Coverage`, `Seams`). 이름표 안의 글자다.
+   `:not(.…-mark)`로 마크를 하나씩 빼던 것을 구조로 바꿨다 — 새 에이전트를
+   더할 때마다 :not()을 빼먹으면 그 마크만 흐려진다. 실제로 C와 E가
+   그렇게 흐려져 있었다. 부제는 언제나 head 안의 div에 있고, 마크는
+   head의 직계 자식이다. */
+.rail-agent-head > div span {
   color: rgba(255, 255, 255, 0.34);
   font-size: 10.5px;
 }
@@ -3124,6 +3175,14 @@
 .rail-agent-badge.is-open {
   background: transparent;
   border: 1px dashed rgba(216, 170, 98, 0.45);
+}
+
+/* 채워야 할 것이 남았다는 표시. 진단 개수(숫자)와 달리 글자가 들어가므로
+   숫자 배지의 min-width에 갇히지 않게 한다. */
+.rail-agent-badge.is-warn {
+  min-width: 0;
+  background: rgba(216, 140, 98, 0.16);
+  color: rgba(230, 170, 120, 0.95);
 }
 
 .rail-agent-caret {
@@ -3150,7 +3209,6 @@
   border-bottom: 1px solid rgba(255, 255, 255, 0.05);
 }
 
-.rail-agent-body > .rail-lens-lead,
 .rail-agent-body > .rail-scene-state {
   padding-left: 14px;
   padding-right: 14px;
@@ -3186,28 +3244,53 @@
 }
 
 .rail-coverage > li {
-  padding: 10px 11px;
+  /* 카드 전체가 버튼이 되면서 안쪽 여백은 그 버튼이 갖는다. */
+  padding: 0;
+  overflow: hidden;
   border: 1px solid rgba(216, 170, 98, 0.24);
   border-radius: 7px;
   background: rgba(216, 170, 98, 0.03);
 }
 
+/* 카드 본문 = 그 컷으로 가는 버튼. 생김새는 버튼이 아니라 카드다 —
+   눌리는 것은 hover와 커서로만 알린다. */
+.rail-coverage-open {
+  display: block;
+  width: 100%;
+  padding: 10px 11px;
+  border: none;
+  border-radius: 0;
+  background: none;
+  color: inherit;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.rail-coverage-open:hover {
+  background: rgba(216, 170, 98, 0.07);
+}
+
+
 .rail-coverage strong {
   display: block;
   color: rgba(255, 255, 255, 0.88);
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 700;
 }
 
+/* 실제로 읽는 문장이다. 11px에서는 지적 내용이 눈에 안 들어와
+   제목만 훑고 넘어가게 된다. */
 .rail-coverage p {
-  margin: 4px 0 8px;
-  color: rgba(255, 255, 255, 0.5);
-  font-size: 11px;
-  line-height: 1.55;
+  margin: 5px 0 0;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 12.5px;
+  line-height: 1.6;
 }
 
-/* 진단은 발견이고 수정은 표에서 한다. 버튼은 데려다주기만 한다. */
-.rail-coverage button {
+/* 카드 안의 실제 조치 버튼(`수정본 받기` 등). 카드 본문 버튼은 카드처럼
+   보여야 하므로 여기서 뺀다. */
+.rail-coverage button:not(.rail-coverage-open) {
   padding: 4px 9px;
   border: 1px solid rgba(255, 255, 255, 0.16);
   border-radius: 5px;
@@ -3219,7 +3302,7 @@
   cursor: pointer;
 }
 
-.rail-coverage button:hover {
+.rail-coverage button:not(.rail-coverage-open):hover {
   border-color: rgba(255, 255, 255, 0.3);
   color: rgba(255, 255, 255, 0.9);
 }
@@ -3251,9 +3334,9 @@
 .rail-layer-tag {
   display: inline-block;
   margin-bottom: 5px;
-  padding: 1px 6px;
+  padding: 2px 7px;
   border-radius: 4px;
-  font-size: 9px;
+  font-size: 10px;
   font-weight: 800;
   letter-spacing: 0.03em;
 }
@@ -3520,8 +3603,9 @@
 
 /* 렌즈가 직접 실행하는 동작. 진단과 구분되게 둔다. */
 .rail-lens-primary {
-  width: 100%;
-  margin: 0 14px 10px;
+  /* 리드 문장을 없앤 뒤로 이 버튼이 본문의 첫 요소다. 위 여백을 스스로
+     대지 않으면 에이전트 머리에 달라붙는다. */
+  margin: 12px 14px 10px;
   width: calc(100% - 28px);
   padding: 8px;
   border: 1px solid rgba(126, 168, 214, 0.5);
@@ -3547,6 +3631,15 @@
   margin: 0 14px 10px;
   color: rgba(216, 140, 98, 0.9);
   font-size: 11px;
+}
+
+/* 점검이 무엇을 봤는지. 지적은 아래 진단 목록에 섞여 들어가므로,
+   점검이 돌았다는 사실은 이 줄이 남긴다. */
+.rail-check-summary {
+  margin: 0 14px 10px;
+  color: rgba(255, 255, 255, 0.44);
+  font-size: 11.5px;
+  line-height: 1.55;
 }
 
 /* 촬영이 이 샷을 고른 이유. 값 옆에 두어 판정할 수 있게 한다. */
@@ -3640,6 +3733,23 @@
   box-shadow: inset 2px 0 0 rgba(196, 150, 210, 0.8) !important;
 }
 
+/* 진단에서 `표에서 보기`로 도착한 행. 고른 표시만으로는 표가 길 때
+   눈이 못 따라와서, 도착한 순간에만 한 번 깜빡인다. */
+@keyframes cut-row-arrive {
+  0% { background: rgba(196, 150, 210, 0.34); }
+  100% { background: rgba(196, 150, 210, 0); }
+}
+
+.cut-plan-table tbody tr.just-arrived td {
+  animation: cut-row-arrive 1.6s ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cut-plan-table tbody tr.just-arrived td {
+    animation: none;
+  }
+}
+
 /* 편집 렌즈의 컷 조작. 진단이 짚은 컷을 여기서 고친다. */
 .rail-cut-edit {
   margin: 0 14px 12px;
@@ -3690,13 +3800,6 @@
   cursor: default;
 }
 
-.rail-cut-edit-hint {
-  margin: 0 14px 12px;
-  color: rgba(255, 255, 255, 0.33);
-  font-size: 11px;
-  line-height: 1.5;
-}
-
 /* --- 패널 사이의 이음새 -------------------------------------------------
    컷과 컷 사이에 무엇이 있는지. 정한 것이 있을 때만 그린다 —
    전부 '컷 · 연속'인 기본값까지 표시하면 실제로 정한 것이 묻힌다. */
@@ -3738,7 +3841,10 @@
 .rail-fix-actions {
   display: flex;
   gap: 6px;
-  margin-top: 8px;
+  /* 카드 여백은 이제 본문 버튼이 갖는다. 조치 줄은 자기 여백을 스스로
+     댄다 — 위쪽은 본문 버튼이 이미 아래 여백을 두므로 0이다. */
+  margin: 0;
+  padding: 0 11px 10px;
 }
 
 .rail-fix-actions button {
@@ -3769,24 +3875,17 @@
 }
 
 .rail-fix-error {
-  margin: 8px 0 0;
+  margin: 0 11px 10px;
   color: rgba(230, 170, 170, 0.85);
   font-size: 11px;
 }
 
 .rail-fix {
-  margin-top: 8px;
+  margin: 0 11px 10px;
   padding: 10px;
   border: 1px solid rgba(150, 190, 210, 0.3);
   border-radius: 7px;
   background: rgba(150, 190, 210, 0.07);
-}
-
-.rail-fix-summary {
-  margin: 0 0 8px;
-  color: rgba(255, 255, 255, 0.82);
-  font-size: 11.5px;
-  font-weight: 700;
 }
 
 .rail-fix-edits {
@@ -4021,8 +4120,13 @@
 /* 컷 구성 점검. 서사가 먼저 짚는 자리다 — 그림이 없는 지금이 가장 싸다. */
 .narrative-rail-check {
   /* Request 바로 아래에 붙는다. 같은 칸의 연장이므로 배경도 같아야
-     한다 — 패널 배경(#101013)을 그대로 쓰면 둘이 갈라져 보인다. */
-  padding: 12px 14px 14px;
+     한다 — 패널 배경(#101013)을 그대로 쓰면 둘이 갈라져 보인다.
+     다만 배경이 같으면 Propose 줄과 점검 버튼이 한 덩어리로 읽혀
+     `Beat N · 전체 대본`이 점검에 걸린 말처럼 보인다. 감독이 묻는
+     쪽과 서사가 먼저 짚는 쪽은 다른 일이므로 선으로 가른다. */
+  margin-top: 14px;
+  padding: 14px 14px;
+  border-top: 1px solid rgba(255, 255, 255, 0.065);
   border-bottom: 1px solid rgba(255, 255, 255, 0.065);
   background: #0d0d10;
 }
@@ -4140,7 +4244,10 @@
 }
 
 /* 지적에서 제안으로. 읽고 끝나면 감독이 다시 옮겨 적어야 한다. */
-.narrative-rail-check-list li button {
+/* 조치 버튼(`제안 받기`)만. `.narrative-rail-check-open`은 지적 본문
+   전체를 감싼 버튼이라 여기에 걸리면 카드 안에 카드가 하나 더 생긴다 —
+   :not()으로 빼고 나머지 조치 버튼에만 테두리를 준다. */
+.narrative-rail-check-list li button:not(.narrative-rail-check-open) {
   margin-top: 7px;
   padding: 4px 10px;
   border: 1px solid rgba(245, 158, 11, 0.4);
@@ -4153,11 +4260,11 @@
   cursor: pointer;
 }
 
-.narrative-rail-check-list li button:hover:not(:disabled) {
+.narrative-rail-check-list li button:not(.narrative-rail-check-open):hover:not(:disabled) {
   background: rgba(245, 158, 11, 0.18);
 }
 
-.narrative-rail-check-list li button:disabled {
+.narrative-rail-check-list li button:not(.narrative-rail-check-open):disabled {
   opacity: 0.45;
   cursor: default;
 }
@@ -4175,10 +4282,11 @@
 .sb-script-action.is-flagged {
   /* 대본에서 지금 고른 지적이 걸린 줄. script-line-input은 기본
      border가 transparent라 왼쪽만 칠하면 폭이 어긋난다 — 전체
-     border를 주고 왼쪽만 두껍게 한다. */
-  border: 1px solid rgba(245, 158, 11, 0.3);
+     border를 주고 왼쪽만 두껍게 한다.
+     배경은 칠하지 않는다 — 아래에 제안 카드가 이미 서 있어서 줄까지
+     칠하면 한 지적에 강조가 둘이 된다. 읽는 것은 대본이다. */
+  border: 1px solid rgba(245, 158, 11, 0.55);
   border-left: 3px solid rgba(245, 158, 11, 0.85);
-  background: rgba(245, 158, 11, 0.09);
 }
 
 /* AI가 채운 줄이면서 지적도 걸린 경우. 지적 쪽을 앞세운다 —

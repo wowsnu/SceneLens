@@ -64,19 +64,22 @@ const SCRIPT_LINE_TYPES = [
 
 // Script 단계에서 대본을 그 자리에서 고친다. 별도 raw 편집기를 열고
 // 전체를 다시 붙여넣지 않아도 되고, beat 구조가 유지된다.
-// 샷 크기를 바꿔 풀리는 진단. 여기 없는 것은 두 종류다 — 컷을 나누거나
-// 합쳐야 하는 것(층위가 다르다)과 angle-flat(표에 앵글 칸이 없다).
+// 샷 크기를 바꿔 풀리는 진단. 여기 없는 것은 컷을 나누거나 합쳐야 하는
+// 것들이다 — 층위가 달라 rail의 나누기·합치기가 맡는다.
 const SHOT_FIXABLE = new Set([
   'jump-cut', 'size-run',
   'size-mismatch', 'no-establishing',
   'anchor-too-tight', 'approach-broken', 'peak-not-closest',
 ])
 
-const SEAM_ACTION_LABEL = {
-  split: '나눌 컷 보기',
-  merge: '두 컷 보기',
-  insert: '넣을 자리 보기',
-  seam: '이음새 보기',
+// 진단을 늘어놓는 순서. PROBLEM_LAYERS에 적힌 차례가 곧 좁은 층위에서
+// 넓은 층위로 가는 차례다(속성 → 컷 구성 → 컷 관계 → 씬 구조). 여기에
+// 순서를 다시 적지 않는 이유 — 두 벌이 되면 한쪽만 고쳐져 어긋난다.
+const LAYER_ORDER = Object.keys(PROBLEM_LAYERS)
+// 층위가 없는 진단은 맨 뒤로. 어디서 고칠지 모르는 것을 먼저 보여줄 이유가 없다.
+const layerRank = (layer) => {
+  const rank = LAYER_ORDER.indexOf(layer)
+  return rank === -1 ? LAYER_ORDER.length : rank
 }
 
 // 촬영·편집의 진단 카드. 문제의 층위를 밝힌다 (design_goal.md DG2:
@@ -246,9 +249,20 @@ function DiagnosisList({
     return <p className="rail-coverage-clear">{emptyLabel}</p>
   }
 
+  // 좁은 층위부터 넓은 층위로 읽힌다 (속성 → 컷 구성 → 컷 관계 → 씬 구조).
+  // 규칙이 발견한 순서대로 두면 층위가 뒤섞여, 어느 자리에서 고쳐야 하는지가
+  // 목록에서 드러나지 않는다 (design_goal.md DG2). 여기서 정렬하면
+  // DiagnosisList를 쓰는 모든 에이전트가 같은 순서를 갖는다.
+  //
+  // 같은 층위 안에서는 원래 순서를 지킨다 — 규칙이 컷 순서대로 찾으므로
+  // 그것이 곧 화면에 나오는 순서다.
+  const ordered = [...findings].sort((a, b) => (
+    layerRank(a.layer) - layerRank(b.layer)
+  ))
+
   return (
     <ul className="rail-coverage">
-      {findings.map((finding) => {
+      {ordered.map((finding) => {
         const layer = PROBLEM_LAYERS[finding.layer]
         // 샷 크기로 풀리는 진단만 촬영에 물을 수 있다. 컷을 나누거나
         // 합쳐야 하는 것은 층위가 다르다.
@@ -256,17 +270,25 @@ function DiagnosisList({
         const proposal = fixProposal?.findingId === finding.id ? fixProposal : null
         return (
           <li key={finding.id}>
-            {layer && (
-              <span className={`rail-layer-tag layer-${finding.layer}`} title={layer.hint}>
-                {layer.label}
-              </span>
-            )}
-            <strong>{finding.title}</strong>
-            <p>{finding.detail}</p>
-            {/* 데려다주기만 하면 무엇을 해야 하는지 사용자가 다시
-                알아내야 한다. 샷으로 풀리는 진단은 촬영에 수정본을 묻는다. */}
-            <div className="rail-fix-actions">
-              {canFix && (
+            {/* 카드 전체가 그 컷으로 가는 길이다. `표에서 보기` 버튼을
+                따로 두면 지적을 읽고 나서 누를 것을 한 번 더 찾아야 한다 —
+                지적은 언제나 어느 컷의 이야기이므로 데려다주는 것이 기본
+                동작이다. 실제 수정(수정본 받기)만 버튼으로 남는다. */}
+            <button
+              type="button"
+              className="rail-coverage-open"
+              onClick={() => onGoTo(finding)}
+            >
+              {layer && (
+                <span className={`rail-layer-tag layer-${finding.layer}`} title={layer.hint}>
+                  {layer.label}
+                </span>
+              )}
+              <strong>{finding.title}</strong>
+              <p>{finding.detail}</p>
+            </button>
+            {canFix && (
+              <div className="rail-fix-actions">
                 <button
                   type="button"
                   onClick={() => onRequestFix(finding)}
@@ -274,21 +296,19 @@ function DiagnosisList({
                 >
                   {fixPending === finding.id ? '촬영에 묻는 중…' : '수정본 받기'}
                 </button>
-              )}
-              <button type="button" className="ghost" onClick={() => onGoTo(finding)}>
-                {SEAM_ACTION_LABEL[finding.action] || '표에서 보기'}
-                {finding.cutIds.length > 1 && ` · ${finding.cutIds.length}`}
-              </button>
-            </div>
+              </div>
+            )}
 
             {canFix && fixError && fixPending !== finding.id && !proposal && (
               <p className="rail-fix-error">{fixError}</p>
             )}
 
-            {/* 수락해야 표에 들어간다. 무엇이 어떻게 바뀌는지 먼저 보인다. */}
+            {/* 수락해야 표에 들어간다. 무엇이 어떻게 바뀌는지 먼저 보인다.
+                summary는 두지 않는다 — 아래 각 컷의 reason과 같은 말을
+                한 번 더 하게 된다. 처방이 한 컷이면 완전히 겹치고, 여러
+                컷이어도 reason이 컷마다 짚어주므로 그쪽이 쓸모 있다. */}
             {proposal && (
               <div className="rail-fix">
-                {proposal.summary && <p className="rail-fix-summary">{proposal.summary}</p>}
                 <ul className="rail-fix-edits">
                   {proposal.edits.map((edit) => (
                     <li key={edit.cutId} className={edit.isTarget ? '' : 'is-ripple'}>
@@ -947,7 +967,6 @@ export default function StoryboardView() {
   const addCutPlanItem = useStore((s) => s.addCutPlanItem)
   const removeCutPlanItem = useStore((s) => s.removeCutPlanItem)
   const moveCutPlanItem = useStore((s) => s.moveCutPlanItem)
-  const dismissCutPlan = useStore((s) => s.dismissCutPlan)
   const acceptCutPlan = useStore((s) => s.acceptCutPlan)
 
   const [isEditingRaw, setIsEditingRaw] = useState(false)
@@ -956,6 +975,9 @@ export default function StoryboardView() {
   // 장면 전체 지시는 컷 플랜을 확인한 뒤 적용한다. 입력 중인 문장이
   // 이미 생성된 패널의 기준처럼 보이지 않도록 초안과 적용 값을 분리한다.
   const [scenePromptNoteDraft, setScenePromptNoteDraft] = useState(scenePromptNote)
+  // 기본은 접힘. 컷 플랜은 컷 수와 순서를 정하는 화면인데 입력칸이 표 위에
+  // 서 있으면 그것부터 채우게 된다. 필요할 때 열어서 쓴다.
+  const [sceneNoteOpen, setSceneNoteOpen] = useState(false)
   const [narrativeRequest, setNarrativeRequest] = useState('')
   // Script에서는 Narrative가 다음 단계를 안내한다. Cut plan에서는 표가 주 작업
   // 공간이므로 Agents rail과 개별 에이전트를 기본으로 접어 둔다. 단계별 상태를
@@ -1052,12 +1074,6 @@ export default function StoryboardView() {
   // 여러 컷을 함께 읽어야 보이는 문제. 컷 표는 한 행씩만 보여준다.
   // 아직 샷이 정해지지 않은 컷. 촬영이 할 일이 남았는지 보인다.
   const undecidedShots = cutPlan.filter((cut) => !cut.shotSize).length
-  // 진단은 발견이고 수정은 표에서 한다. 지목된 컷으로 데려다주기만 한다.
-  const goToFinding = (finding) => {
-    const target = cutPlan.find((cut) => cut.id === finding.cutIds[0])
-    if (target) setActiveBeat(target.beat)
-    setExpandedPromptCutId(null)
-  }
   // 아직 정하지 않은 씬 기준. 비워둔 것이 보여야 누락과 구분된다.
   const undecidedSceneFacts = activeSceneState.characters
     .reduce((count, character) => count + character.facts.filter((f) => f.open).length, 0)
@@ -1095,6 +1111,26 @@ export default function StoryboardView() {
   useEffect(() => {
     setScenePromptNoteDraft(scenePromptNote)
   }, [scenePromptNote])
+
+  // 컷 플랜이 처음 만들어지면 점검을 한 번 돌린다. 버튼을 눌러야만 오면
+  // 감독은 규칙 진단만 보고 다음 단계로 넘어가게 되고, AI가 짚어줄 수 있는
+  // 것은 누르지 않는 한 영영 나오지 않는다.
+  //
+  // 컷을 고칠 때마다 다시 부르지는 않는다 — 표를 만질 때마다 AI를 호출하면
+  // 느리고, 고치는 도중에 목록이 계속 바뀌면 무엇을 보고 있었는지 잃는다.
+  // 다시 보는 것은 버튼(`다시 점검`)이 맡는다.
+  //
+  // 첫 컷의 id로 어느 플랜을 봤는지 기억한다. `다시 나누기`로 플랜을 새로
+  // 뽑으면 id가 바뀌므로 그 플랜은 다시 한 번 점검한다. 컷을 나누거나
+  // 합치는 것으로는 첫 컷의 id가 바뀌지 않아 다시 부르지 않는다.
+  const autoCheckedPlanKey = useRef(null)
+  useEffect(() => {
+    if (cutStage !== 'cutplan' || cutPlan.length === 0) return
+    const planKey = cutPlan[0].id
+    if (autoCheckedPlanKey.current === planKey) return
+    autoCheckedPlanKey.current = planKey
+    requestNarrativeCheck('cutplan')
+  }, [cutStage, cutPlan, requestNarrativeCheck])
 
   useEffect(() => {
     if (!panelToolRequest || handledPanelToolRequestId.current === panelToolRequest.id) return
@@ -1171,6 +1207,32 @@ export default function StoryboardView() {
     coverages: sceneCoverages,
     scenes: scriptScenes,
   })
+  // 편집이 보여주는 진단 하나. 규칙으로 늘 계산되는 것(seamFindings)과
+  // 눌러야 오는 AI 점검이 섞이지만, 둘 다 컷 구성의 문제라 목록을 나누면
+  // 같은 종류를 두 군데서 읽게 된다.
+  //
+  // AI 지적을 DiagnosisList가 아는 모양으로 옮긴다. 필드 이름이 다를 뿐
+  // 가리키는 것은 같다 — 어느 컷의, 무엇이, 어떻게.
+  const editingFindings = [
+    ...seamFindings,
+    ...(narrativeCheck?.stage === 'cutplan' ? narrativeCheck.findings : [])
+      // 컷을 못 짚은 지적은 버린다. 데려다줄 자리가 없으면 목록에 있어도
+      // 사용자가 할 수 있는 것이 없다.
+      .filter((finding) => finding.cutIds?.length > 0)
+      .map((finding) => ({
+        id: `check-${finding.ruleId}`,
+        // DiagnosisList의 `수정본 받기`는 샷 크기로 풀리는 것만 받는다.
+        // AI 지적은 컷 구성의 문제라 거기 해당하지 않는다 — 표에서 보고
+        // 나누거나 합친다.
+        type: 'narrative-check',
+        layer: finding.layer || 'shot_structure',
+        title: NARRATIVE_RULE_LABELS[finding.ruleId] || '편집',
+        // 무엇이 문제인지만. suggestedAction까지 붙이면 두 문장이 한 줄에
+        // 들어가 카드가 길어지고, 조치는 아래 버튼이 이미 말한다.
+        detail: finding.finding,
+        cutIds: finding.cutIds,
+      })),
+  ]
   // 이 컷이 속한 씬의 기준. 없으면 기본값으로 떨어진다.
   // 상태 변화는 컷 id로 기록된다. 값을 읽을 때 순서로 옮길 표.
   const cutOrder = cutOrderOf(cutPlan)
@@ -1775,16 +1837,42 @@ export default function StoryboardView() {
     const cutId = finding.cutIds?.[0]
     if (!cutId) return
     const cut = cutPlan.find((item) => item.id === cutId)
-    if (cut) selectBeat(cut.beat)
+    if (cut) {
+      selectBeat(cut.beat)
+      // 접혀 있으면 그 행은 DOM에 아예 없다. 펼치지 않고 scrollIntoView를
+      // 부르면 아무 일도 일어나지 않는다 — 눌러도 반응이 없던 이유다.
+      // Beat와 씬 두 축으로 접히므로 둘 다 푼다.
+      setCollapsedCutBeats((current) => current.filter((beat) => beat !== cut.beat))
+      const opening = openingBeatOf(cut.beat)
+      if (opening !== null) {
+        setCollapsedScenes((current) => current.filter((beat) => beat !== opening))
+      }
+    }
     // 옮기기만 하면 어느 줄인지 모른다. 그 컷을 골라 둔다.
     setSelectedCutId(cutId)
+    // 펼쳐 둔 프롬프트가 있으면 닫는다. 그 자리에 긴 칸이 열려 있으면
+    // 짚어준 컷이 화면 밖으로 밀린다.
+    setExpandedPromptCutId(null)
     logScaffold({ feature: 'diagnosis', action: 'accept', target: cutId, lens: 'editing' })
-    window.setTimeout(() => {
-      document.querySelector(`[data-cut-id="${cutId}"]`)?.scrollIntoView({
-        behavior: 'smooth',
-        block: 'center',
-      })
-    }, 80)
+    // 접힌 것을 펴는 re-render가 끝나야 행이 DOM에 생긴다. 고정 지연으로
+    // 기다리면 느린 프레임에서 빈손으로 돌아오므로, 나타날 때까지 몇 번
+    // 다시 본다.
+    let tries = 0
+    const reveal = () => {
+      const row = document.querySelector(`[data-cut-id="${cutId}"]`)
+      if (!row) {
+        if (tries++ < 10) window.setTimeout(reveal, 50)
+        return
+      }
+      row.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      // 고른 표시(왼쪽 보라 선)는 조용해서, 표가 길면 어디로 갔는지
+      // 눈이 못 따라온다. 도착한 순간에만 한 번 깜빡인다.
+      row.classList.remove('just-arrived')
+      // 리플로우를 강제해야 같은 컷을 두 번 눌러도 다시 재생된다.
+      void row.offsetWidth
+      row.classList.add('just-arrived')
+    }
+    window.setTimeout(reveal, 60)
   }
 
   const requestSuggestionForFinding = (finding, stage = 'cutplan') => {
@@ -2020,40 +2108,57 @@ export default function StoryboardView() {
 
           {cutPlan.length > 0 && cutStage === 'cutplan' && isExpanded && !drawingWorkspaceOpen && (
             <section className="cut-plan-review" aria-label="Cut plan">
-              <header>
-                <span className="script-draft-mark" aria-hidden="true">N</span>
-                <div>
-                  <span>줄콘티 · Cut plan{cutPlanError ? ' · 규칙 기반' : ''}</span>
-                  <strong>
-                    {cutPlanSkipped ? '검토하지 않고 넘어간 컷 구성' : '컷 분해 제안'}
-                  </strong>
-                  <p>
-                    {cutPlanSkipped
-                      ? '컷 분해를 건너뛰어 자동 생성했습니다. 검토되지 않은 채 넘어갔습니다.'
-                      : '그림으로 가기 전에 컷 수와 순서를 먼저 정합니다. 대본은 바뀌지 않습니다.'}
-                  </p>
-                  {/* 모델을 못 불렀으면 밝힌다. 규칙 기반 결과를 모델이
-                      만든 것처럼 보이게 두지 않는다. */}
-                  {cutPlanError && (
-                    <p className="structure-draft-fallback">
-                      AI 호출에 실패해 규칙 기반으로 나눴습니다 · {cutPlanError}
-                    </p>
-                  )}
-                </div>
-                <div className="script-draft-actions">
-                  <button type="button" onClick={backToScript}>Back to script</button>
-                  <button type="button" onClick={requestCutPlan}>Again</button>
-                  {/* 컷 삭제는 컷 플랜 화면 안에서만. rail의 보조 버튼과
-                      역할이 섞이지 않게 한다. */}
-                  <button type="button" onClick={dismissCutPlan}>Discard</button>
-                  <button type="button" className="use-draft" onClick={acceptCutPlan}>
-                    Accept cut plan
-                  </button>
-                </div>
-              </header>
+              {/* 제목 블록을 없앴다. 상단 단계 nav가 이미 `컷 플랜`을
+                  가리키고 있어 같은 말이 두 번 나왔다. 표만 남긴다.
+                  다만 출처를 밝히는 줄은 남는다 — 규칙 기반 결과나
+                  검토를 건너뛴 것을 모델이 정한 것처럼 보이게 두지 않는다. */}
+              {(cutPlanSkipped || cutPlanError) && (
+                <p className="cut-plan-origin-note">
+                  {cutPlanSkipped
+                    ? '컷 분해를 건너뛰어 자동 생성했습니다. 검토되지 않은 채 넘어갔습니다.'
+                    : `AI 호출에 실패해 규칙 기반으로 나눴습니다 · ${cutPlanError}`}
+                </p>
+              )}
+
+              {/* 되돌리는 쪽만 남는다. 확정은 rail 아래 `다음 단계`로
+                  옮겼다 — 대본 단계와 같은 자리에서 나가야 단계마다
+                  길을 다시 찾지 않는다.
+                  `장면 전체 지시`는 접었다 — 컷을 먼저 정하는 화면인데
+                  입력칸이 표 위에 서 있으면 그것부터 채우게 된다.
+                  값은 지워지지 않고 열면 그대로 있다. */}
+              {/* 다시 나누는 동안 이 화면에 머문다. 표는 아직 이전 것이므로
+                  무엇을 기다리는지 밝힌다 — 아니면 눌렀는데 아무 일도 없는
+                  것처럼 보이고, 잠시 뒤 표가 소리 없이 바뀐다. */}
+              {cutPlanRunPending && (
+                <p className="cut-plan-rerun-note">
+                  {sceneStatePending
+                    ? '인물·공간을 읽는 중…'
+                    : cutPlanPending ? '컷을 다시 나누는 중…' : '샷을 정하는 중…'}
+                  {' '}지금 표는 이전 결과입니다.
+                </p>
+              )}
+
+              <div className="cut-plan-toolbar">
+                <button type="button" onClick={backToScript} disabled={cutPlanRunPending}>
+                  대본으로
+                </button>
+                <button type="button" onClick={requestCutPlan} disabled={cutPlanRunPending}>
+                  {cutPlanRunPending ? '나누는 중…' : '다시 나누기'}
+                </button>
+                <button
+                  type="button"
+                  className={`cut-plan-scene-note-toggle${sceneNoteOpen ? ' is-open' : ''}${scenePromptNote.trim() ? ' has-value' : ''}`}
+                  aria-expanded={sceneNoteOpen}
+                  onClick={() => setSceneNoteOpen((open) => !open)}
+                >
+                  장면 전체 지시
+                  {!sceneNoteOpen && scenePromptNote.trim() && <i aria-hidden="true" />}
+                </button>
+              </div>
 
               {/* 컷을 확인한 뒤 추가하는 공통 연출 기준이다. 대본 단계의
                   sceneIntention과 달리, 컷 분해 자체는 다시 바꾸지 않는다. */}
+              {sceneNoteOpen && (
               <div className="cut-plan-scene-note">
                 <div className="cut-plan-scene-note-heading">
                   <label htmlFor="scene-prompt-note">장면 전체 지시</label>
@@ -2080,6 +2185,7 @@ export default function StoryboardView() {
                   </button>
                 </div>
               </div>
+              )}
 
               <div className="cut-plan-table-wrap">
                 <table className="cut-plan-table">
@@ -3060,6 +3166,11 @@ export default function StoryboardView() {
 
           {narrativeRailOpen ? (
             <div className="rail-agents">
+            {/* 대본 단계에서만. 컷 플랜에서는 대본을 바꾸지 않으므로
+                Script collaborator가 할 일이 없다 — 남겨 두면 컷을 보다가
+                대본을 고치게 되고, 그 단계에서 정한 컷 분해와 어긋난다.
+                컷 구성 점검은 Editing으로 옮겼다. */}
+            {cutStage === 'script' && (
             <section className={`rail-agent${openAgent === 'narrative' ? ' open' : ''}`}>
               <button
                 type="button"
@@ -3141,10 +3252,9 @@ export default function StoryboardView() {
               </div>
 
               {/* Request가 감독이 묻는 쪽이면 이쪽은 서사가 먼저 짚는
-                  쪽이다. 같은 일의 두 방향이므로 붙여 둔다. */}
-              {cutStage === 'script'
-                ? scriptLines.length > 0 && renderNarrativeCheck('script')
-                : cutPlan.length > 0 && renderNarrativeCheck('cutplan')}
+                  쪽이다. 같은 일의 두 방향이므로 붙여 둔다.
+                  컷 구성 점검은 Editing으로 갔다 — 여기는 대본만 본다. */}
+              {scriptLines.length > 0 && renderNarrativeCheck('script')}
 
               {/* 요청을 넘긴 뒤 칸이 비므로, 무엇이 진행 중인지 여기서
                   보인다. 아니면 아무 일도 없는 것처럼 보인다. */}
@@ -3198,6 +3308,7 @@ export default function StoryboardView() {
               </div>
               )}
             </section>
+            )}
 
             {/* 컷 플랜부터는 Narrative 혼자가 아니다. 촬영 구도 컬럼을
                 서사 에이전트가 정하는 것이 이상하듯, 씬 기준은 미장센이
@@ -3224,13 +3335,8 @@ export default function StoryboardView() {
                 </button>
                 {openAgent === 'mise' && (
                 <div className="rail-agent-body">
-                  <p className="rail-lens-lead">
-                    컷마다 프롬프트를 따로 만들기 때문에, 그냥 두면 컷 1의
-                    재인과 컷 15의 재인이 다른 사람으로 그려집니다. 인물과
-                    공간의 생김새를 씬 단위로 한 번 정해 모든 컷에 같이
-                    넣습니다.
-                  </p>
-
+                  {/* 리드 문장은 두지 않는다. 에이전트 이름과 아래 내용이
+                      이미 무엇을 하는 자리인지 말한다. */}
                   {/* 대본에 있는 것만 읽는다. 없는 것은 지어내지 않고
                       '미정'으로 남긴다 — 무엇이 안 정해졌는지 보여야
                       창작자가 판정할 수 있다 (DG1 P2). */}
@@ -3240,7 +3346,11 @@ export default function StoryboardView() {
                     onClick={requestSceneStates}
                     disabled={sceneStatePending || screenplay.length === 0}
                   >
-                    {sceneStatePending ? '읽는 중…' : '대본에서 인물·공간 읽기'}
+                    {/* 컷 플랜을 만들 때 이미 한 번 읽었다. 촬영·편집의
+                        버튼과 같이 여기서는 다시 읽는 것이 된다. */}
+                    {sceneStatePending
+                      ? '읽는 중…'
+                      : hasActiveSceneState ? '대본에서 다시 읽기' : '대본에서 인물·공간 읽기'}
                   </button>
                   {sceneStateError && (
                     <p className="rail-lens-error">AI 호출 실패 · {sceneStateError}</p>
@@ -3330,6 +3440,12 @@ export default function StoryboardView() {
                     <strong>Cinematography</strong>
                     <span>Coverage</span>
                   </div>
+                  {/* 샷 미정은 진단 카드로 내지 않는다(고칠 자리가 카드가
+                      아니라 아래 버튼이다). 대신 배지로 알린다 — 접어 두면
+                      아무 데도 안 보여서 미정인 채로 넘어가게 된다. */}
+                  {undecidedShots > 0 && (
+                    <em className="rail-agent-badge is-warn">{undecidedShots}컷 미정</em>
+                  )}
                   {coverageFindings.length > 0 && (
                     <em className="rail-agent-badge is-open">{coverageFindings.length}</em>
                   )}
@@ -3339,11 +3455,8 @@ export default function StoryboardView() {
                 </button>
                 {openAgent === 'camera' && (
                 <div className="rail-agent-body">
-                  <p className="rail-lens-lead">
-                    컷을 어떻게 찍을지 정합니다. 컷 하나 안의 문제를 보고,
-                    이어 붙였을 때의 문제는 편집이 봅니다.
-                  </p>
-
+                  {/* 리드 문장은 두지 않는다. 에이전트 이름과 아래 내용이
+                      이미 무엇을 하는 자리인지 말한다. */}
                   {/* 샷을 정하는 것이 촬영의 몫이다. 줄콘티는 컷만 나눈다. */}
                   <button
                     type="button"
@@ -3363,10 +3476,13 @@ export default function StoryboardView() {
                     </p>
                   )}
 
+                  {/* 편집과 같은 길을 쓴다 — 접힌 것을 펴고, 그 컷으로
+                      옮기고, 골라 두고, 한 번 깜빡인다. 진단이 짚은 컷을
+                      찾아가는 일은 렌즈마다 다를 이유가 없다. */}
                   <DiagnosisList
                     findings={coverageFindings}
                     emptyLabel="지금 구성에서 걸리는 것이 없습니다."
-                    onGoTo={goToFinding}
+                    onGoTo={goToFindingCut}
                     onRequestFix={requestShotFix}
                     fixPending={shotFixPending}
                     fixProposal={shotFixProposal}
@@ -3394,8 +3510,8 @@ export default function StoryboardView() {
                     <strong>Editing</strong>
                     <span>Seams</span>
                   </div>
-                  {seamFindings.length > 0 && (
-                    <em className="rail-agent-badge is-open">{seamFindings.length}</em>
+                  {editingFindings.length > 0 && (
+                    <em className="rail-agent-badge is-open">{editingFindings.length}</em>
                   )}
                   <svg className="rail-agent-caret" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
                     <path d="m6 9 6 6 6-6" />
@@ -3403,19 +3519,37 @@ export default function StoryboardView() {
                 </button>
                 {openAgent === 'editing' && (
                 <div className="rail-agent-body">
-                  <p className="rail-lens-lead">
-                    컷은 하나씩 보면 괜찮아도 이어 붙이면 문제가 되기도 합니다.
-                    짚어준 컷은 아래에서 합치거나 나눌 수 있습니다.
-                  </p>
-
-                  {/* DG2 P1의 병합·분할. 지금까지 Panels에만 있었는데,
-                      컷 구성을 바꾸는 일은 컷 플랜에서 하는 것이 맞다. */}
-                  {!selectedCutId && (
-                    <p className="rail-cut-edit-hint">
-                      표에서 컷을 클릭하면 여기서 나누거나 합칠 수 있습니다.
+                  {/* 리드 문장은 두지 않는다. 에이전트 이름(Editing · Seams)과
+                      아래 진단이 이미 무엇을 보는 자리인지 말한다. */}
+                  {/* 점검은 컷 플랜이 들어올 때 이미 한 번 돌았다. 이 버튼은
+                      컷을 고친 뒤 다시 보기 위한 것이다 — 그래서 `다시`다.
+                      규칙 진단과 AI 지적은 같은 종류(컷 구성의 문제)이므로
+                      목록을 나누지 않고 한 곳에 쌓는다. */}
+                  <button
+                    type="button"
+                    className="rail-lens-primary is-editing"
+                    onClick={() => requestNarrativeCheck('cutplan')}
+                    disabled={narrativeCheckPending || cutPlan.length === 0}
+                  >
+                    {narrativeCheckPending ? '컷 구성 보는 중…' : '컷 구성 다시 점검'}
+                  </button>
+                  {narrativeCheckError && (
+                    <p className="rail-lens-error">
+                      AI 호출 실패 · {narrativeCheckError}
                     </p>
                   )}
+                  {/* 지적이 하나도 없을 때만 점검이 돌았다는 것을 알린다.
+                      지적이 있으면 목록이 그 자체로 결과다 — 총평까지 얹으면
+                      같은 말을 두 번 읽는다. */}
+                  {narrativeCheck?.stage === 'cutplan' && !narrativeCheckPending
+                    && narrativeCheck.findings.length === 0 && (
+                    <p className="rail-check-summary">걸리는 것이 없습니다.</p>
+                  )}
 
+                  {/* DG2 P1의 병합·분할. 지금까지 Panels에만 있었는데,
+                      컷 구성을 바꾸는 일은 컷 플랜에서 하는 것이 맞다.
+                      컷을 고르기 전 안내 문구는 두지 않는다 — 아무것도
+                      할 수 없는 상태에서 자리만 차지한다. */}
                   {selectedCutId && (() => {
                     const index = cutPlan.findIndex((cut) => cut.id === selectedCutId)
                     const cut = cutPlan[index]
@@ -3447,10 +3581,13 @@ export default function StoryboardView() {
                     )
                   })()}
 
+                  {/* onGoTo는 컷을 골라 두는 쪽을 쓴다 — 위의 나누기·합치기가
+                      고른 컷에 걸리므로, beat만 옮기면 짚어준 자리에 도착해도
+                      고칠 것이 열리지 않는다. */}
                   <DiagnosisList
-                    findings={seamFindings}
+                    findings={editingFindings}
                     emptyLabel="지금 이음새에서 걸리는 것이 없습니다."
-                    onGoTo={goToFinding}
+                    onGoTo={goToFindingCut}
                     onRequestFix={requestShotFix}
                     fixPending={shotFixPending}
                     fixProposal={shotFixProposal}
@@ -3466,7 +3603,7 @@ export default function StoryboardView() {
                 어느 에이전트를 열어 두었든 같은 자리에 있어야
                 이 단계에서 나가는 길로 읽힌다. */}
             <section className="narrative-rail-guidance">
-              <span>Next step</span>
+              <span>다음 단계</span>
               {/* 대본은 주어진 것에서 시작한다. 다음 단계는 컷 분해다. */}
               {/* 이야기 한 덩어리로 들어왔으면 씬·비트부터 세운다.
                   컷을 나누려면 그 단위가 있어야 한다. */}
@@ -3503,13 +3640,43 @@ export default function StoryboardView() {
                       onClick={cutPlan.length > 0 ? clearCutPlanStageOverride : requestCutPlan}
                       disabled={cutPlanRunPending}
                     >
-                      {cutPlanPending
-                        ? '컷 나누는 중…'
-                        : cutPlanRunPending
-                          ? '샷 정하는 중…'
-                          : cutPlan.length > 0 ? '컷 플랜 이어서' : '컷 플랜 만들기'}
+                      {sceneStatePending
+                        ? '인물·공간 읽는 중…'
+                        : cutPlanPending
+                          ? '컷 나누는 중…'
+                          : cutPlanRunPending
+                            ? '샷 정하는 중…'
+                            : cutPlan.length > 0 ? '컷 플랜 이어서' : '컷 플랜 만들기'}
                     </button>
                   )}
+                </>
+              ) : cutStage === 'cutplan' ? (
+                <>
+                  {/* 대본 단계와 같은 자리에서 다음 단계로 나간다. 헤더에
+                      두면 단계마다 나가는 길이 다른 자리에 있어, 감독이
+                      매번 찾아야 한다. 되돌리는 버튼(Back/Again/Discard)은
+                      헤더에 남는다 — 나가는 길과 섞이면 안 된다. */}
+                  <p>
+                    컷 수와 순서를 확인했으면 확정합니다. 이어서 촬영이 각
+                    컷의 샷을 정합니다.
+                  </p>
+                  {/* 미정인 채로 확정하면 그 컷은 샷 없이 그림으로 간다.
+                      막지는 않는다 — 일부러 비워 둘 수도 있다(DG1 P3의
+                      위임). 다만 모르고 넘어가지는 않게 한다. */}
+                  {undecidedShots > 0 && (
+                    <p className="narrative-rail-caution">
+                      아직 샷을 안 정한 컷이 {undecidedShots}개 있습니다.
+                      촬영에서 정하거나, 이대로 두려면 그대로 확정하세요.
+                    </p>
+                  )}
+                  <button
+                    type="button"
+                    className="narrative-rail-primary"
+                    onClick={acceptCutPlan}
+                    disabled={cutPlanRunPending}
+                  >
+                    {cutPlanRunPending ? '샷 정하는 중…' : '컷 플랜 확정'}
+                  </button>
                 </>
               ) : (
                 <>

@@ -18,7 +18,6 @@ function App() {
   const setLeftPanelVisible = useStore((s) => s.setLeftPanelVisible)
   const centerTab = useStore((s) => s.centerTab)
   const setCenterTab = useStore((s) => s.setCenterTab)
-  const requestScriptEditor = useStore((s) => s.requestScriptEditor)
   const drawingWorkspaceOpen = useStore((s) => s.drawingWorkspaceOpen)
   const openDrawingWorkspace = useStore((s) => s.openDrawingWorkspace)
   const closeDrawingWorkspace = useStore((s) => s.closeDrawingWorkspace)
@@ -142,16 +141,6 @@ function App() {
           <section className={`panel-container left-panel ${!leftPanelVisible ? 'collapsed' : ''} ${maximizedPanel === 'left' ? 'maximized' : ''} ${drawingFocused ? 'panel-hidden' : ''}`}>
             <div className="panel-header">
               {leftPanelVisible && <span className="panel-title">📜 NARRATIVE</span>}
-              {leftPanelVisible && (
-                <button
-                  className="panel-control-btn"
-                  onClick={() => requestScriptEditor()}
-                  style={{ marginLeft: 'auto' }}
-                  title="Edit Script"
-                >
-                  Edit Script
-                </button>
-              )}
               {/* 화살표만 두면 어디로 가는 버튼인지 알 수 없다. 이 전환은
                   '패널을 넓게 보기'와 '검토 화면으로 가기'라는 두 가지 일이다. */}
               {maximizedPanel === 'left' ? (
@@ -162,7 +151,7 @@ function App() {
                     setMaximizedPanel(null)
                     setLeftPanelVisible(false)
                   }}
-                  style={{ marginLeft: leftPanelVisible ? 8 : 'auto' }}
+                  style={{ marginLeft: 'auto' }}
                   title="검토 화면(Decision Board)으로"
                 >
                   검토하기 →
@@ -184,7 +173,7 @@ function App() {
                       if (!leftPanelVisible) setLeftPanelVisible(true)
                       else setMaximizedPanel('left')
                     }}
-                    style={{ marginLeft: leftPanelVisible ? 8 : 'auto' }}
+                    style={{ marginLeft: 'auto' }}
                     title={drawingWorkspaceOpen ? '그리기를 끝내고 패널로' : '스토리보드를 넓게 보기'}
                   >
                     ← 스토리보드

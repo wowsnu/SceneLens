@@ -913,8 +913,8 @@ const diagnoseAgainstCoverage = (cutPlan, coverages, scenes) => {
         id: `cov-anchor-${scene.id}`,
         type: 'anchor-too-tight',
         layer: 'shot_relation',
-        title: `공간을 보여줄 컷인데 좁게 잡혔습니다 · ${tightAnchors.map(label).join(', ')}`,
-        detail: '여기서 공간을 보여주려 했는데 화면이 좁습니다. 관객이 어디인지 알기 어려워집니다.',
+        title: `컷 ${tightAnchors.map(label).join(', ')} · 공간을 보여줄 컷인데 화면이 좁습니다`,
+        detail: '이 컷에서 장소를 보여주기로 했는데 인물에 붙어 있습니다. 넓게 잡아야 관객이 어디인지 압니다.',
         cutIds: tightAnchors,
       })
     }
@@ -933,8 +933,8 @@ const diagnoseAgainstCoverage = (cutPlan, coverages, scenes) => {
         id: `cov-approach-${scene.id}`,
         type: 'approach-broken',
         layer: 'shot_relation',
-        title: `좁혀 가다가 다시 넓어집니다 · ${widened.map(label).join(', ')}`,
-        detail: '가장 중요한 컷으로 좁혀 가는 구간인데 중간에 다시 넓어집니다. 일부러 그런 것이면 그대로 두세요.',
+        title: `컷 ${widened.map(label).join(', ')} · 점점 다가가다가 갑자기 물러납니다`,
+        detail: '인물에게 다가가며 긴장을 쌓는 중인데 이 컷에서 화면이 다시 넓어집니다. 일부러 숨을 돌리려던 것이면 그대로 두세요.',
         cutIds: widened,
       })
     }
@@ -952,8 +952,8 @@ const diagnoseAgainstCoverage = (cutPlan, coverages, scenes) => {
           id: `cov-peak-${scene.id}`,
           type: 'peak-not-closest',
           layer: 'shot_relation',
-          title: `가장 중요한 컷보다 가까운 컷이 있습니다 · ${closer.slice(0, 3).map(label).join(', ')}`,
-          detail: `가장 중요한 컷은 ${label(coverage.peakCutId)}입니다. 다른 컷을 더 가까이 잡으면 이 컷이 도드라지지 않습니다.`,
+          title: `컷 ${label(coverage.peakCutId)}이(가) 가장 클 차례인데 묻힙니다`,
+          detail: `이 장면에서 제일 힘을 줄 컷은 ${label(coverage.peakCutId)}입니다. 그런데 컷 ${closer.slice(0, 3).map(label).join(', ')}을(를) 그만큼 크게 잡아서, 정작 ${label(coverage.peakCutId)}이(가) 특별해 보이지 않습니다.`,
           cutIds: [coverage.peakCutId, ...closer],
         })
       }
@@ -969,20 +969,11 @@ export const diagnoseCoverage = (cutPlan = []) => {
   if (cutPlan.length === 0) return []
   const findings = []
 
-  // 1. 샷이 정해지지 않은 컷. 촬영이 아직 할 일이 남았다.
-  const undecided = cutPlan.filter((cut) => !cut.shotSize)
-  if (undecided.length > 0) {
-    findings.push({
-      id: 'shots-undecided',
-      type: 'shots-undecided',
-      layer: 'attribute',
-      title: `샷을 아직 안 정한 컷 ${undecided.length}개`,
-      detail: '샷 크기와 앵글이 비어 있어 이대로는 그림을 그릴 수 없습니다.',
-      cutIds: undecided.map((cut) => cut.id),
-    })
-  }
+  // 샷 미정은 진단으로 내지 않는다. `샷 정하기 · N컷 미정` 버튼이 같은
+  // 것을 이미 말하고, 진단으로 두면 여기서는 고칠 수 없는 카드가 하나
+  // 늘 뿐이다 — 진단은 그 자리에서 처분할 수 있는 것만 짚는다.
 
-  // 2. 컷 내용과 샷 크기가 어긋난다. 손에 든 것이 결정적인데 넓게 잡거나,
+  // 1. 컷 내용과 샷 크기가 어긋난다. 손에 든 것이 결정적인데 넓게 잡거나,
   //    공간을 세워야 하는데 좁게 잡은 경우다.
   const DETAIL_WORDS = ['손', '표정', '눈', '얼굴', '카드', '버튼', '리모컨', '쥔', '움켜']
   const SPACE_WORDS = ['공간', '방', '전체', '멀리', '들어온다', '거리']
@@ -1013,24 +1004,12 @@ export const diagnoseCoverage = (cutPlan = []) => {
     }
   })
 
-  // 3. 화면에 인물이 둘 이상인데 관계를 만드는 앵글이 아니다.
-  cutPlan.forEach((cut) => {
-    if (!cut.shotSize || !cut.angle) return
-    const cast = (cut.characters || '').split(',').map((n) => n.trim()).filter(Boolean)
-    const rank = SHOT_SIZE_ORDER.indexOf(cut.shotSize)
-    if (cast.length >= 2 && rank >= 3 && cut.angle === 'Eye level') {
-      findings.push({
-        id: `angle-flat-${cut.id}`,
-        type: 'angle-flat',
-        layer: 'attribute',
-        title: `컷 ${cut.beat + 1}-${cut.beatOrder} · 두 사람이 나오는데 구도가 밋밋합니다`,
-        detail: '둘이 마주 보는 장면인데 정면 눈높이라 관계가 안 보입니다. 어깨 너머로 잡거나 앵글을 바꿔보세요.',
-        cutIds: [cut.id],
-      })
-    }
-  })
+  // 앵글이 밋밋한 컷(angle-flat)도 내지 않는다. 표에 앵글 칸이 없어서
+  // 짚어줘도 고칠 자리가 없고, 촬영에 수정본을 물을 수도 없다
+  // (SHOT_FIXABLE은 샷 크기로 풀리는 것만 받는다).
+  // 앵글을 표에서 다룰 수 있게 되면 그때 되살린다.
 
-  // 4. 공간을 세우는 컷 없이 시작하면 관객은 어디인지 모른다.
+  // 2. 공간을 세우는 컷 없이 시작하면 관객은 어디인지 모른다.
   //    씬 범위의 문제라 촬영이 짚는다 — 한 컷을 고쳐서 될 일이 아니다.
   const decided = cutPlan.filter((cut) => cut.shotSize)
   if (decided.length > 0) {
@@ -1040,8 +1019,8 @@ export const diagnoseCoverage = (cutPlan = []) => {
         id: 'no-establishing',
         type: 'no-establishing',
         layer: 'scene_structure',
-        title: '공간을 세우는 컷 없음',
-        detail: '컷이 전부 좁아서 관객이 여기가 어디인지 알 수 없습니다.',
+        title: '여기가 어디인지 보여주는 컷이 없습니다',
+        detail: '컷이 전부 인물에 붙어 있어서, 관객은 장소를 모른 채 장면을 봅니다. 넓게 잡은 컷을 하나 넣어보세요.',
         cutIds: [cutPlan[0].id],
       })
     }
@@ -1067,8 +1046,8 @@ const diagnoseShotFlow = (cutPlan, coverages, scenes) => {
           id: `run-${cutPlan[runStart].id}`,
           type: 'size-run',
           layer: 'shot_relation',
-          title: `${cutPlan[runStart].shotSize} ${run}컷 연속`,
-          detail: '크기가 같으면 컷이 넘어간 것이 화면에서 잘 안 보입니다.',
+          title: `같은 크기로 ${run}컷이 이어집니다`,
+          detail: `${cutPlan[runStart].shotSize}가 계속되면 화면이 그대로인 것처럼 보여서, 관객은 컷이 넘어간 줄 모릅니다.`,
           cutIds: cutPlan.slice(runStart, i).map((cut) => cut.id),
         })
       }
@@ -1089,8 +1068,8 @@ const diagnoseShotFlow = (cutPlan, coverages, scenes) => {
         id: `jump-${cut.id}`,
         type: 'jump-cut',
         layer: 'shot_relation',
-        title: `컷 ${prev.beat + 1}-${prev.beatOrder} → ${cut.beat + 1}-${cut.beatOrder} 점프컷 위험`,
-        detail: '앞 컷과 크기도 앵글도 거의 같아서, 이어 붙이면 화면이 툭 튑니다.',
+        title: `컷 ${prev.beat + 1}-${prev.beatOrder} → ${cut.beat + 1}-${cut.beatOrder} · 이어 붙이면 화면이 툭 튑니다`,
+        detail: '두 컷의 크기도 앵글도 거의 같습니다. 이럴 때는 화면이 자연스럽게 넘어가지 않고 살짝 뛴 것처럼 보입니다.',
         cutIds: [prev.id, cut.id],
       })
     }
@@ -1176,8 +1155,8 @@ export const diagnoseSeams = (cutPlan = [], screenplay = [], {
         id: `dense-${beat}`,
         type: 'compressed',
         layer: 'shot_structure',
-        title: `Beat ${beat + 1} · 행동 ${actions.length}개가 컷 하나에`,
-        detail: '대본은 여러 단계로 적혀 있는데 컷이 하나입니다. 나눠야 순서가 보입니다.',
+        title: `Beat ${beat + 1} · 행동 ${actions.length}개가 컷 하나에 담겼습니다`,
+        detail: '대본에는 여러 단계로 적혀 있는데 컷이 하나뿐입니다. 한 장에 다 담으면 무엇이 먼저인지 안 보입니다. 나눠보세요.',
         cutIds: inBeat.map((cut) => cut.id),
         action: 'split',
       })
@@ -1194,8 +1173,8 @@ export const diagnoseSeams = (cutPlan = [], screenplay = [], {
         id: `dup-${cut.id}`,
         type: 'duplicate',
         layer: 'shot_relation',
-        title: `컷 ${prev.beat + 1}-${prev.beatOrder} · ${cut.beat + 1}-${cut.beatOrder} 내용 같음`,
-        detail: '두 컷이 같은 것을 담고 있습니다. 하나로 합치거나 한쪽을 다시 쓰세요.',
+        title: `컷 ${prev.beat + 1}-${prev.beatOrder}과(와) ${cut.beat + 1}-${cut.beatOrder}이(가) 같은 내용입니다`,
+        detail: '두 컷이 같은 것을 담고 있어서 하나는 없어도 됩니다. 합치거나 한쪽을 다시 써보세요.',
         cutIds: [prev.id, cut.id],
         action: 'merge',
       })
@@ -1211,8 +1190,8 @@ export const diagnoseSeams = (cutPlan = [], screenplay = [], {
       id: `gap-${beat}`,
       type: 'skipped-beat',
       layer: 'shot_structure',
-      title: `Beat ${beat + 1}에 컷이 없음`,
-      detail: '대본에는 있는데 컷으로 나뉘지 않았습니다. 그대로 두면 화면에서 사라집니다.',
+      title: `Beat ${beat + 1}이(가) 컷 없이 넘어갔습니다`,
+      detail: '대본에는 있는데 컷이 하나도 없습니다. 이대로 그리면 이 대목은 화면에 안 나옵니다.',
       cutIds: near.map((cut) => cut.id),
       action: 'insert',
     })
@@ -1229,8 +1208,8 @@ export const diagnoseSeams = (cutPlan = [], screenplay = [], {
         id: `elapsed-${cut.id}`,
         type: 'unmarked-elapsed',
         layer: 'shot_relation',
-        title: `컷 ${cutPlan[index - 1].beat + 1}-${cutPlan[index - 1].beatOrder} → ${cut.beat + 1}-${cut.beatOrder} 경과가 안 보임`,
-        detail: '시간이 흘렀다고 적었지만 그냥 컷으로 이어집니다. 관객은 연속으로 읽습니다.',
+        title: `컷 ${cutPlan[index - 1].beat + 1}-${cutPlan[index - 1].beatOrder} → ${cut.beat + 1}-${cut.beatOrder} · 시간이 흐른 게 안 보입니다`,
+        detail: '시간이 지났다고 적어 두었지만 화면은 그냥 이어집니다. 관객은 바로 다음 순간으로 읽습니다.',
         cutIds: [cutPlan[index - 1].id, cut.id],
         action: 'seam',
       })
@@ -1249,8 +1228,8 @@ export const diagnoseSeams = (cutPlan = [], screenplay = [], {
         id: `elision-${cut.id}`,
         type: 'unmarked-elision',
         layer: 'shot_relation',
-        title: `컷 ${prev.beat + 1}-${prev.beatOrder} → ${cut.beat + 1}-${cut.beatOrder} 생략이 안 보임`,
-        detail: `"${seam.elision}"을 건너뛰었지만 화면에는 연속으로 보입니다.`,
+        title: `컷 ${prev.beat + 1}-${prev.beatOrder} → ${cut.beat + 1}-${cut.beatOrder} · 건너뛴 게 안 보입니다`,
+        detail: `"${seam.elision}"을 건너뛰기로 했는데, 화면만 보면 그냥 이어지는 것처럼 읽힙니다.`,
         cutIds: [prev.id, cut.id],
         action: 'seam',
       })
@@ -1851,7 +1830,12 @@ export const selectCutStage = (state) => {
   // 컷 플랜 다음에 촬영이 이어서 돈다. 컷이 들어오자마자 넘기면 샷이 빈
   // 표를 보다가 값이 뒤늦게 채워진다. 두 공정이 다 끝나고 넘어간다.
   // 컷 플랜에서 '샷 다시 정하기'를 누른 경우는 해당하지 않는다.
-  if (state.cutPlanRunPending) return 'script'
+  //
+  // 단, 이미 컷 플랜을 보고 있었다면 대본으로 되돌리지 않는다. `다시
+  // 나누기`는 지금 보던 표를 새로 뽑는 일이지 앞 단계로 가는 일이 아니다 —
+  // 되돌리면 감독은 화면을 잃었다가 결과가 나올 때 다시 찾아와야 한다.
+  // 처음 만드는 경우(컷이 아직 없음)에만 대본에 머문다.
+  if (state.cutPlanRunPending && state.cutPlan.length === 0) return 'script'
   return state.cutPlan.length > 0 ? 'cutplan' : 'script'
 }
 
@@ -2264,8 +2248,22 @@ const useStore = create((set, get) => ({
     })
 
     try {
+      // 인물 명단이 컷을 나누는 입력이다(아래 planCuts의 cast). 씬 기준이
+      // 비어 있으면 인물 없이 나누게 되므로 먼저 읽는다 — 촬영이 컷 뒤에
+      // 자동으로 이어 도는 것과 같은 이유다. 미장센만 사용자가 눌러야
+      // 도는 에이전트로 남을 이유가 없다.
+      //
+      // 이미 읽어 둔 것이 있으면 다시 부르지 않는다. 사용자가 고친 값을
+      // 덮어쓰지 않기 위해서다 — 다시 읽는 것은 rail의 버튼이 맡는다.
+      if (Object.keys(state.sceneStates).length === 0) {
+        await get().requestSceneStates()
+      }
+
       const { planCuts } = await import('../services/api.js')
-      const scenes = selectScenes(state.screenplay)
+      // 위에서 await를 지났으므로 state는 낡았다. 방금 읽은 씬 기준을
+      // 쓰려면 다시 꺼내야 한다.
+      const current = get()
+      const scenes = selectScenes(current.screenplay)
       const items = []
 
       // 씬마다 따로 부른다. 시간·장소와 인물 기준이 씬마다 다르므로
@@ -2273,25 +2271,25 @@ const useStore = create((set, get) => ({
       for (const scene of scenes) {
         const beats = []
         for (let beat = scene.startBeat; beat <= scene.endBeat; beat += 1) {
-          const lines = state.screenplay
+          const lines = current.screenplay
             .filter((element) => element.beat === beat && element.type === 'action')
             .map((element) => element.text)
           if (lines.length > 0) beats.push({ beat, lines })
         }
         if (beats.length === 0) continue
 
-        const sceneLines = state.screenplay.filter((element) => (
+        const sceneLines = current.screenplay.filter((element) => (
           element.beat >= scene.startBeat && element.beat <= scene.endBeat
         ))
         const { time, place } = inferSceneContext(sceneLines)
-        const sceneState = state.sceneStates[scene.id] || state.sceneStates['scene-0']
+        const sceneState = current.sceneStates[scene.id] || current.sceneStates['scene-0']
 
         // eslint-disable-next-line no-await-in-loop
         const planned = await planCuts({
           heading: scene.heading,
           beats,
           cast: castNamesOf(sceneState),
-          sceneIntention: state.sceneIntention || '',
+          sceneIntention: current.sceneIntention || '',
           time,
           place,
         })
