@@ -396,11 +396,11 @@ export async function generatePanelImage(
 }
 
 // 미장센: 인물·공간의 레퍼런스 그림. 이 그림이 패널 생성의 기준이 된다.
-export async function generateReferenceImage(kind, prompt) {
+export async function generateReferenceImage(kind, prompt, { style = '' } = {}) {
   const data = await fetchWithTimeout(`${API_BASE}/reference-image`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ kind, prompt }),
+    body: JSON.stringify({ kind, prompt, style }),
   }, 180000)
   return `data:image/png;base64,${data.image}`
 }
@@ -435,13 +435,13 @@ export async function fixShots({
 
 // --- 미장센: 대본 → 씬 기준 -----------------------------------------------
 // 여러 컷에 걸쳐 같아야 하는 것을 세운다. 대본에 없는 것은 open으로 남긴다.
-export async function buildSceneState({ heading, script, sceneIntention = '' }) {
+export async function buildSceneState({ heading, script, sceneIntention = '', cutPlan = '', cutIds = [] }) {
   const data = await fetchWithTimeout(`${API_BASE}/scene-state`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ heading, script, scene_intention: sceneIntention }),
+    body: JSON.stringify({ heading, script, scene_intention: sceneIntention, cut_plan: cutPlan }),
   }, 90000)
-  return toSceneState(data, heading)
+  return toSceneState(data, heading, cutIds)
 }
 
 // --- 편집: 컷 사이 --------------------------------------------------------
