@@ -909,7 +909,7 @@ export default function StoryboardView() {
   const decideDeclaration = useStore((s) => s.decideDeclaration)
   const rejectDeclaration = useStore((s) => s.rejectDeclaration)
   // 씬 기준은 씬마다 다르다. 컷이 속한 씬의 기준을 써야 한다 —
-  // 승강장 컷에 관제실의 인물 기준을 넣으면 없는 사람을 그리게 된다.
+  // 복도 컷에 실험실의 인물 기준을 넣으면 없는 사람을 그리게 된다.
   const sceneStates = useStore((s) => s.sceneStates)
   // rail이 편집하는 것은 지금 보고 있는 씬의 기준이다. activeBeat에서
   // 파생되므로 Beat를 옮기면 기준도 따라온다.
@@ -925,6 +925,7 @@ export default function StoryboardView() {
   const sceneStateError = useStore((s) => s.sceneStateError)
   const requestReferenceImage = useStore((s) => s.requestReferenceImage)
   const referenceImagePending = useStore((s) => s.referenceImagePending)
+  const isReferenceImagePending = (key) => Boolean(referenceImagePending?.[key])
   const setShotNote = useStore((s) => s.setShotNote)
   const addShotArrow = useStore((s) => s.addShotArrow)
   const updateShotArrow = useStore((s) => s.updateShotArrow)
@@ -1054,6 +1055,9 @@ export default function StoryboardView() {
   const isGenerating = generatingCount > 0
   const handledScriptEditorRequestKey = useRef(0)
   const handledPanelToolRequestId = useRef(null)
+  // 패널 생성 함수의 최신 참조. 아래 도구 요청 effect가 이것으로 부른다 —
+  // 함수 자체를 의존성에 넣으면 렌더마다 effect가 다시 돈다.
+  const generatePanelsRef = useRef(null)
 
   const isExpanded = maximizedPanel === 'left'
   // 줄콘티는 대본과 패널 사이의 경유 단계다. 컷을 확정하기 전에는 패널 작업을
@@ -1168,6 +1172,17 @@ export default function StoryboardView() {
         setShotNote(shot.id, [shot.note, suggested].filter(Boolean).join('\n'))
       }
       setNoteEditingShotId(shot.id)
+    } else if (panelToolRequest.tool === 'regenerate') {
+      // 검토 화면에서 컷 값을 바꾼 뒤 그림을 다시 그리는 길. 생성에 필요한
+      // 것(레퍼런스·구조도·그림체)이 전부 이 화면에 있어 여기서 부른다.
+      // ref로 부르는 이유: 이 함수는 렌더마다 새로 만들어져 의존성에 넣으면
+      // effect가 매번 다시 돈다.
+      setArrowDrawingShotId(null)
+      setNoteEditingShotId(null)
+      generatePanelsRef.current?.(
+        [{ shot, shotIdx: shotIndex }],
+        { includeExisting: true, keepView: true },
+      )
     }
 
     window.setTimeout(() => {
@@ -1205,6 +1220,98 @@ export default function StoryboardView() {
   const hasSceneHeading = screenplay.some((element) => element.type === 'scene-heading')
   // 씬 헤딩이 나온 순서로 번호를 매긴다. 이 Beat가 몇 번째 씬을 여는가.
   const scriptScenes = selectScenes(screenplay)
+  // 씬을 넘어도 같은 이름의 인물·공간은 같은 기준 그림을 쓴다. 씬마다
+  // 다시 만들게 하면 중복 비용만 들고, 오히려 같은 대상이 달라질 위험이 있다.
+  const referenceIdentity = (name = '') => name.trim().replace(/\s+/g, ' ').toLocaleLowerCase('ko-KR')
+  const sharedReferenceImage = (kind, subject) => {
+    const identity = referenceIdentity(subject?.name)
+    if (!identity) return null
+    for (const candidateScene of Object.values(sceneStates)) {
+      if (kind === 'location') {
+        if (referenceIdentity(candidateScene.location?.name) === identity && candidateScene.location?.image) {
+          return candidateScene.location.image
+        }
+        continue
+      }
+      const matchingCharacter = candidateScene.characters?.find((character) => (
+        referenceIdentity(character.name) === identity && character.image
+      ))
+      if (matchingCharacter) return matchingCharacter.image
+    }
+    return null
+  }
+  const withSharedReferences = (sceneState) => {
+    if (!sceneState) return sceneState
+    return {
+      ...sceneState,
+      characters: sceneState.characters.map((character) => ({
+        ...character,
+        image: character.image || sharedReferenceImage('character', character),
+      })),
+      location: {
+        ...sceneState.location,
+        image: sceneState.location?.image || sharedReferenceImage('location', sceneState.location),
+      },
+    }
+  }
+  const visibleSceneState = withSharedReferences(activeSceneState)
+  // 패널에 실제로 참조로 물리는 기준 그림이 모두 준비됐는지 확인한다.
+  // 컷에 등장하지 않는 인물까지 강제하면, 쓰이지 않는 기준 그림 때문에
+  // 다음 단계가 막힌다. 반대로 공간은 해당 씬의 모든 컷이 공유하므로 필요하다.
+  const missingReferenceRequirements = []
+  const referenceRequirementKeys = new Set()
+  const addMissingReference = (requirement, isMissing) => {
+    const { key } = requirement
+    if (isMissing && !referenceRequirementKeys.has(key)) {
+      referenceRequirementKeys.add(key)
+      missingReferenceRequirements.push(requirement)
+    }
+  }
+  cutPlan.forEach((cut) => {
+    const scriptScene = sceneOfBeat(scriptScenes, cut.beat)
+    const sceneState = sceneStates[scriptScene?.id]
+    if (!sceneState) {
+      addMissingReference(
+        {
+          key: `scene:${scriptScene?.id || 'unknown'}`,
+          label: '인물·공간 기준 읽기',
+          sceneLabel: `Scene ${scriptScene?.number ?? 1}`,
+          startBeat: scriptScene?.startBeat ?? 0,
+        },
+        true,
+      )
+      return
+    }
+
+    const sceneWithSharedReferences = withSharedReferences(sceneState)
+    addMissingReference(
+      {
+        key: `location:${scriptScene?.id}`,
+        label: sceneWithSharedReferences.location?.name || '공간',
+        sceneLabel: `Scene ${scriptScene.number}`,
+        startBeat: scriptScene.startBeat,
+      },
+      !sceneWithSharedReferences.location?.image,
+    )
+
+    const cast = (cut.characters || '').split(',').map((name) => name.trim()).filter(Boolean)
+    sceneWithSharedReferences.characters
+      .filter((character) => cast.some((name) => (
+        name.includes(character.name) || character.name.includes(name)
+      )))
+      .forEach((character) => {
+        addMissingReference(
+          {
+            key: `character:${scriptScene?.id}:${character.id}`,
+            label: character.name,
+            sceneLabel: `Scene ${scriptScene.number}`,
+            startBeat: scriptScene.startBeat,
+          },
+          !character.image,
+        )
+      })
+  })
+  const referencesReadyForPanels = missingReferenceRequirements.length === 0
   // 여러 컷을 함께 읽어야 보이는 문제. scriptScenes가 필요하므로 그 뒤에 둔다.
   const coverageFindings = diagnoseCoverage(cutPlan)
   // 컷 사이의 문제. scriptScenes가 필요하므로 그 뒤에 둔다.
@@ -1262,7 +1369,7 @@ export default function StoryboardView() {
   // 이 컷에 걸리는 레퍼런스 그림. 화면에 나오는 인물과 그 씬의 공간만
   // 넣는다 — 씬의 모든 인물을 매 컷에 물리면 없는 사람까지 그려진다.
   const referencesForCut = (cut, layoutImage = null) => {
-    const scene = sceneStateForCut(cut)
+    const scene = withSharedReferences(sceneStateForCut(cut))
     if (!scene || !cut) return []
     const cast = (cut.characters || '').split(',').map((n) => n.trim()).filter(Boolean)
     const refs = scene.characters
@@ -1427,12 +1534,17 @@ export default function StoryboardView() {
 
   // 조립한 프롬프트로 실제 그림을 만든다. 씬 기준·책임 선언·이음새·샷이
   // 전부 이 문장으로 모이므로, 여기서 쓰지 않으면 앞 공정이 무의미해진다.
-  const handleGeneratePanels = async (targets, { includeExisting = false } = {}) => {
+  const handleGeneratePanels = async (
+    targets,
+    // keepView: 검토 화면에서 부른 경우. 화면을 옮기면 감독이 보고 있던
+    // 진단이 가려진다 — 바뀌는 것은 그림뿐이어야 한다.
+    { includeExisting = false, keepView = false } = {},
+  ) => {
     const eligibleTargets = includeExisting
       ? targets
       : targets.filter(({ shot, shotIdx }) => !getShotVisual(shot, shotIdx))
     if (eligibleTargets.length === 0) return
-    if (!isExpanded) setMaximizedPanel('left')
+    if (!isExpanded && !keepView) setMaximizedPanel('left')
 
     setPanelGenError(null)
     setPanelGenPending((current) => {
@@ -1524,6 +1636,8 @@ export default function StoryboardView() {
     // 실패를 조용히 넘기면 왜 그림이 안 나왔는지 알 수 없다.
     if (failures.length > 0) setPanelGenError(failures[0])
   }
+  // 검토 화면의 `다시 그리기`가 이 참조로 부른다.
+  generatePanelsRef.current = handleGeneratePanels
 
   const connectViewerTestPanels = () => {
     viewerTestTargets.forEach(({ shot }, index) => {
@@ -1642,7 +1756,7 @@ export default function StoryboardView() {
     // 없이 일어나는 일을 그대로 적으면 된다.
     //
     // 씬 헤딩: 첫 줄이거나 빈 줄 뒤에 오는 짧은 줄로, 문장부호가 없고
-    // 장소·시간처럼 읽히는 것. `관제실, 밤`
+    // 장소·시간처럼 읽히는 것. `물리학과 실험실, 밤`
     const looksLikeHeading = (text) => (
       text.length <= 30
       && !/[.!?…]/.test(text)
@@ -2015,7 +2129,7 @@ export default function StoryboardView() {
                 <span>Scene intention <em>optional</em></span>
                 <textarea
                   className="scene-intention-input"
-                  placeholder="예: 위험은 느껴지지만 원인은 마지막까지 숨긴다."
+                  placeholder="예: 발견의 순간은 조용하지만 되돌릴 수 없게 느껴진다."
                   value={rawSceneIntention}
                   onChange={(event) => setRawSceneIntention(event.target.value)}
                   rows={3}
@@ -2023,7 +2137,7 @@ export default function StoryboardView() {
               </label>
               <textarea
                 className="screenplay-input"
-                placeholder={'관제실, 밤\n\n재인이 젖은 채로 들어와 철문을 닫는다.\n민호는 뒤돌아보지 않는다.\n\n민호가 천천히 의자를 돌린다.'}
+                placeholder={'물리학과 실험실, 밤\n\n하린이 노트북 화면을 들여다본다.\n노트에 식을 적다 지운다.\n\n하린이 연필을 내려놓고 등을 기댄다.'}
                 value={rawText}
                 onChange={(e) => setRawText(e.target.value)}
               />
@@ -2180,7 +2294,7 @@ export default function StoryboardView() {
                   id="scene-prompt-note"
                   value={scenePromptNoteDraft}
                   onChange={(event) => setScenePromptNoteDraft(event.target.value)}
-                  placeholder="예: 초반에는 인물 사이 거리를 유지하고, 위협이 드러난 뒤에는 프레임 안에서 압박한다."
+                  placeholder="예: 초반에는 공간을 넓게 유지하고, 발견이 드러난 뒤에는 인물에게 가까이 붙는다."
                 />
                 <div className="cut-plan-scene-note-actions">
                   <span>
@@ -2531,23 +2645,6 @@ export default function StoryboardView() {
                 </button>
               )}
             </div>
-            {/* 그림체는 모든 패널에 똑같이 걸린다. 인물·소품 목록에 섞여
-                있으면 성격이 달라 보이지 않고, 정작 그림을 그리는 이 화면에서
-                손댈 수가 없다. 값은 미장센의 '그림체'와 같은 자리를 쓴다. */}
-            <label className="generation-style">
-              <span>그림체</span>
-              <input
-                type="text"
-                value={styleDraft}
-                placeholder="기본 · 흑백 러프 연필 스케치"
-                onChange={(event) => setStyleDraft(event.target.value)}
-                onBlur={commitStyle}
-                onKeyDown={(event) => {
-                  if (event.key === 'Enter') event.currentTarget.blur()
-                  if (event.key === 'Escape') setStyleDraft(sceneStyle)
-                }}
-              />
-            </label>
             <div className="generation-scope-tabs" aria-label="Generation scope">
               <button
                 type="button"
@@ -3386,60 +3483,133 @@ export default function StoryboardView() {
                   {/* 대본에 있는 것만 읽는다. 없는 것은 지어내지 않고
                       '미정'으로 남긴다 — 무엇이 안 정해졌는지 보여야
                       창작자가 판정할 수 있다 (DG1 P2). */}
-                  <button
-                    type="button"
-                    className="rail-lens-primary is-mise"
-                    onClick={requestSceneStates}
-                    disabled={sceneStatePending || screenplay.length === 0}
-                  >
-                    {/* 컷 플랜을 만들 때 이미 한 번 읽었다. 촬영·편집의
-                        버튼과 같이 여기서는 다시 읽는 것이 된다. */}
-                    {sceneStatePending
-                      ? '읽는 중…'
-                      : hasActiveSceneState ? '대본에서 다시 읽기' : '대본에서 인물·공간 읽기'}
-                  </button>
+                  {!hasActiveSceneState && (
+                    <button
+                      type="button"
+                      className="rail-lens-primary is-mise"
+                      onClick={requestSceneStates}
+                      disabled={sceneStatePending || screenplay.length === 0}
+                    >
+                      {sceneStatePending ? '읽는 중…' : '대본에서 인물·공간 읽기'}
+                    </button>
+                  )}
                   {sceneStateError && (
                     <p className="rail-lens-error">AI 호출 실패 · {sceneStateError}</p>
                   )}
 
                   {hasActiveSceneState ? (
                   <>
+                  {/* 기준 이미지를 만들기 전에 씬 전체에 걸리는 그림체를 먼저
+                      정한다. 여기서 만든 값이 레퍼런스와 이후 모든 패널에
+                      동일하게 전달된다. */}
+                  <label className="rail-scene-style">
+                    <span>그림체</span>
+                    <input
+                      type="text"
+                      value={styleDraft}
+                      placeholder="기본 · 흑백 러프 연필 스케치"
+                      onChange={(event) => setStyleDraft(event.target.value)}
+                      onBlur={commitStyle}
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter') event.currentTarget.blur()
+                        if (event.key === 'Escape') setStyleDraft(sceneStyle)
+                      }}
+                    />
+                  </label>
+                  {scriptScenes.length > 1 && (
+                    <div className="rail-scene-switcher" aria-label="씬 기준 선택">
+                      {scriptScenes.map((scriptScene) => (
+                        <button
+                          key={scriptScene.id}
+                          type="button"
+                          className={scriptScene.id === activeSceneId ? 'is-active' : ''}
+                          onClick={() => setActiveBeat(scriptScene.startBeat)}
+                        >
+                          Scene {scriptScene.number}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                   <ul className="rail-scene-state">
-                    {activeSceneState.characters.map((character) => {
+                    {visibleSceneState.characters.map((character) => {
                       const referenceOpen = openReferenceCards[character.id] && character.image
                       return (
                         <li key={character.id} className={`rail-scene-reference-card${referenceOpen ? ' is-reference-open' : ' is-info-open'}`}>
                           <div className="rail-reference-card-inner">
-                            <div className="rail-reference-face rail-reference-info">
+                            <div
+                              className={`rail-reference-face rail-reference-info${character.image ? ' is-flippable' : ''}`}
+                              onClick={() => {
+                                if (character.image) {
+                                  setOpenReferenceCards((current) => ({ ...current, [character.id]: true }))
+                                }
+                              }}
+                              onKeyDown={(event) => {
+                                if (character.image && (event.key === 'Enter' || event.key === ' ')) {
+                                  event.preventDefault()
+                                  setOpenReferenceCards((current) => ({ ...current, [character.id]: true }))
+                                }
+                              }}
+                              role={character.image ? 'button' : undefined}
+                              tabIndex={character.image ? 0 : undefined}
+                              aria-label={character.image ? `${character.name} 레퍼런스 보기` : undefined}
+                            >
                               <div className="rail-scene-head">
                                 <strong>{character.name}</strong>
                                 <em>{character.summary}</em>
-                                <button
-                                  type="button"
-                                  className="rail-reference-trigger"
-                                  onClick={() => (
-                                    character.image
-                                      ? setOpenReferenceCards((current) => ({ ...current, [character.id]: true }))
-                                      : generateReferenceFromCutPlan('character', character.id)
-                                  )}
-                                  disabled={referenceImagePending === character.id}
-                                >
-                                  {referenceImagePending === character.id ? '그리는 중…' : character.image ? '레퍼런스 보기' : '레퍼런스 생성'}
-                                </button>
+                                {!character.image && (
+                                  <button
+                                    type="button"
+                                    className="rail-reference-trigger"
+                                    onClick={() => generateReferenceFromCutPlan('character', character.id)}
+                                    disabled={isReferenceImagePending(character.id)}
+                                  >
+                                    {isReferenceImagePending(character.id) ? '그리는 중…' : '레퍼런스 생성'}
+                                  </button>
+                                )}
+                                {character.image && (
+                                  <button
+                                    type="button"
+                                    className="rail-reference-regenerate"
+                                    onClick={(event) => {
+                                      event.stopPropagation()
+                                      generateReferenceFromCutPlan('character', character.id)
+                                    }}
+                                    disabled={isReferenceImagePending(character.id)}
+                                  >
+                                    {isReferenceImagePending(character.id) ? '다시 그리는 중…' : '다시 생성'}
+                                  </button>
+                                )}
                               </div>
                               {character.facts.map((fact) => (
                                 <SceneFactRow key={fact.label} fact={fact} onCommit={(value) => setSceneFact('character', fact.label, value, { characterId: character.id })} />
                               ))}
                             </div>
                             {character.image && (
-                              <button
-                                type="button"
+                              <div
                                 className="rail-reference-face rail-reference-preview"
-                                onClick={() => setReferenceLightbox({ src: character.image, alt: `${character.name} 레퍼런스`, cardKey: character.id })}
-                                title="크게 보기"
+                                onClick={() => setOpenReferenceCards((current) => ({ ...current, [character.id]: false }))}
+                                onKeyDown={(event) => {
+                                  if (event.key === 'Enter' || event.key === ' ') {
+                                    event.preventDefault()
+                                    setOpenReferenceCards((current) => ({ ...current, [character.id]: false }))
+                                  }
+                                }}
+                                role="button"
+                                tabIndex={0}
+                                aria-label={`${character.name} 정보 카드 보기`}
                               >
                                 <img src={character.image} alt={`${character.name} 레퍼런스`} />
-                              </button>
+                                <button
+                                  type="button"
+                                  className="rail-reference-lightbox-trigger"
+                                  onClick={(event) => {
+                                    event.stopPropagation()
+                                    setReferenceLightbox({ src: character.image, alt: `${character.name} 레퍼런스`, cardKey: character.id })
+                                  }}
+                                >
+                                  크게 보기
+                                </button>
+                              </div>
                             )}
                           </div>
                         </li>
@@ -3447,31 +3617,84 @@ export default function StoryboardView() {
                     })}
 
                     {(() => {
-                      const location = activeSceneState.location
+                      const location = visibleSceneState.location
                       const referenceOpen = openReferenceCards.location && location.image
                       return (
                         <li className={`rail-scene-reference-card${referenceOpen ? ' is-reference-open' : ' is-info-open'}`}>
                           <div className="rail-reference-card-inner">
-                            <div className="rail-reference-face rail-reference-info">
+                            <div
+                              className={`rail-reference-face rail-reference-info${location.image ? ' is-flippable' : ''}`}
+                              onClick={() => {
+                                if (location.image) {
+                                  setOpenReferenceCards((current) => ({ ...current, location: true }))
+                                }
+                              }}
+                              onKeyDown={(event) => {
+                                if (location.image && (event.key === 'Enter' || event.key === ' ')) {
+                                  event.preventDefault()
+                                  setOpenReferenceCards((current) => ({ ...current, location: true }))
+                                }
+                              }}
+                              role={location.image ? 'button' : undefined}
+                              tabIndex={location.image ? 0 : undefined}
+                              aria-label={location.image ? `${location.name} 레퍼런스 보기` : undefined}
+                            >
                               <div className="rail-scene-head">
                                 <strong>{location.name}</strong><em>공간</em>
-                                <button type="button" className="rail-reference-trigger" onClick={() => (location.image ? setOpenReferenceCards((current) => ({ ...current, location: true })) : generateReferenceFromCutPlan('location'))} disabled={referenceImagePending === 'location'}>
-                                  {referenceImagePending === 'location' ? '그리는 중…' : location.image ? '레퍼런스 보기' : '레퍼런스 생성'}
-                                </button>
+                                {!location.image && (
+                                  <button type="button" className="rail-reference-trigger" onClick={() => generateReferenceFromCutPlan('location')} disabled={isReferenceImagePending('location')}>
+                                    {isReferenceImagePending('location') ? '그리는 중…' : '레퍼런스 생성'}
+                                  </button>
+                                )}
+                                {location.image && (
+                                  <button
+                                    type="button"
+                                    className="rail-reference-regenerate"
+                                    onClick={(event) => {
+                                      event.stopPropagation()
+                                      generateReferenceFromCutPlan('location')
+                                    }}
+                                    disabled={isReferenceImagePending('location')}
+                                  >
+                                    {isReferenceImagePending('location') ? '다시 그리는 중…' : '다시 생성'}
+                                  </button>
+                                )}
                               </div>
                               {location.facts.map((fact) => <SceneFactRow key={fact.label} fact={fact} onCommit={(value) => setSceneFact('location', fact.label, value)} />)}
                             </div>
                             {location.image && (
-                              <button type="button" className="rail-reference-face rail-reference-preview is-location" onClick={() => setReferenceLightbox({ src: location.image, alt: `${location.name} 레퍼런스`, cardKey: 'location' })} title="크게 보기">
+                              <div
+                                className="rail-reference-face rail-reference-preview is-location"
+                                onClick={() => setOpenReferenceCards((current) => ({ ...current, location: false }))}
+                                onKeyDown={(event) => {
+                                  if (event.key === 'Enter' || event.key === ' ') {
+                                    event.preventDefault()
+                                    setOpenReferenceCards((current) => ({ ...current, location: false }))
+                                  }
+                                }}
+                                role="button"
+                                tabIndex={0}
+                                aria-label={`${location.name} 정보 카드 보기`}
+                              >
                                 <img src={location.image} alt={`${location.name} 레퍼런스`} />
-                              </button>
+                                <button
+                                  type="button"
+                                  className="rail-reference-lightbox-trigger"
+                                  onClick={(event) => {
+                                    event.stopPropagation()
+                                    setReferenceLightbox({ src: location.image, alt: `${location.name} 레퍼런스`, cardKey: 'location' })
+                                  }}
+                                >
+                                  크게 보기
+                                </button>
+                              </div>
                             )}
                           </div>
                         </li>
                       )
                     })()}
 
-                    {activeSceneState.environment?.facts?.length > 0 && (
+                    {visibleSceneState.environment?.facts?.length > 0 && (
                       <li>
                         <div className="rail-scene-head">
                           <strong>환경</strong>
@@ -3480,7 +3703,7 @@ export default function StoryboardView() {
                         {/* 그림체는 여기 두지 않는다. 인물 외형·소품과 성격이
                             다르고(모든 패널에 똑같이 걸린다), 그리기 직전인
                             Panels 생성 바에서 정하는 것이 자연스럽다. */}
-                        {activeSceneState.environment.facts
+                        {visibleSceneState.environment.facts
                           .filter((fact) => fact.label !== '그림체')
                           .map((fact) => (
                           <SceneFactRow
@@ -3495,6 +3718,14 @@ export default function StoryboardView() {
                       </li>
                     )}
                   </ul>
+                  <button
+                    type="button"
+                    className="rail-scene-reread"
+                    onClick={requestSceneStates}
+                    disabled={sceneStatePending || screenplay.length === 0}
+                  >
+                    {sceneStatePending ? '다시 읽는 중…' : '대본에서 다시 읽기'}
+                  </button>
                   </>
                   ) : (
                     <p className="rail-coverage-clear">
@@ -3751,11 +3982,19 @@ export default function StoryboardView() {
                       촬영에서 정하거나, 이대로 두려면 그대로 확정하세요.
                     </p>
                   )}
+                  {!referencesReadyForPanels && (
+                    <div className="narrative-rail-caution reference-readiness">
+                      패널로 넘어가기 전에 필요한 레퍼런스 {missingReferenceRequirements.length}개를 준비하세요.
+                    </div>
+                  )}
                   <button
                     type="button"
                     className="narrative-rail-primary is-cutplan"
                     onClick={acceptCutPlan}
-                    disabled={cutPlanRunPending}
+                    disabled={cutPlanRunPending || !referencesReadyForPanels}
+                    title={referencesReadyForPanels
+                      ? undefined
+                      : '필요한 인물·공간 레퍼런스를 만든 뒤 확정할 수 있습니다'}
                   >
                     {cutPlanRunPending ? '샷 정하는 중…' : '컷 플랜 확정'}
                   </button>

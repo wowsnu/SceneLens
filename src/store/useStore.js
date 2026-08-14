@@ -5,55 +5,50 @@ import { logEdit, logScaffold } from './studyLog'
 // 평가하려는 것도 아니다. 말하는 장면은 말하는 모습으로 적는다.
 // Beat는 빈 줄(문단)로 나뉜다. 별도 형식을 배울 것이 없어야 한다.
 const SCREENPLAY = [
-  { type: 'scene-heading', text: '관제실, 밤', beat: 0 },
-  { type: 'action', text: '좁고 낡은 지하 관제실. 형광등이 낮게 웅웅거리고, 콘크리트 벽 너머 어딘가에서 빗물이 떨어지는 소리가 들린다. 벽면 가득한 모니터에는 텅 빈 승강장과 깜빡이는 터널 화면이 비친다.', beat: 0 },
-  { type: 'action', text: '재인, 20대 후반. 비를 흠뻑 맞은 채 안으로 미끄러지듯 들어와 조용히 철문을 닫는다. 손에는 훔쳐 온 출입카드가 쥐어져 있다.', beat: 0 },
-  { type: 'action', text: '관제실 반대편 끝. 지친 눈빛의 역무 총괄 민호, 40대 초반, 혼자 콘솔 앞에 앉아 있다. 그는 뒤돌아보지 않는다.', beat: 0 },
+  { type: 'scene-heading', text: '물리학과 실험실, 밤', beat: 0 },
+  { type: 'action', text: '좁고 낡은 대학 실험실. 천장 형광등 하나만 살아 있어 긴 실험대 한쪽에만 빛이 떨어지고, 나머지 공간은 어둠에 잠겨 있다. 오실로스코프와 뒤엉킨 케이블, 비커, 쌓아 올린 출력물이 실험대를 가득 메우고 있다. 창밖에는 비가 내린다.', beat: 0 },
+  { type: 'action', text: '하린, 20대 중반의 대학원생. 후드를 입고 머리를 묶은 채 불빛이 닿는 자리에 혼자 앉아 있다. 어두운 장비들 사이에서 그녀는 작아 보인다.', beat: 0 },
 
-  { type: 'action', text: '민호가 뒤돌아보지 않은 채 입을 연다. 재인이 문 앞에서 얼어붙는다.', beat: 1 },
-  { type: 'action', text: '재인이 젖은 앞머리를 쓸어 넘기며 대답한다. 시선은 여전히 민호의 등에 붙어 있다.', beat: 1 },
+  { type: 'action', text: '하린이 노트북 화면을 들여다본다. 화면에는 며칠째 같은 자리에서 어긋나는 측정 그래프가 떠 있다.', beat: 1 },
+  { type: 'action', text: '그녀가 연필로 노트에 식을 적어 내려간다. 몇 줄 쓰다 말고 선을 그어 지운다. 같은 동작이 반복된다.', beat: 1 },
 
-  { type: 'action', text: '민호가 천천히 의자를 돌린다. 얼굴은 차분하지만 오른손은 책상 아래 감춰져 있다.', beat: 2 },
-  { type: 'action', text: '재인은 출입카드를 살짝 들어 보이지만 가까이 다가가진 않는다. 반대편 손이 벽면 카메라를 가리킨다.', beat: 2 },
+  { type: 'action', text: '하린이 연필을 내려놓고 의자에 등을 기댄다. 지친 얼굴로 천장을 본다.', beat: 2 },
+  { type: 'action', text: '시선이 다시 화면으로 내려온다. 어긋난 봉우리들의 간격을 눈으로 짚어 나간다. 손가락이 화면 위를 따라 움직인다.', beat: 2 },
 
-  { type: 'action', text: '민호가 모니터 벽을 흘끗 본다. 한 화면엔 어두운 승강장, 다른 화면엔 터널 안에 멈춰 선 열차가 보인다.', beat: 3 },
-  { type: 'action', text: '재인이 고개를 젓는다. 한 박자 뒤, 손에 쥔 카드를 살짝 들어 보인다.', beat: 3 },
+  { type: 'action', text: '그녀의 손이 멈춘다. 간격이 일정하다. 오차가 아니라 규칙이다.', beat: 3 },
+  { type: 'action', text: '하린이 노트를 끌어당겨 새 줄에 짧은 식 하나를 적는다. 연필 끝이 종이를 누른다.', beat: 3 },
 
-  { type: 'action', text: '터널 너머로 열차 경적이 낮게 울린다. 형광등이 한 번 깜빡인다.', beat: 4 },
-  { type: 'action', text: '민호가 일어선다. 의자가 뒤로 밀려나며 그림자 속으로 미끄러진다. 그제야 감춰져 있던 오른손이 드러난다. 손에는 빨간 버튼 하나가 달린 작은 검은 리모컨이 들려 있다.', beat: 4 },
-  { type: 'action', text: '재인의 시선이 리모컨에서 모니터로, 다시 콘솔 옆 잠긴 철제 캐비닛으로 옮겨간다.', beat: 4 },
-  { type: 'action', text: '그가 한 걸음 다가온다. 재인은 출입문 쪽으로 한 걸음 물러난다. 출구와 방 사이에 끼인 채 갇힌다.', beat: 4 },
+  { type: 'action', text: '그녀가 그 식을 동그라미로 감싼다. 한 번, 두 번, 세 번. 흑연이 종이를 눌러 자국이 팬다.', beat: 4 },
+  { type: 'action', text: '주변에는 지우개 자국과 그어 지운 시도들이 어지럽게 흩어져 있다. 그 한가운데에 방금 적은 식만 또렷하다.', beat: 4 },
 
-  { type: 'action', text: '빗물 떨어지는 소리. 모니터 하나가 지직거리며 튄다. 한 화면에 노란 우비를 입은 어린아이가 홀로 승강장에 서 있다.', beat: 5 },
-  { type: 'action', text: '재인이 그 화면을 가리킨다. 민호의 턱이 굳는다.', beat: 5 },
+  { type: 'action', text: '하린이 고개를 든다. 화면 불빛이 아래에서 얼굴을 비춘다. 눈이 화면을 지나 먼 곳에 머문다. 입술이 살짝 벌어진다.', beat: 5 },
+  { type: 'action', text: '그녀는 움직이지 않는다. 형광등이 한 번 깜빡인다.', beat: 5 },
 
-  { type: 'action', text: '재인이 침을 삼킨다. 손에 쥔 카드에 힘이 들어간다.', beat: 6 },
-  { type: 'action', text: '그리고 그녀는 카드를 민호에게 던지지 않는다. 방 한가운데, 콘솔 아래쪽으로 던진다.', beat: 6 },
-  { type: 'action', text: '카드는 바닥을 미끄러져 콘솔 밑으로 들어간다. 민호의 시선이 순간 그쪽으로 쏠린다.', beat: 6 },
-  { type: 'action', text: '재인이 리모컨을 향해 몸을 던진다.', beat: 6 },
+  { type: 'action', text: '하린이 천천히 일어선다. 의자가 뒤로 밀린다. 노트를 손에 쥔 채 그대로 창가로 걸어간다.', beat: 6 },
+  { type: 'action', text: '그녀가 비에 젖은 창 앞에 선다. 유리 너머로 도시의 불빛들이 흩어져 있다. 노트를 든 손이 옆으로 내려간다.', beat: 6 },
+  { type: 'action', text: '하린이 창밖을 본다. 어제까지 보던 것과 같은 풍경이다. 그러나 그녀는 처음 보는 것처럼 서 있다.', beat: 6 },
 
   // 장소가 바뀌므로 새 씬이다. 씬은 시공간이 연속된 범위다.
-  { type: 'scene-heading', text: '승강장, 밤', beat: 7 },
-  { type: 'action', text: '텅 빈 승강장. 노란 우비를 입은 아이가 홀로 서서 어두운 터널 쪽을 본다.', beat: 7 },
-  { type: 'action', text: '천장 스피커가 지직거린다. 아이가 한 걸음 물러선다.', beat: 7 },
+  { type: 'scene-heading', text: '연구동 복도, 밤', beat: 7 },
+  { type: 'action', text: '불이 반쯤 꺼진 복도. 하린이 노트를 든 채 걸어와 한 연구실 문 앞에 선다.', beat: 7 },
+  { type: 'action', text: '문틈으로 불빛이 새어 나온다. 하린이 손을 들었다가 멈춘다.', beat: 7 },
 
-  { type: 'action', text: '터널 안쪽에서 헤드라이트 두 개가 서서히 밝아진다.', beat: 8 },
-  { type: 'action', text: '아이가 고개를 들어 열차가 오는 쪽을 본다.', beat: 8 },
+  { type: 'action', text: '하린이 노트를 내려다본다. 그리고 문을 두드린다.', beat: 8 },
 ]
 
 // Dummy strategy data with image paths and spatial coordinates
 const DEMO_STRATEGIES = [
   {
     id: 'A',
-    name: 'Slow Burn Tension',
+    name: 'Quiet Discovery',
     shots: [
-      { order: 1, beat: 0, image: null, x: 450, y: 700, angle: -90, intent: 'ESTABLISH SPACE', cir: { shotSize: 'Wide', relation: 'Master' } },
-      { order: 2, beat: 1, image: null, x: 200, y: 450, angle: -30, intent: 'SUBJECTIVE PRESSURE', cir: { shotSize: 'Medium', relation: 'OTS' } },
-      { order: 3, beat: 2, image: null, x: 500, y: 250, angle: 90, intent: 'REACTION EMPHASIS', cir: { shotSize: 'Close-Up', relation: 'Single' } },
-      { order: 4, beat: 3, image: null, x: 750, y: 450, angle: -150, intent: 'ISOLATION / VULNERABILITY', cir: { shotSize: 'Medium Close', relation: 'Single' } },
-      { order: 5, beat: 4, image: null, x: 350, y: 350, angle: 0, intent: 'RELATIONSHIP RESET', cir: { shotSize: 'Medium', relation: 'Two-shot' } },
-      { order: 6, beat: 5, image: null, x: 450, y: 800, angle: -90, intent: 'CLIMATIC BEAT', cir: { shotSize: 'ECU', relation: 'Single' } },
-      { order: 7, beat: 6, image: null, x: 450, y: 900, angle: -90, intent: 'CLIMATIC BEAT', cir: { shotSize: 'ECU', relation: 'Single' } },
+      { order: 1, beat: 0, image: '/img/lab_wide_establishing.png', x: 450, y: 700, angle: -90, intent: 'ESTABLISH SPACE', cir: { shotSize: 'Wide', relation: 'Master' } },
+      { order: 2, beat: 1, image: '/img/lab_student_ots.png', x: 200, y: 450, angle: -30, intent: 'SUBJECTIVE FOCUS', cir: { shotSize: 'Medium', relation: 'OTS' } },
+      { order: 3, beat: 2, image: null, x: 500, y: 250, angle: 90, intent: 'FATIGUE / STALL', cir: { shotSize: 'Medium Close', relation: 'Single' } },
+      { order: 4, beat: 3, image: null, x: 750, y: 450, angle: -150, intent: 'THE NOTICING', cir: { shotSize: 'Close-Up', relation: 'Single' } },
+      { order: 5, beat: 4, image: '/img/lab_pattern_ecu.png', x: 350, y: 350, angle: 0, intent: 'EVIDENCE DETAIL', cir: { shotSize: 'ECU', relation: 'Insert' } },
+      { order: 6, beat: 5, image: '/img/lab_discovery_cu.png', x: 450, y: 800, angle: -90, intent: 'REALIZATION', cir: { shotSize: 'Close-Up', relation: 'Single' } },
+      { order: 7, beat: 6, image: '/img/lab_window_reveal.png', x: 450, y: 900, angle: -90, intent: 'WORLD RESEEN', cir: { shotSize: 'Wide', relation: 'Single' } },
     ]
   },
 ]
@@ -198,11 +193,11 @@ const includesAny = (text, keywords) => keywords.some((keyword) => text.includes
 // 실제 LLM 호출로 교체될 자리다.
 
 // 장소가 바뀌면 씬이 갈린다 — 씬은 시공간이 연속된 범위다.
-// 다만 장소를 '언급'한 것과 그리로 '이동'한 것은 다르다. "승강장 사람들이
-// 위험해진다"는 관제실 안에서 하는 말이지 승강장으로 간 것이 아니다.
+// 다만 장소를 '언급'한 것과 그리로 '이동'한 것은 다르다. "복도가 조용하다"는
+// 실험실 안에서 하는 말이지 복도로 간 것이 아니다.
 // 이동을 가리키는 동사가 함께 있을 때만 씬을 나눈다.
 const PLACE_WORDS_SHIFT = [
-  ['승강장', '승강장'], ['플랫폼', '승강장'], ['터널', '터널 안'],
+  ['복도', '복도'], ['연구동', '연구동'], ['강의실', '강의실'],
   ['계단', '계단'], ['옥상', '옥상'], ['거리', '거리'], ['골목', '골목'],
 ]
 const MOVE_VERBS = ['간다', '가서', '나간다', '나가', '올라', '내려', '도착', '이동', '들어선다', '향한다', '달려간다']
@@ -551,7 +546,7 @@ const TIME_HINTS = [
 
 // 예제 씬의 등장인물. 실제로는 대본에서 추출하거나 사용자가 지정한다.
 // 등장인물은 씬 기준에서 가져온다. 상수로 두면 씬이 바뀌어도 같은 이름만
-// 찾게 되고, 승강장의 '아이'는 어느 컷에도 들어가지 않는다.
+// 찾게 되고, 복도 씬의 인물은 어느 컷에도 들어가지 않는다.
 const castNamesOf = (sceneState) => (sceneState?.characters || []).map((c) => c.name)
 
 // 대본 전체에서 시간·장소를 한 번만 추론한다. 컷마다 다시 뽑으면 흔들린다.
@@ -562,12 +557,12 @@ const inferSceneContext = (screenplay) => {
 
   const time = TIME_HINTS.find(([hint]) => source.includes(hint))?.[1] || ''
 
-  // 장소는 씬 heading이 이미 말해 준다. "관제실, 밤"에서 시간 부분만
+  // 장소는 씬 heading이 이미 말해 준다. "실험실, 밤"에서 시간 부분만
   // 떼면 장소가 남는다 — 낱말 목록으로 찾으면 목록에 없는 장소(등대,
   // 폐공장)를 놓치고, "꼭대기 방"에서 '방'만 집어내기도 한다.
   const stripTime = (text = '') => text
     .replace(/^(INT|EXT|I\/E)[.\s]*/i, '')
-    // "관제실, 밤" / "관제실 - 밤" / "WAREHOUSE - NIGHT"
+    // "실험실, 밤" / "실험실 - 밤" / "WAREHOUSE - NIGHT"
     .split(/\s*[,\-–]\s*/)[0]
     .trim()
 
@@ -975,7 +970,7 @@ export const diagnoseCoverage = (cutPlan = []) => {
 
   // 1. 컷 내용과 샷 크기가 어긋난다. 손에 든 것이 결정적인데 넓게 잡거나,
   //    공간을 세워야 하는데 좁게 잡은 경우다.
-  const DETAIL_WORDS = ['손', '표정', '눈', '얼굴', '카드', '버튼', '리모컨', '쥔', '움켜']
+  const DETAIL_WORDS = ['손', '표정', '눈', '얼굴', '노트', '연필', '화면', '쥔', '짚어']
   const SPACE_WORDS = ['공간', '방', '전체', '멀리', '들어온다', '거리']
   cutPlan.forEach((cut) => {
     if (!cut.shotSize) return
@@ -1241,26 +1236,26 @@ export const diagnoseSeams = (cutPlan = [], screenplay = [], {
 
 // 예제 대본의 두 번째 씬. 씬마다 인물과 공간이 다르다는 것을 보이기 위해
 // 첫 씬과 겹치는 인물이 없다.
-const PLATFORM_SCENE_STATE = {
-  title: '승강장, 밤',
-  description: '관제실에서 이어지는 씬입니다. 인물과 공간이 다릅니다.',
+const CORRIDOR_SCENE_STATE = {
+  title: '연구동 복도, 밤',
+  description: '실험실에서 이어지는 씬입니다. 공간이 다릅니다.',
   characters: [
     {
-      id: 'child',
-      name: '아이',
-      summary: '노란 우비 · 홀로',
+      id: 'harin-corridor',
+      name: '하린',
+      summary: '후드 · 노트를 든 채',
       image: null,
       facts: [
-        { label: '외형 기준', value: '노란 우비를 입고 홀로 서 있다' },
+        { label: '외형 기준', value: '후드를 입고 노트를 손에 들고 있다' },
         { label: '표정', value: '아직 지정되지 않음', open: true },
       ],
     },
   ],
   location: {
-    name: '지하철 승강장',
+    name: '연구동 복도',
     facts: [
-      { label: '장소 정체', value: '텅 빈 지하 승강장' },
-      { label: '고정 소품', value: '천장 스피커 · 안전선 · 터널 입구' },
+      { label: '장소 정체', value: '불이 반쯤 꺼진 연구동 복도' },
+      { label: '고정 소품', value: '교수 연구실 문 · 게시판 · 소화전' },
     ],
   },
   environment: {
@@ -1332,7 +1327,7 @@ export const selectActiveSceneId = (state) => {
 
 // --- Scene state: 컷을 가로지르는 기준 ----------------------------------
 // 여러 컷에 같은 인물과 공간이 나온다. 컷마다 프롬프트를 따로 조립하면
-// 컷 1의 '관제실'과 컷 5의 '관제실'이 각자 해석되어 다른 방이 된다.
+// 컷 1의 '실험실'과 컷 5의 '실험실'이 각자 해석되어 다른 방이 된다.
 // 생성 단위가 컷이어도 기준은 씬에 있어야 한다 (DG2 P2: 여러 컷을 가로지르는
 // 것은 개별 이미지가 아니라 편집 가능한 구조로 표현한다).
 //
@@ -1351,35 +1346,25 @@ const EMPTY_SCENE_STATE = {
 }
 
 const SCENE_STATE = {
-  title: '지하철 관제실 · 밤',
+  title: '물리학과 실험실 · 밤',
   description: '대본에서 추출한 장면 기준입니다. Shot별 배치는 이 상태를 상속하고, 달라진 부분만 별도로 기록합니다.',
   characters: [
     {
-      id: 'jaein',
-      name: '재인',
-      summary: '20대 후반 · 침입자',
-      image: '/img/closeup_woman.png',
+      id: 'harin',
+      name: '하린',
+      summary: '20대 중반 · 대학원생',
+      image: '/img/lab_discovery_cu.png',
       facts: [
-        { label: '외형 기준', value: '비에 흠뻑 젖은 상태' },
+        { label: '외형 기준', value: '후드를 입고 머리를 묶은 상태' },
         { label: '헤어', value: '아직 지정되지 않음', open: true },
-      ],
-    },
-    {
-      id: 'minho',
-      name: '민호',
-      summary: '40대 초반 · 역무 총괄',
-      image: '/img/closeup_man.png',
-      facts: [
-        { label: '외형 기준', value: '지친 눈빛, 차분한 인상' },
-        { label: '헤어·수염', value: '아직 지정되지 않음', open: true },
       ],
     },
   ],
   location: {
-    name: '지하철 관제실',
+    name: '물리학과 실험실',
     facts: [
-      { label: '장소 정체', value: '좁고 낡은 지하 관제실' },
-      { label: '고정 소품', value: '모니터 벽 · 콘솔 · 잠긴 철제 캐비닛' },
+      { label: '장소 정체', value: '좁고 낡은 대학 실험실' },
+      { label: '고정 소품', value: '실험대 · 오실로스코프 · 노트북 · 비 내리는 창' },
     ],
   },
   environment: {
@@ -1455,6 +1440,39 @@ export const selectSceneReference = (sceneState, cut, cutIndex = null, cutOrder 
 export const cutOrderOf = (cutPlan = []) => new Map(
   cutPlan.map((cut, index) => [cut.id, index]),
 )
+
+// 한 컷의 프롬프트. buildCutPrompt는 씬 기준·이음새·컷 순서를 인자로
+// 받는데, 그 조립을 화면마다 따로 하면 같은 컷의 프롬프트가 화면마다
+// 달라진다. 스토리보드와 검토 화면이 이 하나를 함께 쓴다.
+export const selectCutPrompt = (state, cutId) => {
+  const cut = state.cutPlan.find((item) => item.id === cutId)
+  if (!cut) return null
+
+  const scenes = selectScenes(state.screenplay)
+  const scene = sceneOfBeat(scenes, cut.beat)
+  const sceneState = state.sceneStates[scene?.id] || state.sceneStates['scene-0'] || null
+
+  // 이음새는 패널 사이에 붙으므로 컷에서 바로 찾을 수 없다. 앞 컷의 샷을
+  // 거쳐야 한다.
+  const branch = state.scenes?.[state.activeScene]?.branches?.[
+    state.scenes[state.activeScene].activeBranch ?? 0
+  ]
+  const shots = branch?.shots || []
+  const shotIndex = shots.findIndex((shot) => shot.cutPlanItemId === cutId)
+  const seam = shotIndex > 0
+    ? state.seams[seamKeyFor(shots[shotIndex - 1].id)] || null
+    : null
+
+  return buildCutPrompt(cut, {
+    sceneIntention: state.sceneIntention || '',
+    sceneNote: state.scenePromptNote || '',
+    declarations: state.declarations,
+    sceneState,
+    seam,
+    cutIndex: state.cutPlan.findIndex((item) => item.id === cutId),
+    cutOrder: cutOrderOf(state.cutPlan),
+  })
+}
 
 // 이 사실이 씬 안에서 언제 바뀌는가. 편집 화면이 구간을 보여줄 때 쓴다.
 export const factTimeline = (fact, cutOrder = null) => [
@@ -1582,7 +1600,7 @@ export const describeLayout = (elements = []) => {
     return depth ? `${depth} ${side}` : side
   }
 
-  // 받침 유무로 조사가 갈린다. '민호은'처럼 쓰면 사람이 쓴 문장으로 안 읽힌다.
+  // 받침 유무로 조사가 갈린다. '하린은/하린이'를 틀리면 사람이 쓴 문장으로 안 읽힌다.
   const topic = (word = '') => {
     const last = word.trim().slice(-1)
     const code = last.charCodeAt(0)
@@ -1951,8 +1969,8 @@ const useStore = create((set, get) => ({
 
   // 컷을 가로지르는 기준. 여기를 고치면 그 씬의 모든 컷 프롬프트가 바뀐다.
   //
-  // 씬마다 따로 둔다 — 관제실의 인물 기준과 승강장의 인물 기준은 다르다.
-  // 승강장의 '노란 우비 아이'는 관제실 기준에 없다.
+  // 씬마다 따로 둔다 — 실험실의 인물 기준과 복도의 인물 기준은 다르다.
+  // 복도 씬의 공간 기준은 실험실 기준에 없다.
   sceneStates: {},
   // 2D 구조도. 컴포넌트 지역 상태로 두면 패널 생성이 읽지 못한다 —
   // 배치를 그림에 반영하려면 스토어에 있어야 한다.
@@ -1999,7 +2017,7 @@ const useStore = create((set, get) => ({
         ))
         const cutIds = sceneCuts.map((cut) => cut.id)
         const cutPlan = sceneCuts.map((cut, index) => (
-          `컷 ${index + 1}: 등장 ${cut.characters || '없음'} · ${cut.content || ''}`
+          `컷 ${index + 1}: 시간 ${cut.time || '명시 없음'} · 장소 ${cut.place || '명시 없음'} · 등장 ${cut.characters || '없음'} · ${cut.content || ''}`
         )).join('\n')
 
         // eslint-disable-next-line no-await-in-loop
@@ -2136,7 +2154,9 @@ const useStore = create((set, get) => ({
 
   // 인물·공간의 레퍼런스 그림을 만든다. 씬 기준을 글로만 두면 컷마다
   // 다르게 해석된다 — 그림이 기준이어야 같은 인물로 이어진다.
-  referenceImagePending: null,
+  // 여러 인물·공간 레퍼런스를 동시에 만들 수 있다. 하나의 key만 두면
+  // 뒤 요청이 앞 요청의 "그리는 중" 표시를 지워 버린다.
+  referenceImagePending: {},
   referenceImageError: null,
   requestReferenceImage: async (kind, subjectId = null) => {
     const state = get()
@@ -2155,7 +2175,10 @@ const useStore = create((set, get) => ({
     }
 
     const key = kind === 'character' ? subjectId : kind
-    set({ referenceImagePending: key, referenceImageError: null })
+    set((current) => ({
+      referenceImagePending: { ...current.referenceImagePending, [key]: true },
+      referenceImageError: null,
+    }))
     try {
       // 지연 import — 스토어를 node로 단독 검증할 수 있게 한다.
       const { generateReferenceImage } = await import('../services/api.js')
@@ -2174,9 +2197,15 @@ const useStore = create((set, get) => ({
           }
           : { ...current, [kind]: { ...current[kind], image } }
       ))
-      set({ referenceImagePending: null })
+      set((current) => {
+        const { [key]: _finished, ...remaining } = current.referenceImagePending
+        return { referenceImagePending: remaining }
+      })
     } catch (error) {
-      set({ referenceImagePending: null, referenceImageError: error.message })
+      set((current) => {
+        const { [key]: _failed, ...remaining } = current.referenceImagePending
+        return { referenceImagePending: remaining, referenceImageError: error.message }
+      })
     }
   },
 
@@ -2997,7 +3026,27 @@ const useStore = create((set, get) => ({
   )),
 
   // 줄콘티를 다시 열어 수정한다. accept를 되돌리되 컷 자체는 지우지 않는다.
-  reopenCutPlan: () => set({ cutPlanAccepted: false, cutPlanStageOverride: null }),
+  // 대본에서 씬 헤딩(예: "카페, 낮")을 고친 뒤 기존 플랜을 열어도,
+  // 비어 있던 시간·장소 칸은 현재 헤딩 기준으로 채워져야 한다.
+  // 이미 사용자가 적은 값은 건드리지 않는다.
+  reopenCutPlan: () => set((state) => {
+    const scenes = selectScenes(state.screenplay)
+    const cutPlan = state.cutPlan.map((cut) => {
+      if (cut.time && cut.place) return cut
+      const scene = sceneOfBeat(scenes, cut.beat)
+      const sceneLines = state.screenplay.filter((element) => (
+        element.beat >= (scene?.startBeat ?? 0)
+        && element.beat <= (scene?.endBeat ?? 0)
+      ))
+      const inferred = inferSceneContext(sceneLines)
+      return {
+        ...cut,
+        time: cut.time || inferred.time,
+        place: cut.place || inferred.place,
+      }
+    })
+    return { cutPlan, cutPlanAccepted: false, cutPlanStageOverride: null }
+  }),
   cutPlanSkipped: false,
   overviewTab: 'spatial',
   setOverviewTab: (tab) => set({ overviewTab: tab }),
@@ -3025,7 +3074,7 @@ const useStore = create((set, get) => ({
       screenplay: script,
       narrativeSuggestions: [],
       activeBeat: 0,
-      sceneStates: { 'scene-0': SCENE_STATE, 'scene-7': PLATFORM_SCENE_STATE },
+      sceneStates: { 'scene-0': SCENE_STATE, 'scene-7': CORRIDOR_SCENE_STATE },
       sceneStateStoryKey: screenplayFingerprint(script),
     }
   }),
@@ -3626,13 +3675,13 @@ const useStore = create((set, get) => ({
   scenes: [
     {
       id: 'scene-1',
-      label: 'Gas Station',
+      label: 'Physics Lab',
       activeBranch: 0,
       activeShot: 0,
       branches: [
         {
           id: 'branch-main',
-          label: 'Slow Burn Tension',
+          label: 'Quiet Discovery',
           isMain: true,
           branchPoint: 0,
           rationale: '',
@@ -3650,7 +3699,7 @@ const useStore = create((set, get) => ({
     },
     {
       id: 'scene-2',
-      label: 'Desert Motel',
+      label: 'Faculty Corridor',
       activeBranch: 0,
       activeShot: 0,
       branches: [
@@ -3661,9 +3710,9 @@ const useStore = create((set, get) => ({
           branchPoint: 0,
           rationale: '',
           shots: [
-            { id: 'shot-s2-0', image: null, cir: {}, label: 'Arrival', scriptBeat: 0, isAIGenerated: false, source: 'canvas' },
-            { id: 'shot-s2-1', image: null, cir: {}, label: 'Entering Room', scriptBeat: 1, isAIGenerated: false, source: 'canvas' },
-            { id: 'shot-s2-2', image: null, cir: {}, label: 'Suspicion', scriptBeat: 2, isAIGenerated: false, source: 'canvas' },
+            { id: 'shot-s2-0', image: null, cir: {}, label: 'Empty Corridor', scriptBeat: 0, isAIGenerated: false, source: 'canvas' },
+            { id: 'shot-s2-1', image: null, cir: {}, label: 'Knocking', scriptBeat: 1, isAIGenerated: false, source: 'canvas' },
+            { id: 'shot-s2-2', image: null, cir: {}, label: 'Held Notebook', scriptBeat: 2, isAIGenerated: false, source: 'canvas' },
           ],
         },
       ],

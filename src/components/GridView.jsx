@@ -379,7 +379,7 @@ export default function GridView({
                         <input
                           id={`elision-${prevShot.id}`}
                           value={seam?.elision || ''}
-                          placeholder="예: 재인이 방을 가로지르는 동안"
+                          placeholder="예: 하린이 실험대를 가로지르는 동안"
                           onChange={(e) => updateSeam(prevShot.id, { elision: e.target.value })}
                         />
 
