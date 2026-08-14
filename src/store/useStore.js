@@ -1680,6 +1680,9 @@ export const buildPanelMarks = (offImage = []) => {
   const notes = []
 
   offImage.forEach(({ element, channel, direction, pending }) => {
+    // 채널이 없으면 패널에 남길 자리가 없다. 씬 전체에 걸리는 기준은
+    // 인스펙터에서 판정하지, 패널마다 칩으로 반복하지 않는다.
+    if (!channel) return
     const spec = OFFIMAGE_CHANNELS.find((entry) => entry.id === channel)
     const label = direction || element
 
@@ -1776,7 +1779,9 @@ const proposeDeclarations = (cutPlan, { sceneIntention = '' } = {}) => {
     element: '조명 · 톤',
     lens: 'cinematography',
     responsibility: 'direction',
-    channel: 'acting-note',
+    // 채널을 두지 않는다. acting-note로 두면 패널마다 '조명 · 톤' 칩이
+    // 하나씩 붙는데, 이것은 연기 메모가 아니라 씬 전체에 걸리는 기준이다.
+    // 판정은 인스펙터에서 하고 화면에는 남기지 않는다.
     rationale: '컷 플랜은 샷 크기와 앵글만 담는다. 조명은 어느 컷에도 적혀 있지 않다.',
   })
 
