@@ -658,8 +658,11 @@ const createMockCutPlan = (state) => {
     // 정보라 책임 선언과 패널 화살표의 대상이 된다 (DG1 P3).
     if (heading) {
       // 샷은 촬영이 정한다. 여기서 넣으면 촬영을 부르기 전에 값이 차 있다.
+      // content는 자르지 않는다. 표에서 길어 보인다고 여기서 줄이면 그 잘린
+      // 문장이 그대로 그림 프롬프트로 간다 — 모델은 "나머지 공간은 어…"를
+      // 받는다. 화면에서 줄이는 것은 화면이 할 일이다.
       push({
-        content: shortenNarrativeText(actions[0]?.text || heading.text, 60),
+        content: actions[0]?.text || heading.text,
         purpose: '공간 설정',
       })
     }
@@ -677,7 +680,7 @@ const createMockCutPlan = (state) => {
       const shotSize = subject.length > 1 ? 'Medium' : 'Bust'
 
       push({
-        content: shortenNarrativeText(action.text, 60),
+        content: action.text,
         purpose: subject.length > 1 ? '관계' : '행동 강조',
         characters: subject.join(', '),
         shotSize,
