@@ -7,6 +7,9 @@ from google import genai
 from google.genai import types
 from openai import AsyncOpenAI, OpenAI
 import httpx
+# 그림체는 panel_style이 정한다 — 처음부터 생성한 패널과 스케치를 채워
+# 완성한 패널이 같은 보드로 보여야 하므로 두 길이 같은 문장을 읽는다.
+from app.services.panel_style import style_prelude
 try:
     from rembg import remove as rembg_remove
     HAS_REMBG = True
@@ -637,7 +640,11 @@ async def enhance_sketch(
     ) or "- No additional reference images."
 
     restyling = mode == "restyle"
-    base_prompt = RESTYLE_PROMPT if restyling else ENHANCE_PROMPT
+    # 그림체 맞추기는 패널 생성과 같은 그림체 지시를 앞에 단다. 보태기는
+    # 감독이 그린 그림을 그대로 두는 쪽이라 보드 그림체를 강요하지 않는다.
+    base_prompt = (
+        f"{style_prelude(style or '')}\n\n{RESTYLE_PROMPT}" if restyling else ENHANCE_PROMPT
+    )
     # 두 모드가 레퍼런스를 쓰는 방식이 정반대다. 보태기에서 레퍼런스는
     # '이미 그려진 것이 무엇인지' 알아보는 용도이고, 그림체 맞추기에서는
     # '동그라미를 무엇으로 그릴지' 정하는 근거다. 꼬리말을 섞으면 보태기가
@@ -659,12 +666,22 @@ async def enhance_sketch(
         "already contain — whatever the sketch leaves blank stays blank."
     )
 
+    # 컷 설명을 두 모드가 반대로 쓴다. 보태기에서는 이미 그려진 것이 무엇인지
+    # 알아보는 데만 쓰고, 그림체 맞추기에서는 스케치의 표시가 무엇인지 정하는
+    # 근거다. 라벨을 하나로 두면 그림체 맞추기가 컷을 읽고도 못 쓴다.
+    cut_label = (
+        "Current cut — what this panel shows. Use it to decide what each mark in the sketch "
+        "stands for, and draw those things"
+        if restyling
+        else "Current cut — use only to recognize elements already visible, never to add new ones"
+    )
+
     edit_prompt = f"""{base_prompt}
 
 [Scene Context]
 {script_context}
 
-[Current cut — use only to recognize elements already visible, never to add new ones]
+[{cut_label}]
 {prompt}
 
 [Shared scene basis]

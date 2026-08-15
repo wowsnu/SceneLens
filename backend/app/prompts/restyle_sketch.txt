@@ -39,17 +39,5 @@ be drawn, not a person with no face.
 
 Do not add a person, prop, or event that neither the sketch nor the cut calls for.
 
-KEEP IT A STORYBOARD, NOT AN ILLUSTRATION. This panel gets looked at and changed, and a
-finished-looking drawing reads as already decided — nobody argues with it.
-- Draw in open, visible pencil lines. Let strokes stay separate and a little uneven; do not
-  blend them into smooth surfaces.
-- Shade only where it tells the viewer something — which way the light falls, which shape is
-  in front. A few hatched passes, not continuous tone. Leave most of the paper white.
-- Faces carry identity and expression only: the features the reference establishes, and where
-  the eyes are looking. No skin texture, no rendered lips or individual strands of hair.
-- Backgrounds get the shapes that matter to this cut and nothing more. No wallpaper pattern,
-  no decorative props, no detail nobody asked about.
-- Never render this as a photograph, a painting, or a polished portrait.
-
 Return the panel at exactly the same aspect ratio and framing as the input image — never
 crop, pad, or reformat it. No text, captions, borders, or watermarks.

@@ -15,28 +15,11 @@ import os
 from openai import AsyncOpenAI
 
 from app.models.schemas import PanelImageRequest, PanelImageResponse
+from app.services.panel_style import style_prelude
 
 
-# 모든 패널이 같은 그림체여야 스토리보드로 읽힌다. 내용은 프롬프트가,
-# 그림체는 이 문장이 정한다.
-# 그림체와 무관하게 지켜야 할 것. 테두리와 글자는 어떤 화풍에서도 방해가 된다.
-NO_TEXT = (
-    "Storyboard panel. Single frame that fills the entire image edge to edge. "
-    "Do not draw a frame, border, outline, or margin around the drawing. "
-    "No text, no lettering, no signage, no labels, no numbers, "
-    "no speech bubbles, no captions, no watermark."
-)
-
-STYLE = (
-    "Black and white storyboard panel, rough pencil sketch style, "
-    "clean confident line art, minimal shading, cinematic framing. "
-    "Single frame that fills the entire image edge to edge. "
-    # 테두리를 그리면 패널 안에 패널이 생겨 화면에서 두 겹으로 보인다.
-    "Do not draw a frame, border, outline, or margin around the drawing. "
-    # 글자는 스토리보드가 담는 것이 아니고, 모델이 쓰면 읽히지도 않는다.
-    "No text, no lettering, no signage, no labels, no numbers, "
-    "no speech bubbles, no captions, no watermark."
-)
+# 그림체는 panel_style이 정한다. 스케치를 채워 완성하는 길(restyle)도 같은
+# 것을 읽어야 두 방식으로 만든 패널이 한 보드로 보인다.
 
 
 def _decodable(value: str) -> bool:
@@ -68,8 +51,7 @@ async def generate_panel(request: PanelImageRequest) -> PanelImageResponse:
 
     # 그림체는 미장센이 정할 수 있다. 정하지 않았으면 기본 스케치체를 쓴다.
     # 글자·테두리 금지는 어떤 그림체에서도 유지되어야 한다.
-    look = request.style.strip() if request.style else ""
-    parts = [f"{look}. {NO_TEXT}" if look else STYLE]
+    parts = [style_prelude(request.style or "")]
     if request.shared:
         parts.append(f"Consistent across every panel in this scene: {request.shared}")
     if request.layout:
