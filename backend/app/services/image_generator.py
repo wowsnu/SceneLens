@@ -656,7 +656,7 @@ async def enhance_sketch(
         else "Image 1 is the director's sketch and is the drawing itself. The later images listed above are\n"
         "character, location, or layout references, provided only to recognize what image 1 already\n"
         "shows. Do not draw a face, prop, or place from those references that image 1 does not\n"
-        "already contain — a blank oval stays a blank oval."
+        "already contain — whatever the sketch leaves blank stays blank."
     )
 
     edit_prompt = f"""{base_prompt}

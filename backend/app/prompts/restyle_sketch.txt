@@ -1,27 +1,55 @@
-Draw this storyboard panel the way every other panel in this board is drawn, using the
-director's sketch as the ground plan for what goes where.
+Draw this rough storyboard panel the way every other panel in this board is drawn, using the
+director's sketch as the ground plan for what goes where. This is a working drawing made to
+be judged and redrawn, not a finished piece.
 
 Image 1 is that sketch. It is not a drawing to imitate — it is the staging: it tells you
 where each figure and object stands, how large each one is in the frame, which way people
 face, and where the camera is. Read it, then draw the finished panel from that arrangement.
 
-TAKE FROM THE SKETCH:
-- The composition, framing, and camera angle.
-- The position, scale, and facing of every figure and object in it.
+TAKE FROM THE SKETCH — copy this arrangement exactly, do not rearrange it:
+- Which side of the frame each thing sits on. If a mark is on the left of the sketch, the
+  thing it stands for is on the left of your drawing. Never mirror or flip the layout.
+- How high or low in the frame each thing sits, and how large it is relative to the others.
+- Which way each figure faces and looks.
+- The camera angle and eye level the sketch implies.
 - The action being played, as far as the sketch shows it.
+
+Draw every mark that is in the sketch, and nothing that is not. Do not fill the empty parts
+of the frame with furniture, shelves, equipment, or props the sketch left out — empty paper
+in the sketch means empty space in the panel.
 
 TAKE FROM THE SCENE CONTEXT AND REFERENCES:
 - Who these people actually are — faces, hair, build, clothing — from the character
-  references, not from the sketch's blank ovals.
+  references.
 - What the place actually looks like, from the location reference and the scene basis.
-- Everything the sketch left as a rough mark: a box that the cut describes as a laptop is
-  drawn as a laptop, a stick figure is drawn as the character it stands for.
 
-Where the sketch and the written cut disagree about staging, the sketch wins — the director
-drew it that way on purpose. Where the sketch is simply crude, the references win; a rough
-oval is a face waiting to be drawn, not a face that has no features.
+A rough mark in the sketch says WHERE something is and HOW BIG it is. It does not say what
+that thing looks like. So for each mark, decide what it stands for from the cut description
+and the references, then draw that thing at the mark's position and size.
+
+Identify each mark only from what the cut and the references actually name. If they do not
+say what a mark is, draw it as the plain shape it appears to be — a nondescript object of
+that size in that place. Never guess a specific object into it, and never carry over an
+assumption from another panel.
+
+Where the sketch and the written cut disagree about staging — position, size, facing,
+camera — the sketch wins; the director drew it that way on purpose. Where the sketch is
+simply crude, the references win; a rough mark standing for a person is a person waiting to
+be drawn, not a person with no face.
 
 Do not add a person, prop, or event that neither the sketch nor the cut calls for.
+
+KEEP IT A STORYBOARD, NOT AN ILLUSTRATION. This panel gets looked at and changed, and a
+finished-looking drawing reads as already decided — nobody argues with it.
+- Draw in open, visible pencil lines. Let strokes stay separate and a little uneven; do not
+  blend them into smooth surfaces.
+- Shade only where it tells the viewer something — which way the light falls, which shape is
+  in front. A few hatched passes, not continuous tone. Leave most of the paper white.
+- Faces carry identity and expression only: the features the reference establishes, and where
+  the eyes are looking. No skin texture, no rendered lips or individual strands of hair.
+- Backgrounds get the shapes that matter to this cut and nothing more. No wallpaper pattern,
+  no decorative props, no detail nobody asked about.
+- Never render this as a photograph, a painting, or a polished portrait.
 
 Return the panel at exactly the same aspect ratio and framing as the input image — never
 crop, pad, or reformat it. No text, captions, borders, or watermarks.
