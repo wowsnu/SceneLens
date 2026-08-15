@@ -1266,10 +1266,22 @@ const destinationsFor = (diagnosis) => (
   || (diagnosis?.level === 'attribute' ? ['prompt', 'draw'] : ['cutplan'])
 )
 
+// 편집 대안은 이미지 프롬프트를 바꾸는 선택지가 아니다. 모델이 준 문장에
+// 따라 해당 패널 또는 이음새의 구조 도구를 열어, 무엇이 변하는지 보면서
+// 확정하게 한다.
+const editingActionFor = (alternative) => {
+  const text = `${alternative?.label || ''} ${alternative?.effect || ''}`.toLowerCase()
+  if (/(삭제|제거|빼기)/.test(text)) return { id: 'delete', label: '이 패널 삭제' }
+  if (/(분할|나누기|쪼개)/.test(text)) return { id: 'split', label: '이음새에서 분할' }
+  if (/(삽입|추가|넣기)/.test(text)) return { id: 'insert', label: '이음새에 삽입' }
+  if (/(병합|합치)/.test(text)) return { id: 'merge', label: '앞 컷과 병합' }
+  return { id: 'seam', label: '이음새에서 조정' }
+}
+
 
 function DirectingReviewResult({
   run, onTool, onApply, onOpenPrompt, onSavePrompt, promptDrafts,
-  rewritingId, rewriteNotes, applyingId, cutOf, lensName,
+  rewritingId, rewriteNotes, promptBefore, applyingId, cutOf, lensName,
 }) {
   const result = run.result
   const diagnoses = result?.diagnoses || []
@@ -1303,6 +1315,7 @@ function DirectingReviewResult({
           const promptDraft = diagnosis ? promptDrafts?.[diagnosis.id] ?? null : null
           const isRewriting = Boolean(diagnosis) && rewritingId === diagnosis.id
           const rewriteNote = diagnosis ? rewriteNotes?.[diagnosis.id] : null
+          const beforeText = diagnosis ? promptBefore?.[diagnosis.id] : null
           return (
             /* check는 감독이 답해야 무엇이 갈리는 층위다. 접어 두면 그
                질문이 보이지 않는다. */
@@ -1384,6 +1397,9 @@ function DirectingReviewResult({
                           const isApplying = applyingId === `${diagnosis.id}::${alternative.label}`
                           // '그대로 두기'는 바꿀 것이 없으므로 읽기만 한다.
                           const isKeep = alternative.kind === 'keep'
+                          const editingAction = diagnosis.lens === 'editing'
+                            ? editingActionFor(alternative)
+                            : null
                           return (
                             <li
                               key={alternative.label}
@@ -1393,7 +1409,14 @@ function DirectingReviewResult({
                                 <strong>{alternative.label}</strong>
                                 {/* 고르는 자리에서 바로 바꾼다. 샷 값으로
                                     풀리지 않는 선택지는 프롬프트를 연다. */}
-                                {!isKeep && (isApplying ? (
+                                {!isKeep && (editingAction ? (
+                                  <button
+                                    type="button"
+                                    onClick={() => onTool?.(editingAction.id, diagnosis)}
+                                  >
+                                    {editingAction.label}
+                                  </button>
+                                ) : isApplying ? (
                                   // 값은 바뀌었고 그림을 그리는 중. `적용됨`은
                                   // 그림까지 나와야 붙는다.
                                   <em className="directing-alternative-applying">
@@ -1453,6 +1476,24 @@ function DirectingReviewResult({
                       {rewriteNote && (
                         <p className="directing-prompt-changed">{rewriteNote}</p>
                       )}
+                      {/* 고치기 전 문장을 남겨 둔다. 수정본만 보이면 무엇이
+                          달라졌는지 기억에 기대어 판정하게 되고, 되돌릴
+                          근거도 사라진다. 읽기 전용이다 — 고칠 것은 아래다. */}
+                      {beforeText && (
+                        <div className="directing-prompt-before">
+                          <span>
+                            고치기 전
+                            <button
+                              type="button"
+                              onClick={() => onOpenPrompt?.(diagnosis, beforeText)}
+                            >
+                              이걸로 되돌리기
+                            </button>
+                          </span>
+                          <p>{beforeText}</p>
+                        </div>
+                      )}
+                      {beforeText && <span className="directing-prompt-after-label">고친 뒤</span>}
                       <textarea
                         value={promptDraft}
                         rows={7}
@@ -1541,6 +1582,9 @@ export default function DecisionBoard({ boardView = 'split' }) {
   const [applyingAlternative, setApplyingAlternative] = useState(null)
   // 무엇을 바꿨는지 한 줄. 감독이 두 문장을 나란히 비교하지 않아도 알게 한다.
   const [promptRewriteNotes, setPromptRewriteNotes] = useState({})
+  // 수정본을 받기 직전의 문장. 이것이 없으면 고쳐진 문장만 남아, 감독은
+  // 무엇이 달라졌는지 기억에 기대어 판정하게 된다.
+  const [promptBefore, setPromptBefore] = useState({})
   const [selectedOptionIds, setSelectedOptionIds] = useState([])
   const [cameraPreview, setCameraPreview] = useState(null)
   const [cameraApplyHistory, setCameraApplyHistory] = useState([])
@@ -1711,17 +1755,6 @@ export default function DecisionBoard({ boardView = 'split' }) {
   const currentEditingSuggestions = [
     ...currentEditingSingle.operations,
     ...getMockEditingBoundaries(activeShot, shots.length),
-    ...(shots.length > 1 ? [{
-      id: `editing-delete-shot-${activeShot + 1}`,
-      kind: 'delete',
-      operation: '샷 삭제',
-      scope: 'current',
-      scopeLabel: `현재 샷 · S${activeShot + 1}`,
-      title: `S${activeShot + 1} 삭제`,
-      proposal: '이 패널과 대응하는 컷을 흐름에서 제거합니다.',
-      result: `Shot 수 ${shots.length}개 → ${shots.length - 1}개`,
-      watch: '이 컷의 그림과 앞뒤 이음새 기록도 함께 사라집니다.',
-    }] : []),
   ]
   const currentShot = shots[activeShot]
   const multiReviewScopeKey = scopeMode === 'range'
@@ -2652,6 +2685,11 @@ export default function DecisionBoard({ boardView = 'split' }) {
         delete next[diagnosis.id]
         return next
       })
+      setPromptBefore((current) => {
+        const next = { ...current }
+        delete next[diagnosis.id]
+        return next
+      })
       return
     }
     if (typeof text === 'string') {
@@ -2687,6 +2725,11 @@ export default function DecisionBoard({ boardView = 'split' }) {
       })
       setPromptDrafts((draft) => ({ ...draft, [diagnosis.id]: result.prompt }))
       setPromptRewriteNotes((notes) => ({ ...notes, [diagnosis.id]: result.changed }))
+      // 고치기 전 문장을 남긴다. 같은 문장이 돌아왔다면 보여줄 차이가 없다.
+      setPromptBefore((before) => ({
+        ...before,
+        [diagnosis.id]: result.prompt === current.effective ? null : current.effective,
+      }))
     } catch (error) {
       // 실패해도 편집기는 열린 채로 둔다. 감독이 직접 고칠 수 있다.
       setPromptRewriteNotes((notes) => ({
@@ -2844,10 +2887,15 @@ export default function DecisionBoard({ boardView = 'split' }) {
       return
     }
 
-    if (tool === 'seam' || tool === 'merge' || tool === 'split') {
+    if (tool === 'delete') {
+      if (targetShot?.cutPlanItemId) deleteCut(targetShot.cutPlanItemId)
+      return
+    }
+
+    if (tool === 'seam' || tool === 'merge' || tool === 'split' || tool === 'insert') {
       // 이음새는 앞 컷에 붙는다. 합치기도 앞 컷 기준이다.
       // 나누기는 그 컷 자체를 쪼개므로 대상 컷을 그대로 쓴다.
-      const anchorIndex = tool === 'split'
+      const anchorIndex = tool === 'split' || tool === 'insert'
         ? targetShotIndex
         : Math.max(0, targetShotIndex - 1)
       const seamShot = shots[anchorIndex]
@@ -3278,14 +3326,6 @@ export default function DecisionBoard({ boardView = 'split' }) {
                   </span>
                   <p>{primaryLens.brief}</p>
                 </div>
-                {primaryLens.id !== 'staging' && (
-                  <span className="option-lane-count">
-                    {lensReviewHasResult && lensReviewRun.result
-                      ? lensReviewRun.result.diagnoses.length > 0 ? '진단 1' : '이상 없음'
-                      : '분석 전'}
-                  </span>
-                )}
-                <strong>{primaryLens.lens}</strong>
               </div>
               {viewerFindingHandoff
                 && ({ mise: 'staging', camera: 'camera', editing: 'editing' }[viewerFindingHandoff.route] === primaryLens.id) && (
@@ -3394,6 +3434,7 @@ export default function DecisionBoard({ boardView = 'split' }) {
                   promptDrafts={promptDrafts}
                   rewritingId={promptRewriting}
                   rewriteNotes={promptRewriteNotes}
+                  promptBefore={promptBefore}
                   applyingId={applyingAlternative}
                   cutOf={cutForDiagnosis}
                   lensName={primaryLens.displayName}
@@ -3679,35 +3720,18 @@ export default function DecisionBoard({ boardView = 'split' }) {
                             type="button"
                             onClick={() => {
                               if (operation.kind === 'insert') {
-                                if (currentShot?.id) requestSeamFocus(currentShot.id, 'insert')
+                                setEditingSequencePreview((current) => (
+                                  current?.operationId === operation.id
+                                    ? null
+                                    : {
+                                        type: 'insert',
+                                        operationId: operation.id,
+                                        afterShotId: currentShot?.id,
+                                        title: operation.title,
+                                        proposal: operation.proposal,
+                                      }
+                                ))
                                 return
-                              }
-
-                              if (operation.kind === 'delete') {
-                                if (currentShot?.cutPlanItemId) deleteCut(currentShot.cutPlanItemId)
-                                return
-                              }
-
-                              // 편집 제안은 프롬프트 문장에 덧붙이는 지시가
-                              // 아니다. 구조를 바꾸는 것은 해당 패널/이음새의
-                              // 도구를 열어 그 자리에서 확정한다.
-                              if (operation.kind === 'split') {
-                                if (currentShot?.id) requestSeamFocus(currentShot.id, 'split')
-                                return
-                              }
-                              if (operation.kind === 'retime') {
-                                const anchor = shots[Math.max(0, activeShot - 1)]
-                                if (anchor?.id) requestSeamFocus(anchor.id)
-                                return
-                              }
-
-                              // 시작·끝 타이밍처럼 현재 프로토타입에서 프레임
-                              // 단위로 자동 적용할 수 없는 판단은 패널 메모로
-                              // 남긴다. 프롬프트에는 반영하지 않는다.
-                              if (currentShot?.id) {
-                                requestPanelTool(currentShot.id, 'memo', { text: operation.proposal })
-                                setLeftPanelVisible(true)
-                                setMaximizedPanel('left')
                               }
 
                               setSelectedEditingOperationIds((current) => (
@@ -3719,14 +3743,8 @@ export default function DecisionBoard({ boardView = 'split' }) {
                             aria-pressed={isSelected}
                           >
                             {operation.kind === 'insert'
-                              ? '이음새에 컷 넣기'
-                              : operation.kind === 'delete'
-                                ? `S${activeShot + 1} 삭제`
-                              : operation.kind === 'split'
-                                ? '이음새에서 나누기'
-                                : operation.kind === 'retime'
-                                  ? '이음새에서 조정'
-                                  : '메모로 남기기'}
+                              ? isSelected ? '흐름 미리보기 닫기' : '흐름에서 미리보기'
+                              : isSelected ? '편집안에 추가됨' : '편집안에 추가'}
                           </button>
                         </article>
                       )

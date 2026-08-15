@@ -14,7 +14,6 @@ function App() {
   // 검토는 그림이 있어야 성립한다. 렌즈도 관객 읽기도 패널을 보고
   // 판단하므로, 패널 단계 전에는 넘어갈 자리가 아니다.
   const cutStage = useStore(selectCutStage)
-  const [boardView, setBoardView] = useState('split')
   const maximizedPanel = useStore((s) => s.maximizedPanel)
   const setMaximizedPanel = useStore((s) => s.setMaximizedPanel)
   const leftPanelVisible = useStore((s) => s.leftPanelVisible)
@@ -22,7 +21,6 @@ function App() {
   const centerTab = useStore((s) => s.centerTab)
   const setCenterTab = useStore((s) => s.setCenterTab)
   const drawingWorkspaceOpen = useStore((s) => s.drawingWorkspaceOpen)
-  const openDrawingWorkspace = useStore((s) => s.openDrawingWorkspace)
   const closeDrawingWorkspace = useStore((s) => s.closeDrawingWorkspace)
   const clearStoryboardShotSelection = useStore((s) => s.clearStoryboardShotSelection)
   const activeBeat = useStore((s) => s.activeBeat)
@@ -265,35 +263,13 @@ function App() {
                     ← 스토리보드
                   </button>
                 )}
-                <div className="decision-view-toggle" aria-label="Board view mode">
-                  {[
-                    ['storyboard', 'Storyboard'],
-                    ['split', 'Split'],
-                    ['lenses', 'Lenses'],
-                  ].map(([mode, label]) => (
-                    <button
-                      key={mode}
-                      type="button"
-                      className={boardView === mode ? 'active' : ''}
-                      onClick={() => setBoardView(mode)}
-                    >
-                      {label}
-                    </button>
-                  ))}
-                </div>
-                {/* Focus 버튼은 뺐다. 헤더에 버튼이 많아 정작 눌러야 할
-                    것이 묻힌다. Z 키로 여전히 들어갈 수 있고, 들어간
-                    화면에는 나오는 버튼이 따로 있다. */}
-                <button type="button" className="panel-control-btn" onClick={openDrawingWorkspace}>
-                  Edit Shot
-                </button>
               </div>
             )}
           </div>
           <div className="panel-content">
             {drawingWorkspaceOpen
               ? <CenterPanel showScriptPanel={drawingFocused} />
-              : <DecisionBoard boardView={boardView} />}
+              : <DecisionBoard boardView="split" />}
           </div>
         </section>
 
