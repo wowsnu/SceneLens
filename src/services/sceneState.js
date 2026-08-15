@@ -1,6 +1,18 @@
 // 씬 기준 응답을 스토어가 쓰는 형태로 옮긴다.
 // api.js에서 떼어낸 이유: 그 파일은 import.meta.env를 읽어 node에서 로드되지
 // 않는다. 변환 규칙은 검증할 수 있어야 한다.
+// 씬 헤딩의 시간은 대본이 이미 확정한 정보다. 모델이 환경의 `시간` 칸을
+// 비워도 "카페, 낮" 같은 헤딩에서 다시 추론할 수 있다.
+const timeFromHeading = (heading = '') => {
+  const source = heading.toLowerCase()
+  if (source.includes('새벽') || source.includes('dawn')) return '새벽'
+  if (source.includes('아침') || source.includes('morning')) return '아침'
+  if (source.includes('낮') || source.includes('day')) return '낮'
+  if (source.includes('저녁') || source.includes('evening')) return '저녁'
+  if (source.includes('밤') || source.includes('night')) return '밤'
+  return ''
+}
+
 export function toSceneState(data, heading = '', cutIds = []) {
   const facts = (list = [], allowTimeline = false) => list.map((fact) => ({
     label: fact.label,
@@ -14,6 +26,14 @@ export function toSceneState(data, heading = '', cutIds = []) {
       .map((change) => ({ cutId: cutIds[change.at_cut - 1], value: change.value || '' }))
       .filter((change) => change.cutId && change.value),
   }))
+
+  const environmentFacts = facts(data.environment.facts, true)
+  const headingTime = timeFromHeading(heading)
+  const normalizedEnvironmentFacts = environmentFacts.map((fact) => (
+    fact.label === '시간' && !fact.value && headingTime
+      ? { ...fact, value: headingTime, open: false }
+      : fact
+  ))
 
   return {
     title: heading,
@@ -32,7 +52,7 @@ export function toSceneState(data, heading = '', cutIds = []) {
     },
     environment: {
       name: '장면 공통',
-      facts: facts(data.environment.facts, true),
+      facts: normalizedEnvironmentFacts,
     },
   }
 }

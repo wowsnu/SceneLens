@@ -16,9 +16,10 @@ export function toCutPlanItems(data, { time = '', place = '' } = {}) {
       beat,
       order: index + 1,
       beatOrder,
-      // 시간·장소는 씬에서 온다. 컷마다 다시 정할 것이 아니다.
-      time,
-      place,
+      // 시간·장소는 컷 플랜이 화면 단서에서 판단한다. 이전 응답이나
+      // 규칙 기반 초안에는 없을 수 있어, 그때만 씬의 보완값을 쓴다.
+      time: cut.time || time,
+      place: cut.place || place,
       content: cut.content,
       purpose: cut.purpose,
       characters: cut.characters || '',
