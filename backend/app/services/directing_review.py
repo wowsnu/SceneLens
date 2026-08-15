@@ -165,6 +165,9 @@ targets 규칙:
     허용된 값은 아래 [컷 표의 값] 목록에 있는 것뿐입니다.
     ✓ "카메라 낮추기" → patch: shot_size=null, angle="Low angle", move=null
     ✓ "더 넓게 잡기" → patch: shot_size="Wide", angle=null, move=null
+    · **그 선택지가 실제로 바꾸는 항목만 적으세요.** 예를 들어 앵글만 바꾸는
+      선택지라면 shot_size와 move는 null입니다. 바꾸지 않는 항목까지 채우면
+      감독은 무엇이 달라지는지 알 수 없고, 건드릴 생각이 없던 값이 함께 바뀝니다.
     · **kind="keep"은 언제나 전부 null입니다.** 유지하는 길은 아무것도 바꾸지 않습니다.
     · 조명·표정·소품·인물 배치처럼 위 세 값으로 표현되지 않는 것은 전부 null로 두세요.
       억지로 비슷한 값을 넣으면 감독이 누른 것과 다른 것이 바뀝니다. null이면 화면이
@@ -299,6 +302,9 @@ attribute는 명시된 컷 길이·진입점·종료점처럼 한 컷의 편집 
 관계와 씬 구조로 중복 진단하지 말고, 범위 전체의 정보 순서가 원인이면 scene_structure
 하나로 묶으세요. 다음 컷 자체가 반응이나 행동을 명확히 보여주면 별도 반응 컷이 반드시
 필요하다고 가정하지 마세요.
+
+편집 선택지의 patch.shot_size, patch.angle, patch.move는 반드시 null로 두세요. 이 값들은
+촬영 렌즈에서만 사용하는 카메라 변경값입니다.
 
 다른 장소의 컷은 그 자체로 흐름을 끊는 문제가 아닙니다. 사건 설명이나 감독 의도에 그
 컷이 현재 인물의 판단 계기, 위험의 대상 또는 행동의 원인을 보여준다고 명시되어 있다면
@@ -704,6 +710,21 @@ def _validate_remedy_scope(lens: DirectingLens, result: DirectingLensResult) -> 
     editorial bridge shot or move actors around. A retry here is preferable to
     showing a camera card whose next action opens the wrong workspace.
     """
+    if lens == "editing":
+        # 공통 응답 스키마는 모든 렌즈에 shot/angle/move patch를 열어 둔다.
+        # 하지만 편집이 이를 채우면 카드가 촬영 제안으로 바뀐다.
+        if any(
+            alternative.patch and (
+                alternative.patch.shot_size or alternative.patch.angle or alternative.patch.move
+            )
+            for diagnosis in result.diagnoses
+            for alternative in diagnosis.alternatives
+        ):
+            raise ValueError(
+                "editing alternatives must leave shot_size, angle and move patches null; "
+                "editing changes cut order, duration or connections, not the camera"
+            )
+        return
     if lens not in {"camera", "mise"}:
         return
 
