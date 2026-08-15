@@ -11,6 +11,7 @@ import useStore, {
   selectScenes,
   cutOrderOf,
   selectActiveSceneId,
+  referencePendingKey,
   selectActiveSceneState,
   sceneOfBeat,
   seamKeyFor,
@@ -925,7 +926,9 @@ export default function StoryboardView() {
   const sceneStateError = useStore((s) => s.sceneStateError)
   const requestReferenceImage = useStore((s) => s.requestReferenceImage)
   const referenceImagePending = useStore((s) => s.referenceImagePending)
-  const isReferenceImagePending = (key) => Boolean(referenceImagePending?.[key])
+  const isReferenceImagePending = (kind, subjectId = null) => (
+    Boolean(referenceImagePending?.[referencePendingKey(activeSceneId, kind, subjectId)])
+  )
   const setShotNote = useStore((s) => s.setShotNote)
   const addShotArrow = useStore((s) => s.addShotArrow)
   const updateShotArrow = useStore((s) => s.updateShotArrow)
@@ -3561,9 +3564,9 @@ export default function StoryboardView() {
                                     type="button"
                                     className="rail-reference-trigger"
                                     onClick={() => generateReferenceFromCutPlan('character', character.id)}
-                                    disabled={isReferenceImagePending(character.id)}
+                                    disabled={isReferenceImagePending('character', character.id)}
                                   >
-                                    {isReferenceImagePending(character.id) ? '그리는 중…' : '레퍼런스 생성'}
+                                    {isReferenceImagePending('character', character.id) ? '그리는 중…' : '레퍼런스 생성'}
                                   </button>
                                 )}
                                 {character.image && (
@@ -3574,9 +3577,9 @@ export default function StoryboardView() {
                                       event.stopPropagation()
                                       generateReferenceFromCutPlan('character', character.id)
                                     }}
-                                    disabled={isReferenceImagePending(character.id)}
+                                    disabled={isReferenceImagePending('character', character.id)}
                                   >
-                                    {isReferenceImagePending(character.id) ? '다시 그리는 중…' : '다시 생성'}
+                                    {isReferenceImagePending('character', character.id) ? '다시 그리는 중…' : '다시 생성'}
                                   </button>
                                 )}
                               </div>

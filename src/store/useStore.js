@@ -1325,6 +1325,13 @@ export const selectActiveSceneId = (state) => {
   return sceneOfBeat(scenes, state.activeBeat ?? 0)?.id || 'scene-0'
 }
 
+// 레퍼런스 "그리는 중" 표시의 key. 씬이 빠지면 다른 씬의 같은 이름
+// ('location', 또는 씬을 넘어 같은 인물 id)이 한 칸을 공유해, 한 씬을
+// 그리는 동안 다른 씬까지 그리는 중으로 보인다.
+export const referencePendingKey = (sceneId, kind, subjectId = null) => (
+  `${sceneId}:${kind === 'character' ? `character:${subjectId}` : kind}`
+)
+
 // --- Scene state: 컷을 가로지르는 기준 ----------------------------------
 // 여러 컷에 같은 인물과 공간이 나온다. 컷마다 프롬프트를 따로 조립하면
 // 컷 1의 '실험실'과 컷 5의 '실험실'이 각자 해석되어 다른 방이 된다.
@@ -2156,11 +2163,19 @@ const useStore = create((set, get) => ({
   // 다르게 해석된다 — 그림이 기준이어야 같은 인물로 이어진다.
   // 여러 인물·공간 레퍼런스를 동시에 만들 수 있다. 하나의 key만 두면
   // 뒤 요청이 앞 요청의 "그리는 중" 표시를 지워 버린다.
+  //
+  // key는 씬으로 한정한다. 'location'처럼 씬이 빠진 이름을 쓰면 모든 씬의
+  // 공간 버튼이 같은 칸을 읽어, 씬 1을 그리는 동안 씬 2까지 "그리는 중"이
+  // 된다. 인물 id도 씬을 넘어 같을 수 있으므로 함께 한정한다.
   referenceImagePending: {},
   referenceImageError: null,
   requestReferenceImage: async (kind, subjectId = null) => {
     const state = get()
-    const scene = state.sceneStates[selectActiveSceneId(state)]
+    // 시작할 때의 씬을 붙잡아 둔다. 그리는 동안 사용자가 씬을 옮기면
+    // 끝난 뒤 읽은 씬은 다른 씬이라, 표시를 지울 칸도 결과를 적을 씬도
+    // 어긋난다.
+    const sceneId = selectActiveSceneId(state)
+    const scene = state.sceneStates[sceneId]
     if (!scene) return
 
     const subject = kind === 'character'
@@ -2174,7 +2189,7 @@ const useStore = create((set, get) => ({
       return
     }
 
-    const key = kind === 'character' ? subjectId : kind
+    const key = referencePendingKey(sceneId, kind, subjectId)
     set((current) => ({
       referenceImagePending: { ...current.referenceImagePending, [key]: true },
       referenceImageError: null,
@@ -2187,7 +2202,7 @@ const useStore = create((set, get) => ({
       const style = scene.environment?.facts
         ?.find((fact) => fact.label === '그림체' && !fact.open)?.value || ''
       const image = await generateReferenceImage(kind, prompt.effective, { style })
-      get().updateSceneStateAt(selectActiveSceneId(get()), (current) => (
+      get().updateSceneStateAt(sceneId, (current) => (
         kind === 'character'
           ? {
             ...current,

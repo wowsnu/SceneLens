@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import useStore, {
   buildReferencePrompt,
+  referencePendingKey,
   sceneOfBeat,
+  selectActiveSceneId,
   selectActiveSceneState,
   selectCutPrompt,
   selectScenes,
@@ -1572,7 +1574,16 @@ export default function DecisionBoard({ boardView = 'split' }) {
   const setReferencePrompt = useStore((s) => s.setReferencePrompt)
   const referenceImagePending = useStore((s) => s.referenceImagePending)
   const referenceImageError = useStore((s) => s.referenceImageError)
-  const isReferenceImagePending = (key) => Boolean(referenceImagePending?.[key])
+  const activeSceneId = useStore(selectActiveSceneId)
+  // key를 씬으로 한정한다. 씬 이름이 빠지면 씬 1을 그리는 동안 씬 2의
+  // 같은 버튼까지 "그리는 중"으로 바뀐다.
+  const isReferenceImagePending = (kind, subjectId = null) => (
+    Boolean(referenceImagePending?.[referencePendingKey(activeSceneId, kind, subjectId)])
+  )
+  // 오류 문구는 이 씬에서 그리는 중인 것이 없을 때만 보인다. 다른 씬의
+  // 작업까지 세면 남의 씬을 그리는 동안 이 씬의 오류가 가려진다.
+  const anyReferenceImagePending = Object.keys(referenceImagePending || {})
+    .some((key) => key.startsWith(`${activeSceneId}:`))
   // 항목 값에서 조립한 문장. 사용자가 고쳤으면 그것을 보여준다.
   const referencePromptOf = (subject, kind = 'character') => (
     subject?.promptOverride ?? buildReferencePrompt(subject, kind).auto
@@ -3777,9 +3788,9 @@ export default function DecisionBoard({ boardView = 'split' }) {
                                       type="button"
                                       className="mise-reference-regenerate"
                                       onClick={() => generateCharacterReference(character.id)}
-                                      disabled={isReferenceImagePending(character.id)}
+                                      disabled={isReferenceImagePending('character', character.id)}
                                     >
-                                      {isReferenceImagePending(character.id) ? '다시 그리는 중…' : '다시 생성'}
+                                      {isReferenceImagePending('character', character.id) ? '다시 그리는 중…' : '다시 생성'}
                                     </button>
                                   )}
                                 </div>
@@ -3871,9 +3882,9 @@ export default function DecisionBoard({ boardView = 'split' }) {
                                     <button
                                       type="button"
                                       onClick={() => generateCharacterReference(character.id)}
-                                      disabled={isReferenceImagePending(character.id)}
+                                      disabled={isReferenceImagePending('character', character.id)}
                                     >
-                                      {isReferenceImagePending(character.id)
+                                      {isReferenceImagePending('character', character.id)
                                         ? '그리는 중…'
                                         : character.image ? '다시 그리기' : '레퍼런스 그리기'}
                                     </button>
@@ -3888,7 +3899,7 @@ export default function DecisionBoard({ boardView = 'split' }) {
                                       </button>
                                     )}
                                   </div>
-                                  {referenceImageError && Object.keys(referenceImagePending || {}).length === 0 && (
+                                  {referenceImageError && !anyReferenceImagePending && (
                                     <p className="mise-reference-error">{referenceImageError}</p>
                                   )}
                                 </div>
@@ -4086,7 +4097,7 @@ export default function DecisionBoard({ boardView = 'split' }) {
                                 </button>
                               )}
                             </div>
-                            {referenceImageError && Object.keys(referenceImagePending || {}).length === 0 && (
+                            {referenceImageError && !anyReferenceImagePending && (
                               <p className="mise-reference-error">{referenceImageError}</p>
                             )}
                           </div>
