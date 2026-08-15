@@ -4029,12 +4029,11 @@ export default function DecisionBoard({ boardView = 'split' }) {
                                 <span>클릭해서 인물과 공간 배치를 조정</span>
                               </span>
                               <span className="mise-mini-room">
-                                <span className="mise-mini-monitor">Monitor wall</span>
-                                <span className="mise-mini-console">Console</span>
-                                <span className="mise-mini-cabinet">Cabinet</span>
+                                <span className="mise-mini-monitor">Window</span>
+                                <span className="mise-mini-console">Lit bench</span>
+                                <span className="mise-mini-cabinet">Shelf</span>
                                 <span className="mise-mini-door">Door</span>
-                                <span className="mise-mini-person jaein">재</span>
-                                <span className="mise-mini-person minho">민</span>
+                                <span className="mise-mini-person harin">하</span>
                               </span>
                             </button>
                             <button type="button" onClick={() => setLocationReferenceOpen(true)}>

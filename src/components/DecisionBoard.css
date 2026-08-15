@@ -1021,14 +1021,23 @@
   margin-bottom: 5px;
 }
 
-.multi-review-summary span,
-.multi-review-tension span {
+.multi-review-summary span {
   display: block;
   color: rgba(255, 255, 255, 0.42);
   font-size: 9.5px;
   font-weight: 800;
   letter-spacing: 0.05em;
   text-transform: uppercase;
+}
+
+/* 관계 라벨은 분류명이 아니라 무슨 일이 벌어졌는지를 말하는 문장이다.
+   작은 대문자 꼬리표로 두면 읽히지 않고 지나간다. */
+.multi-review-tension > header span {
+  display: block;
+  color: rgba(252, 165, 165, 0.92);
+  font-size: 12.5px;
+  font-weight: 750;
+  line-height: 1.45;
 }
 
 .multi-review-summary > header em,
@@ -1113,11 +1122,69 @@
   font-style: normal;
 }
 
-.multi-review-card > p {
-  margin: 9px 0 0;
-  color: rgba(255, 255, 255, 0.61);
-  font-size: 10.5px;
+/* 이 렌즈가 무엇을 하라고 하는지. 카드에서 읽을 것은 이것 하나다 —
+   머리 바로 아래에 오므로 위 구분선은 두지 않는다. */
+.multi-review-card-action {
+  margin-top: 10px;
+}
+
+/* 진단이 둘일 때만 사이를 가른다. */
+.multi-review-card-action + .multi-review-card-action {
+  margin-top: 9px;
+  padding-top: 9px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.multi-review-card-action > strong {
+  display: block;
+  color: color-mix(in srgb, var(--lens-color), white 22%);
+  font-size: 11.5px;
+  font-weight: 700;
   line-height: 1.55;
+}
+
+/* 고칠 것이 없다고 본 렌즈가 대신 묻는 것. 조치가 아니라 질문이므로
+   렌즈 색을 쓰지 않는다 — 지금 할 일로 읽히면 안 된다. */
+.multi-review-card-action.is-question > strong {
+  color: rgba(255, 255, 255, 0.66);
+  font-weight: 600;
+}
+
+/* 걸리는 것이 없는 렌즈. 판단은 끝났고 할 일이 없다는 뜻이므로 더 눌러 둔다. */
+.multi-review-card-action.is-clear > strong {
+  color: rgba(255, 255, 255, 0.4);
+  font-weight: 600;
+}
+
+/* 갈 수 있는 길. 감독이 고르는 것이므로 조치 아래에 나란히 둔다. */
+.multi-review-card-action ul {
+  margin: 7px 0 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.multi-review-card-action li {
+  padding-left: 8px;
+  border-left: 2px solid rgba(255, 255, 255, 0.1);
+}
+
+.multi-review-card-action li em {
+  display: block;
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 650;
+}
+
+.multi-review-card-action li span {
+  display: block;
+  margin-top: 1px;
+  color: rgba(255, 255, 255, 0.45);
+  font-size: 10.5px;
+  line-height: 1.5;
 }
 
 .multi-review-tension {
@@ -2087,14 +2154,14 @@ button.active .lens-glass::after {
 
 .mise-character-reference-card {
   min-width: 0;
-  min-height: 390px;
+  aspect-ratio: 2 / 3;
   perspective: 1200px;
 }
 
 .mise-character-card-inner {
   position: relative;
   width: 100%;
-  min-height: 390px;
+  height: 100%;
   transform-style: preserve-3d;
   transition: transform 420ms cubic-bezier(0.4, 0, 0.2, 1);
 }
@@ -2113,14 +2180,14 @@ button.active .lens-glass::after {
   backface-visibility: hidden;
 }
 
-.mise-character-card-front {
-  display: flex;
-  flex-direction: column;
-}
+/* 앞면은 .mise-character-card-face의 position:absolute · inset:0 을 그대로
+   쓴다. 여기서 position:relative로 덮으면 inset이 풀려 높이가 0이 되고,
+   그 안의 사진과 글은 자리를 못 잡아 카드가 빈 칸으로 보인다.
+   absolute 자체가 이미 자식들의 기준 상자다 — 따로 relative를 줄 필요가 없다. */
 
 .mise-character-portrait {
-  position: relative;
-  min-height: 205px;
+  position: absolute;
+  inset: 0;
   overflow: hidden;
   background: rgba(0, 0, 0, 0.32);
 }
@@ -2137,10 +2204,9 @@ button.active .lens-glass::after {
 .mise-character-portrait img {
   width: 100%;
   height: 100%;
-  min-height: 205px;
   display: block;
   object-fit: cover;
-  object-position: center 42%;
+  object-position: center;
   filter: saturate(0.8) contrast(1.04);
 }
 
@@ -2160,12 +2226,19 @@ button.active .lens-glass::after {
 }
 
 .mise-character-front-copy {
-  flex: 1;
+  position: absolute;
+  z-index: 1;
+  right: 0;
+  bottom: 0;
+  left: 0;
   display: flex;
   flex-direction: column;
   gap: 8px;
-  padding: 11px;
+  padding: 28px 11px 11px;
+  background: linear-gradient(180deg, transparent, rgba(8, 13, 10, .92) 32%);
 }
+
+.mise-character-card-back { overflow-y: auto; }
 
 .mise-character-front-copy > div > strong {
   color: rgba(248, 250, 252, 0.96);
@@ -2383,6 +2456,7 @@ button.active .lens-glass::after {
 
 .mise-location-reference-card {
   grid-column: 1 / -1;
+  aspect-ratio: 3 / 2;
 }
 
 /* 생성된 인물·공간 기준은 편집 폼의 작은 썸네일이 아니라 카드 뒷면에서
@@ -2545,16 +2619,12 @@ button.active .lens-glass::after {
   box-shadow: 0 3px 10px rgba(0, 0, 0, 0.36);
 }
 
-.mise-mini-person.jaein {
-  left: 17%;
-  bottom: 13%;
+/* 불이 닿는 실험대 앞자리. 이 씬에는 인물이 하나뿐이다.
+   실험대 아래쪽에 두어 대에 앉아 있는 것으로 읽히게 한다. */
+.mise-mini-person.harin {
+  top: 68%;
+  left: 46%;
   background: #10b981;
-}
-
-.mise-mini-person.minho {
-  top: 29%;
-  right: 19%;
-  background: #f59e0b;
 }
 
 .mise-location-preview-caption {
@@ -5555,6 +5625,19 @@ button.active .lens-glass::after {
   cursor: default;
 }
 
+/* 이미 만든 기준 그림도 카드 앞면에서 바로 새 변형을 만들 수 있게 둔다.
+   정보·프롬프트 편집은 옆의 "레퍼런스·정보 보기"에서 계속한다. */
+.mise-character-front-copy .mise-reference-regenerate {
+  border-color: rgba(126, 200, 160, 0.36);
+  background: rgba(126, 200, 160, 0.1);
+  color: rgba(150, 216, 182, 0.9);
+}
+
+.mise-character-front-copy .mise-reference-regenerate:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
 .mise-reference-error {
   margin: 6px 0 0;
   color: rgba(232, 168, 168, 0.9);
@@ -5628,6 +5711,205 @@ button.active .lens-glass::after {
   margin-bottom: 2px;
   color: rgba(255, 255, 255, 0.86);
   font-size: 11.5px;
+}
+
+/* 진단 카드 안에서 프롬프트를 고친다. 지금 프롬프트를 가져와 두므로
+   감독은 빈 칸이 아니라 고칠 문장에서 시작한다. */
+.directing-prompt-editor {
+  margin-top: 9px;
+  padding: 9px 10px;
+  border: 1px solid rgba(147, 197, 253, 0.28);
+  border-radius: 7px;
+  background: rgba(147, 197, 253, 0.05);
+}
+
+.directing-prompt-editor > span {
+  display: block;
+  margin-bottom: 6px;
+  color: rgba(191, 219, 254, 0.72);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.directing-prompt-editor > span em {
+  color: rgba(255, 255, 255, 0.4);
+  font-style: normal;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+/* 무엇을 바꿨는지. 두 문장을 나란히 비교하지 않아도 알게 한다. */
+.directing-prompt-changed {
+  margin: 0 0 7px;
+  padding: 6px 8px;
+  border-radius: 5px;
+  background: rgba(147, 197, 253, 0.08);
+  color: rgba(191, 219, 254, 0.88);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.directing-prompt-editor textarea {
+  width: 100%;
+  padding: 8px 9px;
+  resize: vertical;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  outline: none;
+  background: rgba(0, 0, 0, 0.28);
+  color: rgba(255, 255, 255, 0.86);
+  font-family: inherit;
+  font-size: 11.5px;
+  line-height: 1.6;
+}
+
+/* 수정본을 받는 동안. 도착하면 이 칸의 내용이 바뀌므로 그동안 못 쓴다. */
+.directing-prompt-editor textarea:disabled {
+  opacity: 0.5;
+}
+
+.directing-prompt-editor textarea:focus {
+  border-color: rgba(147, 197, 253, 0.5);
+}
+
+.directing-prompt-editor > div {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+  margin-top: 7px;
+}
+
+.directing-prompt-editor button {
+  padding: 4px 11px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 5px;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.6);
+  font-family: inherit;
+  font-size: 10.5px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.directing-prompt-editor button.primary {
+  border-color: rgba(147, 197, 253, 0.45);
+  background: rgba(147, 197, 253, 0.16);
+  color: rgba(191, 219, 254, 0.95);
+}
+
+/* 이름과 적용 버튼을 한 줄에. 고르는 것과 적용하는 것이 붙어 있어야
+   화면을 옮기지 않고 끝난다. */
+.directing-alternative-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.directing-alternative-head strong {
+  margin-bottom: 0;
+}
+
+.directing-alternative-head button {
+  flex-shrink: 0;
+  padding: 3px 9px;
+  border: 1px solid rgba(147, 197, 253, 0.4);
+  border-radius: 5px;
+  background: rgba(147, 197, 253, 0.12);
+  color: rgba(191, 219, 254, 0.95);
+  font-family: inherit;
+  font-size: 10.5px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.directing-alternative-head button:hover {
+  border-color: rgba(147, 197, 253, 0.65);
+  background: rgba(147, 197, 253, 0.2);
+}
+
+/* 무엇이 바뀌는지 누르기 전에 보인다 — 누르고 나서 알면 되돌려야 한다. */
+.directing-alternative-patch {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  margin: 5px 0 0;
+}
+
+.directing-alternative-patch > div {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+}
+
+.directing-alternative-patch dt {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.34);
+  font-size: 10px;
+}
+
+/* 이미 적용한 선택. 눌렀을 때 줄이 사라지는 것으로만 보이면 아무 일도
+   없던 것 같다 — 지금 이 값이라는 것을 남긴다. */
+.directing-alternatives li.is-applied {
+  border-color: rgba(134, 239, 172, 0.35);
+  background: rgba(134, 239, 172, 0.05);
+}
+
+/* 적용됨 + 다시 그리기. 컷 값은 바뀌었지만 그림은 이전 프롬프트로 만든
+   것이라, 여기서 다시 그려야 결과가 보인다. */
+/* 그림까지 나온 상태. 더 누를 것이 없으므로 버튼이 아니다. */
+.directing-alternative-applied {
+  flex-shrink: 0;
+  padding: 3px 9px;
+  border-radius: 5px;
+  background: rgba(134, 239, 172, 0.14);
+  color: rgba(187, 247, 208, 0.95);
+  font-size: 10.5px;
+  font-style: normal;
+  font-weight: 700;
+}
+
+/* 값은 바꿨고 그림을 기다리는 중. `적용됨`은 그림까지 나와야 붙는다. */
+.directing-alternative-applying {
+  flex-shrink: 0;
+  padding: 3px 9px;
+  border-radius: 5px;
+  background: rgba(255, 255, 255, 0.07);
+  color: rgba(255, 255, 255, 0.55);
+  font-size: 10.5px;
+  font-style: normal;
+  font-weight: 700;
+}
+
+.directing-alternatives li.is-applied .directing-alternative-patch dd b {
+  color: rgba(187, 247, 208, 0.9);
+}
+
+/* 기존 → 바뀜. 무엇에서 무엇으로 가는지 한눈에 보여야 고를 수 있다. */
+.directing-alternative-patch dd {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  margin: 0;
+  font-size: 10.5px;
+}
+
+.directing-alternative-patch dd s {
+  color: rgba(255, 255, 255, 0.32);
+  text-decoration-color: rgba(255, 255, 255, 0.25);
+}
+
+.directing-alternative-patch dd i {
+  color: rgba(255, 255, 255, 0.3);
+  font-style: normal;
+}
+
+.directing-alternative-patch dd b {
+  color: rgba(191, 219, 254, 0.92);
+  font-weight: 700;
 }
 
 .directing-alternatives li.is-keep strong {
