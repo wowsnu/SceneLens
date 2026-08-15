@@ -15,7 +15,7 @@ WHAT YOU MUST NOT CHANGE — the drawing's content is already decided:
 - Anything the sketch leaves vague stays vague. If a face has no features, the redraw has no
   features. Drawing it better is not permission to invent what it shows.
 
-Think of it as the same director redrawing their own panel with a better pencil, not as
+Think of it as the same director clarifying their own panel with steadier linework, not as
 illustrating the scene again from the script.
 
 If no drawing style is specified, keep the sketch's own look and simply make the linework

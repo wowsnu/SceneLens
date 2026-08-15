@@ -18,11 +18,10 @@ NO_TEXT = (
 # 아무도 고치자고 하지 않는다 — 판정을 받으려면 러프해야 한다.
 ROUGHNESS = (
     "Keep this a rough working storyboard panel, not an illustration. "
-    "Draw in open, visible pencil lines; let strokes stay separate and a little uneven "
-    "rather than blending into smooth surfaces. "
-    "Shade only where it tells the viewer something — which way the light falls, which "
-    "shape is in front. A few hatched passes, never continuous tone. Leave most of the "
-    "paper white. "
+    "Use restrained, readable linework with only slight natural variation; do not make "
+    "paper grain, pencil texture, or hatching the subject of the image. "
+    "Use light tonal indication only where it clarifies light direction or depth. Leave "
+    "large areas simple and quiet. "
     "Faces carry identity and expression only: the features the reference establishes and "
     "where the eyes look. No skin texture, no rendered lips, no individual strands of hair. "
     "Backgrounds get the shapes that matter to this cut and nothing more — no wallpaper "
@@ -32,8 +31,8 @@ ROUGHNESS = (
 
 # 미장센이 그림체를 정하지 않았을 때의 기본.
 BASE_LOOK = (
-    "Black and white storyboard panel, rough pencil sketch style, "
-    "clean confident line art, minimal shading, cinematic framing."
+    "Black-and-white cinematic storyboard panel, clear restrained line art, "
+    "light tonal indication, cinematic framing."
 )
 
 # 처음부터 생성할 때 쓰는 전체 문장.

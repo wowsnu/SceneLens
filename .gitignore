@@ -39,3 +39,6 @@ lerna-debug.log*
 # 시험이 만든 그림. 매번 달라지므로 저장소에 두지 않는다.
 backend/tools/out/
 backend/tools/walkthrough/
+
+# gpt-image-2 비교본. 결과를 눈으로 견주려고 만든 것이라 저장소에 두지 않는다.
+compare_img2/

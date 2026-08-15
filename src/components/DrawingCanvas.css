@@ -173,6 +173,68 @@
   backdrop-filter: blur(6px);
 }
 
+/* AI 보태기/그림체 맞추기는 두 장을 반 폭으로 놓지 않는다. 반 폭 패널마다
+   16:9를 유지하면 비교 영역이 캔버스의 위쪽 일부만 쓰게 된다. 원본 위에
+   후보를 겹치고 경계를 끌어 보게 하면, 같은 한 장의 프레임 안에서 차이를
+   보면서 캔버스 전체 크기를 유지할 수 있다. */
+.compare-preview-overlay.is-enhance-compare {
+  display: block;
+  cursor: col-resize;
+  touch-action: none;
+}
+
+.is-enhance-compare .compare-preview-panel {
+  position: absolute;
+  inset: 0;
+}
+
+.is-enhance-compare .compare-preview-panel--left {
+  z-index: 1;
+}
+
+.is-enhance-compare .compare-preview-panel--right {
+  z-index: 2;
+  clip-path: inset(0 0 0 var(--compare-position, 50%));
+}
+
+.is-enhance-compare .compare-preview-divider {
+  position: absolute;
+  z-index: 4;
+  top: 0;
+  bottom: 0;
+  left: calc(var(--compare-position, 50%) - 1px);
+  width: 2px;
+  cursor: col-resize;
+}
+
+.is-enhance-compare .compare-preview-divider::before {
+  content: '↔';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  display: grid;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  transform: translate(-50%, -50%);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 50%;
+  color: #fff;
+  background: rgba(15, 15, 15, 0.78);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.is-enhance-compare .compare-preview-panel--right .compare-preview-label {
+  left: calc(var(--compare-position, 50%) + 12px);
+}
+
+/* 보강 후보에는 뒤집어 보는 전략 카드가 없으므로, 비교 드래그가 곧 조작이다. */
+.is-enhance-compare .strategy-compare-card {
+  cursor: col-resize;
+}
+
 .strategy-compare-card {
   width: 100%;
   height: 100%;

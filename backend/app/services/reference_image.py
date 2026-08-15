@@ -22,8 +22,8 @@ from app.models.schemas import ReferenceImageRequest, ReferenceImageResponse
 # 패널과 같은 그림체여야 한다. 레퍼런스만 다른 화풍이면 참조로 물렸을 때
 # 패널의 화풍이 흔들린다.
 BASE_STYLE = (
-    "Black and white rough pencil sketch, clean confident line art, "
-    "minimal shading. Plain white background. "
+    "Black-and-white cinematic line drawing, clear restrained contours, "
+    "light tonal indication. Plain white background. "
     "No text, no lettering, no labels, no captions, no watermark, no border."
 )
 

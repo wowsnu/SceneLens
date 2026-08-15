@@ -3513,7 +3513,7 @@ export default function StoryboardView() {
                     <input
                       type="text"
                       value={styleDraft}
-                      placeholder="기본 · 흑백 러프 연필 스케치"
+                      placeholder="기본 · 흑백 절제된 스토리보드 선화"
                       onChange={(event) => setStyleDraft(event.target.value)}
                       onBlur={commitStyle}
                       onKeyDown={(event) => {

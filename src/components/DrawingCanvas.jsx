@@ -1221,7 +1221,9 @@ export default function DrawingCanvas() {
             <button
               type="button"
               className={`strategy-compare-card strategy-compare-card-button ${isStrategyCardFlipped ? 'is-flipped' : ''}`}
-              onClick={() => setIsStrategyCardFlipped((prev) => !prev)}
+              onClick={() => {
+                if (!comparePreview.isEnhancePreview) setIsStrategyCardFlipped((prev) => !prev)
+              }}
             >
               <div className="strategy-compare-card-inner">
                 <div className={`strategy-compare-card-face strategy-compare-card-face--front${comparePreview.loading ? ' strategy-compare-card-face--loading' : ''}`}>
