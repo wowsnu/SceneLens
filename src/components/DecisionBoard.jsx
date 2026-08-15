@@ -1480,7 +1480,10 @@ function DirectingReviewResult({
                     {/* 이 진단에 실제로 해당하는 길만 남긴다. 컷 구성은
                         패널의 이음새로 하고, 프롬프트는 여기서 편다 —
                         어느 쪽도 다른 화면으로 나가지 않는다. */}
-                    {destinationsFor(diagnosis)
+                    {/* 편집 진단의 처분 버튼은 아래에 반복하지 않는다.
+                        삭제·분할·삽입은 해당 패널과 이음새 카드에서 바로
+                        실행해야 어느 컷이 바뀌는지 분명하다. */}
+                    {diagnosis.lens !== 'editing' && destinationsFor(diagnosis)
                       .filter((destination) => (
                         destination !== 'arrow' || cameraArrowRelevant
                       ))
@@ -1627,12 +1630,12 @@ export default function DecisionBoard({ boardView = 'split' }) {
   const activeScene = useStore((s) => s.activeScene)
   const setFlowActiveShot = useStore((s) => s.setFlowActiveShot)
   const setFlowView = useStore((s) => s.setFlowView)
+  const deleteCut = useStore((s) => s.deleteCut)
   const updateFlowShotById = useStore((s) => s.updateFlowShotById)
   const requestPanelTool = useStore((s) => s.requestPanelTool)
   const requestSeamFocus = useStore((s) => s.requestSeamFocus)
   const requestNarrativeSuggestions = useStore((s) => s.requestNarrativeSuggestions)
   const openDrawingWorkspace = useStore((s) => s.openDrawingWorkspace)
-  const reopenCutPlan = useStore((s) => s.reopenCutPlan)
   const backToScript = useStore((s) => s.backToScript)
   const setActiveBeat = useStore((s) => s.setActiveBeat)
   const setMaximizedPanel = useStore((s) => s.setMaximizedPanel)
@@ -1708,6 +1711,17 @@ export default function DecisionBoard({ boardView = 'split' }) {
   const currentEditingSuggestions = [
     ...currentEditingSingle.operations,
     ...getMockEditingBoundaries(activeShot, shots.length),
+    ...(shots.length > 1 ? [{
+      id: `editing-delete-shot-${activeShot + 1}`,
+      kind: 'delete',
+      operation: '샷 삭제',
+      scope: 'current',
+      scopeLabel: `현재 샷 · S${activeShot + 1}`,
+      title: `S${activeShot + 1} 삭제`,
+      proposal: '이 패널과 대응하는 컷을 흐름에서 제거합니다.',
+      result: `Shot 수 ${shots.length}개 → ${shots.length - 1}개`,
+      watch: '이 컷의 그림과 앞뒤 이음새 기록도 함께 사라집니다.',
+    }] : []),
   ]
   const currentShot = shots[activeShot]
   const multiReviewScopeKey = scopeMode === 'range'
@@ -2841,10 +2855,10 @@ export default function DecisionBoard({ boardView = 'split' }) {
       return
     }
 
-    // 컷 구성·컷 관계·씬 구조 문제는 그림 한 장을 고치는 곳으로 보내지 않는다.
-    reopenCutPlan()
+    // 갈 곳이 정해지지 않은 진단. 컷 플랜 표를 최대화해서 열면 검토 화면이
+    // 덮여, 방금 읽던 진단을 잃고 대본만 남는다. 그 진단이 가리키는 패널을
+    // 활성화해 왼쪽에 띄우는 것으로 충분하다 — 검토는 그대로 옆에 둔다.
     setLeftPanelVisible(true)
-    setMaximizedPanel('left')
   }
 
   const viewerReadings = viewerReport?.readings || []
@@ -3665,18 +3679,35 @@ export default function DecisionBoard({ boardView = 'split' }) {
                             type="button"
                             onClick={() => {
                               if (operation.kind === 'insert') {
-                                setEditingSequencePreview((current) => (
-                                  current?.operationId === operation.id
-                                    ? null
-                                    : {
-                                        type: 'insert',
-                                        operationId: operation.id,
-                                        afterShotId: currentShot?.id,
-                                        title: operation.title,
-                                        proposal: operation.proposal,
-                                      }
-                                ))
+                                if (currentShot?.id) requestSeamFocus(currentShot.id, 'insert')
                                 return
+                              }
+
+                              if (operation.kind === 'delete') {
+                                if (currentShot?.cutPlanItemId) deleteCut(currentShot.cutPlanItemId)
+                                return
+                              }
+
+                              // 편집 제안은 프롬프트 문장에 덧붙이는 지시가
+                              // 아니다. 구조를 바꾸는 것은 해당 패널/이음새의
+                              // 도구를 열어 그 자리에서 확정한다.
+                              if (operation.kind === 'split') {
+                                if (currentShot?.id) requestSeamFocus(currentShot.id, 'split')
+                                return
+                              }
+                              if (operation.kind === 'retime') {
+                                const anchor = shots[Math.max(0, activeShot - 1)]
+                                if (anchor?.id) requestSeamFocus(anchor.id)
+                                return
+                              }
+
+                              // 시작·끝 타이밍처럼 현재 프로토타입에서 프레임
+                              // 단위로 자동 적용할 수 없는 판단은 패널 메모로
+                              // 남긴다. 프롬프트에는 반영하지 않는다.
+                              if (currentShot?.id) {
+                                requestPanelTool(currentShot.id, 'memo', { text: operation.proposal })
+                                setLeftPanelVisible(true)
+                                setMaximizedPanel('left')
                               }
 
                               setSelectedEditingOperationIds((current) => (
@@ -3688,8 +3719,14 @@ export default function DecisionBoard({ boardView = 'split' }) {
                             aria-pressed={isSelected}
                           >
                             {operation.kind === 'insert'
-                              ? isSelected ? '흐름 미리보기 닫기' : '흐름에서 미리보기'
-                              : isSelected ? '편집안에 추가됨' : '편집안에 추가'}
+                              ? '이음새에 컷 넣기'
+                              : operation.kind === 'delete'
+                                ? `S${activeShot + 1} 삭제`
+                              : operation.kind === 'split'
+                                ? '이음새에서 나누기'
+                                : operation.kind === 'retime'
+                                  ? '이음새에서 조정'
+                                  : '메모로 남기기'}
                           </button>
                         </article>
                       )

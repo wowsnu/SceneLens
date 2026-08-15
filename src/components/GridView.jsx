@@ -36,6 +36,7 @@ export default function GridView({
   const setFlowView = useStore((s) => s.setFlowView)
   const insertShot = useStore((s) => s.flowInsertShot)
   const removeShot = useStore((s) => s.flowRemoveShot)
+  const deleteCut = useStore((s) => s.deleteCut)
   const openGapFill = useStore((s) => s.openGapFill)
   const openAutoFill = useStore((s) => s.openAutoFill)
   const gapFills = useStore((s) => s.gapFills)
@@ -172,6 +173,14 @@ export default function GridView({
       const target = shots[index]
       if (target?.cutPlanItemId) {
         setPendingEdit({ kind: 'split', cutId: target.cutPlanItemId, index })
+      }
+    } else if (seamFocusRequest.action === 'insert' && index >= 0) {
+      const target = shots[index]
+      if (target?.cutPlanItemId && shots[index + 1]) {
+        setInsertCandidates([])
+        setInsertChoice(null)
+        setInsertError(null)
+        setPendingEdit({ kind: 'insert', cutId: target.cutPlanItemId, index: index + 1 })
       }
     }
   }
@@ -455,7 +464,11 @@ export default function GridView({
                   {isHovered && shots.length > 1 && (
                     <button
                       className="grid-cell-delete"
-                      onClick={(e) => { e.stopPropagation(); removeShot(activeBranch, i) }}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        if (shot.cutPlanItemId) deleteCut(shot.cutPlanItemId)
+                        else removeShot(activeBranch, i)
+                      }}
                       title="Delete shot"
                     >×</button>
                   )}

@@ -2642,6 +2642,38 @@ const useStore = create((set, get) => ({
   removeCutPlanItem: (itemId) => set((state) => ({
     cutPlan: reorderCutPlan(state.cutPlan.filter((item) => item.id !== itemId)),
   })),
+
+  // 패널에서 컷을 지울 때는 컷 플랜만 남겨 두면 안 된다. 이후 프롬프트가
+  // 삭제된 컷을 계속 조립하거나 패널과 컷 번호가 어긋난다. 편집 렌즈의
+  // 삭제는 이 세 구조(컷·패널·이음새)를 한 번에 정리한다.
+  deleteCut: (cutId) => {
+    logEdit({ lens: 'editing', level: 'shot', target: cutId, action: 'delete', source: 'panel' })
+    return set((state) => {
+      const cutIndex = state.cutPlan.findIndex((item) => item.id === cutId)
+      if (cutIndex < 0 || state.cutPlan.length <= 1) return {}
+
+      const shots = state.scenes[state.activeScene]
+        ?.branches[state.scenes[state.activeScene].activeBranch ?? 0]?.shots || []
+      const shotIndex = shots.findIndex((shot) => shot.cutPlanItemId === cutId)
+      const deletedShot = shots[shotIndex]
+      const previousShot = shotIndex > 0 ? shots[shotIndex - 1] : null
+
+      const next = updateActiveBranchShots(state, (current) => (
+        deletedShot ? current.filter((shot) => shot.id !== deletedShot.id) : current
+      ))
+      const nextSeams = { ...state.seams }
+      // 삭제된 컷의 앞뒤 이음새는 모두 기존 컷을 기준으로 한 기록이라
+      // 새로 맞닿은 두 컷에 그대로 적용하면 안 된다.
+      if (previousShot) delete nextSeams[seamKeyFor(previousShot.id)]
+      if (deletedShot) delete nextSeams[seamKeyFor(deletedShot.id)]
+
+      return {
+        ...next,
+        cutPlan: reorderCutPlan(state.cutPlan.filter((item) => item.id !== cutId)),
+        seams: nextSeams,
+      }
+    })
+  },
   // --- 이음새 수준의 개입 (DG2 P1) --------------------------------------
   // 병합·분할은 컷만 바꾸는 것이 아니다. 패널과 이음새가 함께 움직여야
   // 한다 — 컷 하나를 지우면 그 패널과 이음새도 갈 곳을 잃는다.

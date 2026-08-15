@@ -930,6 +930,7 @@ export default function StoryboardView() {
     Boolean(referenceImagePending?.[referencePendingKey(activeSceneId, kind, subjectId)])
   )
   const setShotNote = useStore((s) => s.setShotNote)
+  const deleteCut = useStore((s) => s.deleteCut)
   const addShotArrow = useStore((s) => s.addShotArrow)
   const updateShotArrow = useStore((s) => s.updateShotArrow)
   const removeShotArrow = useStore((s) => s.removeShotArrow)
@@ -1496,7 +1497,9 @@ export default function StoryboardView() {
     if (flowShots.length <= 1) return
     setSelectedShotIds((current) => current.filter((id) => id !== shotId))
     dismissPanelCandidate(shotId)
-    removeShot(activeBranch, shotIdx)
+    const cutId = flowShots[shotIdx]?.cutPlanItemId
+    if (cutId) deleteCut(cutId)
+    else removeShot(activeBranch, shotIdx)
   }
 
   const getShotVisual = (shot, shotIdx) => {
