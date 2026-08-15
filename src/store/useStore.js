@@ -36,6 +36,17 @@ const SCREENPLAY = [
   { type: 'action', text: '하린이 노트를 내려다본다. 그리고 문을 두드린다.', beat: 8 },
 ]
 
+// 예시 대본에 딸린 패널 그림. 컷 번호(beat-beatOrder)로 붙인다 — 배열
+// 순서로 붙이면 대본을 조금만 고쳐도 그림이 엉뚱한 컷으로 밀린다.
+// 5개만 둔다. 전부 채우면 데모에서 '그릴 자리'가 사라진다.
+const DEMO_PANEL_IMAGES = {
+  '0-1': '/img/lab_wide_establishing.png',  // 실험실 전경
+  '1-1': '/img/lab_student_ots.png',        // 화면과 노트를 보는 어깨 너머
+  '4-1': '/img/lab_pattern_ecu.png',        // 동그라미 친 식
+  '5-1': '/img/lab_discovery_cu.png',       // 깨닫는 얼굴
+  '6-2': '/img/lab_window_reveal.png',      // 창가
+}
+
 // Dummy strategy data with image paths and spatial coordinates
 const DEMO_STRATEGIES = [
   {
@@ -1369,6 +1380,7 @@ const SCENE_STATE = {
   ],
   location: {
     name: '물리학과 실험실',
+    image: '/img/lab_wide_establishing.png',
     facts: [
       { label: '장소 정체', value: '좁고 낡은 대학 실험실' },
       { label: '고정 소품', value: '실험대 · 오실로스코프 · 노트북 · 비 내리는 창' },
@@ -3080,17 +3092,36 @@ const useStore = create((set, get) => ({
   loadExampleScreenplay: () => set((state) => {
     const script = SCREENPLAY
     const maxBeat = Math.max(0, ...script.map((line) => line.beat ?? 0))
-    const next = updateActiveBranchShots(state, (shots) => shots.map((shot) => ({
-      ...shot,
-      scriptBeat: Math.max(0, Math.min(shot.scriptBeat ?? 0, maxBeat)),
-    })))
+    const sceneStates = { 'scene-0': SCENE_STATE, 'scene-7': CORRIDOR_SCENE_STATE }
+
+    // 줄콘티까지 채운다. 데모에서 컷 플랜이 비어 있으면 미장센·촬영·편집을
+    // 열어도 볼 것이 없어, 뒤 단계가 전부 모델 호출에 걸린다.
+    // 규칙 기반 생성기를 그대로 쓴다 — 손으로 적으면 대본을 고칠 때 어긋난다.
+    const cutPlan = createMockCutPlan({ ...state, screenplay: script, sceneStates })
+
+    // 컷에서 패널을 만들고, 그림이 준비된 컷에만 예시 이미지를 붙인다.
+    // 나머지는 비워 둔다 — 데모에서도 그릴 자리가 남아 있어야 한다.
+    const cutById = new Map(cutPlan.map((cut) => [cut.id, cut]))
+    const next = updateActiveBranchShots(state, () => (
+      applyCutPlanToShots(cutPlan, []).shots.map((shot) => {
+        const cut = cutById.get(shot.cutPlanItemId)
+        return {
+          ...shot,
+          scriptBeat: Math.max(0, Math.min(shot.scriptBeat ?? 0, maxBeat)),
+          image: DEMO_PANEL_IMAGES[`${cut?.beat}-${cut?.beatOrder}`] ?? null,
+        }
+      })
+    ))
+
     return {
       ...next,
       screenplay: script,
       narrativeSuggestions: [],
       activeBeat: 0,
-      sceneStates: { 'scene-0': SCENE_STATE, 'scene-7': CORRIDOR_SCENE_STATE },
+      sceneStates,
       sceneStateStoryKey: screenplayFingerprint(script),
+      cutPlan,
+      cutPlanAccepted: true,
     }
   }),
   sceneIntention: '',
