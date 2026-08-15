@@ -1279,7 +1279,6 @@ const CORRIDOR_SCENE_STATE = {
       // 서버의 ENVIRONMENT_LABELS와 같은 이름을 쓴다. 빠뜨리면 그 씬에서는
       // 그림체를 정할 칸 자체가 없다.
       { label: '시간', value: '밤' },
-      { label: '조명 기준', value: '드문드문한 형광등', shared: true },
       { label: '그림체', value: '', open: true, shared: true },
     ],
   },
@@ -1396,7 +1395,6 @@ const SCENE_STATE = {
       // '그림체'는 패널 생성이 그림체를 읽어 가는 이름이므로, 여기서 다르게
       // 부르면 값을 채워도 그림에 반영되지 않는다.
       { label: '시간', value: '밤' },
-      { label: '조명 기준', value: '형광등 · 간헐적 깜빡임', shared: true },
       { label: '그림체', value: '', open: true, shared: true },
     ],
   },
