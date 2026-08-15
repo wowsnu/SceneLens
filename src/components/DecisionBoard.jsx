@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import useStore, {
   buildReferencePrompt,
   referencePendingKey,
@@ -1668,6 +1668,26 @@ export default function DecisionBoard({ boardView = 'split' }) {
     ? { mode: 'range', from: scopeFrom, to: scopeTo, shotIds: shots.slice(scopeFrom, scopeTo + 1).map((shot) => shot.id) }
     : { mode: 'single', shot: activeShot, shotIds: shots[activeShot]?.id ? [shots[activeShot].id] : [] }
 
+  // 처음 열었을 때 볼 것이 있어야 한다. 그림이 이어진 첫 구간을 범위로
+  // 잡아 둔다 — 한 컷만 잡혀 있으면 무엇과 무엇을 견줄지부터 감독이 정해야
+  // 하고, 진행·연결은 이어진 컷이 있어야 읽을 수 있다.
+  // 한 번만 한다. 이후에는 감독이 고른 범위를 덮어쓰지 않는다.
+  // 패널은 컷 플랜에서 만들어져 뒤늦게 들어온다. 첫 렌더의 shots로 정하면
+  // 아직 도착하지 않은 컷을 세지 못한 채 범위가 굳는다. 이어진 구간이
+  // 길어지는 동안은 다시 계산하고, 감독이 직접 범위를 건드리면 멈춘다.
+  const scopeTouchedByUser = useRef(false)
+  const autoScopeEnd = useRef(-1)
+  useEffect(() => {
+    if (scopeTouchedByUser.current || !shots[0]?.image) return
+    let end = 0
+    while (end + 1 < shots.length && shots[end + 1]?.image) end += 1
+    if (end === 0 || end === autoScopeEnd.current) return
+    autoScopeEnd.current = end
+    setScopeMode('range')
+    setRangeStart(0)
+    setRangeEnd(end)
+  }, [shots])
+
   const allOptions = [...MOCK_OPTIONS, ...MOCK_CAMERA_RANGE_OPTIONS]
   const availableRelations = MOCK_RELATIONS
   const selectedOption = allOptions.find((option) => option.id === selectedOptionId) || allOptions[0]
@@ -2215,6 +2235,8 @@ export default function DecisionBoard({ boardView = 'split' }) {
   }
 
   const selectScopeShot = (shotIdx) => {
+    // 감독이 범위를 직접 골랐다. 이후 패널이 더 들어와도 덮어쓰지 않는다.
+    scopeTouchedByUser.current = true
     setViewerReport(null)
     setViewerPanelOrder(null)
     setViewerStatus('idle')
@@ -2242,6 +2264,7 @@ export default function DecisionBoard({ boardView = 'split' }) {
   }
 
   const switchScopeMode = (mode) => {
+    scopeTouchedByUser.current = true
     setViewerReport(null)
     setViewerPanelOrder(null)
     setScopeMode(mode)
