@@ -69,6 +69,7 @@ export default function DrawingCanvas() {
   // 비교 오버레이를 뒤 캔버스와 정렬하되, 높이는 원본 스케치 비율에 맞춰 줄인다
   const [canvasBox, setCanvasBox] = useState(null) // { left, top, width, height } (컨테이너 기준)
   const [compareImgAspect, setCompareImgAspect] = useState(null) // 원본 이미지 w/h
+  const [comparePosition, setComparePosition] = useState(50)
   const [zoomedImage, setZoomedImage] = useState(null) // { src, label } — 확대(라이트박스)로 볼 이미지
   const screenplay = useStore((s) => s.screenplay)
   const cutPlan = useStore((s) => s.cutPlan)
@@ -1163,12 +1164,26 @@ export default function DrawingCanvas() {
       )}
       {comparePreview?.originalImage && (comparePreview?.candidateImage || comparePreview?.loading || comparePreview?.error) && (
         <div
-          className="compare-preview-overlay"
+          className={`compare-preview-overlay${comparePreview.isEnhancePreview ? ' is-enhance-compare' : ''}`}
+          onPointerDown={(event) => {
+            if (!comparePreview.isEnhancePreview) return
+            const bounds = event.currentTarget.getBoundingClientRect()
+            const position = ((event.clientX - bounds.left) / bounds.width) * 100
+            setComparePosition(Math.max(5, Math.min(95, position)))
+            event.currentTarget.setPointerCapture?.(event.pointerId)
+          }}
+          onPointerMove={(event) => {
+            if (!comparePreview.isEnhancePreview || !event.currentTarget.hasPointerCapture?.(event.pointerId)) return
+            const bounds = event.currentTarget.getBoundingClientRect()
+            const position = ((event.clientX - bounds.left) / bounds.width) * 100
+            setComparePosition(Math.max(5, Math.min(95, position)))
+          }}
+          onPointerUp={(event) => event.currentTarget.releasePointerCapture?.(event.pointerId)}
           style={canvasBox ? (() => {
             // 패널 폭 = (전체폭 - divider 2px) / 2. 높이는 원본 이미지 비율에 맞춤.
             const panelW = (canvasBox.width - 2) / 2
             const aspect = compareImgAspect || (16 / 9)
-            let boxH = panelW / aspect
+            let boxH = comparePreview.isEnhancePreview ? canvasBox.height : panelW / aspect
             if (boxH > canvasBox.height) boxH = canvasBox.height // 캔버스보다 커지지 않게
             // 캔버스 영역 상단에 붙여 정렬 → 줄어든 높이만큼 하단이 비어 IntentBar에 안 가림
             const top = canvasBox.top
@@ -1183,6 +1198,7 @@ export default function DrawingCanvas() {
               aspectRatio: 'auto',
               maxWidth: 'none',
               maxHeight: 'none',
+              '--compare-position': `${comparePosition}%`,
             }
           })() : undefined}
         >
