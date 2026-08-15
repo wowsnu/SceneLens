@@ -34,6 +34,10 @@ export default function DrawingCanvas() {
   const historyRef = useRef([])
   const historyIndex = useRef(-1)
   const loadedShotKey = useRef(null)
+  // 화면에서는 작게 보더라도 Draw over의 원본 픽셀은 줄이지 않는다.
+  const sourceImageSizeRef = useRef(null)
+  const canvasRenderScaleRef = useRef(window.devicePixelRatio || 1)
+  const resizeCanvasRef = useRef(null)
 
   const drawingTool = useStore((s) => s.drawingTool)
   const penType = useStore((s) => s.penType)
@@ -183,14 +187,23 @@ export default function DrawingCanvas() {
     const img = new Image()
     img.crossOrigin = 'anonymous'
     img.onload = () => {
+      sourceImageSizeRef.current = {
+        width: img.naturalWidth || img.width,
+        height: img.naturalHeight || img.height,
+      }
+      // 작업창 크기에 맞춘 backing canvas로 원본을 축소하면, 선 하나를
+      // 그린 뒤 저장할 때 패널 전체가 저해상도가 된다. 원본 해상도에 맞춰
+      // backing canvas를 다시 잡고 CSS에서만 축소해 보인다.
+      resizeCanvasRef.current?.()
+
       const ctx = canvas.getContext('2d')
-      const dpr = window.devicePixelRatio || 1
-      const w = canvas.width / dpr
-      const h = canvas.height / dpr
+      const renderScale = canvasRenderScaleRef.current
+      const w = canvas.width / renderScale
+      const h = canvas.height / renderScale
 
       ctx.save()
       ctx.setTransform(1, 0, 0, 1, 0, 0)
-      ctx.scale(dpr, dpr)
+      ctx.scale(renderScale, renderScale)
 
       // White background
       ctx.fillStyle = '#ffffff'
@@ -245,13 +258,14 @@ export default function DrawingCanvas() {
       loadedShotKey.current = activeFlowShotKey
       const canvas = canvasRef.current
       if (canvas) {
+        sourceImageSizeRef.current = null
         const ctx = canvas.getContext('2d')
-        const dpr = window.devicePixelRatio || 1
-        const w = canvas.width / dpr
-        const h = canvas.height / dpr
+        const renderScale = canvasRenderScaleRef.current
+        const w = canvas.width / renderScale
+        const h = canvas.height / renderScale
         ctx.save()
         ctx.setTransform(1, 0, 0, 1, 0, 0)
-        ctx.scale(dpr, dpr)
+        ctx.scale(renderScale, renderScale)
         ctx.fillStyle = '#ffffff'
         ctx.fillRect(0, 0, w, h)
         ctx.restore()
@@ -316,7 +330,9 @@ export default function DrawingCanvas() {
     }
   }, [overlays])
 
-  // Resize canvas to container with 16:9 aspect ratio
+  // Resize canvas to the source panel's aspect ratio. Generated storyboard
+  // panels are currently 3:2, so forcing a 16:9 drawing surface creates
+  // white letterbox bands when the user chooses Draw over.
   const resizeCanvas = useCallback(() => {
     const container = containerRef.current
     const canvas = canvasRef.current
@@ -326,16 +342,37 @@ export default function DrawingCanvas() {
     const rect = container.getBoundingClientRect()
     if (rect.width === 0 || rect.height === 0) return
     
-    // Calculate 16:9 box within container
+    const source = sourceImageSizeRef.current
+    const targetAspect = source?.width && source?.height
+      ? source.width / source.height
+      : 16 / 9
+
+    // Calculate a source-aspect box within the available drawing workspace.
     let w = rect.width
-    let h = rect.width * (9/16)
+    let h = rect.width / targetAspect
     
     if (h > rect.height) {
       h = rect.height
-      w = rect.height * (16/9)
+      w = rect.height * targetAspect
     }
 
     const dpr = window.devicePixelRatio || 1
+    const canvasRatio = w / h
+    let drawWidth = w
+    let drawHeight = h
+    if (source?.width && source?.height) {
+      const sourceRatio = source.width / source.height
+      if (sourceRatio > canvasRatio) drawHeight = w / sourceRatio
+      else drawWidth = h * sourceRatio
+    }
+    // 원본 픽셀보다 작게 저장하지 않되, 지나치게 큰 업로드 사진이 브라우저
+    // 메모리를 독점하지 않도록 긴 변은 2048px까지만 보존한다.
+    const sourceScale = source?.width && source?.height
+      ? Math.max(source.width / drawWidth, source.height / drawHeight)
+      : dpr
+    const maxSafeScale = 2048 / Math.max(w, h)
+    const renderScale = Math.max(dpr, Math.min(sourceScale, maxSafeScale))
+    canvasRenderScaleRef.current = renderScale
 
     // Save current drawing
     let tempCanvas = null
@@ -346,8 +383,8 @@ export default function DrawingCanvas() {
       tempCanvas.getContext('2d').drawImage(canvas, 0, 0)
     }
 
-    canvas.width = w * dpr
-    canvas.height = h * dpr
+    canvas.width = Math.round(w * renderScale)
+    canvas.height = Math.round(h * renderScale)
     canvas.style.width = w + 'px'
     canvas.style.height = h + 'px'
 
@@ -357,12 +394,12 @@ export default function DrawingCanvas() {
     overlay.style.height = h + 'px'
 
     const ctx = canvas.getContext('2d')
-    ctx.scale(dpr, dpr)
+    ctx.scale(renderScale, renderScale)
 
     if (tempCanvas) {
       ctx.save()
       ctx.setTransform(1, 0, 0, 1, 0, 0)
-      ctx.drawImage(tempCanvas, 0, 0, tempCanvas.width, tempCanvas.height, 0, 0, w * dpr, h * dpr)
+      ctx.drawImage(tempCanvas, 0, 0, tempCanvas.width, tempCanvas.height, 0, 0, w * renderScale, h * renderScale)
       ctx.restore()
     } else {
       ctx.fillStyle = '#ffffff'
@@ -374,6 +411,8 @@ export default function DrawingCanvas() {
 
     drawOverlays()
   }, [hasDrawn, drawOverlays])
+
+  resizeCanvasRef.current = resizeCanvas
 
   useEffect(() => {
     resizeCanvas()
@@ -570,9 +609,9 @@ export default function DrawingCanvas() {
   const performLassoSegment = useCallback(async (cssPoints) => {
     const canvas = canvasRef.current
     if (!canvas || !cssPoints || cssPoints.length < 3) return
-    const dpr = window.devicePixelRatio || 1
-    const cssW = canvas.width / dpr
-    const cssH = canvas.height / dpr
+    const renderScale = canvasRenderScaleRef.current
+    const cssW = canvas.width / renderScale
+    const cssH = canvas.height / renderScale
 
     const sess = await ensureSegmentSession()
     if (!sess) return
@@ -621,8 +660,8 @@ export default function DrawingCanvas() {
     const cutCssH = bb[3] * (cssH / sess.imageHeight)
 
     // Render at device pixel resolution for crispness
-    const cutDevW = Math.max(1, Math.round(cutCssW * dpr))
-    const cutDevH = Math.max(1, Math.round(cutCssH * dpr))
+    const cutDevW = Math.max(1, Math.round(cutCssW * renderScale))
+    const cutDevH = Math.max(1, Math.round(cutCssH * renderScale))
 
     // 1) Build an RGBA cutout (canvas patch * mask alpha)
     const cutoutCanvas = document.createElement('canvas')
@@ -631,8 +670,8 @@ export default function DrawingCanvas() {
     const cctx = cutoutCanvas.getContext('2d')
 
     // Source patch from main canvas (in device px)
-    const srcDevX = Math.round(cutCssX * dpr)
-    const srcDevY = Math.round(cutCssY * dpr)
+    const srcDevX = Math.round(cutCssX * renderScale)
+    const srcDevY = Math.round(cutCssY * renderScale)
     cctx.drawImage(
       canvas,
       srcDevX, srcDevY, cutDevW, cutDevH,
@@ -715,7 +754,7 @@ export default function DrawingCanvas() {
   const confirmCutout = useCallback((cssX, cssY, cssW, cssH) => {
     const canvas = canvasRef.current
     if (!canvas || !activeCutout) return
-    const dpr = window.devicePixelRatio || 1
+    const renderScale = canvasRenderScaleRef.current
     const img = new Image()
     img.onload = () => {
       const ctx = canvas.getContext('2d')
@@ -723,8 +762,8 @@ export default function DrawingCanvas() {
       ctx.setTransform(1, 0, 0, 1, 0, 0)
       ctx.drawImage(
         img,
-        Math.round(cssX * dpr), Math.round(cssY * dpr),
-        Math.max(1, Math.round(cssW * dpr)), Math.max(1, Math.round(cssH * dpr))
+        Math.round(cssX * renderScale), Math.round(cssY * renderScale),
+        Math.max(1, Math.round(cssW * renderScale)), Math.max(1, Math.round(cssH * renderScale))
       )
       ctx.restore()
       saveHistory()
@@ -794,13 +833,13 @@ export default function DrawingCanvas() {
     e.preventDefault()
     const canvas = canvasRef.current
     const ctx = canvas.getContext('2d')
-    const dpr = window.devicePixelRatio || 1
+    const renderScale = canvasRenderScaleRef.current
     const pos = getPos(e)
     const last = lastPoint.current
 
     ctx.save()
     ctx.setTransform(1, 0, 0, 1, 0, 0)
-    ctx.scale(dpr, dpr)
+    ctx.scale(renderScale, renderScale)
 
     if (drawingTool === 'eraser') {
       ctx.globalCompositeOperation = 'destination-out'
@@ -940,12 +979,12 @@ export default function DrawingCanvas() {
     const canvas = canvasRef.current
     if (!canvas) return
     const ctx = canvas.getContext('2d')
-    const dpr = window.devicePixelRatio || 1
-    const w = canvas.width / dpr
-    const h = canvas.height / dpr
+    const renderScale = canvasRenderScaleRef.current
+    const w = canvas.width / renderScale
+    const h = canvas.height / renderScale
     ctx.save()
     ctx.setTransform(1, 0, 0, 1, 0, 0)
-    ctx.scale(dpr, dpr)
+    ctx.scale(renderScale, renderScale)
     ctx.fillStyle = '#ffffff'
     ctx.fillRect(0, 0, w, h)
     ctx.restore()

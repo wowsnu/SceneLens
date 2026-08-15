@@ -847,14 +847,13 @@
 }
 
 @media (max-width: 1150px) {
-  /* 좁아지면 설명과 그림체만 위로 접고, 탭과 버튼은 같은 줄에 남긴다. */
+  /* 좁아지면 설명만 위로 접고, 탭과 버튼은 같은 줄에 남긴다. */
   .storyboard-generation-bar,
   .storyboard-generation-bar.expanded {
     grid-template-columns: minmax(0, 1fr) auto;
   }
 
-  .generation-bar-copy,
-  .generation-style {
+  .generation-bar-copy {
     grid-column: 1 / -1;
   }
 
@@ -2141,6 +2140,12 @@
   line-height: 1.55;
 }
 
+/* 확정 조건은 모든 씬을 검사하지만, 편집 rail은 한 씬만 보여 준다.
+   그래서 누락 목록 자체에서 해당 씬의 카드로 갈 수 있게 한다. */
+.narrative-rail-guidance > .reference-readiness {
+  padding: 9px 10px 8px;
+}
+
 .narrative-viewer-handoff {
   display: grid;
   gap: 7px;
@@ -2212,6 +2217,17 @@
 .narrative-rail-primary.is-cutplan:hover {
   border-color: rgba(216, 170, 98, 0.55);
   background: rgba(216, 170, 98, 0.16);
+}
+
+/* 레퍼런스가 빠진 확정 버튼은 기능뿐 아니라 보이는 상태도 분명히 막는다. */
+.narrative-rail-primary:disabled,
+.narrative-rail-primary.is-cutplan:disabled,
+.narrative-rail-primary:disabled:hover,
+.narrative-rail-primary.is-cutplan:disabled:hover {
+  border-color: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.035);
+  color: rgba(255, 255, 255, 0.34);
+  cursor: not-allowed;
 }
 
 .narrative-rail-secondary {
@@ -3282,6 +3298,54 @@
   overflow-y: auto;
 }
 
+/* 한 rail 안에서도 씬 기준은 섞지 않는다. 탭으로 장면을 바꿔 보되,
+   선택은 activeBeat도 함께 옮겨 컷 표·프롬프트와 같은 씬을 가리킨다. */
+.rail-scene-switcher {
+  position: relative;
+  z-index: 2;
+  isolation: isolate;
+  flex: 0 0 auto;
+  display: flex;
+  gap: 5px;
+  overflow-x: auto;
+  min-height: 27px;
+  margin: 0 14px 8px;
+  padding: 0;
+  background: #0d0d10;
+}
+
+.rail-scene-switcher button {
+  flex: 0 0 auto;
+  padding: 4px 7px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 5px;
+  background: rgba(255, 255, 255, 0.035);
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 10px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.rail-scene-switcher button.is-active {
+  border-color: rgba(126, 168, 214, 0.52);
+  background: rgba(126, 168, 214, 0.14);
+  color: rgba(202, 224, 246, 0.96);
+}
+
+.rail-scene-reread {
+  align-self: flex-start;
+  margin: 4px 12px 13px;
+  padding: 3px 0;
+  border: 0;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.38);
+  font-size: 10px;
+  cursor: pointer;
+}
+
+.rail-scene-reread:hover:not(:disabled) { color: rgba(202, 224, 246, 0.82); }
+.rail-scene-reread:disabled { cursor: default; opacity: 0.55; }
+
 .rail-scene-head .rail-reference-trigger {
   margin-left: auto;
   padding: 3px 6px;
@@ -3296,6 +3360,19 @@
 
 .rail-scene-head .rail-reference-trigger:disabled { opacity: .45; cursor: default; }
 
+.rail-scene-head .rail-reference-regenerate {
+  padding: 3px 6px;
+  border: 1px solid rgba(126, 200, 160, 0.38);
+  border-radius: 4px;
+  background: rgba(126, 200, 160, 0.1);
+  color: rgba(164, 224, 192, 0.94);
+  font-size: 9px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.rail-scene-head .rail-reference-regenerate:disabled { opacity: .45; cursor: default; }
+
 .rail-reference-preview {
   display: block;
   width: 100%;
@@ -3308,6 +3385,29 @@
 }
 
 .rail-reference-preview img { display: block; width: 100%; height: 100%; background: #090b0a; object-fit: contain; }
+
+.rail-reference-preview:focus-visible {
+  outline: 2px solid rgba(126, 168, 214, 0.8);
+  outline-offset: 2px;
+}
+
+.rail-reference-lightbox-trigger {
+  position: absolute;
+  right: 7px;
+  bottom: 7px;
+  padding: 4px 7px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 4px;
+  background: rgba(8, 12, 10, 0.78);
+  color: rgba(255, 255, 255, 0.86);
+  font-size: 9px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.rail-reference-lightbox-trigger:hover {
+  background: rgba(20, 30, 25, 0.94);
+}
 
 /* 정보 면과 레퍼런스 면의 전환을 카드 뒤집기처럼 읽히게 한다. */
 .rail-scene-reference-card {
@@ -3324,6 +3424,15 @@
   min-width: 0;
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
+}
+
+.rail-reference-info.is-flippable {
+  cursor: pointer;
+}
+
+.rail-reference-info.is-flippable:focus-visible {
+  outline: 2px solid rgba(126, 168, 214, 0.8);
+  outline-offset: 2px;
 }
 
 .rail-reference-info {
@@ -4267,16 +4376,16 @@
   color: rgba(240, 160, 160, 0.95);
 }
 
-/* 그림체. 모든 패널에 똑같이 걸리므로 컷별 값과 나란히 두지 않고
-   그리기 직전인 생성 바에 둔다. */
-.generation-style {
+/* 그림체는 레퍼런스보다 먼저 정한다. 이 값이 기준 이미지와 모든 패널에
+   같이 적용되므로, 컷별 설정처럼 표에 섞지 않는다. */
+.rail-scene-style {
   display: flex;
   align-items: center;
   gap: 8px;
-  flex-shrink: 0;
+  margin: 0 14px 10px;
 }
 
-.generation-style > span {
+.rail-scene-style > span {
   flex-shrink: 0;
   color: rgba(255, 255, 255, 0.38);
   font-size: 10.5px;
@@ -4284,9 +4393,8 @@
   text-transform: uppercase;
 }
 
-.generation-style input {
-  /* 한 줄에 같이 서려면 칸이 줄어들 수 있어야 한다. */
-  width: 190px;
+.rail-scene-style input {
+  width: 100%;
   min-width: 0;
   flex: 1 1 auto;
   padding: 6px 9px;
@@ -4298,11 +4406,11 @@
   font-size: 11.5px;
 }
 
-.generation-style input::placeholder {
+.rail-scene-style input::placeholder {
   color: rgba(255, 255, 255, 0.3);
 }
 
-.generation-style input:focus {
+.rail-scene-style input:focus {
   border-color: rgba(126, 200, 160, 0.5);
   outline: none;
 }
