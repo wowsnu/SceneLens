@@ -38,10 +38,13 @@ const SCREENPLAY = [
 
 // 예시 대본에 딸린 패널 그림. 컷 번호(beat-beatOrder)로 붙인다 — 배열
 // 순서로 붙이면 대본을 조금만 고쳐도 그림이 엉뚱한 컷으로 밀린다.
-// 5개만 둔다. 전부 채우면 데모에서 '그릴 자리'가 사라진다.
+// 앞부분(S1–S4)은 끊기지 않게 이어 둔다. 분석은 컷 사이의 연결을 보는데
+// 중간이 비어 있으면 볼 것이 끊긴다. 뒤쪽은 비워 그릴 자리를 남긴다.
 const DEMO_PANEL_IMAGES = {
   '0-1': '/img/lab_wide_establishing.png',  // 실험실 전경
+  '0-2': '/img/lab_student_at_bench.png',   // 불빛 아래 혼자 앉은 하린
   '1-1': '/img/lab_student_ots.png',        // 화면과 노트를 보는 어깨 너머
+  '1-2': '/img/lab_writing_erasing.png',    // 적고 그어 지우는 손
   '4-1': '/img/lab_pattern_ecu.png',        // 동그라미 친 식
   '5-1': '/img/lab_discovery_cu.png',       // 깨닫는 얼굴
   '6-2': '/img/lab_window_reveal.png',      // 창가
