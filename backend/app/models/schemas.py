@@ -918,6 +918,29 @@ class ShotFixCut(BaseModel):
     shot_size: Optional[str] = ""
     dominant: Optional[str] = ""
 
+class PromptRewriteRequest(BaseModel):
+    """진단이 짚은 것을 지금 프롬프트에 반영한 문장을 받는다.
+
+    선택지를 제안해 놓고 반영은 감독이 직접 쓰게 두면, 제안이 읽을거리로
+    끝난다. 고친 문장까지 와야 판정할 것이 생긴다.
+    """
+
+    # 지금 이 컷의 프롬프트. 이것을 고쳐서 돌려준다.
+    prompt: str = Field(min_length=1)
+    # 무엇이 문제인지. 진단과 그 조치.
+    diagnosis: str = Field(min_length=1)
+    suggested_action: Optional[str] = ""
+    # 감독이 고른 길. 이것이 반영의 방향을 정한다.
+    alternative_label: str = Field(min_length=1)
+    alternative_effect: Optional[str] = ""
+
+
+class PromptRewriteResponse(BaseModel):
+    prompt: str
+    # 무엇을 바꿨는지 한 줄. 감독이 비교하지 않고도 알 수 있게 한다.
+    changed: str
+
+
 class ShotFixRequest(BaseModel):
     heading: str
     cuts: List[ShotFixCut]

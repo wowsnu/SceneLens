@@ -405,6 +405,25 @@ export async function generateReferenceImage(kind, prompt, { style = '' } = {}) 
   return `data:image/png;base64,${data.image}`
 }
 
+// --- 진단 → 프롬프트 수정본 ------------------------------------------------
+// 선택지를 제안해 놓고 반영은 감독이 직접 쓰게 두면 제안이 읽을거리로 끝난다.
+// 고친 문장까지 와야 판정할 것이 생긴다 — 받아들이거나, 고치거나, 버리거나.
+export async function rewritePrompt({
+  prompt, diagnosis, suggestedAction = '', alternativeLabel, alternativeEffect = '',
+}) {
+  return fetchWithTimeout(`${API_BASE}/prompt-rewrite`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      prompt,
+      diagnosis,
+      suggested_action: suggestedAction,
+      alternative_label: alternativeLabel,
+      alternative_effect: alternativeEffect,
+    }),
+  }, 60000)
+}
+
 // --- 촬영: 진단 → 샷 수정본 ------------------------------------------------
 // 진단은 무엇이 잘못됐는지까지만 말한다. 어느 크기로 바꿀지는 그 컷이
 // 무엇을 보여주려는지 봐야 정해지고, 그것은 촬영의 판단이다.
