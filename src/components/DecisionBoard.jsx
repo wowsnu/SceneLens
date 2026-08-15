@@ -4361,6 +4361,16 @@ export default function DecisionBoard({ boardView = 'split' }) {
                           <strong>{perspective.displayName}</strong>
                           <em>{perspective.lens}</em>
                         </div>
+                        {/* 요약을 읽고 나면 그 렌즈에서 이어서 하게 된다.
+                            위 탭까지 올라가 다시 찾게 하지 않는다. */}
+                        <button
+                          type="button"
+                          className="multi-review-card-open"
+                          onClick={() => selectReviewMode(lensId)}
+                          aria-label={`${perspective.displayName} 렌즈로 이동`}
+                        >
+                          열기
+                        </button>
                       </header>
                       {/* 요약(result.summary)은 두지 않는다. "무엇이 잘 안
                           읽힌다"까지만 말해서, 아래 조치가 같은 것을 다시
@@ -4479,7 +4489,7 @@ export default function DecisionBoard({ boardView = 'split' }) {
                     {multiReviewRun.relateError
                       ? `실패 · ${multiReviewRun.relateError}`
                       : multiHasDiagnosis
-                        ? '한 렌즈의 결정이 다른 렌즈 판단을 만들었는지 봅니다.'
+                        ? '세 렌즈가 짚은 것이 서로 맞물리는지 봅니다.'
                         : '짚인 문제가 없어 볼 관계가 없습니다.'}
                   </span>
                 </div>

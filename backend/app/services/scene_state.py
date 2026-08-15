@@ -22,7 +22,7 @@ from app.models.schemas import SceneFact, SceneStateRequest, SceneStateResponse
 # 컷별 변화(changes는 label로 붙는다)가 사라진다.
 CHARACTER_LABELS = ["성별·나이", "외형 기준", "체형", "기본 태도", "소지품"]
 LOCATION_LABELS = ["장소 정체", "고정 소품"]
-ENVIRONMENT_LABELS = ["시간", "날씨", "조명 기준", "그림체"]
+ENVIRONMENT_LABELS = ["시간", "조명 기준", "그림체"]
 
 
 def _fact(labels):
@@ -155,9 +155,8 @@ PROMPT = """당신은 미장센 담당입니다. 대본을 읽고 이 씬의 기
   · "고정 소품" — 화면에 늘 있는 것 (예: "모니터 벽, 콘솔")
 
 **environment** — 씬 전체에 걸리는 것.
-- facts: **아래 네 항목만.** 각 **15자 이내**.
+- facts: **아래 세 항목만.** 각 **15자 이내**.
   · "시간" (예: "밤")
-  · "날씨" (예: "비")
   · "조명 기준" (예: "형광등, 간헐적 깜빡임")
   · "그림체" (예: "거친 연필 스케치")
 

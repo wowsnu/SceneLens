@@ -1100,6 +1100,28 @@
 
 .multi-review-card > header div {
   min-width: 0;
+  flex: 1 1 auto;
+}
+
+/* 요약에서 그 렌즈로 바로 넘어간다. 렌즈 색을 옅게 써서 어느 렌즈로
+   가는 버튼인지 카드와 같은 색으로 읽히게 한다. */
+.multi-review-card-open {
+  flex: 0 0 auto;
+  padding: 3px 9px;
+  border: 1px solid color-mix(in srgb, var(--lens-color), transparent 62%);
+  border-radius: 5px;
+  background: color-mix(in srgb, var(--lens-color), transparent 92%);
+  color: color-mix(in srgb, var(--lens-color), white 30%);
+  font-family: inherit;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+}
+
+.multi-review-card-open:hover {
+  border-color: color-mix(in srgb, var(--lens-color), transparent 38%);
+  background: color-mix(in srgb, var(--lens-color), transparent 82%);
 }
 
 .multi-review-card > header strong,
