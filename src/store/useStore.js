@@ -3127,7 +3127,11 @@ const useStore = create((set, get) => ({
       // 보내 컷 플랜 단계 자체가 화면에서 사라진다. 표는 이미 차 있으므로
       // 훑어보고 '확정'만 누르면 기다림 없이 패널로 넘어간다.
       cutPlanAccepted: false,
-      cutPlanStageOverride: null,
+      // 컷을 미리 채워 두면 selectCutStage가 곧바로 'cutplan'을 가리켜
+      // 대본 단계를 건너뛴다. 예시를 불러온 자리는 대본이므로 거기 머문다 —
+      // '컷으로 나누기'를 누르면 override가 풀리고 이미 만들어 둔 표가
+      // 그대로 열린다.
+      cutPlanStageOverride: 'script',
     }
   }),
   sceneIntention: '',
