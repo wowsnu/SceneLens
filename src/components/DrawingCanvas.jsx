@@ -974,6 +974,24 @@ export default function DrawingCanvas() {
     }
   }, [restoreFromHistory])
 
+  // Cmd/Ctrl+Z로 되돌리기, Shift를 더하면 다시 실행. 되돌리기가 도구 막대
+  // 버튼에만 있으면 그리다 말고 마우스를 옮겨야 한다.
+  useEffect(() => {
+    const onKey = (e) => {
+      if (e.key.toLowerCase() !== 'z' || !(e.metaKey || e.ctrlKey)) return
+      // 글자를 치는 중이면 그 입력의 되돌리기다.
+      const el = e.target
+      const typing = el?.isContentEditable
+        || ['INPUT', 'TEXTAREA', 'SELECT'].includes(el?.tagName)
+      if (typing) return
+      e.preventDefault()
+      if (e.shiftKey) handleRedo()
+      else handleUndo()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [handleUndo, handleRedo])
+
   // Clear
   const handleClear = useCallback(() => {
     const canvas = canvasRef.current

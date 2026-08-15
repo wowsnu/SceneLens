@@ -584,6 +584,50 @@ def _gemini_generate_image(prompt: str, input_image_bytes: bytes = None) -> byte
     raise ValueError("Gemini did not return an image")
 
 
+# 원본 선을 이만큼 부풀린 영역은 '이미 그린 자리'로 본다. 모델이 같은 선을
+# 조금 옮겨 그려도 이 안에 들어오면 버려서 두 겹이 생기지 않는다. 너무 키우면
+# 원본 옆에 바짝 붙은 진짜 새 선까지 사라진다.
+_NEAR_ORIGINAL_RADIUS = 9
+
+
+def _keep_original_strokes(original: bytes, edited: bytes) -> bytes:
+    """보태기 결과에서 '보탠 것'만 남기고 원본 선을 되돌려 놓는다.
+
+    images.edit은 마스크 없이 쓰면 캔버스 전체를 다시 칠한다. 프롬프트로
+    "기존 선을 건드리지 말라"고 해도 모델이 지킬 수 있는 방식이 아니라서,
+    감독이 그린 얼굴이 다른 얼굴로 바뀌어 돌아오는 일이 생긴다.
+
+    그래서 픽셀에서 보장한다. 두 그림을 겹쳐 **더 어두운 쪽**을 택하면
+    - 원본에 있던 선은 결과가 지웠더라도 그대로 살아남고,
+    - 결과에만 있는 새 선은 흰 바탕 위에 얹힌다.
+    지우는 편집은 통과하지 못한다 — 보태기는 원래 지우는 기능이 아니다.
+    """
+    from PIL import Image, ImageChops, ImageFilter
+    import io
+
+    with Image.open(io.BytesIO(original)) as src, Image.open(io.BytesIO(edited)) as out:
+        base = src.convert("L")
+        added = out.convert("L")
+        if added.size != base.size:
+            # 모델이 다른 크기로 돌려주면 원본 크기에 맞춘다. 이 단계를
+            # 건너뛰면 겹치기가 어긋나 선이 두 겹으로 보인다.
+            added = added.resize(base.size, Image.LANCZOS)
+
+        # 그냥 겹치면 모델이 같은 선을 조금 옮겨 그렸을 때 두 겹으로 남는다.
+        # 원본 선을 굵게 부풀린 영역 안에 들어온 결과의 선은 '같은 선을 다시
+        # 그린 것'으로 보고 버린다. 그 바깥에 새로 생긴 선만 보탠다.
+        # 원본은 어느 쪽이든 그대로 남는다.
+        near_original = base.filter(ImageFilter.MinFilter(_NEAR_ORIGINAL_RADIUS))
+        # near_original에서 어두운 곳 = 원본 선 근처. 그 자리의 결과는 흰색으로
+        # 지워 두면, 아래 darker에서 원본만 남는다.
+        new_marks = added.copy()
+        new_marks.paste(255, mask=near_original.point(lambda v: 255 if v < 200 else 0).convert("1"))
+        merged = ImageChops.darker(base, new_marks)
+        buffer = io.BytesIO()
+        merged.convert("RGB").save(buffer, format="PNG")
+        return buffer.getvalue()
+
+
 def _closest_edit_size(image_bytes: bytes) -> str:
     """gpt-image-1이 받는 세 크기 중 입력 비율에 가장 가까운 것.
 
@@ -715,15 +759,25 @@ async def enhance_sketch(
 
     data = result.data[0]
     if getattr(data, "b64_json", None):
-        return data.b64_json
-
-    if getattr(data, "url", None):
+        edited_bytes = base64.b64decode(data.b64_json)
+    elif getattr(data, "url", None):
         async with httpx.AsyncClient(timeout=60) as http:
             response = await http.get(data.url)
             response.raise_for_status()
-            return _image_bytes_to_base64(response.content)
+            edited_bytes = response.content
+    else:
+        raise ValueError("GPT Image returned neither b64_json nor url")
 
-    raise ValueError("GPT Image returned neither b64_json nor url")
+    # 보태기만 원본을 되돌려 덮는다. 그림체 맞추기는 선을 다시 그리는 것이
+    # 목적이라 여기서 원본을 얹으면 옛 선과 새 선이 겹쳐 두 겹이 된다.
+    if not restyling:
+        try:
+            edited_bytes = _keep_original_strokes(image_bytes, edited_bytes)
+        except Exception as error:
+            # 합성에 실패해도 결과는 돌려준다. 다만 원본 보존은 보장되지 않는다.
+            print(f"[enhance-sketch] keeping original strokes failed: {error}")
+
+    return _image_bytes_to_base64(edited_bytes)
 
 
 async def generate_sketch(
