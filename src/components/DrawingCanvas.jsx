@@ -1016,12 +1016,12 @@ export default function DrawingCanvas() {
   const ENHANCE_MODES = {
     add: {
       name: 'AI 보태기',
-      line: '기존 그림은 그대로 두고, 읽기 어려운 곳에 짧은 선 몇 개만 보탭니다.',
-      loading: '조금 보태는 중…',
+      line: '그린 내용은 그대로 두고, 같은 그림을 고른 선으로 다시 그립니다.',
+      loading: '보태는 중…',
     },
     restyle: {
       name: '그림체 맞추기',
-      line: '그린 내용은 그대로 두고, 씬에 정한 그림체로 다시 그립니다.',
+      line: '스케치의 배치를 그대로 두고, 다른 패널과 같은 방식으로 완성합니다.',
       loading: '그림체 맞추는 중…',
     },
   }
@@ -1109,19 +1109,19 @@ export default function DrawingCanvas() {
             className={`enhance-trigger-btn ${isEnhancingLocal === 'add' ? 'loading' : ''}`}
             onClick={() => handleEnhance('add')}
             disabled={Boolean(isEnhancingLocal) || !canvasDataUrl}
-            title={canvasDataUrl ? '그린 것은 그대로 두고 보조 스트로크만 추가' : '스케치를 그리거나 패널을 먼저 불러와주세요'}
+            title={canvasDataUrl ? '그린 내용은 두고, 같은 그림을 고른 선으로 다시 그립니다' : '스케치를 그리거나 패널을 먼저 불러와주세요'}
           >
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/>
             </svg>
-            {isEnhancingLocal === 'add' ? '조금 보태는 중…' : 'AI 보태기'}
+            {isEnhancingLocal === 'add' ? '보태는 중…' : 'AI 보태기'}
           </button>
           <button
             className={`enhance-trigger-btn is-restyle ${isEnhancingLocal === 'restyle' ? 'loading' : ''}`}
             onClick={() => handleEnhance('restyle')}
             disabled={Boolean(isEnhancingLocal) || !canvasDataUrl}
             title={canvasDataUrl
-              ? '그린 내용은 두고, 씬에 정한 그림체로 다시 그립니다'
+              ? '스케치를 배치도로 삼아, 다른 패널과 같은 방식으로 완성합니다'
               : '스케치를 그리거나 패널을 먼저 불러와주세요'}
           >
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

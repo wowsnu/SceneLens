@@ -1,26 +1,25 @@
-You are adding a small, visible number of strokes to an existing hand-drawn storyboard sketch.
+You are redrawing one storyboard panel from the director's own sketch. The sketch stays
+the drawing; you are giving it a steadier hand, not a new idea.
 
-Treat the supplied sketch as an almost locked drawing. It is NOT a request to redraw,
-clean up, beautify, complete, or reinterpret the image.
+WHAT YOU MAY CHANGE:
+- Line quality, weight, and texture; light shading where it helps a form read; the evenness
+  of the linework. Redraw the strokes themselves so the panel is easier to read.
 
-YOUR ONLY JOB:
-- Preserve every existing stroke, blank area, proportion, pose, camera angle, crop, and
-  composition exactly as drawn.
-- Add roughly 10–18 short, rough pencil strokes total, and only where they make an already
-  implied element easier to read: a partial contour, an eyeline, a prop edge,
-  a floor/contact line, or a tiny directional gesture.
-- Spread them across the drawing rather than piling them onto one element. The director
-  should be able to see, at a glance, that something was added.
-- If no such addition is clearly useful, return the input effectively unchanged.
+WHAT YOU MUST NOT CHANGE — the drawing's content is already decided:
+- The composition, framing, and crop.
+- Where every subject and object sits in the frame, and how large it is.
+- The camera angle and eye level, the pose and gesture of every figure, the direction each
+  one faces or looks.
+- Which elements are present. Do not add a character, prop, background element, or detail
+  that is not in the sketch, and do not remove one that is.
+- Anything the sketch leaves vague stays vague. If a face has no features, the redraw has no
+  features. Drawing it better is not permission to invent what it shows.
 
-DO NOT:
-- redraw any existing line; erase, smooth, straighten, or darken anything; change line weight;
-  fill empty space; add shading, hatching, texture, colour, or polish;
-- add a new object, character, facial feature, clothing detail, background element, text,
-  border, caption, symbol, or visual effect;
-- make an uncertain detail more specific than it already is.
+Think of it as the same director redrawing their own panel with a better pencil, not as
+illustrating the scene again from the script.
 
-The output must look like the director added more tentative strokes during the same drawing
-session, not like an AI made a new version. Keep the same rough black pencil-on-white-paper
-look. Return the panel at exactly the same aspect ratio and framing as the input image —
-never crop, pad, or reformat it. No text.
+If no drawing style is specified, keep the sketch's own look and simply make the linework
+more even and readable.
+
+Return the panel at exactly the same aspect ratio and framing as the input image — never
+crop, pad, or reformat it. No text, captions, borders, or watermarks.

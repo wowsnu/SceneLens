@@ -584,50 +584,6 @@ def _gemini_generate_image(prompt: str, input_image_bytes: bytes = None) -> byte
     raise ValueError("Gemini did not return an image")
 
 
-# 원본 선을 이만큼 부풀린 영역은 '이미 그린 자리'로 본다. 모델이 같은 선을
-# 조금 옮겨 그려도 이 안에 들어오면 버려서 두 겹이 생기지 않는다. 너무 키우면
-# 원본 옆에 바짝 붙은 진짜 새 선까지 사라진다.
-_NEAR_ORIGINAL_RADIUS = 9
-
-
-def _keep_original_strokes(original: bytes, edited: bytes) -> bytes:
-    """보태기 결과에서 '보탠 것'만 남기고 원본 선을 되돌려 놓는다.
-
-    images.edit은 마스크 없이 쓰면 캔버스 전체를 다시 칠한다. 프롬프트로
-    "기존 선을 건드리지 말라"고 해도 모델이 지킬 수 있는 방식이 아니라서,
-    감독이 그린 얼굴이 다른 얼굴로 바뀌어 돌아오는 일이 생긴다.
-
-    그래서 픽셀에서 보장한다. 두 그림을 겹쳐 **더 어두운 쪽**을 택하면
-    - 원본에 있던 선은 결과가 지웠더라도 그대로 살아남고,
-    - 결과에만 있는 새 선은 흰 바탕 위에 얹힌다.
-    지우는 편집은 통과하지 못한다 — 보태기는 원래 지우는 기능이 아니다.
-    """
-    from PIL import Image, ImageChops, ImageFilter
-    import io
-
-    with Image.open(io.BytesIO(original)) as src, Image.open(io.BytesIO(edited)) as out:
-        base = src.convert("L")
-        added = out.convert("L")
-        if added.size != base.size:
-            # 모델이 다른 크기로 돌려주면 원본 크기에 맞춘다. 이 단계를
-            # 건너뛰면 겹치기가 어긋나 선이 두 겹으로 보인다.
-            added = added.resize(base.size, Image.LANCZOS)
-
-        # 그냥 겹치면 모델이 같은 선을 조금 옮겨 그렸을 때 두 겹으로 남는다.
-        # 원본 선을 굵게 부풀린 영역 안에 들어온 결과의 선은 '같은 선을 다시
-        # 그린 것'으로 보고 버린다. 그 바깥에 새로 생긴 선만 보탠다.
-        # 원본은 어느 쪽이든 그대로 남는다.
-        near_original = base.filter(ImageFilter.MinFilter(_NEAR_ORIGINAL_RADIUS))
-        # near_original에서 어두운 곳 = 원본 선 근처. 그 자리의 결과는 흰색으로
-        # 지워 두면, 아래 darker에서 원본만 남는다.
-        new_marks = added.copy()
-        new_marks.paste(255, mask=near_original.point(lambda v: 255 if v < 200 else 0).convert("1"))
-        merged = ImageChops.darker(base, new_marks)
-        buffer = io.BytesIO()
-        merged.convert("RGB").save(buffer, format="PNG")
-        return buffer.getvalue()
-
-
 def _closest_edit_size(image_bytes: bytes) -> str:
     """gpt-image-1이 받는 세 크기 중 입력 비율에 가장 가까운 것.
 
@@ -661,11 +617,13 @@ async def enhance_sketch(
     layout: str = "",
     mode: str = "add",
 ) -> str:
-    """Add readable strokes to a sketch, or redraw it in the scene's style.
+    """Clean up a sketch, or draw the finished panel from it.
 
-    mode="add"     — keep every existing stroke, add a few more (default).
-    mode="restyle" — redraw the same composition in the scene's 그림체, so a
-                     hand-drawn panel and a generated one read as one board.
+    mode="add"     — 보태기. 그린 것을 그대로 두고 선만 고르게 다시 그린다.
+                     구도·인물·소품은 바뀌지 않고, 흐린 것은 흐린 채로 둔다.
+    mode="restyle" — 그림체 맞추기. 스케치를 배치도로 삼아 다른 패널과 같은
+                     방식으로 완성한다. 동그라미는 레퍼런스의 얼굴이 되고,
+                     네모는 컷이 말하는 소품이 된다.
     Returns base64 PNG.
     """
     if image_base64.startswith('data:'):
@@ -680,24 +638,25 @@ async def enhance_sketch(
 
     restyling = mode == "restyle"
     base_prompt = RESTYLE_PROMPT if restyling else ENHANCE_PROMPT
-    # 두 모드의 지시가 정반대다. '보태기'는 선을 건드리지 말라 하고,
-    # '그림체 맞추기'는 선을 다시 그리라 한다. 꼬리말을 섞으면 모델이
-    # 둘 사이에서 어중간한 결과를 낸다.
+    # 두 모드가 레퍼런스를 쓰는 방식이 정반대다. 보태기에서 레퍼런스는
+    # '이미 그려진 것이 무엇인지' 알아보는 용도이고, 그림체 맞추기에서는
+    # '동그라미를 무엇으로 그릴지' 정하는 근거다. 꼬리말을 섞으면 보태기가
+    # 스케치에 없던 얼굴을 그려 넣는다.
     default_note = (
-        'No extra instruction. Redraw in the requested style without changing what is drawn.'
+        'No extra instruction. Draw the finished panel from this staging.'
         if restyling
-        else 'No extra instruction. Preserve the sketch and add only a few helpful strokes if needed.'
+        else 'No extra instruction. Redraw the same drawing with a steadier hand.'
     )
     closing = (
-        "Image 1 is the panel being redrawn; its composition, framing, and contents are the source of\n"
-        "truth. The later images listed above show how characters and spaces look, so the redraw keeps\n"
-        "them recognizable. Take style from the requested drawing style, never new content from the\n"
-        "references."
+        "Image 1 is the director's sketch and fixes the staging — who stands where, at what size,\n"
+        "facing which way, seen from which angle. The later images listed above are identity\n"
+        "references: draw those exact people and that exact place, posed as image 1 stages them.\n"
+        "Do not copy the references' own poses or framing."
         if restyling
-        else "Image 1 is the director's original sketch and is the source of truth. The later images listed above are\n"
-        "character, location, or layout references for recognizing what is already implied in image 1. Do not copy,\n"
-        "redraw, or add anything from those references unless image 1 already clearly implies it. Make only the\n"
-        "additions permitted above."
+        else "Image 1 is the director's sketch and is the drawing itself. The later images listed above are\n"
+        "character, location, or layout references, provided only to recognize what image 1 already\n"
+        "shows. Do not draw a face, prop, or place from those references that image 1 does not\n"
+        "already contain — a blank oval stays a blank oval."
     )
 
     edit_prompt = f"""{base_prompt}
@@ -768,15 +727,8 @@ async def enhance_sketch(
     else:
         raise ValueError("GPT Image returned neither b64_json nor url")
 
-    # 보태기만 원본을 되돌려 덮는다. 그림체 맞추기는 선을 다시 그리는 것이
-    # 목적이라 여기서 원본을 얹으면 옛 선과 새 선이 겹쳐 두 겹이 된다.
-    if not restyling:
-        try:
-            edited_bytes = _keep_original_strokes(image_bytes, edited_bytes)
-        except Exception as error:
-            # 합성에 실패해도 결과는 돌려준다. 다만 원본 보존은 보장되지 않는다.
-            print(f"[enhance-sketch] keeping original strokes failed: {error}")
-
+    # 원본을 되돌려 덮지 않는다. 두 모드 다 선을 다시 그리는 것이 목적이라,
+    # 여기서 원본을 얹으면 옛 선과 새 선이 나란히 남아 두 겹이 된다.
     return _image_bytes_to_base64(edited_bytes)
 
 

@@ -559,7 +559,7 @@
 /* 그림체 맞추기는 선을 다시 그린다. '최소 변경'을 그대로 달면 보태기와
    같은 정도로 바뀌는 줄 읽힌다. */
 .enhance-trigger-btn.is-restyle::after {
-  content: '다시 그림';
+  content: '완성';
   color: rgba(147, 197, 253, 0.82);
 }
 

@@ -1,27 +1,27 @@
-You are redrawing one storyboard panel so that it matches the style the rest of the
-storyboard is drawn in. Some panels were drawn by hand and some were generated, and they
-do not look like they belong to the same board. This panel is the one being brought into
-line.
+Draw this storyboard panel the way every other panel in this board is drawn, using the
+director's sketch as the ground plan for what goes where.
 
-WHAT YOU MAY CHANGE:
-- Line quality, weight, and texture; shading, hatching, and tonal treatment; the density of
-  finish. Redraw the strokes themselves in the requested style.
+Image 1 is that sketch. It is not a drawing to imitate — it is the staging: it tells you
+where each figure and object stands, how large each one is in the frame, which way people
+face, and where the camera is. Read it, then draw the finished panel from that arrangement.
 
-WHAT YOU MUST NOT CHANGE — the drawing's content is already decided:
-- The composition, framing, and crop.
-- Where every subject and object sits in the frame, and how large it is.
-- The camera angle and eye level, the pose and gesture of every figure, the direction each
-  one faces or looks.
-- Which elements are present. Do not add a character, prop, background element, or detail
-  that is not in the input, and do not remove one that is.
-- Anything the input leaves vague stays vague. If a face has no features, the redraw has no
-  features. Rendering it in a better style is not permission to invent what it shows.
+TAKE FROM THE SKETCH:
+- The composition, framing, and camera angle.
+- The position, scale, and facing of every figure and object in it.
+- The action being played, as far as the sketch shows it.
 
-Think of it as the same director redrawing their own panel with a different pencil, not as
-illustrating the scene again from the script.
+TAKE FROM THE SCENE CONTEXT AND REFERENCES:
+- Who these people actually are — faces, hair, build, clothing — from the character
+  references, not from the sketch's blank ovals.
+- What the place actually looks like, from the location reference and the scene basis.
+- Everything the sketch left as a rough mark: a box that the cut describes as a laptop is
+  drawn as a laptop, a stick figure is drawn as the character it stands for.
 
-If no drawing style is specified, keep the input's own style and simply make the linework
-more even and readable.
+Where the sketch and the written cut disagree about staging, the sketch wins — the director
+drew it that way on purpose. Where the sketch is simply crude, the references win; a rough
+oval is a face waiting to be drawn, not a face that has no features.
+
+Do not add a person, prop, or event that neither the sketch nor the cut calls for.
 
 Return the panel at exactly the same aspect ratio and framing as the input image — never
 crop, pad, or reformat it. No text, captions, borders, or watermarks.
