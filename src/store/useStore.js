@@ -1255,7 +1255,7 @@ const CORRIDOR_SCENE_STATE = {
       id: 'harin-corridor',
       name: '하린',
       summary: '후드 · 노트를 든 채',
-      image: null,
+      image: '/img/lab_discovery_cu.png',
       facts: [
         { label: '외형 기준', value: '후드를 입고 노트를 손에 들고 있다' },
         { label: '표정', value: '아직 지정되지 않음', open: true },
@@ -1264,6 +1264,7 @@ const CORRIDOR_SCENE_STATE = {
   ],
   location: {
     name: '연구동 복도',
+    image: '/img/lab_corridor.png',
     facts: [
       { label: '장소 정체', value: '불이 반쯤 꺼진 연구동 복도' },
       { label: '고정 소품', value: '교수 연구실 문 · 게시판 · 소화전' },
@@ -3094,8 +3095,9 @@ const useStore = create((set, get) => ({
     const maxBeat = Math.max(0, ...script.map((line) => line.beat ?? 0))
     const sceneStates = { 'scene-0': SCENE_STATE, 'scene-7': CORRIDOR_SCENE_STATE }
 
-    // 줄콘티까지 채운다. 데모에서 컷 플랜이 비어 있으면 미장센·촬영·편집을
-    // 열어도 볼 것이 없어, 뒤 단계가 전부 모델 호출에 걸린다.
+    // 줄콘티까지 채워 둔다. 각 단계에서 모델을 기다리지 않고 바로 다음으로
+    // 넘어갈 수 있게 하려는 것이지, 단계를 건너뛰려는 것이 아니다.
+    // 아래에서 cutPlanAccepted를 false로 두는 이유가 그것이다.
     // 규칙 기반 생성기를 그대로 쓴다 — 손으로 적으면 대본을 고칠 때 어긋난다.
     const cutPlan = createMockCutPlan({ ...state, screenplay: script, sceneStates })
 
@@ -3121,7 +3123,11 @@ const useStore = create((set, get) => ({
       sceneStates,
       sceneStateStoryKey: screenplayFingerprint(script),
       cutPlan,
-      cutPlanAccepted: true,
+      // 확정은 감독이 한다. true로 두면 selectCutStage가 곧바로 'panels'로
+      // 보내 컷 플랜 단계 자체가 화면에서 사라진다. 표는 이미 차 있으므로
+      // 훑어보고 '확정'만 누르면 기다림 없이 패널로 넘어간다.
+      cutPlanAccepted: false,
+      cutPlanStageOverride: null,
     }
   }),
   sceneIntention: '',
