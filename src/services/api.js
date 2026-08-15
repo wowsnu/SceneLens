@@ -84,7 +84,7 @@ export async function theoryAnswer(cir, intent, scriptContext = '') {
 
 export async function enhanceSketch(imageBase64, {
   scriptContext = '', intent = '', prompt = '', shared = '', previous = '',
-  references = [], style = '', layout = '',
+  references = [], style = '', layout = '', mode = 'add',
 } = {}) {
   return fetchWithTimeout(`${API_BASE}/enhance-sketch`, {
     method: 'POST',
@@ -99,6 +99,7 @@ export async function enhanceSketch(imageBase64, {
       references,
       style,
       layout,
+      mode,
     }),
   }, 60000)
 }

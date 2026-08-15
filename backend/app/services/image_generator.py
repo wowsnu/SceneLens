@@ -228,6 +228,10 @@ CIR_DESCRIPTIONS = {
 }
 with open(PROMPTS_DIR / "enhance_sketch.txt", "r") as f:
     ENHANCE_PROMPT = f.read()
+# 손으로 그린 패널과 생성한 패널이 섞이면 한 보드로 안 읽힌다. 정해 둔
+# 그림체로 다시 그려 맞추는 쪽은 '보태기'와 지시가 정반대라 파일을 나눈다.
+with open(PROMPTS_DIR / "restyle_sketch.txt", "r") as f:
+    RESTYLE_PROMPT = f.read()
 with open(PROMPTS_DIR / "generate_sketch.txt", "r") as f:
     GENERATE_PROMPT = f.read()
 with open(PROMPTS_DIR / "reframe_sketch.txt", "r") as f:
@@ -580,6 +584,27 @@ def _gemini_generate_image(prompt: str, input_image_bytes: bytes = None) -> byte
     raise ValueError("Gemini did not return an image")
 
 
+def _closest_edit_size(image_bytes: bytes) -> str:
+    """gpt-image-1이 받는 세 크기 중 입력 비율에 가장 가까운 것.
+
+    고정 크기를 쓰면 정사각형 패널이 가로로 늘어나 돌아온다. 원본 비율을
+    지키라는 지시는 프롬프트가 아니라 이 값이 정한다.
+    """
+    options = {"1024x1024": 1.0, "1536x1024": 1.5, "1024x1536": 1 / 1.5}
+    try:
+        from PIL import Image
+        import io
+        with Image.open(io.BytesIO(image_bytes)) as img:
+            width, height = img.size
+        if not height:
+            return "1536x1024"
+        ratio = width / height
+    except Exception:
+        # 크기를 못 읽으면 지금까지 쓰던 값으로 둔다.
+        return "1536x1024"
+    return min(options, key=lambda name: abs(options[name] - ratio))
+
+
 async def enhance_sketch(
     image_base64: str,
     script_context: str,
@@ -590,8 +615,15 @@ async def enhance_sketch(
     references: list = None,
     style: str = "",
     layout: str = "",
+    mode: str = "add",
 ) -> str:
-    """Conservatively add a few readable strokes to a sketch. Returns base64 PNG."""
+    """Add readable strokes to a sketch, or redraw it in the scene's style.
+
+    mode="add"     — keep every existing stroke, add a few more (default).
+    mode="restyle" — redraw the same composition in the scene's 그림체, so a
+                     hand-drawn panel and a generated one read as one board.
+    Returns base64 PNG.
+    """
     if image_base64.startswith('data:'):
         image_base64 = image_base64.split(',')[1]
 
@@ -602,7 +634,29 @@ async def enhance_sketch(
         for index, ref in enumerate(references or [])
     ) or "- No additional reference images."
 
-    edit_prompt = f"""{ENHANCE_PROMPT}
+    restyling = mode == "restyle"
+    base_prompt = RESTYLE_PROMPT if restyling else ENHANCE_PROMPT
+    # 두 모드의 지시가 정반대다. '보태기'는 선을 건드리지 말라 하고,
+    # '그림체 맞추기'는 선을 다시 그리라 한다. 꼬리말을 섞으면 모델이
+    # 둘 사이에서 어중간한 결과를 낸다.
+    default_note = (
+        'No extra instruction. Redraw in the requested style without changing what is drawn.'
+        if restyling
+        else 'No extra instruction. Preserve the sketch and add only a few helpful strokes if needed.'
+    )
+    closing = (
+        "Image 1 is the panel being redrawn; its composition, framing, and contents are the source of\n"
+        "truth. The later images listed above show how characters and spaces look, so the redraw keeps\n"
+        "them recognizable. Take style from the requested drawing style, never new content from the\n"
+        "references."
+        if restyling
+        else "Image 1 is the director's original sketch and is the source of truth. The later images listed above are\n"
+        "character, location, or layout references for recognizing what is already implied in image 1. Do not copy,\n"
+        "redraw, or add anything from those references unless image 1 already clearly implies it. Make only the\n"
+        "additions permitted above."
+    )
+
+    edit_prompt = f"""{base_prompt}
 
 [Scene Context]
 {script_context}
@@ -626,12 +680,9 @@ async def enhance_sketch(
 {reference_inventory}
 
 [Optional Director Note — never use this to alter the existing composition]
-{intent or 'No extra instruction. Preserve the sketch and add only a few helpful strokes if needed.'}
+{intent or default_note}
 
-Image 1 is the director's original sketch and is the source of truth. The later images listed above are
-character, location, or layout references for recognizing what is already implied in image 1. Do not copy,
-redraw, or add anything from those references unless image 1 already clearly implies it. Make only the
-tiny additions permitted above.
+{closing}
 """
 
     api_key = os.getenv("OPENAI_API_KEY")
@@ -655,7 +706,9 @@ tiny additions permitted above.
         model="gpt-image-1",
         image=files,
         prompt=edit_prompt,
-        size="1536x1024",
+        # 크기를 가로로 고정하면 프롬프트에 무엇을 써도 정사각형 패널이
+        # 늘어나거나 잘려서 돌아온다. 들어온 그림의 비율에서 고른다.
+        size=_closest_edit_size(image_bytes),
         quality="low",
         n=1,
     )

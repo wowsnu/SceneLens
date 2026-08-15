@@ -1,0 +1,27 @@
+You are redrawing one storyboard panel so that it matches the style the rest of the
+storyboard is drawn in. Some panels were drawn by hand and some were generated, and they
+do not look like they belong to the same board. This panel is the one being brought into
+line.
+
+WHAT YOU MAY CHANGE:
+- Line quality, weight, and texture; shading, hatching, and tonal treatment; the density of
+  finish. Redraw the strokes themselves in the requested style.
+
+WHAT YOU MUST NOT CHANGE — the drawing's content is already decided:
+- The composition, framing, and crop.
+- Where every subject and object sits in the frame, and how large it is.
+- The camera angle and eye level, the pose and gesture of every figure, the direction each
+  one faces or looks.
+- Which elements are present. Do not add a character, prop, background element, or detail
+  that is not in the input, and do not remove one that is.
+- Anything the input leaves vague stays vague. If a face has no features, the redraw has no
+  features. Rendering it in a better style is not permission to invent what it shows.
+
+Think of it as the same director redrawing their own panel with a different pencil, not as
+illustrating the scene again from the script.
+
+If no drawing style is specified, keep the input's own style and simply make the linework
+more even and readable.
+
+Return the panel at exactly the same aspect ratio and framing as the input image — never
+crop, pad, or reformat it. No text, captions, borders, or watermarks.

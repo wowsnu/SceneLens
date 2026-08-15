@@ -993,10 +993,26 @@ export default function DrawingCanvas() {
     setCanvasDataUrl(null)
   }, [saveHistory, setCanvasDataUrl])
 
-  const handleEnhance = async () => {
+  // 두 가지를 한 함수로 둔다. 미리보기·적용·오류 처리가 같고, 다른 것은
+  // 서버에 보내는 mode와 화면에 쓰는 말뿐이다.
+  const ENHANCE_MODES = {
+    add: {
+      name: 'AI 보태기',
+      line: '기존 그림은 그대로 두고, 읽기 어려운 곳에 짧은 선 몇 개만 보탭니다.',
+      loading: '조금 보태는 중…',
+    },
+    restyle: {
+      name: '그림체 맞추기',
+      line: '그린 내용은 그대로 두고, 씬에 정한 그림체로 다시 그립니다.',
+      loading: '그림체 맞추는 중…',
+    },
+  }
+
+  const handleEnhance = async (mode = 'add') => {
     if (!canvasDataUrl) return
+    const meta = ENHANCE_MODES[mode] || ENHANCE_MODES.add
     setIsEnhancing(true)
-    setIsEnhancingLocal(true)
+    setIsEnhancingLocal(mode)
     clearComparePreview()
 
     const imageBase64 = canvasDataUrl.startsWith('data:') ? canvasDataUrl.split(',')[1] : canvasDataUrl
@@ -1007,8 +1023,8 @@ export default function DrawingCanvas() {
       originalImage,
       candidateImage: null,
       loading: true,
-      strategyName: 'AI 보태기',
-      recommendationLine: '기존 그림은 그대로 두고, 읽기 어려운 곳에 짧은 선 몇 개만 보탭니다.',
+      strategyName: meta.name,
+      recommendationLine: meta.line,
       isEnhancePreview: true,
     })
 
@@ -1016,6 +1032,7 @@ export default function DrawingCanvas() {
       const result = await enhanceSketch(imageBase64, {
         scriptContext: screenplay.map((el) => el.text).join('\n'),
         ...enhanceContext,
+        mode,
       })
       const resultImage = `data:image/png;base64,${result.enhanced_image}`
       setComparePreview({
@@ -1023,8 +1040,8 @@ export default function DrawingCanvas() {
         originalImage,
         candidateImage: resultImage,
         loading: false,
-        strategyName: 'AI 보태기',
-        recommendationLine: '기존 그림은 그대로 두고, 읽기 어려운 곳에 짧은 선 몇 개만 보탭니다.',
+        strategyName: meta.name,
+        recommendationLine: meta.line,
         isEnhancePreview: true,
       })
     } catch (err) {
@@ -1035,7 +1052,7 @@ export default function DrawingCanvas() {
         loading: false,
         error: err.message,
         isEnhancePreview: true,
-        strategyName: 'AI 보태기',
+        strategyName: meta.name,
       })
     } finally {
       setIsEnhancing(false)
@@ -1066,19 +1083,33 @@ export default function DrawingCanvas() {
 
   return (
     <div className="canvas-container" ref={containerRef}>
-      {/* AI 보태기 — original strokes remain the source of truth. */}
+      {/* 보태기는 그린 선을 그대로 두고, 그림체 맞추기는 같은 그림을 다시
+          그린다. 손으로 그린 컷과 생성한 컷이 섞여 있을 때 뒤쪽이 필요하다. */}
       {!comparePreview && (
         <div className="enhance-btn-wrap">
           <button
-            className={`enhance-trigger-btn ${isEnhancingLocal ? 'loading' : ''}`}
-            onClick={handleEnhance}
-            disabled={isEnhancingLocal || !canvasDataUrl}
-            title={canvasDataUrl ? '기존 스케치에 최소한의 보조 스트로크만 추가' : '스케치를 그리거나 패널을 먼저 불러와주세요'}
+            className={`enhance-trigger-btn ${isEnhancingLocal === 'add' ? 'loading' : ''}`}
+            onClick={() => handleEnhance('add')}
+            disabled={Boolean(isEnhancingLocal) || !canvasDataUrl}
+            title={canvasDataUrl ? '그린 것은 그대로 두고 보조 스트로크만 추가' : '스케치를 그리거나 패널을 먼저 불러와주세요'}
           >
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/>
             </svg>
-            {isEnhancingLocal ? '조금 보태는 중…' : 'AI 보태기'}
+            {isEnhancingLocal === 'add' ? '조금 보태는 중…' : 'AI 보태기'}
+          </button>
+          <button
+            className={`enhance-trigger-btn is-restyle ${isEnhancingLocal === 'restyle' ? 'loading' : ''}`}
+            onClick={() => handleEnhance('restyle')}
+            disabled={Boolean(isEnhancingLocal) || !canvasDataUrl}
+            title={canvasDataUrl
+              ? '그린 내용은 두고, 씬에 정한 그림체로 다시 그립니다'
+              : '스케치를 그리거나 패널을 먼저 불러와주세요'}
+          >
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12 3v18"/><path d="M5 8h14"/><path d="M7 21h10"/>
+            </svg>
+            {isEnhancingLocal === 'restyle' ? '그림체 맞추는 중…' : '그림체 맞추기'}
           </button>
         </div>
       )}

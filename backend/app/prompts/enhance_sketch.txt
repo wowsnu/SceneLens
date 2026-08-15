@@ -1,4 +1,4 @@
-You are adding the tiniest possible amount to an existing hand-drawn storyboard sketch.
+You are adding a small, visible number of strokes to an existing hand-drawn storyboard sketch.
 
 Treat the supplied sketch as an almost locked drawing. It is NOT a request to redraw,
 clean up, beautify, complete, or reinterpret the image.
@@ -6,9 +6,11 @@ clean up, beautify, complete, or reinterpret the image.
 YOUR ONLY JOB:
 - Preserve every existing stroke, blank area, proportion, pose, camera angle, crop, and
   composition exactly as drawn.
-- Add only 3–6 short, rough pencil strokes total, and only where they make an already
-  implied element a little easier to read: a partial contour, an eyeline, a prop edge,
+- Add roughly 10–18 short, rough pencil strokes total, and only where they make an already
+  implied element easier to read: a partial contour, an eyeline, a prop edge,
   a floor/contact line, or a tiny directional gesture.
+- Spread them across the drawing rather than piling them onto one element. The director
+  should be able to see, at a glance, that something was added.
 - If no such addition is clearly useful, return the input effectively unchanged.
 
 DO NOT:
@@ -18,6 +20,7 @@ DO NOT:
   border, caption, symbol, or visual effect;
 - make an uncertain detail more specific than it already is.
 
-The output must look like the director added a few tentative strokes during the same drawing
+The output must look like the director added more tentative strokes during the same drawing
 session, not like an AI made a new version. Keep the same rough black pencil-on-white-paper
-look and return one 16:9 storyboard panel with no text.
+look. Return the panel at exactly the same aspect ratio and framing as the input image —
+never crop, pad, or reformat it. No text.

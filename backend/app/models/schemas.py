@@ -108,6 +108,10 @@ class EnhanceSketchRequest(BaseModel):
     references: List[EnhanceReference] = []
     style: Optional[str] = ""
     layout: Optional[str] = ""
+    # "add" — 그린 것을 그대로 두고 선을 몇 개 보탠다.
+    # "restyle" — 같은 그림을 씬의 그림체로 다시 그린다. 손으로 그린 패널과
+    # 생성한 패널이 섞였을 때 한 보드로 보이게 하는 쪽이다.
+    mode: Optional[str] = "add"
 
 # Response: Enhance sketch
 class EnhanceSketchResponse(BaseModel):

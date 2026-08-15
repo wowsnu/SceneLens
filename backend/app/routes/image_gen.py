@@ -27,6 +27,7 @@ async def enhance_sketch_endpoint(request: EnhanceSketchRequest):
             references=request.references,
             style=request.style,
             layout=request.layout,
+            mode=request.mode or "add",
         )
         return EnhanceSketchResponse(enhanced_image=enhanced_image)
     except Exception as e:
