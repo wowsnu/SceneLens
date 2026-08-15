@@ -2723,12 +2723,21 @@ export default function DecisionBoard({ boardView = 'split' }) {
         alternativeLabel: alternative.label,
         alternativeEffect: alternative.effect || '',
       })
+      // 문장이 그대로 돌아오는 일이 있다. 컷을 지우라는 선택지처럼 프롬프트
+      // 한 줄로 옮길 수 없는 방향이면 모델이 바꿀 것을 찾지 못한다. 이때
+      // `무엇을 바꿨다`는 설명만 뜨면 바뀐 줄 알고 넘어가게 된다.
+      const unchanged = result.prompt.trim() === current.effective.trim()
       setPromptDrafts((draft) => ({ ...draft, [diagnosis.id]: result.prompt }))
-      setPromptRewriteNotes((notes) => ({ ...notes, [diagnosis.id]: result.changed }))
+      setPromptRewriteNotes((notes) => ({
+        ...notes,
+        [diagnosis.id]: unchanged
+          ? '이 방향은 프롬프트 문장으로 옮겨지지 않았습니다 — 문장은 그대로입니다.'
+          : result.changed,
+      }))
       // 고치기 전 문장을 남긴다. 같은 문장이 돌아왔다면 보여줄 차이가 없다.
       setPromptBefore((before) => ({
         ...before,
-        [diagnosis.id]: result.prompt === current.effective ? null : current.effective,
+        [diagnosis.id]: unchanged ? null : current.effective,
       }))
     } catch (error) {
       // 실패해도 편집기는 열린 채로 둔다. 감독이 직접 고칠 수 있다.
