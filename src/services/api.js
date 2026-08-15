@@ -382,7 +382,9 @@ export async function buildSpaceLayout({ heading, script, locationFacts = '' }) 
 // 앞 공정이 조립한 프롬프트를 실제로 소비하는 자리. 씬 기준·책임 선언·
 // 이음새·샷이 전부 이 문장으로 모인다.
 export async function generatePanelImage(
-  prompt, { shared = '', previous = '', references = [], style = '', layout = '' } = {},
+  prompt, {
+    shared = '', previous = '', references = [], style = '', layout = '', model = 'gpt-image-1',
+  } = {},
 ) {
   const data = await fetchWithTimeout(`${API_BASE}/panel-image`, {
     method: 'POST',
@@ -391,7 +393,7 @@ export async function generatePanelImage(
     // 둘 다 이 컷 하나만으로는 알 수 없는 것이라 따로 넘긴다.
     // references는 인물·공간의 레퍼런스 그림 — 글로만 기준을 주면
     // 컷마다 다른 얼굴이 나온다.
-    body: JSON.stringify({ prompt, shared, previous, references, style, layout }),
+    body: JSON.stringify({ prompt, shared, previous, references, style, layout, model }),
   }, 240000)
   return `data:image/png;base64,${data.image}`
 }

@@ -966,6 +966,8 @@ export default function StoryboardView() {
   const cutPlanMoves = useStore((s) => s.cutPlanMoves)
   const scenePromptNote = useStore((s) => s.scenePromptNote)
   const setScenePromptNote = useStore((s) => s.setScenePromptNote)
+  const panelImageModel = useStore((s) => s.panelImageModel)
+  const setPanelImageModel = useStore((s) => s.setPanelImageModel)
   const requestCutPlan = useStore((s) => s.requestCutPlan)
   const cutPlanPending = useStore((s) => s.cutPlanPending)
   const cutPlanRunPending = useStore((s) => s.cutPlanRunPending)
@@ -1614,6 +1616,9 @@ export default function StoryboardView() {
           // 2D 구조도의 배치. 컷마다 콘솔이 좌우로 옮겨 다니는 것을
           // 글로만 막기는 어렵다.
           layout: layoutLine,
+          // 생성 바에서 고른 모델을 그대로 보낸다. 재생성도 같은 함수로
+          // 들어오므로 새로 고른 기준이 모든 패널에 일관되게 적용된다.
+          model: panelImageModel,
         })
 
         setPanelCandidates((current) => ({
@@ -2673,6 +2678,19 @@ export default function StoryboardView() {
                 All blanks {allBlankShots.length}
               </button>
             </div>
+            <label className="generation-model-picker">
+              <span>모델</span>
+              <select
+                value={panelImageModel}
+                onChange={(event) => setPanelImageModel(event.target.value)}
+                disabled={isGenerating}
+                aria-label="이미지 생성 모델"
+              >
+                <option value="gpt-image-1">GPT Image 1</option>
+                <option value="gpt-image-2">GPT Image 2</option>
+                <option value="flux-2-pro">FLUX.2 Pro</option>
+              </select>
+            </label>
             <div className="generation-bar-actions">
               {/* 전체 생성은 한 번에 나오는데 화면은 Beat마다 한 줄씩
                   쌓아 보여 준다. 이어지는지 보려면 늘어놓고 봐야 한다. */}

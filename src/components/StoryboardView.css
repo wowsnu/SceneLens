@@ -331,6 +331,37 @@
   color: #c7d2fe;
 }
 
+/* 모델은 실행 직전에 고른다. 생성 범위와 구분되지만 같은 줄에서 함께
+   읽혀야 어떤 조건으로 만든 초안인지 바로 알 수 있다. */
+.generation-model-picker {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  color: #71717a;
+  font-size: 11px;
+  font-weight: 750;
+  white-space: nowrap;
+}
+
+.generation-model-picker select {
+  height: 32px;
+  max-width: 126px;
+  padding: 0 25px 0 9px;
+  border: 1px solid rgba(129, 140, 248, 0.36);
+  border-radius: 7px;
+  outline: none;
+  background: rgba(99, 102, 241, 0.12);
+  color: #dbe4ff;
+  font: inherit;
+  cursor: pointer;
+}
+
+.generation-model-picker select:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
 .generation-bar-actions {
   display: flex;
   align-items: center;
@@ -864,6 +895,10 @@
 
   .generation-scope-tabs {
     overflow-x: auto;
+  }
+
+  .generation-model-picker {
+    justify-self: end;
   }
 }
 

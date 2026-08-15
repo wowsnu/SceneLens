@@ -1966,6 +1966,10 @@ const useStore = create((set, get) => ({
   cutPlanShotSizes: CUT_PLAN_SHOT_SIZES,
   cutPlanAngles: CUT_PLAN_ANGLES,
   cutPlanMoves: CUT_PLAN_MOVES,
+  // 패널을 그리기 전에 고르는 제공자/모델. 같은 선택을 개별 재생성에도
+  // 유지해야 한 보드 안에서 모델이 섞이지 않는다.
+  panelImageModel: 'gpt-image-1',
+  setPanelImageModel: (panelImageModel) => set({ panelImageModel }),
   // 조명·그림체처럼 장면 전체에 걸리는 지시. 컷마다 반복하지 않는다.
   scenePromptNote: '',
   setScenePromptNote: (scenePromptNote) => set({ scenePromptNote }),

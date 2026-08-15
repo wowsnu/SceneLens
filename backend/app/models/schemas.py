@@ -907,6 +907,8 @@ class PanelImageRequest(BaseModel):
     style: Optional[str] = ""
     # 2D 구조도를 문장으로 옮긴 것. 무엇이 어디에 있는지 컷마다 같아야 한다.
     layout: Optional[str] = ""
+    # 생성 전에 고른 모델. 제공자 자동 감지보다 사용자 선택을 우선한다.
+    model: Literal["gpt-image-1", "gpt-image-2", "flux-2-pro"] = "gpt-image-1"
 
 
 class PanelImageResponse(BaseModel):

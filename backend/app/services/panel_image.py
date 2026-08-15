@@ -10,8 +10,10 @@
 """
 
 import base64
+import asyncio
 import os
 
+import httpx
 from openai import AsyncOpenAI
 
 from app.models.schemas import PanelImageRequest, PanelImageResponse
@@ -41,11 +43,55 @@ def _describe(ref) -> str:
     return f"the character {ref.name}"
 
 
-async def generate_panel(request: PanelImageRequest) -> PanelImageResponse:
-    api_key = os.getenv("OPENAI_API_KEY")
-    if not api_key:
-        raise ValueError("OPENAI_API_KEY not found in environment variables")
+async def _generate_panel_with_bfl(prompt: str) -> PanelImageResponse:
+    """FLUX.2 Pro의 새 패널 생성 경로.
 
+    BFL은 요청을 비동기로 받고 polling URL을 돌려준다. 결과 URL은 짧게만
+    유효하므로 여기서 바로 내려받아 기존 API와 같은 base64 PNG로 돌려준다.
+    """
+    api_key = os.getenv("BFL_API_KEY")
+    if not api_key:
+        raise ValueError("BFL_API_KEY not found in environment variables")
+
+    headers = {"accept": "application/json", "x-key": api_key}
+    payload = {
+        "prompt": prompt,
+        "aspect_ratio": "16:9",
+        "output_format": "png",
+    }
+    async with httpx.AsyncClient(timeout=90) as http:
+        created = await http.post(
+            "https://api.bfl.ai/v1/flux-2-pro-preview",
+            headers={**headers, "Content-Type": "application/json"},
+            json=payload,
+        )
+        created.raise_for_status()
+        polling_url = created.json().get("polling_url")
+        if not polling_url:
+            raise ValueError("BFL image request did not include a polling URL")
+
+        for _ in range(120):
+            await asyncio.sleep(0.5)
+            polled = await http.get(polling_url, headers=headers)
+            polled.raise_for_status()
+            status = polled.json()
+            if status.get("status") == "Ready":
+                sample_url = status.get("result", {}).get("sample")
+                if not sample_url:
+                    raise ValueError("BFL image result did not include a sample URL")
+                image = await http.get(sample_url)
+                image.raise_for_status()
+                return PanelImageResponse(
+                    image=base64.b64encode(image.content).decode(),
+                    format="png",
+                )
+            if status.get("status") in {"Error", "Failed"}:
+                raise ValueError(f"BFL image generation failed: {status}")
+
+    raise TimeoutError("BFL image generation timed out after 60 seconds")
+
+
+async def generate_panel(request: PanelImageRequest) -> PanelImageResponse:
     if not request.prompt.strip():
         raise ValueError("prompt is empty")
 
@@ -80,6 +126,15 @@ async def generate_panel(request: PanelImageRequest) -> PanelImageResponse:
         "only meaningless scribbles — never real letters or words. "
         "Do not draw a border around the image."
     )
+
+    # 생성 바에서 고른 모델이 우선이다. FLUX는 BFL API로, GPT Image는
+    # OpenAI Images API로 보내며, 프롬프트 조립 규칙은 세 모델이 공유한다.
+    if request.model == "flux-2-pro":
+        return await _generate_panel_with_bfl("\n\n".join(parts))
+
+    api_key = os.getenv("OPENAI_API_KEY")
+    if not api_key:
+        raise ValueError("OPENAI_API_KEY not found in environment variables")
 
     client = AsyncOpenAI(api_key=api_key)
 
@@ -137,7 +192,7 @@ async def generate_panel(request: PanelImageRequest) -> PanelImageResponse:
                 # 그림은 나오되 그 인물만 기준 없이 그려진다.
                 print(f"[panel-image] skipping unreadable reference: {ref.name}")
         result = await client.images.edit(
-            model="gpt-image-1",
+            model=request.model,
             image=files,
             prompt="\n\n".join(parts),
             size="1536x1024",
@@ -146,7 +201,7 @@ async def generate_panel(request: PanelImageRequest) -> PanelImageResponse:
         )
     else:
         result = await client.images.generate(
-            model="gpt-image-1",
+            model=request.model,
             prompt="\n\n".join(parts),
             # 스토리보드는 가로 프레임이다.
             size="1536x1024",
