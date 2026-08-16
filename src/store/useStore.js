@@ -2646,30 +2646,93 @@ const useStore = create((set, get) => ({
 
   rejectShotFix: () => set({ shotFixProposal: null, shotFixError: null }),
 
-  // 편집이 "여기 컷이 빠졌다"고 짚으면 서사에게 묻는다.
+  // 편집이 "여기 컷이 빠졌다"고 짚으면 서사에게 묻고, 받은 줄을 대본과
+  // 컷에 함께 넣는다.
   //
   // 대본에 이미 있는 행동을 컷으로 옮기는 것은 나누기다. 삽입은 대본에
   // 없던 단계를 더하는 일이라 편집이 혼자 정할 수 없다 — 무엇이 일어나야
   // 하는지는 이야기의 몫이다.
+  //
+  // 화면을 대본으로 되돌리지 않는다. 컷이 빠졌다는 지적을 컷 플랜에서
+  // 읽었는데 판정하러 대본까지 갔다 와야 하면, 고치는 일이 두 화면에
+  // 걸친다. 여기서 제안을 보고 여기서 받아들인다.
+  cutInsertPending: null,
+  cutInsertError: null,
+  cutInsertProposal: null,
   requestCutInsert: async (finding) => {
     const state = get()
     if (!finding?.cutIds?.length) return
     const cut = state.cutPlan.find((item) => item.id === finding.cutIds[0])
     if (!cut) return
 
-    // 제안은 대본 자리에 뜬다. 서사가 답하는 것은 컷이 아니라 대본 줄이다.
-    get().requestNarrativeSuggestions({
-      beat: cut.beat,
-      narrativeRequest: (
-        `편집 검토에서 이런 지적이 나왔습니다: ${finding.title}\n`
-        + `${finding.detail || ''}\n`
-        + '이 자리에 컷 하나가 더 필요합니다. 대본에 없는 어떤 단계를 더하면 '
-        + '되는지 한 가지만 제안해 주세요. 이미 적혀 있는 행동을 옮기는 것은 '
-        + '컷 나누기로 되는 일이라 제안하지 마세요.'
-      ),
-    })
-    set({ activeBeat: cut.beat })
+    const beatLines = state.screenplay
+      .map((element, globalIdx) => ({ ...element, globalIdx }))
+      .filter((element) => (element.beat ?? 0) === cut.beat)
+    if (beatLines.length === 0) return
+
+    set({ cutInsertPending: finding.id, cutInsertError: null, cutInsertProposal: null })
+    try {
+      const { suggestNarrative } = await import('../services/api.js')
+      const result = await suggestNarrative({
+        narrativeRequest: (
+          `편집 검토에서 이런 지적이 나왔습니다: ${finding.title}\n`
+          + `${finding.detail || ''}\n`
+          + '이 자리에 컷 하나가 더 필요합니다. 대본에 없는 어떤 단계를 더하면 '
+          + '되는지 한 가지만 제안해 주세요. 이미 적혀 있는 행동을 옮기는 것은 '
+          + '컷 나누기로 되는 일이라 제안하지 마세요.'
+        ),
+        beatElements: beatLines,
+        targetBeat: cut.beat,
+        requestKey: state.narrativeSuggestionRequestKey + 1,
+        sceneIntention: state.sceneIntention || '',
+      })
+      // 줄을 더하는 제안만 받는다. 나누기·바꾸기는 여기서 할 일이 아니다.
+      const item = (result || [])
+        .find((entry) => entry.type === 'insert-script-line')
+      if (!item?.proposedText) {
+        set({ cutInsertPending: null, cutInsertError: '더할 단계를 찾지 못했습니다.' })
+        return
+      }
+      set({
+        cutInsertPending: null,
+        cutInsertProposal: {
+          findingId: finding.id,
+          afterCutId: cut.id,
+          beat: cut.beat,
+          // 대본 마지막 줄 뒤에 넣는다. Beat 안에서 어느 줄 뒤인지까지
+          // 맞추려면 서사의 line_index를 믿어야 하는데, 컷 플랜에서는
+          // 그 줄이 화면에 없어 감독이 확인할 수 없다.
+          afterElementIndex: beatLines[beatLines.length - 1].globalIdx,
+          text: item.proposedText,
+          reason: item.reason || '',
+        },
+      })
+    } catch (error) {
+      set({ cutInsertPending: null, cutInsertError: error.message })
+    }
   },
+
+  // 받아들이면 대본과 컷에 함께 들어간다. 대본에만 넣으면 컷은 여전히
+  // 비어 있고, 컷에만 넣으면 그 컷이 근거로 삼을 대본 줄이 없다.
+  acceptCutInsert: () => {
+    const proposal = get().cutInsertProposal
+    if (!proposal) return
+    const state = get()
+    const screenplay = [...state.screenplay]
+    screenplay.splice(proposal.afterElementIndex + 1, 0, {
+      type: 'action',
+      text: proposal.text,
+      beat: proposal.beat,
+    })
+    set({ screenplay })
+    get().addCutPlanItem(proposal.afterCutId, proposal.beat, {
+      content: proposal.text,
+      purpose: '',
+    })
+    set({ cutInsertProposal: null })
+  },
+
+  rejectCutInsert: () => set({ cutInsertProposal: null, cutInsertError: null }),
 
   removeCutPlanItem: (itemId) => set((state) => ({
     cutPlan: reorderCutPlan(state.cutPlan.filter((item) => item.id !== itemId)),

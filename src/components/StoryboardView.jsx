@@ -249,7 +249,7 @@ function SceneFactChangeRow({ change, cutOptions, taken, onCommit, onMove, onRem
 function DiagnosisList({
   findings, emptyLabel, onGoTo,
   onRequestFix, fixPending, fixProposal, fixError, onAcceptFix, onRejectFix,
-  onRequestInsert, insertPending,
+  onRequestInsert, insertPending, insertProposal, insertError, onAcceptInsert, onRejectInsert,
 }) {
   if (findings.length === 0) {
     return <p className="rail-coverage-clear">{emptyLabel}</p>
@@ -275,6 +275,7 @@ function DiagnosisList({
         const canFix = Boolean(onRequestFix) && SHOT_FIXABLE.has(finding.type)
         const canInsert = Boolean(onRequestInsert) && CUT_INSERTABLE.has(finding.type)
         const proposal = fixProposal?.findingId === finding.id ? fixProposal : null
+        const insertion = insertProposal?.findingId === finding.id ? insertProposal : null
         return (
           <li key={finding.id}>
             {/* 카드 전체가 그 컷으로 가는 길이다. `표에서 보기` 버튼을
@@ -320,6 +321,32 @@ function DiagnosisList({
 
             {canFix && fixError && fixPending !== finding.id && !proposal && (
               <p className="rail-fix-error">{fixError}</p>
+            )}
+
+            {canInsert && insertError && insertPending !== finding.id && !insertion && (
+              <p className="rail-fix-error">{insertError}</p>
+            )}
+
+            {/* 서사가 쓴 줄을 여기서 보인다. 수락하면 대본과 컷에 함께
+                들어간다 — 대본에만 넣으면 컷이 비고, 컷에만 넣으면 그
+                컷이 근거로 삼을 줄이 없다. */}
+            {insertion && (
+              <div className="rail-fix">
+                <ul className="rail-fix-edits">
+                  <li>
+                    <div className="rail-fix-change">
+                      <strong>더할 단계</strong>
+                      <span>대본 + 컷</span>
+                    </div>
+                    <p>{insertion.text}</p>
+                    {insertion.reason && <p className="rail-fix-why">{insertion.reason}</p>}
+                  </li>
+                </ul>
+                <div className="rail-fix-actions">
+                  <button type="button" onClick={onAcceptInsert}>수락</button>
+                  <button type="button" className="ghost" onClick={onRejectInsert}>거부</button>
+                </div>
+              </div>
             )}
 
             {/* 수락해야 표에 들어간다. 무엇이 어떻게 바뀌는지 먼저 보인다.
@@ -977,6 +1004,10 @@ export default function StoryboardView() {
   const requestShotFix = useStore((s) => s.requestShotFix)
   const requestCutInsert = useStore((s) => s.requestCutInsert)
   const cutInsertPending = useStore((s) => s.cutInsertPending)
+  const cutInsertProposal = useStore((s) => s.cutInsertProposal)
+  const cutInsertError = useStore((s) => s.cutInsertError)
+  const acceptCutInsert = useStore((s) => s.acceptCutInsert)
+  const rejectCutInsert = useStore((s) => s.rejectCutInsert)
   const shotFixPending = useStore((s) => s.shotFixPending)
   const shotFixProposal = useStore((s) => s.shotFixProposal)
   const shotFixError = useStore((s) => s.shotFixError)
@@ -3855,6 +3886,10 @@ export default function StoryboardView() {
                     onRequestFix={requestShotFix}
                     onRequestInsert={requestCutInsert}
                     insertPending={cutInsertPending}
+                    insertProposal={cutInsertProposal}
+                    insertError={cutInsertError}
+                    onAcceptInsert={acceptCutInsert}
+                    onRejectInsert={rejectCutInsert}
                     fixPending={shotFixPending}
                     fixProposal={shotFixProposal}
                     fixError={shotFixError}
@@ -3962,6 +3997,10 @@ export default function StoryboardView() {
                     onRequestFix={requestShotFix}
                     onRequestInsert={requestCutInsert}
                     insertPending={cutInsertPending}
+                    insertProposal={cutInsertProposal}
+                    insertError={cutInsertError}
+                    onAcceptInsert={acceptCutInsert}
+                    onRejectInsert={rejectCutInsert}
                     fixPending={shotFixPending}
                     fixProposal={shotFixProposal}
                     fixError={shotFixError}
