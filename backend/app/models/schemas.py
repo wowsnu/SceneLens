@@ -914,6 +914,10 @@ class PanelImageRequest(BaseModel):
     # 그림체. 미장센의 '그림체' 항목에서 온다. 비면 기본 스케치체를 쓴다 —
     # 화면에 칸이 있는데 반영되지 않으면 정한 것이 무시되는 셈이다.
     style: Optional[str] = ""
+    # 생성 바에서 고른 표현 스타일. 패널 생성 서비스가 스타일 프리셋의
+    # 기본 문장을 조립할 때 쓰므로, EnhanceSketchRequest가 아니라 여기에도
+    # 반드시 있어야 한다.
+    style_preset: Literal["rough", "detailed", "photoreal"] = "rough"
     # 2D 구조도를 문장으로 옮긴 것. 무엇이 어디에 있는지 컷마다 같아야 한다.
     layout: Optional[str] = ""
     # 생성 전에 고른 모델. 제공자 자동 감지보다 사용자 선택을 우선한다.
