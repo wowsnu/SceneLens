@@ -985,36 +985,10 @@ export const diagnoseCoverage = (cutPlan = []) => {
   // 것을 이미 말하고, 진단으로 두면 여기서는 고칠 수 없는 카드가 하나
   // 늘 뿐이다 — 진단은 그 자리에서 처분할 수 있는 것만 짚는다.
 
-  // 1. 컷 내용과 샷 크기가 어긋난다. 손에 든 것이 결정적인데 넓게 잡거나,
-  //    공간을 세워야 하는데 좁게 잡은 경우다.
-  const DETAIL_WORDS = ['손', '표정', '눈', '얼굴', '노트', '연필', '화면', '쥔', '짚어']
-  const SPACE_WORDS = ['공간', '방', '전체', '멀리', '들어온다', '거리']
-  cutPlan.forEach((cut) => {
-    if (!cut.shotSize) return
-    const rank = SHOT_SIZE_ORDER.indexOf(cut.shotSize)
-    const text = `${cut.content || ''} ${cut.purpose || ''}`
-
-    if (rank <= 1 && DETAIL_WORDS.some((word) => text.includes(word))) {
-      findings.push({
-        id: `size-detail-${cut.id}`,
-        type: 'size-mismatch',
-        layer: 'attribute',
-        title: `컷 ${cut.beat + 1}-${cut.beatOrder} · 작은 것을 보여주는데 화면이 넓습니다`,
-        detail: `${cut.shotSize}로 잡으면 정작 보여줄 것이 화면에서 너무 작아집니다.`,
-        cutIds: [cut.id],
-      })
-    }
-    if (rank >= 4 && SPACE_WORDS.some((word) => text.includes(word))) {
-      findings.push({
-        id: `size-space-${cut.id}`,
-        type: 'size-mismatch',
-        layer: 'attribute',
-        title: `컷 ${cut.beat + 1}-${cut.beatOrder} · 공간을 보여주는데 화면이 좁습니다`,
-        detail: `${cut.shotSize}로 잡으면 누가 어디에 있는지가 화면에 안 담깁니다.`,
-        cutIds: [cut.id],
-      })
-    }
-  })
+  // 컷 내용과 샷 크기가 어긋나는지는 여기서 보지 않는다. 키워드로
+  // 판단하던 것을 걷어냈다 — '화면'이나 '거리' 같은 말이 들어 있다고
+  // 문제인 것이 아니고, 그 컷이 무엇을 보여주려는 컷인지는 내용을 읽어야
+  // 안다. 컷 플랜 AI 점검(camera-information-selection)이 판단한다.
 
   // 앵글이 밋밋한 컷(angle-flat)도 내지 않는다. 표에 앵글 칸이 없어서
   // 짚어줘도 고칠 자리가 없고, 촬영에 수정본을 물을 수도 없다

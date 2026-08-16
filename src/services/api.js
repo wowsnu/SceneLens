@@ -288,6 +288,8 @@ export async function checkNarrative({
         content: cut.content || '',
         purpose: cut.purpose || '',
         characters: cut.characters || '',
+        // 크기가 내용과 맞는지 판단하려면 지금 값이 필요하다.
+        shot_size: cut.shotSize || '',
       })),
       lines,
       scene_intention: sceneIntention,

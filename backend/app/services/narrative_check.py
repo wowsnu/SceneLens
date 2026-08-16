@@ -85,8 +85,27 @@ CUT_INTRO = """당신은 SceneLens의 편집 담당입니다. 컷 플랜이 컷�
 숏 크기는 그림이 있어야 알 수 있으므로 여기서 다루지 마세요 — 그것은
 패널이 생긴 뒤에 봅니다.
 
-여기서 보는 것은 둘입니다. **이 컷이 있어야 하는가**(빠졌거나, 겹치거나,
-한 컷에 너무 눌러 담겼는가), 그리고 **공개 순서가 맞는가**입니다.
+여기서 보는 것은 셋입니다. **이 컷이 있어야 하는가**(빠졌거나, 겹치거나,
+한 컷에 너무 눌러 담겼는가), **공개 순서가 맞는가**, 그리고 **정해진 샷
+크기가 그 컷이 보여주려는 것을 담는가**입니다.
+
+샷 크기는 각 컷에 `샷:`으로 적혀 있습니다. 크기를 판단할 때는 그 컷이
+무엇을 보여주려는 컷인지 먼저 읽으세요. 손에 든 것이나 표정이 핵심인데
+넓게 잡혀 있거나, 공간과 인물의 위치 관계가 핵심인데 좁게 잡혀 있으면
+짚습니다. **단어가 아니라 그 컷이 하려는 일로 판단하세요** — "화면"이나
+"거리" 같은 말이 들어 있다고 문제인 것이 아닙니다.
+`미정`인 컷은 아직 촬영이 정하지 않은 것이니 크기를 짚지 마세요.
+
+camera-information-selection의 후보·제외 조건은 그림이 있을 때를 전제로
+쓰여 있습니다. 여기서는 **숏 크기 하나만** 봅니다. 초점·심도·카메라 위치는
+아직 정해지지 않았으니 그 조건은 무시하세요. 크기가 그 컷의 핵심을 담지
+못하면 후보 조건에 해당합니다.
+
+크기 판단의 예:
+- 손·표정·작은 소품이 그 컷의 핵심인데 Wide/Full → 핵심이 화면에서 작아진다
+- 여러 인물의 위치 관계나 공간이 핵심인데 Close-Up/ECU → 어디인지, 누가
+  어디 있는지가 안 담긴다
+- 씬을 여는 컷인데 좁게 잡혀 있다 → 관객이 장소를 모른 채 시작한다
 
 cut_ids에는 지적이 걸린 컷의 id를 씁니다. line_indexes는 비워 두세요."""
 
@@ -162,19 +181,28 @@ async def check_narrative(request: NarrativeCheckRequest) -> NarrativeCheckRespo
                 parts.append(f"역할: {cut.purpose}")
             if cut.characters:
                 parts.append(f"인물: {cut.characters}")
+            # 크기가 내용과 맞는지 보려면 지금 값이 있어야 한다.
+            parts.append(f"샷: {cut.shot_size or '미정'}")
             body.append("  " + " | ".join(parts))
     else:
         body.append("[대본]")
         for index, line in enumerate(request.lines):
             body.append(f"  [{index}] {line}")
 
-    # 컷 플랜에서는 편집 규칙 중 그림 없이 판단할 수 있는 둘만 쓴다.
-    # 시선·리듬(cut-continuity, visual-rhythm)은 화면이 있어야 하므로
-    # Decision Board로 미룬다.
+    # 컷 플랜에서는 그림 없이 판단할 수 있는 규칙만 쓴다. 시선·리듬
+    # (cut-continuity, visual-rhythm)과 카메라 위치·축은 화면이 있어야
+    # 하므로 Decision Board로 미룬다.
+    #
+    # 촬영에서 information-selection 하나를 함께 본다. "이 크기가 필요한
+    # 정보를 담는가"는 컷 내용과 샷 크기만으로 판단할 수 있고, 그림을
+    # 그린 뒤에 알면 다시 그려야 하므로 여기서 짚는 것이 싸다.
     if checking_cuts:
         rules = [
             rule for rule in LENS_RULES["editing"]
             if rule.id in {"editing-shot-function", "editing-information-order"}
+        ] + [
+            rule for rule in LENS_RULES["camera"]
+            if rule.id == "camera-information-selection"
         ]
     else:
         rules = list(LENS_RULES["narrative"])

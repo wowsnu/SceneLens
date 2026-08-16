@@ -35,6 +35,17 @@ const NARRATIVE_RULE_LABELS = {
   // 컷 플랜 — 편집이 본다. 컷 단위 판단은 편집의 일이다.
   'editing-shot-function': '이 컷이 필요할까요',
   'editing-information-order': '보여주는 순서가 아쉬워요',
+  // 컷 플랜 — 촬영이 보는 하나. 크기가 내용을 담는지는 그림 없이도
+  // 판단할 수 있고, 그린 뒤에 알면 다시 그려야 한다.
+  'camera-information-selection': '이 크기로 보일까요',
+}
+
+// AI 점검이 짚은 규칙이 어느 층위의 문제인가. 이것이 없으면 전부
+// '컷 구성'으로 뜬다 — 순서 문제도, 크기 문제도.
+const CHECK_RULE_LAYERS = {
+  'editing-shot-function': 'shot_structure',
+  'editing-information-order': 'scene_structure',
+  'camera-information-selection': 'attribute',
 }
 
 const EMPTY_SHOTS = []
@@ -1400,8 +1411,12 @@ export default function StoryboardView() {
         // DiagnosisList의 `수정본 받기`는 샷 크기로 풀리는 것만 받는다.
         // AI 지적은 컷 구성의 문제라 거기 해당하지 않는다 — 표에서 보고
         // 나누거나 합친다.
-        type: 'narrative-check',
-        layer: finding.layer || 'shot_structure',
+        // 크기 문제는 촬영에 수정본을 물을 수 있다. 나머지는 컷 구성의
+        // 문제라 표에서 나누거나 합친다.
+        type: finding.ruleId === 'camera-information-selection'
+          ? 'size-mismatch'
+          : 'narrative-check',
+        layer: CHECK_RULE_LAYERS[finding.ruleId] || 'shot_structure',
         title: NARRATIVE_RULE_LABELS[finding.ruleId] || '편집',
         // 무엇이 문제인지만. suggestedAction까지 붙이면 두 문장이 한 줄에
         // 들어가 카드가 길어지고, 조치는 아래 버튼이 이미 말한다.

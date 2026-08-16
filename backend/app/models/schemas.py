@@ -741,6 +741,9 @@ class NarrativeCheckCut(BaseModel):
     content: str
     purpose: Optional[str] = ""
     characters: Optional[str] = ""
+    # 정해진 샷 크기. 내용과 크기가 맞는지는 이 값이 있어야 판단할 수 있다.
+    # 비어 있으면 아직 촬영이 정하지 않은 컷이다.
+    shot_size: Optional[str] = ""
 
 
 class NarrativeCheckRequest(BaseModel):
@@ -763,10 +766,13 @@ class NarrativeCheckFinding(BaseModel):
         "narrative-action-visibility",
         "narrative-information-reveal",
         "narrative-causal-link",
-        # 컷 플랜 단계는 편집이 본다. 그림 없이 판단할 수 있는 둘만 쓴다 —
-        # 시선·리듬은 화면이 있어야 하므로 Decision Board로 미룬다.
+        # 컷 플랜 단계는 그림 없이 판단할 수 있는 규칙만 쓴다 — 시선·리듬과
+        # 카메라 위치·축은 화면이 있어야 하므로 Decision Board로 미룬다.
         "editing-shot-function",
         "editing-information-order",
+        # 크기가 그 컷의 핵심을 담는지는 내용과 샷 크기만으로 판단할 수 있고,
+        # 그린 뒤에 알면 다시 그려야 하므로 여기서 짚는다.
+        "camera-information-selection",
     ]
     # 이 지적이 걸린 컷. 인과·정보 순서는 둘 이상이 될 수 있다.
     # 대본 점검에서는 비고 line_indexes가 대신 찬다.
