@@ -1422,6 +1422,9 @@ export default function StoryboardView() {
     if (labels.length === 0) return ''
     // 제목이 이미 그 컷을 말하고 있으면 붙이지 않는다.
     if (labels.every((label) => finding.title?.includes(label))) return ''
+    // 씬 전체가 걸린 지적은 컷 번호를 나열해도 읽을 것이 없다. 어느 한
+    // 컷의 잘못이 아니라는 것이 이 지적의 요점이다.
+    if (finding.layer === 'scene_structure' && labels.length >= 3) return '씬 전체'
     // 여럿이면 처음과 끝만. 다섯 컷을 다 적으면 카드가 번호로 찬다.
     const shown = labels.length > 2
       ? `${labels[0]}–${labels[labels.length - 1]}`

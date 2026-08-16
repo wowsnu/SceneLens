@@ -1007,7 +1007,9 @@ export const diagnoseCoverage = (cutPlan = []) => {
         layer: 'scene_structure',
         title: '여기가 어디인지 보여주는 컷이 없습니다',
         detail: '컷이 전부 인물에 붙어 있어서, 관객은 장소를 모른 채 장면을 봅니다. 넓게 잡은 컷을 하나 넣어보세요.',
-        cutIds: [cutPlan[0].id],
+        // 씬 전체의 문제다. 첫 컷만 짚으면 그 컷 하나가 잘못한 것처럼
+        // 읽히고, scene_structure는 원래 컷 2개 이상을 가리키는 층위다.
+        cutIds: decided.map((cut) => cut.id),
       })
     }
   }
