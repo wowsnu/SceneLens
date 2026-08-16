@@ -7,6 +7,7 @@ import useStore, {
   selectActiveSceneState,
   selectCutPrompt,
   selectScenes,
+  spatialStagesFor,
   SEAM_JOINS,
   SEAM_ELAPSED,
 } from '../store/useStore'
@@ -439,34 +440,6 @@ const cloneSpatialElements = (elements) => elements.map((element) => ({
   ...element,
   waypoints: element.waypoints?.map((waypoint) => ({ ...waypoint })),
 }))
-
-// 씬 상태의 모든 변화 시작점을 하나의 공간 단계로 합친다. 인물의 상태와
-// 조명 변화가 같은 컷에서 시작하면, 그 컷부터는 같은 2D 배치를 고른다.
-const spatialStagesFor = (sceneState, shots, sceneId) => {
-  const factGroups = [
-    ...(sceneState?.characters || []).flatMap((character) => character.facts || []),
-    ...(sceneState?.location?.facts || []),
-    ...(sceneState?.environment?.facts || []),
-  ]
-  const starts = new Set([0])
-  factGroups.forEach((fact) => {
-    ;(fact.changes || []).forEach((change) => {
-      const index = shots.findIndex((shot) => shot.cutPlanItemId === change.cutId)
-      if (index > 0) starts.add(index)
-    })
-  })
-  const indexes = [...starts].sort((left, right) => left - right)
-  return indexes.map((start, index) => {
-    const nextStart = indexes[index + 1] ?? shots.length
-    const end = Math.max(start, nextStart - 1)
-    const cutId = start === 0 ? 'initial' : shots[start]?.cutPlanItemId || `shot-${start}`
-    return {
-      id: `${sceneId || 'scene'}:${cutId}`,
-      start,
-      label: start === end ? `S${start + 1}` : `S${start + 1}–S${end + 1}`,
-    }
-  })
-}
 
 const MOCK_MISE_ENTITY_PRESETS = [
   { label: '하', color: '#10b981', full: '하린' },

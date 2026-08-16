@@ -617,6 +617,10 @@ async def enhance_sketch(
     previous: str = "",
     references: list = None,
     style: str = "",
+    # 표현 밀도. 그림체 맞추기는 보드의 다른 패널과 같은 화풍이 되는 것이
+    # 목적이므로, 패널 생성과 같은 값을 받아야 한다. 빠지면 실사 보드에서
+    # 손으로 그린 패널만 러프 스케치로 남는다.
+    style_preset: str = "rough",
     layout: str = "",
     mode: str = "add",
 ) -> str:
@@ -643,7 +647,8 @@ async def enhance_sketch(
     # 그림체 맞추기는 패널 생성과 같은 그림체 지시를 앞에 단다. 보태기는
     # 감독이 그린 그림을 그대로 두는 쪽이라 보드 그림체를 강요하지 않는다.
     base_prompt = (
-        f"{style_prelude(style or '')}\n\n{RESTYLE_PROMPT}" if restyling else ENHANCE_PROMPT
+        f"{style_prelude(style or '', style_preset)}\n\n{RESTYLE_PROMPT}"
+        if restyling else ENHANCE_PROMPT
     )
     # 두 모드가 레퍼런스를 쓰는 방식이 정반대다. 보태기에서 레퍼런스는
     # '이미 그려진 것이 무엇인지' 알아보는 용도이고, 그림체 맞추기에서는

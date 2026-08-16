@@ -6,6 +6,7 @@ import useStore, {
   sceneOfBeat,
   seamKeyFor,
   selectScenes,
+  selectSceneStates,
 } from '../store/useStore'
 import { enhanceSketch, segmentLasso, segmentPrepare } from '../services/api'
 import SegmentCutout from './SegmentCutout'
@@ -76,7 +77,8 @@ export default function DrawingCanvas() {
   const sceneIntention = useStore((s) => s.sceneIntention)
   const scenePromptNote = useStore((s) => s.scenePromptNote)
   const declarations = useStore((s) => s.declarations)
-  const sceneStates = useStore((s) => s.sceneStates)
+  const sceneStates = useStore(selectSceneStates)
+  const panelStylePreset = useStore((s) => s.panelStylePreset)
   const seams = useStore((s) => s.seams)
   const spatialElements = useStore((s) => s.spatialElements)
   const setComparePreview = useStore((s) => s.setComparePreview)
@@ -136,14 +138,15 @@ export default function DrawingCanvas() {
         image: stripImageDataUrl(sceneState.location.image),
       } : null,
     ].filter((reference) => reference?.image).slice(0, 3)
-    const styleFact = sceneState?.environment?.facts?.find((fact) => fact.label === '그림체')
-
     return {
       prompt: panelPrompt?.effective || '',
       shared: panelPrompt?.shared || '',
       previous: previousPrompt?.effective || '',
       references,
-      style: styleFact && !styleFact.open ? styleFact.value : '',
+      // 그림체 맞추기의 목적은 보드의 다른 패널과 같아지는 것이다. 표현
+      // 밀도를 보내지 않으면 서버가 러프를 기본으로 써서, 실사 보드에서
+      // 손으로 그린 패널만 스케치로 남는다.
+      stylePreset: panelStylePreset,
       layout: describeLayout(spatialElements),
     }
   }, [
@@ -152,6 +155,7 @@ export default function DrawingCanvas() {
     activeFlowShot?.id,
     cutPlan,
     declarations,
+    panelStylePreset,
     sceneIntention,
     scenePromptNote,
     sceneStates,

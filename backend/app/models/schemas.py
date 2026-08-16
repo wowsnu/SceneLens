@@ -843,6 +843,9 @@ class ReferenceImageRequest(BaseModel):
     prompt: str
     # 패널과 레퍼런스가 다른 화풍으로 갈라지지 않도록 같은 씬의 그림체를 쓴다.
     style: Optional[str] = ""
+    # 표현 밀도. 패널과 같은 값이어야 한다 — 기준 그림이 선화인데 패널이
+    # 실사면, 참조로 물렸을 때 두 화풍이 서로 경쟁한다.
+    style_preset: Literal["rough", "detailed", "photoreal"] = "rough"
 
 class ReferenceImageResponse(BaseModel):
     image: str      # base64 PNG
@@ -911,12 +914,12 @@ class PanelImageRequest(BaseModel):
     # 이 컷에 걸리는 레퍼런스 그림(base64 PNG). 글로만 기준을 주면 컷마다
     # 다른 얼굴이 나온다. 그림을 물려야 실제로 같은 인물이 된다.
     references: List[PanelReference] = []
-    # 그림체. 미장센의 '그림체' 항목에서 온다. 비면 기본 스케치체를 쓴다 —
-    # 화면에 칸이 있는데 반영되지 않으면 정한 것이 무시되는 셈이다.
+    # 화풍에 덧붙일 자유 문장. 화면에는 이것을 받는 칸이 없다 — 화풍은
+    # style_preset 하나가 정한다. 프리셋 문장 안에 끼워 넣는 자리로 남겨
+    # 두었고, 비면 프리셋의 기본 화풍을 그대로 쓴다.
     style: Optional[str] = ""
-    # 생성 바에서 고른 표현 스타일. 패널 생성 서비스가 스타일 프리셋의
-    # 기본 문장을 조립할 때 쓰므로, EnhanceSketchRequest가 아니라 여기에도
-    # 반드시 있어야 한다.
+    # 감독이 고른 표현 스타일. 이 값이 화풍을 정하고, 같은 값으로 만든
+    # 앵커 이미지가 참조로 함께 물린다.
     style_preset: Literal["rough", "detailed", "photoreal"] = "rough"
     # 2D 구조도를 문장으로 옮긴 것. 무엇이 어디에 있는지 컷마다 같아야 한다.
     layout: Optional[str] = ""
@@ -1009,6 +1012,12 @@ class SceneStateRequest(BaseModel):
     script: str
     scene_intention: Optional[str] = ""
     cut_plan: Optional[str] = ""
+    # 앞 씬들에서 이미 세운 인물 기준. 이름이 같으면 같은 사람으로 본다.
+    #
+    # 이것이 없으면 씬마다 같은 사람이 다른 외형으로 나온다 — 대본은 보통
+    # 인물을 처음 나올 때만 묘사하므로, 뒤 씬의 대본만 보면 근거가 없어
+    # 모델이 지어낸다. 사람은 씬이 바뀐다고 옷이 바뀌지 않는다.
+    known_characters: List["SceneCharacter"] = []
 
 class SceneFact(BaseModel):
     label: str
@@ -1032,6 +1041,11 @@ class SceneStateResponse(BaseModel):
     characters: List[SceneCharacter]
     location: SceneLocation
     environment: SceneEnvironment
+
+
+# SceneStateRequest.known_characters가 아래에서 정의된 SceneCharacter를
+# 가리키므로 여기서 해석해 준다.
+SceneStateRequest.model_rebuild()
 
 
 # --- Seam design: 컷 사이 --------------------------------------------------

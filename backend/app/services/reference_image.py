@@ -19,16 +19,39 @@ from openai import AsyncOpenAI
 from app.models.schemas import ReferenceImageRequest, ReferenceImageResponse
 
 
-# 패널과 같은 그림체여야 한다. 레퍼런스만 다른 화풍이면 참조로 물렸을 때
-# 패널의 화풍이 흔들린다.
-BASE_STYLE = (
-    "Black-and-white cinematic line drawing, clear restrained contours, "
-    "light tonal indication. Plain white background. "
+# 어떤 밀도에서도 지켜야 할 것. 글자와 테두리는 레퍼런스를 망치고, 배경이
+# 있으면 그 배경까지 패널에 따라온다.
+REFERENCE_CLEAN = (
+    "Plain white background. "
     "No text, no lettering, no labels, no captions, no watermark, no border."
 )
 
-CHARACTER_STYLE = (
-    f"Character reference sheet. {BASE_STYLE} "
+# 표현 밀도. 패널과 같은 값을 써야 한다 — 레퍼런스만 다른 화풍이면 참조로
+# 물렸을 때 패널의 화풍이 흔들린다. panel_style.style_prelude와 짝이다.
+PRESET_LOOKS = {
+    "rough": (
+        "Black-and-white cinematic line drawing, clear restrained contours, "
+        f"light tonal indication. {REFERENCE_CLEAN}"
+    ),
+    "detailed": (
+        "Monochrome graphite drawing with clear controlled linework and moderate "
+        f"tonal shading. Hand-drawn planning-image quality. {REFERENCE_CLEAN}"
+    ),
+    # 실사 보드의 기준은 실사여야 한다. 선화를 기준으로 물리면 패널이
+    # 실사로 나오지 않거나, 두 화풍이 한 그림 안에서 섞인다.
+    "photoreal": (
+        "Photorealistic reference still. Natural materials, believable lighting, "
+        "restrained neutral grade, real camera perspective. "
+        f"Not concept art, not a beauty portrait. {REFERENCE_CLEAN}"
+    ),
+}
+
+
+def _base_style(preset: str) -> str:
+    return PRESET_LOOKS.get(preset, PRESET_LOOKS["rough"])
+
+
+CHARACTER_BODY = (
     "One single standing figure, full body, front view, neutral pose, "
     "arms relaxed at the sides. "
     # 얼굴이 잘리면 레퍼런스가 아니다. 컷마다 같은 인물로 보이게 하는 것이
@@ -45,12 +68,19 @@ CHARACTER_STYLE = (
     "no action, no story situation."
 )
 
-LOCATION_STYLE = (
-    f"Location reference. {BASE_STYLE} "
+LOCATION_BODY = (
     "Wide establishing view of an empty space. "
     # 사람이 들어가면 패널마다 그 사람이 따라 나온다.
     "No people, no figures, no characters in the frame."
 )
+
+
+def _subject_style(kind: str, preset: str) -> str:
+    """이 레퍼런스의 화풍 + 담을 것. 화풍은 preset이, 나머지는 kind가 정한다."""
+    base = _base_style(preset)
+    if kind == "character":
+        return f"Character reference sheet. {base} {CHARACTER_BODY}"
+    return f"Location reference. {base} {LOCATION_BODY}"
 
 
 async def generate_reference(request: ReferenceImageRequest) -> ReferenceImageResponse:
@@ -61,9 +91,9 @@ async def generate_reference(request: ReferenceImageRequest) -> ReferenceImageRe
     if not request.prompt.strip():
         raise ValueError("prompt is empty")
 
-    subject_style = CHARACTER_STYLE if request.kind == "character" else LOCATION_STYLE
-    # Panels에서 선택한 그림체를 레퍼런스에도 같은 우선순위로 적용한다.
-    # 비워 두면 기존의 통일된 흑백 스토리보드 스타일을 유지한다.
+    subject_style = _subject_style(request.kind, request.style_preset)
+    # 표현 밀도(style_preset)가 화풍을 정하고, 그림체(style)는 그 안에서
+    # 감독이 덧붙이는 문장이다. 비워 두면 밀도의 기본 화풍을 그대로 쓴다.
     scene_style = request.style.strip() if request.style else ""
     style = (
         f"Scene-wide visual style (use it exactly): {scene_style}. {subject_style}"

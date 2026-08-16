@@ -84,7 +84,7 @@ export async function theoryAnswer(cir, intent, scriptContext = '') {
 
 export async function enhanceSketch(imageBase64, {
   scriptContext = '', intent = '', prompt = '', shared = '', previous = '',
-  references = [], style = '', layout = '', mode = 'add',
+  references = [], style = '', stylePreset = 'rough', layout = '', mode = 'add',
 } = {}) {
   return fetchWithTimeout(`${API_BASE}/enhance-sketch`, {
     method: 'POST',
@@ -98,6 +98,8 @@ export async function enhanceSketch(imageBase64, {
       previous,
       references,
       style,
+      // 그림체 맞추기는 보드의 다른 패널과 같은 화풍이 되는 것이 목적이다.
+      style_preset: stylePreset,
       layout,
       mode,
     }),
@@ -403,11 +405,13 @@ export async function generatePanelImage(
 }
 
 // 미장센: 인물·공간의 레퍼런스 그림. 이 그림이 패널 생성의 기준이 된다.
-export async function generateReferenceImage(kind, prompt, { style = '' } = {}) {
+// preset은 패널과 같은 표현 밀도다 — 기준 그림만 다른 화풍이면 참조로
+// 물렸을 때 패널의 화풍이 흔들린다.
+export async function generateReferenceImage(kind, prompt, { style = '', preset = 'rough' } = {}) {
   const data = await fetchWithTimeout(`${API_BASE}/reference-image`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ kind, prompt, style }),
+    body: JSON.stringify({ kind, prompt, style, style_preset: preset }),
   }, 180000)
   return `data:image/png;base64,${data.image}`
 }
@@ -461,11 +465,21 @@ export async function fixShots({
 
 // --- 미장센: 대본 → 씬 기준 -----------------------------------------------
 // 여러 컷에 걸쳐 같아야 하는 것을 세운다. 대본에 없는 것은 open으로 남긴다.
-export async function buildSceneState({ heading, script, sceneIntention = '', cutPlan = '', cutIds = [] }) {
+export async function buildSceneState({
+  heading, script, sceneIntention = '', cutPlan = '', cutIds = [], knownCharacters = [],
+}) {
   const data = await fetchWithTimeout(`${API_BASE}/scene-state`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ heading, script, scene_intention: sceneIntention, cut_plan: cutPlan }),
+    body: JSON.stringify({
+      heading,
+      script,
+      scene_intention: sceneIntention,
+      cut_plan: cutPlan,
+      // 앞 씬에서 이미 세운 인물. 같은 사람이 씬마다 다른 외형으로
+      // 갈리지 않게 한다.
+      known_characters: knownCharacters,
+    }),
   }, 90000)
   return toSceneState(data, heading, cutIds)
 }

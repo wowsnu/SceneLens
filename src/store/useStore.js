@@ -454,6 +454,17 @@ const CUT_PLAN_MOVES = [
   'Dolly in', 'Dolly out', 'Handheld',
 ]
 
+// 표현 밀도. 한 곳에서만 정의한다 — 컷 플랜의 레퍼런스 생성과 Panels의 패널
+// 생성이 같은 목록을 봐야 두 단계에서 고른 것이 같은 값이 된다.
+//
+// image는 앵커 그림이다. 화풍은 글로 적어도 모델마다 다르게 읽으므로, 고른
+// 밀도의 실제 그림을 참조로 물려야 그 밀도가 재현된다.
+export const PANEL_STYLE_PRESETS = [
+  { id: 'rough', label: '러프 콘티', image: '/img/style-anchors/lab-rough-storyboard.png' },
+  { id: 'detailed', label: '디테일 스케치', image: '/img/style-anchors/lab-detailed-storyboard.png' },
+  { id: 'photoreal', label: '실사 프리비즈', image: '/img/style-anchors/lab-photoreal-previz.png' },
+]
+
 // 컷의 구체적 결정(content, shotSize, seam 등)과 그 결정을 검토하는 이유를
 // 분리한다. 다음 단계의 Decision Card는 lens 이름이 아니라 이 requirement id를
 // 참조한다. 책임 범위도 나중에 카드에 붙고, 요구 역할 자체에는 붙지 않는다.
@@ -611,7 +622,9 @@ const createMockCutPlan = (state) => {
     const { time, place } = inferSceneContext(sceneOf(beat))
     // 이 Beat가 속한 씬의 인물만 후보로 본다.
     const sceneId = sceneOfBeat(scenes, beat)?.id
-    const KNOWN_CAST = castNamesOf(state.sceneStates?.[sceneId] || state.sceneStates?.['scene-0'])
+    // 인물은 cast에 있으므로 편 기준을 읽는다. 날것을 읽으면 비어 있다.
+    const resolvedScenes = selectSceneStates(state)
+    const KNOWN_CAST = castNamesOf(resolvedScenes[sceneId] || resolvedScenes['scene-0'])
     const beatElements = withIdx.filter((element) => (element.beat ?? 0) === beat)
     const actions = beatElements.filter((element) => element.type === 'action')
     const heading = beatElements.find((element) => element.type === 'scene-heading')
@@ -997,18 +1010,12 @@ export const diagnoseSeams = (cutPlan = [], {
 const CORRIDOR_SCENE_STATE = {
   title: '연구동 복도, 밤',
   description: '실험실에서 이어지는 씬입니다. 공간이 다릅니다.',
-  characters: [
-    {
-      id: 'harin-corridor',
-      name: '하린',
-      summary: '후드 · 노트를 든 채',
-      image: '/img/lab_discovery_cu.png',
-      facts: [
-        { label: '외형 기준', value: '후드를 입고 노트를 손에 들고 있다' },
-        { label: '표정', value: '아직 지정되지 않음', open: true },
-      ],
-    },
-  ],
+  // 하린은 실험실 씬과 같은 사람이다. 기준은 cast에 한 벌 있고, 여기서는
+  // 이 씬에서 달라진 것만 적는다 — 복도에서는 노트를 손에 들고 있다.
+  characterIds: ['cast-하린'],
+  characterOverrides: {
+    'cast-하린': { '소지품': '노트를 손에 든 상태' },
+  },
   location: {
     name: '연구동 복도',
     image: '/img/lab_corridor.png',
@@ -1020,10 +1027,9 @@ const CORRIDOR_SCENE_STATE = {
   environment: {
     name: '장면 공통',
     facts: [
-      // 서버의 ENVIRONMENT_LABELS와 같은 이름을 쓴다. 빠뜨리면 그 씬에서는
-      // 그림체를 정할 칸 자체가 없다.
+      // 서버의 ENVIRONMENT_LABELS와 같은 이름을 쓴다.
+      // 화풍은 여기 두지 않는다 — `표현 스타일`이 그림으로 정한다.
       { label: '시간', value: '밤' },
-      { label: '그림체', value: '', open: true, shared: true },
     ],
   },
 }
@@ -1067,6 +1073,67 @@ const screenplayFingerprint = (screenplay = []) => screenplay
   .map((element) => `${element.type}:${element.text}`)
   .join('\n')
 
+// 씬이 달라도 이름이 같으면 같은 사람이다. 레퍼런스 그림을 공유할 때
+// 쓰는 것과 같은 규칙을 쓴다(StoryboardView의 referenceIdentity).
+export const characterIdentity = (name = '') => (
+  name.trim().replace(/\s+/g, ' ').toLocaleLowerCase('ko-KR')
+)
+
+// --- 인물 기준: 작품에 한 벌, 씬은 달라진 것만 ---------------------------
+//
+// 인물은 씬의 소유물이 아니다. 하린은 씬이 바뀌어도 하린이다. 그래서 기준
+// 한 벌(`cast`)을 작품 수준에 두고, 씬은 **달라진 항목만** 갖는다
+// (`sceneState.characterOverrides`).
+//
+// 씬마다 값을 복사해 두면 어느 것이 원본인지 알 수 없고, 기준을 고쳤을 때
+// 이미 복사된 씬들은 따라오지 않는다. 컷 단위 `changes`가 값을 덮어쓰지
+// 않고 구간을 얹는 것과 같은 이유다.
+
+// 이 인물의 이번 씬 기준. 기준 위에 그 씬의 덮어쓰기를 얹는다.
+export const resolveCharacterFacts = (baseFacts = [], override = null) => {
+  if (!override) return baseFacts
+  return baseFacts.map((fact) => {
+    const value = override[fact.label]
+    return value === undefined
+      ? fact
+      : { ...fact, value, open: !value, overridden: true }
+  })
+}
+
+// 화면이 보는 인물 목록. 카드는 언제나 이 결과를 그린다.
+export const resolveSceneCharacters = (cast = [], sceneState = null) => {
+  const overrides = sceneState?.characterOverrides || {}
+  // 이 씬에 실제로 나오는 사람만. 대본에 없는 인물까지 카드로 세우면
+  // 쓰이지 않는 기준 그림 때문에 다음 단계가 막힌다.
+  const appearing = sceneState?.characterIds
+  const entries = appearing?.length
+    ? appearing.map((id) => cast.find((entry) => entry.id === id)).filter(Boolean)
+    : cast
+  const sceneImages = sceneState?.characterImages || {}
+  return entries.map((character) => {
+    // 이 씬에서 달라진 인물은 그 씬의 그림을 쓴다. 없으면 기준 그림.
+    const scoped = sceneImages[character.id]
+    return {
+      ...character,
+      ...(scoped ? { image: scoped.image, stylePreset: scoped.stylePreset } : {}),
+      facts: resolveCharacterFacts(character.facts, overrides[character.id]),
+    }
+  })
+}
+
+// 씬 기준을 화면·프롬프트가 쓰는 형태로 편다.
+//
+// `characters`를 파생 필드로 채워 두는 이유: 이 값을 읽는 곳이 스토어·
+// 스토리보드·드로잉·보드에 걸쳐 스무 곳이 넘는다. 저장 구조만 바꾸고
+// 읽는 모양은 그대로 두어야 그 전부를 건드리지 않는다.
+export const resolveSceneState = (state, sceneState) => {
+  if (!sceneState) return sceneState
+  return {
+    ...sceneState,
+    characters: resolveSceneCharacters(state.cast, sceneState),
+  }
+}
+
 // 지금 보고 있는 씬의 기준. activeBeat가 속한 씬을 따른다.
 export const selectActiveSceneState = (state) => {
   if (state.sceneStateStoryKey !== screenplayFingerprint(state.screenplay)) {
@@ -1074,12 +1141,33 @@ export const selectActiveSceneState = (state) => {
   }
   const scenes = selectScenes(state.screenplay)
   const scene = sceneOfBeat(scenes, state.activeBeat ?? 0)
-  return state.sceneStates[scene?.id] || state.sceneStates['scene-0'] || EMPTY_SCENE_STATE
+  // 캐시를 거쳐야 매 렌더마다 새 객체가 나오지 않는다.
+  const resolved = selectSceneStates(state)
+  return resolved[scene?.id] || resolved['scene-0'] || EMPTY_SCENE_STATE
 }
 
 export const selectActiveSceneId = (state) => {
   const scenes = selectScenes(state.screenplay)
   return sceneOfBeat(scenes, state.activeBeat ?? 0)?.id || 'scene-0'
+}
+
+// 씬 id → 편 기준. 화면과 프롬프트는 이것만 읽으면 된다.
+// `sceneStates`를 직접 읽으면 인물이 빠진 날것이 나온다.
+//
+// 매번 새 객체를 만들면 zustand가 상태가 바뀐 것으로 보고 무한히 다시
+// 그린다. 입력이 그대로면 같은 객체를 돌려준다.
+let sceneStatesCache = { cast: null, sceneStates: null, resolved: {} }
+export const selectSceneStates = (state) => {
+  if (sceneStatesCache.cast === state.cast
+    && sceneStatesCache.sceneStates === state.sceneStates) {
+    return sceneStatesCache.resolved
+  }
+  const resolved = {}
+  for (const [sceneId, sceneState] of Object.entries(state.sceneStates)) {
+    resolved[sceneId] = resolveSceneState(state, sceneState)
+  }
+  sceneStatesCache = { cast: state.cast, sceneStates: state.sceneStates, resolved }
+  return resolved
 }
 
 // 레퍼런스 "그리는 중" 표시의 key. 씬이 빠지면 다른 씬의 같은 이름
@@ -1109,21 +1197,29 @@ const EMPTY_SCENE_STATE = {
   environment: { name: '장면 공통', facts: [] },
 }
 
+// 작품 전체의 인물 기준. 씬이 아니라 여기 산다 — 하린은 실험실에서도
+// 복도에서도 하린이다.
+const DEMO_CAST = [
+  {
+    id: 'cast-하린',
+    name: '하린',
+    summary: '20대 중반 · 대학원생',
+    image: '/img/lab_discovery_cu.png',
+    facts: [
+      { label: '성별·나이', value: '여성, 20대 중반' },
+      { label: '외형 기준', value: '후드를 입고 머리를 묶은 상태' },
+      { label: '체형', value: '마른 체형' },
+      { label: '기본 태도', value: '구부정한 자세' },
+      { label: '소지품', value: '', open: true },
+    ],
+  },
+]
+
 const SCENE_STATE = {
   title: '물리학과 실험실 · 밤',
   description: '대본에서 추출한 장면 기준입니다. Shot별 배치는 이 상태를 상속하고, 달라진 부분만 별도로 기록합니다.',
-  characters: [
-    {
-      id: 'harin',
-      name: '하린',
-      summary: '20대 중반 · 대학원생',
-      image: '/img/lab_discovery_cu.png',
-      facts: [
-        { label: '외형 기준', value: '후드를 입고 머리를 묶은 상태' },
-        { label: '헤어', value: '아직 지정되지 않음', open: true },
-      ],
-    },
-  ],
+  characterIds: ['cast-하린'],
+  characterOverrides: {},
   location: {
     name: '물리학과 실험실',
     image: '/img/lab_wide_establishing.png',
@@ -1136,10 +1232,8 @@ const SCENE_STATE = {
     name: '장면 공통',
     facts: [
       // 항목 이름은 서버(scene_state.py의 ENVIRONMENT_LABELS)와 같아야 한다.
-      // '그림체'는 패널 생성이 그림체를 읽어 가는 이름이므로, 여기서 다르게
-      // 부르면 값을 채워도 그림에 반영되지 않는다.
+      // 화풍은 여기 두지 않는다 — `표현 스타일`이 그림으로 정한다.
       { label: '시간', value: '밤' },
-      { label: '그림체', value: '', open: true, shared: true },
     ],
   },
 }
@@ -1213,7 +1307,8 @@ export const selectCutPrompt = (state, cutId) => {
 
   const scenes = selectScenes(state.screenplay)
   const scene = sceneOfBeat(scenes, cut.beat)
-  const sceneState = state.sceneStates[scene?.id] || state.sceneStates['scene-0'] || null
+  const resolvedScenes = selectSceneStates(state)
+  const sceneState = resolvedScenes[scene?.id] || resolvedScenes['scene-0'] || null
 
   // 이음새는 패널 사이에 붙으므로 컷에서 바로 찾을 수 없다. 앞 컷의 샷을
   // 거쳐야 한다.
@@ -1333,6 +1428,68 @@ export const layoutToImage = (elements = [], size = 768) => {
     + shapes.join('') + people.join('')
     + '</svg>'
   return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`
+}
+
+// --- 공간 단계: 배치가 달라지는 구간 -------------------------------------
+//
+// 씬 상태의 모든 변화 시작점을 하나의 공간 단계로 합친다. 인물의 상태와
+// 조명 변화가 같은 컷에서 시작하면, 그 컷부터는 같은 2D 배치를 고른다.
+//
+// 스토어에 두는 이유: 단계를 만드는 것은 Decision Board지만, 그 결과를
+// 읽어야 하는 것은 패널 생성이다. 컴포넌트 안에 두면 생성이 못 읽어
+// 단계를 나눠 그려도 그림에 반영되지 않는다.
+export const spatialStagesFor = (sceneState, shots, sceneId) => {
+  const factGroups = [
+    ...(sceneState?.characters || []).flatMap((character) => character.facts || []),
+    ...(sceneState?.location?.facts || []),
+    ...(sceneState?.environment?.facts || []),
+  ]
+  const starts = new Set([0])
+  factGroups.forEach((fact) => {
+    ;(fact.changes || []).forEach((change) => {
+      const index = shots.findIndex((shot) => shot.cutPlanItemId === change.cutId)
+      if (index > 0) starts.add(index)
+    })
+  })
+  const indexes = [...starts].sort((left, right) => left - right)
+  return indexes.map((start, index) => {
+    const nextStart = indexes[index + 1] ?? shots.length
+    const end = Math.max(start, nextStart - 1)
+    const cutId = start === 0 ? 'initial' : shots[start]?.cutPlanItemId || `shot-${start}`
+    return {
+      id: `${sceneId || 'scene'}:${cutId}`,
+      start,
+      label: start === end ? `S${start + 1}` : `S${start + 1}–S${end + 1}`,
+    }
+  })
+}
+
+// 이 컷이 속한 단계의 2D 배치. 단계를 나눠 그렸어도 생성이 이것을 읽지
+// 않으면 마지막에 본 도면 하나로 전부 그려진다.
+//
+// 저장된 단계가 없으면 직전 단계로 거슬러 올라간다 — 새 단계는 직전
+// 배치에서 이어지므로, 손대지 않은 단계는 앞의 것을 그대로 쓴다.
+export const selectLayoutForCut = (state, cutId) => {
+  const scene = state.scenes?.[state.activeScene]
+  const shots = scene?.branches?.[scene.activeBranch ?? 0]?.shots || []
+  const shotIndex = shots.findIndex((shot) => shot.cutPlanItemId === cutId)
+  if (shotIndex < 0) return state.spatialElements
+
+  const scenes = selectScenes(state.screenplay)
+  const cut = state.cutPlan.find((item) => item.id === cutId)
+  const sceneId = cut ? sceneOfBeat(scenes, cut.beat)?.id : null
+  const sceneState = selectSceneStates(state)[sceneId] || selectSceneStates(state)['scene-0']
+  const stages = spatialStagesFor(sceneState, shots, sceneId)
+
+  const stageIndex = stages.reduce(
+    (found, stage, index) => (stage.start <= shotIndex ? index : found),
+    0,
+  )
+  for (let index = stageIndex; index >= 0; index -= 1) {
+    const saved = state.spatialLayoutsByStage[stages[index]?.id]
+    if (saved?.length) return saved
+  }
+  return state.spatialElements
 }
 
 // 2D 구조도를 문장으로도 옮긴다. 도면과 함께 주면 서로를 보강한다.
@@ -1711,6 +1868,8 @@ const useStore = create((set, get) => ({
   // 유지해야 한 보드 안에서 모델이 섞이지 않는다.
   panelImageModel: 'gpt-image-1',
   setPanelImageModel: (panelImageModel) => set({ panelImageModel }),
+  // 표현 밀도. 컷 플랜(레퍼런스 생성)과 Panels(패널 생성) 양쪽에서 고르되
+  // 값은 하나다 — 기준 그림과 패널이 다른 화풍으로 갈리면 안 된다.
   panelStylePreset: 'rough',
   setPanelStylePreset: (panelStylePreset) => set({ panelStylePreset }),
   // 조명·그림체처럼 장면 전체에 걸리는 지시. 컷마다 반복하지 않는다.
@@ -1736,10 +1895,16 @@ const useStore = create((set, get) => ({
     return { seams: next }
   }),
 
+  // 작품 전체의 인물 기준. 인물은 씬의 소유물이 아니다 — 하린은 씬이
+  // 바뀌어도 하린이고, 레퍼런스 그림도 한 장이면 된다.
+  //
+  // 씬마다 값을 복사해 두면 어느 것이 원본인지 알 수 없고, 기준을 고쳤을
+  // 때 이미 복사된 씬은 따라오지 않는다.
+  cast: [],
   // 컷을 가로지르는 기준. 여기를 고치면 그 씬의 모든 컷 프롬프트가 바뀐다.
   //
-  // 씬마다 따로 둔다 — 실험실의 인물 기준과 복도의 인물 기준은 다르다.
-  // 복도 씬의 공간 기준은 실험실 기준에 없다.
+  // 공간·환경은 씬마다 다르므로 여기 있다. 인물은 cast에 있고, 씬은
+  // 누가 나오는지(characterIds)와 무엇이 달라지는지(characterOverrides)만 갖는다.
   sceneStates: {},
   // 2D 구조도. 컴포넌트 지역 상태로 두면 패널 생성이 읽지 못한다 —
   // 배치를 그림에 반영하려면 스토어에 있어야 한다.
@@ -1770,8 +1935,14 @@ const useStore = create((set, get) => ({
       const { buildSceneState } = await import('../services/api.js')
       const scenes = selectScenes(state.screenplay)
       const next = {}
+      // 씬을 순서대로 돌면서 인물 기준을 쌓는다. 이름이 같으면 같은 사람이다.
+      const knownByName = {}
+      // 작품 전체의 인물 기준. 처음 등장한 씬에서 세워진다.
+      const nextCast = []
 
       for (const scene of scenes) {
+        // 이 씬에서 기준과 달라지는 항목만.
+        const sceneOverrides = {}
         const script = state.screenplay
           .filter((element) => (
             element.beat >= scene.startBeat
@@ -1795,32 +1966,79 @@ const useStore = create((set, get) => ({
           sceneIntention: state.sceneIntention || '',
           cutPlan,
           cutIds,
+          // 앞 씬들에서 이미 세운 인물을 함께 보낸다. 씬마다 따로 읽으면
+          // 같은 사람이 다른 외형으로 나온다 — 대본은 인물을 처음 나올 때만
+          // 묘사하므로, 뒤 씬 대본만 보면 근거가 없어 모델이 지어낸다.
+          knownCharacters: Object.values(knownByName).map((entry) => ({
+            name: entry.name,
+            facts: entry.facts,
+          })),
         })
+
+        // 인물은 씬의 소유물이 아니다. 처음 나온 씬에서 기준이 되고,
+        // 이후 씬은 **달라진 항목만** 덮어쓴다.
+        const characterIds = []
+        for (const character of built.characters) {
+          const identity = characterIdentity(character.name)
+          if (!identity) continue
+          const known = knownByName[identity]
+
+          if (!known) {
+            // 처음 보는 사람 — 이 값이 작품 전체의 기준이 된다.
+            const id = `cast-${identity}`
+            const entry = { id, name: character.name, summary: character.summary, facts: character.facts }
+            knownByName[identity] = entry
+            nextCast.push(entry)
+            characterIds.push(id)
+            continue
+          }
+
+          characterIds.push(known.id)
+          // 기준과 다른 값만 덮어쓰기로 남긴다. 같은 값을 다시 적으면
+          // 기준을 고쳤을 때 이 씬만 따라오지 않는다.
+          const baseByLabel = new Map(known.facts.map((fact) => [fact.label, fact]))
+          const overrides = {}
+          for (const fact of character.facts) {
+            const base = baseByLabel.get(fact.label)
+            if (!base) continue
+            // 값이 비었으면 정보가 없다는 뜻이지 달라졌다는 뜻이 아니다.
+            if (!fact.value || fact.open) continue
+            if (fact.value !== base.value) overrides[fact.label] = fact.value
+          }
+          if (Object.keys(overrides).length) {
+            sceneOverrides[known.id] = overrides
+          }
+        }
 
         // 레퍼런스 그림과 직접 고친 프롬프트는 사용자가 만든 것이다.
         // 대본을 다시 읽는다고 지워지면 안 된다 — 다시 그려야 한다.
         const kept = state.sceneStates[scene.id]
-        next[scene.id] = kept ? {
+        next[scene.id] = {
           ...built,
-          characters: built.characters.map((character) => {
-            const before = kept.characters?.find((entry) => entry.name === character.name)
-            return before
-              ? {
-                ...character,
-                image: before.image ?? null,
-                promptOverride: before.promptOverride || '',
-              }
-              : character
-          }),
+          // 인물은 cast가 들고 있다. 씬은 누가 나오는지와 무엇이 달라지는지만.
+          characters: undefined,
+          characterIds,
+          characterOverrides: sceneOverrides,
           location: {
             ...built.location,
-            image: kept.location?.image ?? null,
-            promptOverride: kept.location?.promptOverride || '',
+            image: kept?.location?.image ?? null,
+            promptOverride: kept?.location?.promptOverride || '',
           },
-        } : built
+        }
       }
 
+      // 이미 그린 레퍼런스와 고친 프롬프트를 새 기준으로 옮긴다.
+      const keptCast = new Map((state.cast || []).map((entry) => [entry.id, entry]))
       set({
+        cast: nextCast.map((entry) => {
+          const before = keptCast.get(entry.id)
+          return {
+            ...entry,
+            image: before?.image ?? null,
+            stylePreset: before?.stylePreset,
+            promptOverride: before?.promptOverride || '',
+          }
+        }),
         sceneStates: next,
         sceneStateStoryKey: screenplayFingerprint(state.screenplay),
         sceneStatePending: false,
@@ -1835,14 +2053,14 @@ const useStore = create((set, get) => ({
     const current = state.sceneStates[sceneId] || EMPTY_SCENE_STATE
     return { sceneStates: { ...state.sceneStates, [sceneId]: updater(current) } }
   }),
-  updateSceneCharacter: (characterId, patch, sceneId = null) => {
-    get().updateSceneStateAt(sceneId || selectActiveSceneId(get()), (scene) => ({
-      ...scene,
-      characters: scene.characters.map((character) => (
-        character.id === characterId ? { ...character, ...patch } : character
-      )),
-    }))
-  },
+  // 인물은 씬이 아니라 cast에 산다. 여기서 고치면 그 인물이 나오는 모든
+  // 씬이 함께 바뀐다 — 씬마다 따로 고쳐야 하는 것은 덮어쓰기 쪽이다
+  // (setSceneFact의 characterId 경로).
+  updateSceneCharacter: (characterId, patch) => set((state) => ({
+    cast: state.cast.map((character) => (
+      character.id === characterId ? { ...character, ...patch } : character
+    )),
+  })),
 
   // 대본에서 공간 배치를 제안받는다. 빈 캔버스에서 시작하는 대신
   // 초안을 고치게 한다 — 이 배치가 곧 패널 생성의 도면 참조가 된다.
@@ -1936,9 +2154,11 @@ const useStore = create((set, get) => ({
     // 끝난 뒤 읽은 씬은 다른 씬이라, 표시를 지울 칸도 결과를 적을 씬도
     // 어긋난다.
     const sceneId = selectActiveSceneId(state)
-    const scene = state.sceneStates[sceneId]
+    const scene = selectSceneStates(state)[sceneId]
     if (!scene) return
 
+    // 인물 레퍼런스는 이 씬의 값(기준 + 덮어쓰기)으로 그린다. 코트를 벗은
+    // 씬이면 그 모습이어야 그 씬의 컷에 맞는 기준이 된다.
     const subject = kind === 'character'
       ? scene.characters.find((entry) => entry.id === subjectId)
       : scene[kind]
@@ -1958,21 +2178,36 @@ const useStore = create((set, get) => ({
     try {
       // 지연 import — 스토어를 node로 단독 검증할 수 있게 한다.
       const { generateReferenceImage } = await import('../services/api.js')
-      // 레퍼런스부터 패널과 같은 그림체로 만든다. 기준 그림이 다른 화풍이면
-      // 패널 생성 때 두 화풍이 서로 경쟁하게 된다.
-      const style = scene.environment?.facts
-        ?.find((fact) => fact.label === '그림체' && !fact.open)?.value || ''
-      const image = await generateReferenceImage(kind, prompt.effective, { style })
-      get().updateSceneStateAt(sceneId, (current) => (
-        kind === 'character'
-          ? {
+      // 레퍼런스부터 패널과 같은 화풍으로 만든다. 기준 그림이 다른 화풍이면
+      // 패널 생성 때 참조로 물려 두 화풍이 서로 경쟁하게 된다.
+      const preset = get().panelStylePreset
+      const image = await generateReferenceImage(kind, prompt.effective, { preset })
+      // 어떤 밀도로 만든 기준인지 그림 옆에 남긴다. preset을 바꾸면 이 값이
+      // 현재 값과 달라져, 화풍이 갈렸다는 것을 화면이 알아챌 수 있다.
+      if (kind === 'character') {
+        // 이 씬에서 달라진 인물이면 그림도 이 씬의 것이다. 기준에 넣으면
+        // 코트를 벗은 모습이 다른 씬까지 따라간다.
+        const scoped = Boolean(get().sceneStates[sceneId]?.characterOverrides?.[subjectId])
+        if (scoped) {
+          get().updateSceneStateAt(sceneId, (current) => ({
             ...current,
-            characters: current.characters.map((entry) => (
-              entry.id === subjectId ? { ...entry, image } : entry
+            characterImages: {
+              ...(current.characterImages || {}),
+              [subjectId]: { image, stylePreset: preset },
+            },
+          }))
+        } else {
+          set((current) => ({
+            cast: current.cast.map((entry) => (
+              entry.id === subjectId ? { ...entry, image, stylePreset: preset } : entry
             )),
-          }
-          : { ...current, [kind]: { ...current[kind], image } }
-      ))
+          }))
+        }
+      } else {
+        get().updateSceneStateAt(sceneId, (current) => (
+          { ...current, [kind]: { ...current[kind], image, stylePreset: preset } }
+        ))
+      }
       set((current) => {
         const { [key]: _finished, ...remaining } = current.referenceImagePending
         return { referenceImagePending: remaining }
@@ -1987,15 +2222,16 @@ const useStore = create((set, get) => ({
 
   // 레퍼런스 프롬프트를 직접 고친다. 비우면 항목에서 다시 조립된다.
   setReferencePrompt: (kind, subjectId, text) => {
+    if (kind === 'character') {
+      set((state) => ({
+        cast: state.cast.map((entry) => (
+          entry.id === subjectId ? { ...entry, promptOverride: text } : entry
+        )),
+      }))
+      return
+    }
     get().updateSceneStateAt(selectActiveSceneId(get()), (current) => (
-      kind === 'character'
-        ? {
-          ...current,
-          characters: current.characters.map((entry) => (
-            entry.id === subjectId ? { ...entry, promptOverride: text } : entry
-          )),
-        }
-        : { ...current, [kind]: { ...current[kind], promptOverride: text } }
+      { ...current, [kind]: { ...current[kind], promptOverride: text } }
     ))
   },
 
@@ -2008,17 +2244,20 @@ const useStore = create((set, get) => ({
       const changes = (fact.changes || []).filter((change) => change.cutId !== cutId)
       return { ...fact, changes: [...changes, { cutId, value }] }
     })
+    // 인물의 컷 변화는 기준에 붙는다 — 하린이 젖은 채 굳어가는 것은
+    // 이 씬의 컷을 가로지르는 일이고, 기준 항목에 구간을 얹는 것이다.
+    if (group === 'character') {
+      set((state) => ({
+        cast: state.cast.map((character) => (
+          character.id === characterId
+            ? { ...character, facts: patchFacts(character.facts) }
+            : character
+        )),
+      }))
+      return
+    }
     get().updateSceneStateAt(sceneId || selectActiveSceneId(get()), (scene) => (
-      group === 'character'
-        ? {
-          ...scene,
-          characters: scene.characters.map((character) => (
-            character.id === characterId
-              ? { ...character, facts: patchFacts(character.facts) }
-              : character
-          )),
-        }
-        : { ...scene, [group]: { ...scene[group], facts: patchFacts(scene[group]?.facts) } }
+      { ...scene, [group]: { ...scene[group], facts: patchFacts(scene[group]?.facts) } }
     ))
   },
 
@@ -2028,37 +2267,87 @@ const useStore = create((set, get) => ({
         ? { ...fact, changes: (fact.changes || []).filter((change) => change.cutId !== cutId) }
         : fact
     ))
+    if (group === 'character') {
+      set((state) => ({
+        cast: state.cast.map((character) => (
+          character.id === characterId
+            ? { ...character, facts: patchFacts(character.facts) }
+            : character
+        )),
+      }))
+      return
+    }
     get().updateSceneStateAt(sceneId || selectActiveSceneId(get()), (scene) => (
-      group === 'character'
-        ? {
-          ...scene,
-          characters: scene.characters.map((character) => (
-            character.id === characterId
-              ? { ...character, facts: patchFacts(character.facts) }
-              : character
-          )),
-        }
-        : { ...scene, [group]: { ...scene[group], facts: patchFacts(scene[group]?.facts) } }
+      { ...scene, [group]: { ...scene[group], facts: patchFacts(scene[group]?.facts) } }
     ))
   },
 
   // 미정으로 남은 항목을 채운다. open을 지우는 것이 곧 결정이다.
-  setSceneFact: (group, label, value, { characterId = null, sceneId = null } = {}) => {
+  //
+  // 인물은 기준(cast)을 고친다 — 그 인물이 나오는 모든 씬이 함께 바뀐다.
+  // 이 씬에서만 달라지게 하려면 `scoped: true`로 덮어쓰기를 만든다.
+  setSceneFact: (group, label, value, {
+    characterId = null, sceneId = null, scoped = false,
+  } = {}) => {
     const patchFacts = (facts = []) => facts.map((fact) => (
       fact.label === label ? { ...fact, value, open: !value } : fact
     ))
-    get().updateSceneStateAt(sceneId || selectActiveSceneId(get()), (scene) => (
-      group === 'character'
-        ? {
-          ...scene,
-          characters: scene.characters.map((character) => (
+
+    if (group === 'character') {
+      if (!scoped) {
+        set((state) => ({
+          cast: state.cast.map((character) => (
             character.id === characterId
               ? { ...character, facts: patchFacts(character.facts) }
               : character
           )),
-        }
-        : { ...scene, [group]: { ...scene[group], facts: patchFacts(scene[group]?.facts) } }
+        }))
+        return
+      }
+      get().setCharacterOverride(characterId, label, value, { sceneId })
+      return
+    }
+
+    get().updateSceneStateAt(sceneId || selectActiveSceneId(get()), (scene) => (
+      { ...scene, [group]: { ...scene[group], facts: patchFacts(scene[group]?.facts) } }
     ))
+  },
+
+  // 이 씬에서만 달라지는 인물 항목. 기준과 같아지면 덮어쓰기를 지운다 —
+  // 같은 값을 남겨 두면 나중에 기준을 고쳤을 때 이 씬만 따라오지 않는다.
+  setCharacterOverride: (characterId, label, value, { sceneId = null } = {}) => {
+    const state = get()
+    const targetScene = sceneId || selectActiveSceneId(state)
+    const base = state.cast.find((entry) => entry.id === characterId)
+    const baseValue = base?.facts?.find((fact) => fact.label === label)?.value ?? ''
+
+    get().updateSceneStateAt(targetScene, (scene) => {
+      const forCharacter = { ...(scene.characterOverrides?.[characterId] || {}) }
+      if (value === baseValue) delete forCharacter[label]
+      else forCharacter[label] = value
+
+      const overrides = { ...(scene.characterOverrides || {}) }
+      if (Object.keys(forCharacter).length) overrides[characterId] = forCharacter
+      else delete overrides[characterId]
+
+      return { ...scene, characterOverrides: overrides }
+    })
+  },
+
+  // 이 씬의 덮어쓰기를 지우고 기준으로 되돌린다.
+  clearCharacterOverride: (characterId, label = null, { sceneId = null } = {}) => {
+    get().updateSceneStateAt(sceneId || selectActiveSceneId(get()), (scene) => {
+      const overrides = { ...(scene.characterOverrides || {}) }
+      if (!label) {
+        delete overrides[characterId]
+        return { ...scene, characterOverrides: overrides }
+      }
+      const forCharacter = { ...(overrides[characterId] || {}) }
+      delete forCharacter[label]
+      if (Object.keys(forCharacter).length) overrides[characterId] = forCharacter
+      else delete overrides[characterId]
+      return { ...scene, characterOverrides: overrides }
+    })
   },
 
   // 실제 모델을 부른다. 실패하면 규칙 기반 mock으로 떨어진다.
@@ -2987,6 +3276,7 @@ const useStore = create((set, get) => ({
       screenplay: script,
       narrativeSuggestions: [],
       activeBeat: 0,
+      cast: DEMO_CAST,
       sceneStates,
       sceneStateStoryKey: screenplayFingerprint(script),
       cutPlan,

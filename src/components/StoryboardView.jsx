@@ -20,6 +20,9 @@ import useStore, {
   SEAM_ELAPSED,
   diagnoseSeams,
   PROBLEM_LAYERS,
+  PANEL_STYLE_PRESETS,
+  selectSceneStates,
+  selectLayoutForCut,
 } from '../store/useStore'
 import './StoryboardView.css'
 import { logEdit, logEvent, logScaffold } from '../store/studyLog'
@@ -133,12 +136,6 @@ const stripDataUrl = (value = '') => {
   return value.replace(/^data:image\/\w+;base64,/, '')
 }
 
-const PANEL_STYLE_PRESETS = [
-  { id: 'rough', label: '러프 콘티', image: '/img/style-anchors/lab-rough-storyboard.png' },
-  { id: 'detailed', label: '디테일 스케치', image: '/img/style-anchors/lab-detailed-storyboard.png' },
-  { id: 'photoreal', label: '실사 프리비즈', image: '/img/style-anchors/lab-photoreal-previz.png' },
-]
-
 // 예시 데이터의 레퍼런스는 public 파일 경로이고, 사용자가 만든 레퍼런스는
 // data URL이다. 서버에는 어느 쪽이든 base64 PNG로 보내야 실제 입력 이미지가
 // 된다. 파일 경로를 버리면 화면에는 같은 인물이 보여도 생성 모델은 그 기준을
@@ -164,7 +161,37 @@ const referenceImageBase64 = async (value = '') => {
   }
 }
 
-function SceneFactRow({ fact, onCommit, cutOptions = [], onAddChange, onRemoveChange }) {
+// 표현 밀도 선택기. 컷 플랜(레퍼런스)과 Panels(패널) 양쪽에 같은 것이 뜬다 —
+// 값이 하나이므로 어디서 고르든 같은 결정이다.
+//
+// 그림으로 고른다. 러프/디테일/실사의 차이는 글로 적어도 잘 전달되지 않고,
+// 실제로 앵커 그림이 생성에 물리므로 고르는 자리에서도 그 그림을 보여야 한다.
+function StylePresetPicker({ value, onChange, disabled = false, layout = 'row' }) {
+  return (
+    <div className={`style-preset-picker is-${layout}`} role="radiogroup" aria-label="표현 스타일">
+      {PANEL_STYLE_PRESETS.map((preset) => (
+        <button
+          type="button"
+          key={preset.id}
+          role="radio"
+          aria-checked={value === preset.id}
+          className={value === preset.id ? 'is-active' : ''}
+          disabled={disabled}
+          onClick={() => onChange(preset.id)}
+        >
+          <img src={preset.image} alt="" />
+          <span>{preset.label}</span>
+        </button>
+      ))}
+    </div>
+  )
+}
+
+function SceneFactRow({
+  fact, onCommit, cutOptions = [], onAddChange, onRemoveChange,
+  // 인물 항목만 쓴다. 이 씬에서만 달라지게 하거나, 기준으로 되돌린다.
+  onScopedCommit = null, onRevert = null,
+}) {
   const [draft, setDraft] = useState(fact.value || '')
   // 대본을 다시 읽으면 화면 값도 따라가야 한다. 렌더 중에 맞추면 effect가
   // 한 번 더 도는 것을 피할 수 있다.
@@ -218,6 +245,34 @@ function SceneFactRow({ fact, onCommit, cutOptions = [], onAddChange, onRemoveCh
           </button>
         )}
       </label>
+
+      {/* 인물 기준은 작품에 한 벌이다. 이 씬에서만 달라지게 할 수도 있고,
+          달라진 것은 기준으로 되돌릴 수 있다. 어느 쪽인지 보이지 않으면
+          값을 고쳤을 때 다른 씬까지 바뀌는 것을 모른다. */}
+      {(onScopedCommit || fact.overridden) && (
+        <div className="rail-scene-fact-scope">
+          {fact.overridden ? (
+            <>
+              <span className="rail-scene-fact-badge">이 씬에서 변경</span>
+              {onRevert && (
+                <button type="button" onClick={() => onRevert()} title="작품 기준값으로 되돌립니다">
+                  ↺ 기준으로
+                </button>
+              )}
+            </>
+          ) : (
+            draft.trim() !== (fact.value || '') && onScopedCommit && (
+              <button
+                type="button"
+                onClick={() => onScopedCommit(draft.trim())}
+                title="다른 씬은 그대로 두고 이 씬에서만 바꿉니다"
+              >
+                이 씬에서만 변경
+              </button>
+            )
+          )}
+        </div>
+      )}
 
       {/* 지워진 컷을 가리키는 변화는 값을 못 낸다. 목록에서도 빼면
           되살릴 방법이 없으므로, 고를 수 있는 컷만 남기고 보여준다. */}
@@ -1015,12 +1070,13 @@ export default function StoryboardView() {
   const rejectDeclaration = useStore((s) => s.rejectDeclaration)
   // 씬 기준은 씬마다 다르다. 컷이 속한 씬의 기준을 써야 한다 —
   // 복도 컷에 실험실의 인물 기준을 넣으면 없는 사람을 그리게 된다.
-  const sceneStates = useStore((s) => s.sceneStates)
+  const sceneStates = useStore(selectSceneStates)
   // rail이 편집하는 것은 지금 보고 있는 씬의 기준이다. activeBeat에서
   // 파생되므로 Beat를 옮기면 기준도 따라온다.
   const activeSceneState = useStore(selectActiveSceneState)
   const seams = useStore((s) => s.seams)
   const setSceneFact = useStore((s) => s.setSceneFact)
+  const clearCharacterOverride = useStore((s) => s.clearCharacterOverride)
   const addFactChange = useStore((s) => s.addFactChange)
   const spatialElements = useStore((s) => s.spatialElements)
   const removeFactChange = useStore((s) => s.removeFactChange)
@@ -1165,20 +1221,6 @@ export default function StoryboardView() {
   const [panelGenPending, setPanelGenPending] = useState({})
   const [panelGenError, setPanelGenError] = useState(null)
 
-  // 그림체는 미장센의 환경 항목에 산다. 여기서 고쳐도 같은 값이므로
-  // 두 화면이 어긋나지 않는다.
-  const sceneStyle = activeSceneState.environment?.facts
-    ?.find((fact) => fact.label === '그림체' && !fact.open)?.value || ''
-  const [styleDraft, setStyleDraft] = useState(sceneStyle)
-  const [syncedStyle, setSyncedStyle] = useState(sceneStyle)
-  if (syncedStyle !== sceneStyle) {
-    setSyncedStyle(sceneStyle)
-    setStyleDraft(sceneStyle)
-  }
-  const commitStyle = () => {
-    const next = styleDraft.trim()
-    if (next !== sceneStyle) setSceneFact('environment', '그림체', next)
-  }
   const generatingCount = Object.keys(panelGenPending).length
   const isGenerating = generatingCount > 0
   const handledScriptEditorRequestKey = useRef(0)
@@ -1579,11 +1621,18 @@ export default function StoryboardView() {
     return picked
   }
 
-  // 미장센이 정한 그림체. 안 정했으면 빈 문자열이고 서버가 기본을 쓴다.
-  const styleOfCut = (cut) => {
-    const scene = sceneStateForCut(cut)
-    const fact = scene?.environment?.facts?.find((entry) => entry.label === '그림체')
-    return fact && !fact.open ? fact.value : ''
+  // 이 레퍼런스가 지금 표현 스타일과 다른 밀도로 만들어졌는가.
+  //
+  // 조용히 다시 그리지 않는다 — 감독이 마음에 들어 하던 기준 그림이 예고
+  // 없이 사라지면 안 된다. 갈렸다는 사실만 알리고 처분은 `다시 생성`으로
+  // 남긴다 (발견과 처분의 분리).
+  const staleStyleLabel = (subject) => {
+    const made = subject?.stylePreset
+    // 이 기능 이전에 만든 레퍼런스는 밀도 기록이 없다. 모르는 것을
+    // 갈렸다고 말하면 멀쩡한 기준까지 다시 그리게 된다.
+    if (!subject?.image || !made || made === panelStylePreset) return ''
+    const label = PANEL_STYLE_PRESETS.find((preset) => preset.id === made)?.label || made
+    return `${label}로 만든 기준`
   }
 
   const sceneStateForCut = (cut) => {
@@ -1733,10 +1782,23 @@ export default function StoryboardView() {
     })
 
     const { generatePanelImage } = await import('../services/api')
-    // 구조도는 씬 전체에 걸리므로 한 번만 준비한다. 도면 그림과 문장을
-    // 함께 준다 — 그림이 배치를 정확히 전하고, 문장이 그것을 보강한다.
-    const layoutLine = describeLayout(spatialElements)
-    const layoutImage = await rasterizeLayout(layoutToImage(spatialElements))
+    // 도면은 컷마다 다를 수 있다. 인물이 자리를 옮기거나 조명이 꺼지면
+    // 그 컷부터 새 단계가 되고, 감독이 그 단계의 배치를 따로 그린다.
+    // 씬에 하나로 고정하면 그렇게 나눠 그린 수고가 그림에 나타나지 않는다.
+    //
+    // 같은 단계를 여러 컷이 공유하므로 도면 그림은 단계마다 한 번만 만든다.
+    const layoutCache = new Map()
+    const layoutFor = async (cut) => {
+      const elements = cut ? selectLayoutForCut(useStore.getState(), cut.id) : spatialElements
+      const key = JSON.stringify(elements)
+      if (!layoutCache.has(key)) {
+        layoutCache.set(key, {
+          line: describeLayout(elements),
+          image: await rasterizeLayout(layoutToImage(elements)),
+        })
+      }
+      return layoutCache.get(key)
+    }
     const failures = []
 
     const promptOf = (cut) => (cut
@@ -1766,6 +1828,8 @@ export default function StoryboardView() {
       try {
         // 프롬프트가 없는 패널은 만들 수 없다. 컷과 이어지지 않은 패널이다.
         if (!prompt?.effective) throw new Error('이 패널에 연결된 컷이 없습니다')
+        // 이 컷이 속한 단계의 배치.
+        const layout = await layoutFor(cut)
         // shared(씬 기준)를 함께 보낸다. 이것을 빼면 컷마다 인물과 공간이
         // 따로 해석돼, 미장센이 기준을 세운 의미가 없어진다.
         // 이 패널에 이미 그림이 있었으면 다시 그리는 것이다. 반복
@@ -1781,18 +1845,17 @@ export default function StoryboardView() {
           // 레퍼런스 그림이 있으면 물린다. 글만으로는 컷마다 같은 얼굴이
           // 나오지 않는다.
           references: (await Promise.all(
-            referencesForCut(cut, layoutImage, panelStylePreset).map(async (reference) => ({
+            referencesForCut(cut, layout.image, panelStylePreset).map(async (reference) => ({
               ...reference,
               image: await referenceImageBase64(reference.image),
             })),
           )).filter((reference) => reference.image),
-          // 그림체는 미장센의 '그림체' 항목에서 온다. 화면에 칸이 있는데
-          // 반영되지 않으면 정한 것이 무시되는 셈이다.
-          style: styleOfCut(cut),
+          // 화풍은 표현 스타일 하나가 정한다. 글로 받던 그림체 칸은 없앴다 —
+          // 앵커 이미지보다 약해서, 어긋나면 어차피 무시되는 쪽이었다.
           stylePreset: panelStylePreset,
-          // 2D 구조도의 배치. 컷마다 콘솔이 좌우로 옮겨 다니는 것을
+          // 이 컷이 속한 단계의 배치. 컷마다 콘솔이 좌우로 옮겨 다니는 것을
           // 글로만 막기는 어렵다.
-          layout: layoutLine,
+          layout: layout.line,
           // 생성 바에서 고른 모델을 그대로 보낸다. 재생성도 같은 함수로
           // 들어오므로 새로 고른 기준이 모든 패널에 일관되게 적용된다.
           model: panelImageModel,
@@ -3722,23 +3785,23 @@ export default function StoryboardView() {
 
                   {hasActiveSceneState ? (
                   <>
-                  {/* 기준 이미지를 만들기 전에 씬 전체에 걸리는 그림체를 먼저
-                      정한다. 여기서 만든 값이 레퍼런스와 이후 모든 패널에
-                      동일하게 전달된다. */}
-                  <label className="rail-scene-style">
-                    <span>그림체</span>
-                    <input
-                      type="text"
-                      value={styleDraft}
-                      placeholder="기본 · 흑백 절제된 스토리보드 선화"
-                      onChange={(event) => setStyleDraft(event.target.value)}
-                      onBlur={commitStyle}
-                      onKeyDown={(event) => {
-                        if (event.key === 'Enter') event.currentTarget.blur()
-                        if (event.key === 'Escape') setStyleDraft(sceneStyle)
-                      }}
+                  {/* 기준 이미지를 만들기 전에 씬 전체에 걸리는 표현 밀도를
+                      먼저 정한다. 레퍼런스는 여기서 만들어지므로, 밀도가
+                      Panels에서 정해지면 기준 그림이 먼저 나오고 화풍이
+                      나중에 정해지는 역순이 된다.
+
+                      글로 받던 `그림체` 칸은 없앴다. 밀도를 그림으로 고르게
+                      되면서 같은 것을 두 곳에서 정하게 됐고, 글은 앵커
+                      이미지보다 약해 어긋나면 무시되는 쪽이었다. 조명·분위기
+                      같은 지시는 `장면 지시`(scenePromptNote)로 간다. */}
+                  <div className="rail-scene-style-preset">
+                    <span>표현 스타일</span>
+                    <StylePresetPicker
+                      value={panelStylePreset}
+                      onChange={setPanelStylePreset}
+                      layout="row"
                     />
-                  </label>
+                  </div>
                   {scriptScenes.length > 1 && (
                     <div className="rail-scene-switcher" aria-label="씬 기준 선택">
                       {scriptScenes.map((scriptScene) => (
@@ -3802,9 +3865,22 @@ export default function StoryboardView() {
                                     {isReferenceImagePending('character', character.id) ? '다시 그리는 중…' : '다시 생성'}
                                   </button>
                                 )}
+                                {staleStyleLabel(character) && (
+                                  <span className="rail-reference-stale-style">
+                                    {staleStyleLabel(character)}
+                                  </span>
+                                )}
                               </div>
                               {character.facts.map((fact) => (
-                                <SceneFactRow key={fact.label} fact={fact} onCommit={(value) => setSceneFact('character', fact.label, value, { characterId: character.id })} />
+                                <SceneFactRow
+                                  key={fact.label}
+                                  fact={fact}
+                                  // 기본은 작품 기준을 고치는 것이다 — 이 인물이
+                                  // 나오는 모든 씬이 함께 바뀐다.
+                                  onCommit={(value) => setSceneFact('character', fact.label, value, { characterId: character.id })}
+                                  onScopedCommit={(value) => setSceneFact('character', fact.label, value, { characterId: character.id, scoped: true })}
+                                  onRevert={() => clearCharacterOverride(character.id, fact.label)}
+                                />
                               ))}
                             </div>
                             {character.image && (
@@ -3882,6 +3958,11 @@ export default function StoryboardView() {
                                     {isReferenceImagePending('location') ? '다시 그리는 중…' : '다시 생성'}
                                   </button>
                                 )}
+                                {staleStyleLabel(location) && (
+                                  <span className="rail-reference-stale-style">
+                                    {staleStyleLabel(location)}
+                                  </span>
+                                )}
                               </div>
                               {location.facts.map((fact) => <SceneFactRow key={fact.label} fact={fact} onCommit={(value) => setSceneFact('location', fact.label, value)} />)}
                             </div>
@@ -3923,9 +4004,10 @@ export default function StoryboardView() {
                           <strong>환경</strong>
                           <em>씬 전체</em>
                         </div>
-                        {/* 그림체는 여기 두지 않는다. 인물 외형·소품과 성격이
-                            다르고(모든 패널에 똑같이 걸린다), 그리기 직전인
-                            Panels 생성 바에서 정하는 것이 자연스럽다. */}
+                        {/* 화풍은 씬 기준 항목이 아니라 `표현 스타일`이 정한다.
+                            이 filter는 그 칸이 있던 시절에 저장된 상태를 위한
+                            것이다 — 값이 남아 있어도 목록에 다시 나타나지
+                            않게 한다. */}
                         {visibleSceneState.environment.facts
                           .filter((fact) => fact.label !== '그림체')
                           .map((fact) => (

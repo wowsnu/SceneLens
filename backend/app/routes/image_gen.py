@@ -26,6 +26,7 @@ async def enhance_sketch_endpoint(request: EnhanceSketchRequest):
             previous=request.previous,
             references=request.references,
             style=request.style,
+            style_preset=request.style_preset,
             layout=request.layout,
             mode=request.mode or "add",
         )

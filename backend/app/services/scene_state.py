@@ -22,7 +22,10 @@ from app.models.schemas import SceneFact, SceneStateRequest, SceneStateResponse
 # 컷별 변화(changes는 label로 붙는다)가 사라진다.
 CHARACTER_LABELS = ["성별·나이", "외형 기준", "체형", "기본 태도", "소지품"]
 LOCATION_LABELS = ["장소 정체", "고정 소품"]
-ENVIRONMENT_LABELS = ["시간", "그림체"]
+# 화풍은 여기 없다. 감독이 `표현 스타일`에서 그림으로 고르고, 그 선택이
+# 앵커 이미지로 생성에 물린다 — 글로 적은 값은 이미지보다 약해서 어긋나면
+# 무시되는 쪽이었다.
+ENVIRONMENT_LABELS = ["시간"]
 
 
 def _fact(labels):
@@ -106,6 +109,19 @@ PROMPT = """당신은 미장센 담당입니다. 대본을 읽고 이 씬의 기
 **대본에 나온 사람은 한 명도 빠뜨리지 마세요.** 이름 없이 "손님", "소년"처럼
 불리는 사람도 인물입니다. 여기서 빠지면 그 사람이 나오는 컷은 기준 없이
 그려져 매번 다른 얼굴이 됩니다. 뒤늦게 등장하는 인물도 넣으세요.
+
+**[앞 씬에서 확정된 인물]이 주어지면 같은 이름은 같은 사람입니다.**
+그 값을 **그대로 복사**하세요. 씬이 바뀌었다고 사람의 성별·나이·체형·
+옷차림이 바뀌지 않습니다. 이 씬의 대본에 외형 묘사가 없는 것은 정보가
+없다는 뜻이지 달라졌다는 뜻이 아닙니다 — 대본은 보통 인물을 처음 나올
+때만 묘사합니다. 근거 없이 새 값을 지어내면 같은 사람이 씬마다 다른
+사람으로 그려집니다.
+
+바꿀 수 있는 것은 **이 씬의 대본이 실제로 달라졌다고 말한 것뿐**입니다.
+  ✓ 앞 씬에서 "젖은 검은 코트" → 이 씬 대본에 "코트를 벗는다" → 바꾼다
+  ✗ 앞 씬에서 "여성, 20대 중반" → 이 씬 대본에 나이 언급 없음 → **그대로 둔다**
+  ✗ 앞 씬에서 "마른 체형, 큰 키" → 근거 없이 "보통 체형"으로 → 안 된다
+"성별·나이"와 "체형"은 사람이 바뀌지 않는 한 절대 달라지지 않습니다.
 - name: 이름
 - summary: **이 인물을 부르는 이름. 한 낱말에서 두 낱말. 10자 이내.**
   "이 사람은 누구인가"에 답하는 말이지, "지금 무엇을 하는가"가 아닙니다.
@@ -155,9 +171,9 @@ PROMPT = """당신은 미장센 담당입니다. 대본을 읽고 이 씬의 기
   · "고정 소품" — 화면에 늘 있는 것 (예: "모니터 벽, 콘솔")
 
 **environment** — 씬 전체에 걸리는 것.
-- facts: **아래 두 항목만.** 각 **15자 이내**.
+- facts: **아래 한 항목만.** **15자 이내**.
   · "시간" (예: "밤")
-  · "그림체" (예: "거친 연필 스케치")
+  화풍·그림체는 감독이 따로 고르므로 여기에 적지 마세요.
 
 **길게 쓰지 마세요.** 이 값들은 모든 컷의 프롬프트에 그대로 붙습니다.
 길면 정작 그 컷이 무엇을 보여주는지가 묻힙니다.
@@ -283,6 +299,22 @@ async def build_scene_state(request: SceneStateRequest) -> SceneStateResponse:
         user_content += f"\n\n[장면 의도] {request.scene_intention}"
     if request.cut_plan:
         user_content += f"\n\n[컷 플랜]\n{request.cut_plan}"
+    if request.known_characters:
+        # 앞 씬에서 이미 정한 사람. 같은 이름이면 그 값을 그대로 가져와야
+        # 한 인물이 씬마다 다른 사람으로 갈리지 않는다.
+        lines = []
+        for character in request.known_characters:
+            values = " · ".join(
+                f"{fact.label}: {fact.value}"
+                for fact in character.facts
+                if fact.value and not fact.open
+            )
+            lines.append(f"- {character.name}: {values or '(정해진 값 없음)'}")
+        user_content += (
+            "\n\n[앞 씬에서 확정된 인물]\n"
+            + "\n".join(lines)
+            + "\n이 인물이 이 씬에도 나오면 위 값을 **그대로** 복사하세요."
+        )
 
     client = AsyncOpenAI(api_key=api_key)
     response = await client.chat.completions.create(
