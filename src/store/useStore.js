@@ -2646,6 +2646,81 @@ const useStore = create((set, get) => ({
 
   rejectShotFix: () => set({ shotFixProposal: null, shotFixError: null }),
 
+  // 편집: 빠진 자리에 들어갈 컷을 받아 온다. 샷 수정본과 같은 흐름이다 —
+  // 제안을 받아 보여주고, 감독이 받아들이면 그때 표에 들어간다.
+  cutInsertPending: null,
+  cutInsertError: null,
+  cutInsertProposal: null,
+  requestCutInsert: async (finding) => {
+    const state = get()
+    if (!finding?.cutIds?.length) return
+
+    // 진단이 걸린 컷이 속한 씬만 보낸다. 씬을 넘어가면 다른 공간의 컷을
+    // 근거로 삼게 된다.
+    const scenes = selectScenes(state.screenplay)
+    const first = state.cutPlan.find((cut) => cut.id === finding.cutIds[0])
+    const scene = first ? sceneOfBeat(scenes, first.beat) : null
+    if (!scene) return
+    const cuts = state.cutPlan.filter((cut) => (
+      cut.beat >= scene.startBeat && cut.beat <= scene.endBeat
+    ))
+    if (cuts.length === 0) return
+
+    // 진단이 짚은 컷 **뒤**에 넣는다. 빠진 Beat를 짚은 진단이므로 그 앞
+    // 컷이 마지막으로 이어진 자리다.
+    const afterIndex = cuts.findIndex((cut) => cut.id === finding.cutIds[0])
+    if (afterIndex < 0) return
+
+    set({ cutInsertPending: finding.id, cutInsertError: null, cutInsertProposal: null })
+    try {
+      const { insertCut } = await import('../services/api.js')
+      const result = await insertCut({
+        heading: scene.heading,
+        script: state.screenplay
+          .filter((line) => line.beat >= scene.startBeat && line.beat <= scene.endBeat)
+          .map((line) => line.text)
+          .join('\n'),
+        cuts: cuts.map((cut) => ({
+          beat: cut.beat,
+          beat_order: cut.beatOrder,
+          content: cut.content || '',
+        })),
+        afterIndex,
+        findingTitle: finding.title,
+        findingDetail: finding.detail || '',
+        sceneIntention: state.sceneIntention || '',
+      })
+      set({
+        cutInsertPending: null,
+        cutInsertProposal: {
+          findingId: finding.id,
+          afterCutId: cuts[afterIndex].id,
+          beat: cuts[afterIndex].beat,
+          content: result.content,
+          purpose: result.purpose,
+          characters: result.characters,
+          reason: result.reason,
+        },
+      })
+    } catch (error) {
+      set({ cutInsertPending: null, cutInsertError: error.message })
+    }
+  },
+
+  acceptCutInsert: () => {
+    const proposal = get().cutInsertProposal
+    if (!proposal) return
+    // addCutPlanItem이 provenance를 정한다 — content가 있으면 AI가 쓴 것이다.
+    get().addCutPlanItem(proposal.afterCutId, proposal.beat, {
+      content: proposal.content,
+      purpose: proposal.purpose,
+      characters: proposal.characters,
+    })
+    set({ cutInsertProposal: null })
+  },
+
+  rejectCutInsert: () => set({ cutInsertProposal: null, cutInsertError: null }),
+
   removeCutPlanItem: (itemId) => set((state) => ({
     cutPlan: reorderCutPlan(state.cutPlan.filter((item) => item.id !== itemId)),
   })),

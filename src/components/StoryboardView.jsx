@@ -73,6 +73,10 @@ const SHOT_FIXABLE = new Set([
   'anchor-too-tight', 'approach-broken', 'peak-not-closest',
 ])
 
+// 컷을 넣어야 풀리는 진단. 샷 크기로는 풀리지 않는다 — 없는 컷의 크기를
+// 고칠 수는 없다.
+const CUT_INSERTABLE = new Set(['skipped-beat'])
+
 // 진단을 늘어놓는 순서. PROBLEM_LAYERS에 적힌 차례가 곧 좁은 층위에서
 // 넓은 층위로 가는 차례다(속성 → 컷 구성 → 컷 관계 → 씬 구조). 여기에
 // 순서를 다시 적지 않는 이유 — 두 벌이 되면 한쪽만 고쳐져 어긋난다.
@@ -245,6 +249,7 @@ function SceneFactChangeRow({ change, cutOptions, taken, onCommit, onMove, onRem
 function DiagnosisList({
   findings, emptyLabel, onGoTo,
   onRequestFix, fixPending, fixProposal, fixError, onAcceptFix, onRejectFix,
+  onRequestInsert, insertPending, insertProposal, insertError, onAcceptInsert, onRejectInsert,
 }) {
   if (findings.length === 0) {
     return <p className="rail-coverage-clear">{emptyLabel}</p>
@@ -268,7 +273,9 @@ function DiagnosisList({
         // 샷 크기로 풀리는 진단만 촬영에 물을 수 있다. 컷을 나누거나
         // 합쳐야 하는 것은 층위가 다르다.
         const canFix = Boolean(onRequestFix) && SHOT_FIXABLE.has(finding.type)
+        const canInsert = Boolean(onRequestInsert) && CUT_INSERTABLE.has(finding.type)
         const proposal = fixProposal?.findingId === finding.id ? fixProposal : null
+        const insertion = insertProposal?.findingId === finding.id ? insertProposal : null
         return (
           <li key={finding.id}>
             {/* 카드 전체가 그 컷으로 가는 길이다. `표에서 보기` 버튼을
@@ -300,8 +307,45 @@ function DiagnosisList({
               </div>
             )}
 
+            {canInsert && (
+              <div className="rail-fix-actions">
+                <button
+                  type="button"
+                  onClick={() => onRequestInsert(finding)}
+                  disabled={insertPending === finding.id}
+                >
+                  {insertPending === finding.id ? '편집에 묻는 중…' : '넣을 컷 받기'}
+                </button>
+              </div>
+            )}
+
             {canFix && fixError && fixPending !== finding.id && !proposal && (
               <p className="rail-fix-error">{fixError}</p>
+            )}
+
+            {canInsert && insertError && insertPending !== finding.id && !insertion && (
+              <p className="rail-fix-error">{insertError}</p>
+            )}
+
+            {/* 받은 컷을 먼저 보인다. 바로 표에 넣으면 감독이 무엇이
+                들어왔는지 모른 채 컷이 늘어난다 — 수락해야 들어간다. */}
+            {insertion && (
+              <div className="rail-fix">
+                <ul className="rail-fix-edits">
+                  <li>
+                    <div className="rail-fix-change">
+                      <strong>새 컷</strong>
+                      {insertion.purpose && <span>{insertion.purpose}</span>}
+                    </div>
+                    <p>{insertion.content}</p>
+                    {insertion.reason && <p className="rail-fix-why">{insertion.reason}</p>}
+                  </li>
+                </ul>
+                <div className="rail-fix-actions">
+                  <button type="button" onClick={onAcceptInsert}>수락</button>
+                  <button type="button" className="ghost" onClick={onRejectInsert}>거부</button>
+                </div>
+              </div>
             )}
 
             {/* 수락해야 표에 들어간다. 무엇이 어떻게 바뀌는지 먼저 보인다.
@@ -957,6 +1001,12 @@ export default function StoryboardView() {
   const clearCutPlanStageOverride = useStore((s) => s.clearCutPlanStageOverride)
   const cutPlanShotSizes = useStore((s) => s.cutPlanShotSizes)
   const requestShotFix = useStore((s) => s.requestShotFix)
+  const requestCutInsert = useStore((s) => s.requestCutInsert)
+  const cutInsertPending = useStore((s) => s.cutInsertPending)
+  const cutInsertProposal = useStore((s) => s.cutInsertProposal)
+  const cutInsertError = useStore((s) => s.cutInsertError)
+  const acceptCutInsert = useStore((s) => s.acceptCutInsert)
+  const rejectCutInsert = useStore((s) => s.rejectCutInsert)
   const shotFixPending = useStore((s) => s.shotFixPending)
   const shotFixProposal = useStore((s) => s.shotFixProposal)
   const shotFixError = useStore((s) => s.shotFixError)
@@ -3833,6 +3883,12 @@ export default function StoryboardView() {
                     emptyLabel="지금 구성에서 걸리는 것이 없습니다."
                     onGoTo={goToFindingCut}
                     onRequestFix={requestShotFix}
+                    onRequestInsert={requestCutInsert}
+                    insertPending={cutInsertPending}
+                    insertProposal={cutInsertProposal}
+                    insertError={cutInsertError}
+                    onAcceptInsert={acceptCutInsert}
+                    onRejectInsert={rejectCutInsert}
                     fixPending={shotFixPending}
                     fixProposal={shotFixProposal}
                     fixError={shotFixError}
@@ -3938,6 +3994,12 @@ export default function StoryboardView() {
                     emptyLabel="지금 이음새에서 걸리는 것이 없습니다."
                     onGoTo={goToFindingCut}
                     onRequestFix={requestShotFix}
+                    onRequestInsert={requestCutInsert}
+                    insertPending={cutInsertPending}
+                    insertProposal={cutInsertProposal}
+                    insertError={cutInsertError}
+                    onAcceptInsert={acceptCutInsert}
+                    onRejectInsert={rejectCutInsert}
                     fixPending={shotFixPending}
                     fixProposal={shotFixProposal}
                     fixError={shotFixError}
