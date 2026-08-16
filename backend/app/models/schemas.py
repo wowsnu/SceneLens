@@ -107,6 +107,7 @@ class EnhanceSketchRequest(BaseModel):
     previous: Optional[str] = ""
     references: List[EnhanceReference] = []
     style: Optional[str] = ""
+    style_preset: Literal["rough", "detailed", "photoreal"] = "rough"
     layout: Optional[str] = ""
     # "add" — 그린 것을 그대로 두고 선을 몇 개 보탠다.
     # "restyle" — 같은 그림을 씬의 그림체로 다시 그린다. 손으로 그린 패널과
@@ -752,6 +753,7 @@ class NarrativeCheckRequest(BaseModel):
     lines: List[str] = []
     scene_intention: Optional[str] = ""
     script: Optional[str] = ""
+    lens: Optional[Literal["editing", "camera"]] = None
 
     @model_validator(mode="after")
     def require_material(self):
@@ -782,6 +784,7 @@ class NarrativeCheckFinding(BaseModel):
     finding: str
     # 무엇을 하면 되는가. 대본을 고칠지 컷을 더할지가 여기서 갈린다.
     suggested_action: str
+    operation: Literal["keep", "split", "merge", "insert", "delete"] = "keep"
 
 
 class NarrativeCheckResponse(BaseModel):
@@ -914,7 +917,7 @@ class PanelImageRequest(BaseModel):
     # 2D 구조도를 문장으로 옮긴 것. 무엇이 어디에 있는지 컷마다 같아야 한다.
     layout: Optional[str] = ""
     # 생성 전에 고른 모델. 제공자 자동 감지보다 사용자 선택을 우선한다.
-    model: Literal["gpt-image-1", "gpt-image-2", "flux-2-pro"] = "gpt-image-1"
+    model: Literal["gpt-image-1", "gpt-image-2", "flux-2-klein"] = "gpt-image-1"
 
 
 class PanelImageResponse(BaseModel):

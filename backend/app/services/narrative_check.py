@@ -56,7 +56,7 @@ def _schema(rule_ids: list[str]) -> dict:
                         "additionalProperties": False,
                         "required": [
                             "rule_id", "cut_ids", "line_indexes",
-                            "finding", "suggested_action",
+                            "finding", "suggested_action", "operation",
                         ],
                         "properties": {
                             "rule_id": {"type": "string", "enum": rule_ids},
@@ -70,6 +70,7 @@ def _schema(rule_ids: list[str]) -> dict:
                             },
                             "finding": {"type": "string"},
                             "suggested_action": {"type": "string"},
+                            "operation": {"type": "string", "enum": ["keep", "split", "merge", "insert", "delete"]},
                         },
                     },
                 },
@@ -142,6 +143,23 @@ PROMPT = """{intro}
 - suggested_action: **한 문장, 50자 안쪽.** 무엇을 하면 되는지만 씁니다.
 - summary: **한 문장, 60자 안쪽.**
 
+컷 플랜 점검에서 finding을 낸다면 operation은 반드시 `split`, `merge`,
+`insert`, `delete` 중 하나를 고르세요. `split`은 한 컷을 나눌 때,
+`merge`는 인접한 두 컷을 합칠 때, `insert`는 빠진 화면이 필요할 때,
+`delete`는 독립된 기능이 없는 컷을 뺄 때만 씁니다. 어느 조작을 권할지
+정할 수 없으면 finding 자체를 내지 마세요. `keep`은 findings가 비어 있을
+때만 쓰는 값입니다. suggested_action에는 고른 조작과 그 이유를 한 문장으로
+구체적으로 쓰세요. 대본 점검에서는 항상 `keep`입니다.
+
+**split과 insert를 엄격히 구분하세요.**
+- 현재 한 컷 안에 앞뒤로 보여야 할 두 변화가 함께 들어 있다면 `split`입니다.
+  이미 적힌 사건을 두 컷으로 나누는 것이므로 새 사건이나 새 정보를 만들지 않습니다.
+- 현재 어느 컷도 맡지 않은 반응·결과·원인·공간 정보처럼, 관객이 이해하는 데
+  필요한 **화면 기능 자체가 비어 있을 때만** `insert`입니다. 단지 컷 수를
+  늘리거나 더 멋진 연출을 제안하려고 insert를 쓰지 마세요.
+- 기존 컷의 내용이나 역할을 바꾸거나 나누는 것으로 해결되면 insert가 아니라
+  split·merge·delete 중 하나를 고르세요.
+
 쉬운 말로 쓰세요. 감독이 읽는 것이지 이론서가 아닙니다.
   ✓ "2번과 3번 컷이 같은 상태를 반복해요"
   ✗ "연속된 컷에서 서사적 국면 전환이 부재하여 정체가 발생합니다"
@@ -198,11 +216,12 @@ async def check_narrative(request: NarrativeCheckRequest) -> NarrativeCheckRespo
     # 그린 뒤에 알면 다시 그려야 하므로 여기서 짚는 것이 싸다.
     if checking_cuts:
         rules = [
-            rule for rule in LENS_RULES["editing"]
-            if rule.id in {"editing-shot-function", "editing-information-order"}
-        ] + [
-            rule for rule in LENS_RULES["camera"]
-            if rule.id == "camera-information-selection"
+            rule for rule in LENS_RULES[request.lens or "editing"]
+            if rule.id in (
+                {"camera-information-selection"}
+                if request.lens == "camera"
+                else {"editing-shot-function", "editing-information-order"}
+            )
         ]
     else:
         rules = list(LENS_RULES["narrative"])
@@ -230,6 +249,14 @@ async def check_narrative(request: NarrativeCheckRequest) -> NarrativeCheckRespo
     result = NarrativeCheckResponse(
         **json.loads(response.choices[0].message.content.strip())
     )
+
+    # Cut Plan의 카드는 질문만 남기지 않는다. 처분을 고르지 못한 지적은
+    # 감독이 할 수 있는 일이 없으므로 여기서는 내지 않는다.
+    if checking_cuts:
+        result.findings = [
+            finding for finding in result.findings
+            if finding.operation != "keep"
+        ]
 
     # 없는 것을 가리키는 지적은 감독이 확인할 수 없다.
     if checking_cuts:

@@ -25,6 +25,7 @@ export default function GridView({
   onOpenShot = null,
   decisionScope = null,
   sequencePreview = null,
+  draftImages = {},
 }) {
   const scene = useStore((s) => s.scenes[s.activeScene])
   const branches = scene?.branches || []
@@ -105,7 +106,7 @@ export default function GridView({
 
   // 미리보기를 열 때 초안을 만든다. 두 컷 사이에 생략해 둔 것이 있으면
   // 그것도 넣는다 — 합치면 그 일이 한 컷 안에서 일어나기 때문이다.
-  const openMergePreview = (prevShot, shot, index) => {
+  const openMergePreview = (prevShot, shot, index, proposal = null) => {
     const cutIndex = cutPlan.findIndex((item) => item.id === prevShot.cutPlanItemId)
     if (cutIndex < 0 || cutIndex >= cutPlan.length - 1) return
     const seam = seams[seamKeyFor(prevShot.id)]
@@ -119,6 +120,7 @@ export default function GridView({
       cutId: prevShot.cutPlanItemId,
       index,
       losesDrawing: Boolean(shot.image),
+      proposal,
     })
   }
   // 진단에서 보낸 이음새 요청. 훅은 조건부 return보다 위에 있어야 한다.
@@ -168,11 +170,11 @@ export default function GridView({
     setOpenSeamId(seamFocusRequest.shotId)
     const index = shots.findIndex((entry) => entry.id === seamFocusRequest.shotId)
     if (seamFocusRequest.action === 'merge' && index >= 0 && shots[index + 1]) {
-      openMergePreview(shots[index], shots[index + 1], index + 1)
+      openMergePreview(shots[index], shots[index + 1], index + 1, seamFocusRequest.proposal)
     } else if (seamFocusRequest.action === 'split' && index >= 0) {
       const target = shots[index]
       if (target?.cutPlanItemId) {
-        setPendingEdit({ kind: 'split', cutId: target.cutPlanItemId, index })
+        setPendingEdit({ kind: 'split', cutId: target.cutPlanItemId, index, proposal: seamFocusRequest.proposal })
       }
     } else if (seamFocusRequest.action === 'insert' && index >= 0) {
       const target = shots[index]
@@ -180,7 +182,12 @@ export default function GridView({
         setInsertCandidates([])
         setInsertChoice(null)
         setInsertError(null)
-        setPendingEdit({ kind: 'insert', cutId: target.cutPlanItemId, index: index + 1 })
+        setPendingEdit({
+          kind: 'insert',
+          cutId: target.cutPlanItemId,
+          index: index + 1,
+          proposal: seamFocusRequest.proposal,
+        })
       }
     }
   }
@@ -281,7 +288,8 @@ export default function GridView({
           const isDecisionRangeEdge = inDecisionRange
             && (i === decisionScope.from || i === decisionScope.to)
           const activeLensPreview = shotPreview?.shotId === shot.id ? shotPreview : null
-          const displayImage = activeLensPreview?.image ?? shot.image
+          const hasDraftImage = Boolean(draftImages[shot.id]) && !activeLensPreview
+          const displayImage = activeLensPreview?.image ?? draftImages[shot.id] ?? shot.image
           const displayCir = activeLensPreview?.cir ?? shot.cir
 
           const gapKey = `${activeBranch}-${i}`
@@ -459,6 +467,7 @@ export default function GridView({
                   {activeLensPreview && (
                     <span className="grid-cell-lens-preview-badge">촬영 미리보기</span>
                   )}
+                  {hasDraftImage && <span className="grid-cell-draft-badge">새 초안</span>}
                   {shot.isAIGenerated && <span className="grid-cell-ai-badge">AI</span>}
 
                   {isHovered && shots.length > 1 && (
@@ -626,6 +635,14 @@ export default function GridView({
               <strong>{TITLES[kind]}</strong>
               <button type="button" onClick={() => setPendingEdit(null)} aria-label="닫기">✕</button>
             </header>
+
+            {pendingEdit.proposal?.detail && (
+              <div className="grid-edit-ai-proposal">
+                <span>편집 렌즈 제안</span>
+                {pendingEdit.proposal.title && <strong>{pendingEdit.proposal.title}</strong>}
+                <p>{pendingEdit.proposal.detail}</p>
+              </div>
+            )}
 
             <div className="grid-edit-diff">
               <div className="grid-edit-before">

@@ -245,7 +245,7 @@
      패널 목록을 밀어내려 그림을 볼 자리가 줄어든다. */
   grid-template-columns: minmax(0, 1fr) minmax(0, auto) auto auto;
   align-items: center;
-  gap: 16px;
+  gap: 10px;
   margin: 26px 0 14px;
   padding: 14px 16px;
   border: 1px solid rgba(129, 140, 248, 0.3);
@@ -257,7 +257,14 @@
 }
 
 .storyboard-generation-bar.expanded {
-  grid-template-columns: minmax(180px, 0.8fr) minmax(200px, 1fr) auto auto;
+  grid-template-columns: minmax(160px, 0.7fr) minmax(180px, 1fr) auto auto;
+}
+
+.generation-settings {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
 }
 
 .generation-bar-copy {
@@ -362,11 +369,52 @@
   opacity: 0.5;
 }
 
+.generation-style-picker { position: relative; }
+
+.generation-style-trigger {
+  display: grid;
+  grid-template-columns: 25px auto 10px;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 2px 7px 2px 3px;
+  border: 1px solid rgba(129, 140, 248, .32);
+  border-radius: 7px;
+  background: rgba(99, 102, 241, .10);
+  color: #dbe4ff;
+  font-size: 10px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.generation-style-trigger:hover { border-color: rgba(165, 180, 252, .7); }
+.generation-style-trigger:disabled { cursor: not-allowed; opacity: .5; }
+.generation-style-trigger img { width: 25px; height: 26px; border-radius: 4px; object-fit: cover; }
+
+.generation-style-popover {
+  position: absolute;
+  z-index: 30;
+  top: calc(100% + 7px);
+  right: 0;
+  width: 430px;
+  padding: 12px;
+  border: 1px solid rgba(129, 140, 248, .36);
+  border-radius: 10px;
+  background: #181926;
+  box-shadow: 0 14px 30px rgba(0, 0, 0, .35);
+}
+
+.generation-style-popover > p { margin: 0 0 10px; color: #a5b4fc; font-size: 12px; font-weight: 800; }
+.generation-style-popover > div { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.generation-style-popover button { padding: 5px; border: 1px solid transparent; border-radius: 7px; background: transparent; color: #a1a1aa; font-size: 11px; font-weight: 700; cursor: pointer; }
+.generation-style-popover button img { display: block; width: 100%; aspect-ratio: 1.35; object-fit: cover; border-radius: 5px; margin-bottom: 6px; }
+.generation-style-popover button:hover, .generation-style-popover button.active { border-color: rgba(129, 140, 248, .68); background: rgba(99, 102, 241, .13); color: #eef2ff; }
+
 .generation-bar-actions {
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: 6px;
 }
 
@@ -3613,10 +3661,10 @@
 /* 실제로 읽는 문장이다. 11px에서는 지적 내용이 눈에 안 들어와
    제목만 훑고 넘어가게 된다. */
 .rail-coverage p {
-  margin: 5px 0 0;
-  color: rgba(255, 255, 255, 0.6);
+  margin: 4px 0 0;
+  color: rgba(255, 255, 255, 0.68);
   font-size: 12.5px;
-  line-height: 1.6;
+  line-height: 1.48;
 }
 
 /* 카드 안의 실제 조치 버튼(`수정본 받기` 등). 카드 본문 버튼은 카드처럼
@@ -4188,16 +4236,17 @@
   gap: 6px;
   /* 카드 여백은 이제 본문 버튼이 갖는다. 조치 줄은 자기 여백을 스스로
      댄다 — 위쪽은 본문 버튼이 이미 아래 여백을 두므로 0이다. */
-  margin: 0;
-  padding: 0 11px 10px;
+  margin: 0 11px;
+  padding: 8px 0 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.09);
 }
 
 .rail-fix-actions button {
-  padding: 4px 11px;
-  border: 1px solid rgba(150, 190, 210, 0.5);
-  border-radius: 5px;
-  background: rgba(150, 190, 210, 0.18);
-  color: rgba(178, 214, 230, 0.98);
+  padding: 5px 11px;
+  border: 1px solid rgba(150, 190, 210, 0.58);
+  border-radius: 999px;
+  background: rgba(150, 190, 210, 0.14);
+  color: rgba(194, 224, 236, 0.98);
   font-family: inherit;
   font-size: 11px;
   font-weight: 700;

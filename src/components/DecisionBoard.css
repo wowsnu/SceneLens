@@ -47,11 +47,18 @@
 .scope-panel {
   flex-shrink: 0;
   display: flex;
-  gap: 12px;
-  align-items: center;
   min-height: 38px;
   padding: 4px 2px 8px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.075);
+}
+
+.scope-panel-row {
+  width: 100%;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 30px;
 }
 
 .scope-panel-copy {
@@ -82,6 +89,7 @@
   align-items: center;
   justify-content: flex-end;
   gap: 10px;
+  position: relative;
 }
 
 .scope-mode-toggle {
@@ -120,6 +128,112 @@
   opacity: 0.34;
 }
 
+/* 범위 입력은 항상 같은 자리에 있는 토글에서 뜬다. 선택기를 펼쳐도
+   상단 바나 아래 분석 결과가 밀리지 않는다. */
+.scope-range-popover {
+  position: absolute;
+  z-index: 30;
+  top: calc(100% + 7px);
+  right: 0;
+  width: min(276px, calc(100vw - 40px));
+  max-width: calc(100vw - 40px);
+  padding: 10px;
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  border-radius: 8px;
+  background: #171416;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.42);
+}
+
+.scope-range-popover-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 9px;
+}
+
+.scope-range-popover-heading span {
+  color: rgba(255, 255, 255, 0.38);
+  font-size: 9px;
+  font-weight: 850;
+  letter-spacing: 0.06em;
+}
+
+.scope-range-popover-heading strong {
+  color: #fde68a;
+  font-size: 10.5px;
+}
+
+.scope-range-fields {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: end;
+  gap: 6px;
+}
+
+.scope-range-fields label {
+  min-width: 0;
+}
+
+.scope-range-fields label > span {
+  display: block;
+  margin: 0 0 4px 1px;
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 9px;
+  font-weight: 750;
+}
+
+.scope-range-fields select {
+  width: 100%;
+  height: 27px;
+  min-width: 0;
+  padding: 0 4px;
+  border: 1px solid rgba(255, 255, 255, 0.13);
+  border-radius: 5px;
+  outline: none;
+  background: rgba(0, 0, 0, 0.28);
+  color: rgba(255, 255, 255, 0.82);
+  font: inherit;
+  font-size: 9.5px;
+}
+
+.scope-range-fields select:focus {
+  border-color: rgba(245, 158, 11, 0.55);
+}
+
+.scope-range-fields > i {
+  padding-bottom: 6px;
+  color: rgba(255, 255, 255, 0.32);
+  font-size: 12px;
+  font-style: normal;
+}
+
+.scope-range-popover-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.scope-range-popover-actions button {
+  height: 25px;
+  padding: 0 8px;
+  border: 1px solid rgba(255, 255, 255, 0.13);
+  border-radius: 5px;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.56);
+  font: inherit;
+  font-size: 9.5px;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.scope-range-popover-actions button.primary {
+  border-color: rgba(245, 158, 11, 0.4);
+  background: rgba(245, 158, 11, 0.14);
+  color: #fde68a;
+}
+
 .scope-mode-fixed {
   display: grid;
   place-items: center;
@@ -139,6 +253,26 @@
   gap: 5px;
   overflow-x: auto;
   padding: 2px 1px;
+}
+
+.scope-range-hint {
+  margin: 0 0 4px;
+  color: rgba(255, 255, 255, 0.45);
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.scope-range-picker {
+  position: absolute;
+  z-index: 10;
+  top: calc(100% + 7px);
+  right: 0;
+  width: min(360px, calc(100vw - 32px));
+  padding: 7px 9px 5px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 7px;
+  background: rgba(19, 22, 29, 0.98);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.32);
 }
 
 .scope-shot-strip button {
@@ -168,6 +302,12 @@
 
 .scope-shot-strip button.scope-edge {
   box-shadow: 0 0 0 1px rgba(245, 158, 11, 0.28);
+}
+
+.scope-shot-strip button.scope-anchor {
+  border-color: rgba(196, 181, 253, 0.72);
+  background: rgba(139, 92, 246, 0.18);
+  color: #ddd6fe;
 }
 
 .decision-board-main {
@@ -1968,6 +2108,11 @@ button.active .lens-glass::after {
   border: 1px solid rgba(251, 191, 36, 0.18);
   border-radius: 8px;
   background: rgba(15, 23, 42, 0.52);
+  cursor: pointer;
+}
+
+.directing-diagnosis-card:hover {
+  border-color: color-mix(in srgb, var(--lens-color), transparent 58%);
 }
 
 .directing-diagnosis-card > strong {
@@ -1982,10 +2127,23 @@ button.active .lens-glass::after {
   gap: 5px;
 }
 
-.directing-diagnosis-targets > span {
+.directing-diagnosis-targets > button {
   padding: 4px 7px;
+  border: 1px solid transparent;
   border-radius: 5px;
   background: color-mix(in srgb, var(--lens-color), transparent 87%);
+  color: color-mix(in srgb, var(--lens-color), white 22%);
+  font: inherit;
+  font-size: 10px;
+  font-weight: 850;
+  cursor: pointer;
+}
+
+.directing-diagnosis-targets > button:hover,
+.directing-diagnosis-targets > button.active {
+  border-color: color-mix(in srgb, var(--lens-color), transparent 44%);
+  background: color-mix(in srgb, var(--lens-color), transparent 76%);
+  color: color-mix(in srgb, var(--lens-color), white 44%);
 }
 
 .directing-evidence,
@@ -5594,6 +5752,7 @@ button.active .lens-glass::after {
 
 /* 보여만 주면 감독은 문장을 손으로 옮겨 적어야 한다. */
 .directing-prompt-before > span button {
+  flex: 0 0 auto;
   padding: 2px 7px;
   border: 1px solid rgba(255, 255, 255, 0.14);
   border-radius: 4px;
@@ -5603,6 +5762,7 @@ button.active .lens-glass::after {
   font-size: 9.5px;
   font-weight: 700;
   letter-spacing: 0;
+  white-space: nowrap;
   text-transform: none;
   cursor: pointer;
 }
@@ -5678,6 +5838,11 @@ button.active .lens-glass::after {
   border-color: rgba(147, 197, 253, 0.45);
   background: rgba(147, 197, 253, 0.16);
   color: rgba(191, 219, 254, 0.95);
+}
+
+.directing-prompt-editor button:disabled {
+  cursor: wait;
+  opacity: 0.55;
 }
 
 /* 이름과 적용 버튼을 한 줄에. 고르는 것과 적용하는 것이 붙어 있어야

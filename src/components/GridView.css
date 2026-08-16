@@ -309,6 +309,21 @@
   box-shadow: 0 4px 12px rgba(2, 6, 23, 0.32);
 }
 
+.grid-cell-draft-badge {
+  position: absolute;
+  top: 7px;
+  left: 7px;
+  padding: 4px 7px;
+  border: 1px solid rgba(110, 231, 183, 0.62);
+  border-radius: 999px;
+  background: rgba(8, 34, 29, 0.88);
+  color: rgba(209, 250, 229, 0.98);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  box-shadow: 0 4px 12px rgba(2, 6, 23, 0.32);
+}
+
 @keyframes lens-preview-in {
   from {
     opacity: 0.5;
@@ -895,6 +910,38 @@
 .grid-edit-preview header button:hover {
   background: rgba(255, 255, 255, 0.08);
   color: rgba(255, 255, 255, 0.85);
+}
+
+/* 분석 카드에서 이곳으로 온 경우에는, 이동한 뒤에도 제안의 맥락을
+   남긴다. 같은 문장을 diff 안에 반복하지 않고, 실행 전 판단으로만 둔다. */
+.grid-edit-ai-proposal {
+  margin: -2px 0 11px;
+  padding: 8px 10px;
+  border-left: 2px solid rgba(196, 150, 210, 0.7);
+  border-radius: 0 6px 6px 0;
+  background: rgba(196, 150, 210, 0.08);
+}
+
+.grid-edit-ai-proposal > span {
+  display: block;
+  margin-bottom: 3px;
+  color: rgba(212, 172, 226, 0.72);
+  font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+}
+
+.grid-edit-ai-proposal > strong {
+  display: block;
+  color: rgba(255, 255, 255, 0.87);
+  font-size: 11.5px;
+}
+
+.grid-edit-ai-proposal > p {
+  margin: 3px 0 0;
+  color: rgba(255, 255, 255, 0.58);
+  font-size: 11px;
+  line-height: 1.45;
 }
 
 .grid-edit-diff {

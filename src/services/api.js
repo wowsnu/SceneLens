@@ -276,7 +276,7 @@ export async function suggestNarrative({
 // cuts를 주면 컷 플랜 점검, lines를 주면 대본 점검. 규칙은 같고 보는
 // 것이 다르다 — 대본 단계에는 아직 컷이 없다.
 export async function checkNarrative({
-  cuts = [], lines = [], sceneIntention = '', script = '',
+  cuts = [], lines = [], sceneIntention = '', script = '', lens = null,
 }) {
   const data = await fetchWithTimeout(`${API_BASE}/narrative/check`, {
     method: 'POST',
@@ -294,6 +294,7 @@ export async function checkNarrative({
       lines,
       scene_intention: sceneIntention,
       script,
+      lens,
     }),
   }, 90000)
   return {
@@ -304,6 +305,7 @@ export async function checkNarrative({
       lineIndexes: finding.line_indexes || [],
       finding: finding.finding,
       suggestedAction: finding.suggested_action,
+      operation: finding.operation || 'keep',
     })),
   }
 }
@@ -385,7 +387,7 @@ export async function buildSpaceLayout({ heading, script, locationFacts = '' }) 
 // 이음새·샷이 전부 이 문장으로 모인다.
 export async function generatePanelImage(
   prompt, {
-    shared = '', previous = '', references = [], style = '', layout = '', model = 'gpt-image-1',
+    shared = '', previous = '', references = [], style = '', stylePreset = 'rough', layout = '', model = 'gpt-image-1',
   } = {},
 ) {
   const data = await fetchWithTimeout(`${API_BASE}/panel-image`, {
@@ -395,7 +397,7 @@ export async function generatePanelImage(
     // 둘 다 이 컷 하나만으로는 알 수 없는 것이라 따로 넘긴다.
     // references는 인물·공간의 레퍼런스 그림 — 글로만 기준을 주면
     // 컷마다 다른 얼굴이 나온다.
-    body: JSON.stringify({ prompt, shared, previous, references, style, layout, model }),
+    body: JSON.stringify({ prompt, shared, previous, references, style, style_preset: stylePreset, layout, model }),
   }, 240000)
   return `data:image/png;base64,${data.image}`
 }

@@ -878,14 +878,6 @@ const composeShotDirection = (sceneIntention = '', scenePromptNote = '') => [
   scenePromptNote.trim() && `컷 플랜 이후 장면 전체 연출 지시: ${scenePromptNote.trim()}`,
 ].filter(Boolean).join('\n')
 
-// --- 촬영 렌즈: 커버리지 진단 -------------------------------------------
-// 촬영이 담당하는 shotSize·angle·cameraMove는 이미 컷 표의 컬럼이다.
-// 그래서 rail에서는 값을 또 편집하지 않고, 표가 보여주지 못하는 것을 짚는다 —
-// 한 컷만 봐서는 알 수 없고 여러 컷을 함께 읽어야 드러나는 문제들이다.
-// (DG1 P2: 보이는 것은 판정으로, 보이지 않는 공백은 질문으로 다룬다.)
-//
-// 각 진단은 컷을 지목한다. 고치는 것은 표에서 한다 — 진단은 발견이고
-// 처분은 사용자 몫이다 (design_goal.md: 발견과 처분의 분리).
 // 문제의 원인이 어느 층위에 있는가 (design_goal.md DG2).
 // 층위마다 개입 수단이 다르므로, 진단이 층위를 밝혀야 어디를 고쳐야 할지
 // 알 수 있다. 한 층위의 수정이 다른 층위의 결손을 만들지 않게 하는 것이
@@ -895,177 +887,6 @@ export const PROBLEM_LAYERS = {
   shot_structure: { label: '컷 구성', hint: '컷을 추가·삭제·분할·병합하는 문제입니다' },
   shot_relation: { label: '컷 관계', hint: '두 컷 이상의 연결을 다루는 문제입니다' },
   scene_structure: { label: '씬 구조', hint: '장면 전체의 순서와 정보 배치 문제입니다' },
-}
-
-const SHOT_SIZE_ORDER = ['Wide', 'Full', 'Medium', 'Bust', 'Close-Up', 'ECU']
-
-
-// 모델이 세운 카메라 흐름과 실제 샷이 어긋나는 지점을 짚는다.
-// 값을 고치지는 않는다 — 잠깐 물러났다 붙는 것은 실제 연출 기법이고,
-// 그것이 의도인지 실수인지는 창작자가 판정할 일이다.
-const diagnoseAgainstCoverage = (cutPlan, coverages, scenes) => {
-  const findings = []
-  const rank = (id) => {
-    const cut = cutPlan.find((item) => item.id === id)
-    return cut ? SHOT_SIZE_ORDER.indexOf(cut.shotSize) : -1
-  }
-  const label = (id) => {
-    const cut = cutPlan.find((item) => item.id === id)
-    return cut ? `${cut.beat + 1}-${cut.beatOrder}` : '?'
-  }
-
-  scenes.forEach((scene) => {
-    const coverage = coverages[scene.id]
-    if (!coverage) return
-
-    // 공간을 세우기로 한 컷이 좁게 잡혔다.
-    const tightAnchors = coverage.anchorCutIds.filter((id) => rank(id) > 1)
-    if (tightAnchors.length > 0) {
-      findings.push({
-        id: `cov-anchor-${scene.id}`,
-        type: 'anchor-too-tight',
-        layer: 'shot_relation',
-        title: `컷 ${tightAnchors.map(label).join(', ')} · 공간을 보여줄 컷인데 화면이 좁습니다`,
-        detail: '이 컷에서 장소를 보여주기로 했는데 인물에 붙어 있습니다. 넓게 잡아야 관객이 어디인지 압니다.',
-        cutIds: tightAnchors,
-      })
-    }
-
-    // 접근 구간에서 크기가 넓어졌다. 접근이 끊긴다.
-    let previous = null
-    const widened = []
-    coverage.approachCutIds.forEach((id) => {
-      const current = rank(id)
-      if (current < 0) return
-      if (previous !== null && current < previous) widened.push(id)
-      previous = current
-    })
-    if (widened.length > 0) {
-      findings.push({
-        id: `cov-approach-${scene.id}`,
-        type: 'approach-broken',
-        layer: 'shot_relation',
-        title: `컷 ${widened.map(label).join(', ')} · 점점 다가가다가 갑자기 물러납니다`,
-        detail: '인물에게 다가가며 긴장을 쌓는 중인데 이 컷에서 화면이 다시 넓어집니다. 일부러 숨을 돌리려던 것이면 그대로 두세요.',
-        cutIds: widened,
-      })
-    }
-
-    // 가장 중요한 컷보다 더 가까이 잡은 컷이 있다. 그러면 그 컷이 안 도드라진다.
-    if (coverage.peakCutId) {
-      const peak = rank(coverage.peakCutId)
-      const closer = cutPlan
-        .filter((cut) => cut.id !== coverage.peakCutId
-          && SHOT_SIZE_ORDER.indexOf(cut.shotSize) >= peak
-          && peak >= 0)
-        .map((cut) => cut.id)
-      if (closer.length > 0) {
-        findings.push({
-          id: `cov-peak-${scene.id}`,
-          type: 'peak-not-closest',
-          layer: 'shot_relation',
-          title: `컷 ${label(coverage.peakCutId)}이(가) 가장 클 차례인데 묻힙니다`,
-          detail: `이 장면에서 제일 힘을 줄 컷은 ${label(coverage.peakCutId)}입니다. 그런데 컷 ${closer.slice(0, 3).map(label).join(', ')}을(를) 그만큼 크게 잡아서, 정작 ${label(coverage.peakCutId)}이(가) 특별해 보이지 않습니다.`,
-          cutIds: [coverage.peakCutId, ...closer],
-        })
-      }
-    }
-  })
-
-  return findings
-}
-
-// 촬영 진단 — 한 컷 안의 문제. 이 컷이 무엇을 어떻게 보여주는가.
-// 컷 사이 문제(연속·점프컷·접근)는 편집이 본다. 층위가 다르다.
-export const diagnoseCoverage = (cutPlan = []) => {
-  if (cutPlan.length === 0) return []
-  const findings = []
-
-  // 샷 미정은 진단으로 내지 않는다. `샷 정하기 · N컷 미정` 버튼이 같은
-  // 것을 이미 말하고, 진단으로 두면 여기서는 고칠 수 없는 카드가 하나
-  // 늘 뿐이다 — 진단은 그 자리에서 처분할 수 있는 것만 짚는다.
-
-  // 컷 내용과 샷 크기가 어긋나는지는 여기서 보지 않는다. 키워드로
-  // 판단하던 것을 걷어냈다 — '화면'이나 '거리' 같은 말이 들어 있다고
-  // 문제인 것이 아니고, 그 컷이 무엇을 보여주려는 컷인지는 내용을 읽어야
-  // 안다. 컷 플랜 AI 점검(camera-information-selection)이 판단한다.
-
-  // 앵글이 밋밋한 컷(angle-flat)도 내지 않는다. 표에 앵글 칸이 없어서
-  // 짚어줘도 고칠 자리가 없고, 촬영에 수정본을 물을 수도 없다
-  // (SHOT_FIXABLE은 샷 크기로 풀리는 것만 받는다).
-  // 앵글을 표에서 다룰 수 있게 되면 그때 되살린다.
-
-  // 2. 공간을 세우는 컷 없이 시작하면 관객은 어디인지 모른다.
-  //    씬 범위의 문제라 촬영이 짚는다 — 한 컷을 고쳐서 될 일이 아니다.
-  const decided = cutPlan.filter((cut) => cut.shotSize)
-  if (decided.length > 0) {
-    const establishing = decided.some((cut) => SHOT_SIZE_ORDER.indexOf(cut.shotSize) <= 1)
-    if (!establishing) {
-      findings.push({
-        id: 'no-establishing',
-        type: 'no-establishing',
-        layer: 'scene_structure',
-        title: '여기가 어디인지 보여주는 컷이 없습니다',
-        detail: '컷이 전부 인물에 붙어 있어서, 관객은 장소를 모른 채 장면을 봅니다. 넓게 잡은 컷을 하나 넣어보세요.',
-        // 씬 전체의 문제다. 첫 컷만 짚으면 그 컷 하나가 잘못한 것처럼
-        // 읽히고, scene_structure는 원래 컷 2개 이상을 가리키는 층위다.
-        cutIds: decided.map((cut) => cut.id),
-      })
-    }
-  }
-
-  return findings
-}
-
-// 편집 진단 중 샷에 관한 것 — 컷을 이어 붙였을 때 어떻게 읽히는가.
-// 촬영이 아니라 편집인 이유: 이것들은 컷 하나를 고쳐서 해결되지 않고
-// 컷 사이의 관계를 다시 맺어야 한다 (design_goal.md DG2 P1).
-const diagnoseShotFlow = (cutPlan, coverages, scenes) => {
-  const findings = []
-
-  // 1. 같은 샷 크기가 이어지면 컷을 나눈 의미가 화면에 드러나지 않는다.
-  let runStart = 0
-  for (let i = 1; i <= cutPlan.length; i += 1) {
-    const ended = i === cutPlan.length || cutPlan[i].shotSize !== cutPlan[runStart].shotSize
-    if (ended) {
-      const run = i - runStart
-      if (run >= 3 && cutPlan[runStart].shotSize) {
-        findings.push({
-          id: `run-${cutPlan[runStart].id}`,
-          type: 'size-run',
-          layer: 'shot_relation',
-          title: `같은 크기로 ${run}컷이 이어집니다`,
-          detail: `${cutPlan[runStart].shotSize}가 계속되면 화면이 그대로인 것처럼 보여서, 관객은 컷이 넘어간 줄 모릅니다.`,
-          cutIds: cutPlan.slice(runStart, i).map((cut) => cut.id),
-        })
-      }
-      runStart = i
-    }
-  }
-
-  // 2. 크기 차이가 너무 작으면 컷이 튄다(점프컷).
-  cutPlan.forEach((cut, index) => {
-    if (index === 0 || !cut.shotSize) return
-    const prev = cutPlan[index - 1]
-    if (prev.beat !== cut.beat || !prev.shotSize) return
-    const gap = Math.abs(
-      SHOT_SIZE_ORDER.indexOf(cut.shotSize) - SHOT_SIZE_ORDER.indexOf(prev.shotSize),
-    )
-    if (gap === 1 && prev.angle === cut.angle && (cut.characters || '') === (prev.characters || '')) {
-      findings.push({
-        id: `jump-${cut.id}`,
-        type: 'jump-cut',
-        layer: 'shot_relation',
-        title: `컷 ${prev.beat + 1}-${prev.beatOrder} → ${cut.beat + 1}-${cut.beatOrder} · 이어 붙이면 화면이 툭 튑니다`,
-        detail: '두 컷의 크기도 앵글도 거의 같습니다. 이럴 때는 화면이 자연스럽게 넘어가지 않고 살짝 뛴 것처럼 보입니다.',
-        cutIds: [prev.id, cut.id],
-      })
-    }
-  })
-
-  // 3. 촬영이 세운 카메라 흐름과 실제 샷이 어긋나는 지점.
-  findings.push(...diagnoseAgainstCoverage(cutPlan, coverages, scenes))
-  return findings
 }
 
 // --- 이음새(seam): 컷과 컷 사이 -----------------------------------------
@@ -1115,78 +936,22 @@ export const isSeamMarked = (seam) => Boolean(
 //
 // 삽입·삭제는 표에 이미 있다(행마다 `+`). 그래서 여기서도 고치지 않고
 // 어느 이음새에 무엇이 있는지만 짚는다 (발견과 처분의 분리).
-export const diagnoseSeams = (cutPlan = [], screenplay = [], {
+export const diagnoseSeams = (cutPlan = [], {
   // 컷 → 패널 → 이음새. 이음새는 패널 사이에 붙으므로 컷에서 바로 찾을 수 없다.
   seams = {},
   shots = [],
-  // 촬영이 세운 카메라 흐름. 샷이 이어지는지는 편집이 본다.
-  coverages = {},
-  scenes = [],
 } = {}) => {
   if (cutPlan.length === 0) return []
-  const findings = [...diagnoseShotFlow(cutPlan, coverages, scenes)]
+  const findings = []
 
   const seamForCut = (cutId) => {
     const shot = shots.find((entry) => entry.cutPlanItemId === cutId)
     return shot ? seams[seamKeyFor(shot.id)] : undefined
   }
 
-  // 1. 한 컷에 사건이 여러 개 압축돼 있다. 대본의 액션 줄 수와 그 Beat의
-  //    컷 수를 견준다 — 행동이 여러 단계인데 컷이 하나면 화면이 그것을
-  //    한 장에 담을 수 없다.
-  const beats = [...new Set(cutPlan.map((cut) => cut.beat))]
-  beats.forEach((beat) => {
-    const inBeat = cutPlan.filter((cut) => cut.beat === beat)
-    const actions = screenplay.filter((el) => (el.beat ?? 0) === beat && el.type === 'action')
-    if (actions.length >= 3 && inBeat.length === 1) {
-      findings.push({
-        id: `dense-${beat}`,
-        type: 'compressed',
-        layer: 'shot_structure',
-        title: `Beat ${beat + 1} · 행동 ${actions.length}개가 컷 하나에 담겼습니다`,
-        detail: '대본에는 여러 단계로 적혀 있는데 컷이 하나뿐입니다. 한 장에 다 담으면 무엇이 먼저인지 안 보입니다. 나눠보세요.',
-        cutIds: inBeat.map((cut) => cut.id),
-        action: 'split',
-      })
-    }
-  })
-
-  // 2. 붙어 있는 두 컷이 같은 내용을 담고 있다. 컷을 나눈 값이 없다.
-  cutPlan.forEach((cut, index) => {
-    if (index === 0) return
-    const prev = cutPlan[index - 1]
-    if (!cut.content || !prev.content) return
-    if (cut.content.trim() === prev.content.trim()) {
-      findings.push({
-        id: `dup-${cut.id}`,
-        type: 'duplicate',
-        layer: 'shot_relation',
-        title: `컷 ${prev.beat + 1}-${prev.beatOrder}과(와) ${cut.beat + 1}-${cut.beatOrder}이(가) 같은 내용입니다`,
-        detail: '두 컷이 같은 것을 담고 있어서 하나는 없어도 됩니다. 합치거나 한쪽을 다시 써보세요.',
-        cutIds: [prev.id, cut.id],
-        action: 'merge',
-      })
-    }
-  })
-
-  // 3. Beat가 통째로 컷 없이 넘어갔다. 대본에 있는데 화면에 없는 것이다.
-  const scriptBeats = [...new Set(screenplay.map((el) => el.beat ?? 0))]
-  scriptBeats.forEach((beat) => {
-    if (cutPlan.some((cut) => cut.beat === beat)) return
-    const near = cutPlan.filter((cut) => cut.beat < beat).slice(-1)
-    findings.push({
-      id: `gap-${beat}`,
-      type: 'skipped-beat',
-      layer: 'shot_structure',
-      title: `Beat ${beat + 1}이(가) 컷 없이 넘어갔습니다`,
-      detail: '대본에는 있는데 컷이 하나도 없습니다. 이대로 그리면 이 대목은 화면에 안 나옵니다.',
-      cutIds: near.map((cut) => cut.id),
-      action: 'insert',
-    })
-  })
-
-  // 4. 시간이 흘렀다고 표시했는데 연결은 그냥 컷이다. 관객은 두 컷이
-  //    바로 이어진 것으로 읽는다 — 표시한 경과가 화면에 전달되지 않는다.
+  // 시간을 흘렸다고 정한 이음새가 기본 연결로 남아 있으면, 감독이 세운
+  // 시간 결정과 표의 표기가 충돌한다. 실제로 어떻게 보일지는 그림 뒤에
+  // 판단하되, 이 단계에서는 표기를 다시 확인할 수 있게만 짚는다.
   cutPlan.forEach((cut, index) => {
     if (index === 0) return
     const seam = seamForCut(cutPlan[index - 1].id)
@@ -1196,16 +961,16 @@ export const diagnoseSeams = (cutPlan = [], screenplay = [], {
         id: `elapsed-${cut.id}`,
         type: 'unmarked-elapsed',
         layer: 'shot_relation',
-        title: `컷 ${cutPlan[index - 1].beat + 1}-${cutPlan[index - 1].beatOrder} → ${cut.beat + 1}-${cut.beatOrder} · 시간이 흐른 게 안 보입니다`,
-        detail: '시간이 지났다고 적어 두었지만 화면은 그냥 이어집니다. 관객은 바로 다음 순간으로 읽습니다.',
+        title: `컷 ${cutPlan[index - 1].beat + 1}-${cutPlan[index - 1].beatOrder} → ${cut.beat + 1}-${cut.beatOrder} · 시간 경과 표기 확인`,
+        detail: '시간이 흘렀다고 정했지만 이음새는 기본 컷으로 남아 있습니다. 이 연결 방식이 의도와 맞는지 확인하세요.',
         cutIds: [cutPlan[index - 1].id, cut.id],
         action: 'seam',
       })
     }
   })
 
-  // 5. 생략한 것을 적어두고 아무 표시도 하지 않았다. 생략은 기록만으로
-  //    관객에게 전달되지 않는다 — 화면에 근거가 있어야 한다.
+  // 생략을 적은 이음새가 기본 연결로 남아 있으면, 생략의 표시 방식을
+  // 아직 정하지 않은 상태다. 이 역시 오류라고 단정하지 않고 확인으로 둔다.
   cutPlan.forEach((cut, index) => {
     if (index === 0) return
     const prev = cutPlan[index - 1]
@@ -1216,8 +981,8 @@ export const diagnoseSeams = (cutPlan = [], screenplay = [], {
         id: `elision-${cut.id}`,
         type: 'unmarked-elision',
         layer: 'shot_relation',
-        title: `컷 ${prev.beat + 1}-${prev.beatOrder} → ${cut.beat + 1}-${cut.beatOrder} · 건너뛴 게 안 보입니다`,
-        detail: `"${seam.elision}"을 건너뛰기로 했는데, 화면만 보면 그냥 이어지는 것처럼 읽힙니다.`,
+        title: `컷 ${prev.beat + 1}-${prev.beatOrder} → ${cut.beat + 1}-${cut.beatOrder} · 생략 표기 확인`,
+        detail: `“${seam.elision}”을 건너뛰기로 했습니다. 이 연결 방식이 그 생략을 전달하는지 확인하세요.`,
         cutIds: [prev.id, cut.id],
         action: 'seam',
       })
@@ -1946,6 +1711,8 @@ const useStore = create((set, get) => ({
   // 유지해야 한 보드 안에서 모델이 섞이지 않는다.
   panelImageModel: 'gpt-image-1',
   setPanelImageModel: (panelImageModel) => set({ panelImageModel }),
+  panelStylePreset: 'rough',
+  setPanelStylePreset: (panelStylePreset) => set({ panelStylePreset }),
   // 조명·그림체처럼 장면 전체에 걸리는 지시. 컷마다 반복하지 않는다.
   scenePromptNote: '',
   setScenePromptNote: (scenePromptNote) => set({ scenePromptNote }),
@@ -2022,7 +1789,6 @@ const useStore = create((set, get) => ({
           `컷 ${index + 1}: 시간 ${cut.time || '명시 없음'} · 장소 ${cut.place || '명시 없음'} · 등장 ${cut.characters || '없음'} · ${cut.content || ''}`
         )).join('\n')
 
-        // eslint-disable-next-line no-await-in-loop
         const built = await buildSceneState({
           heading: scene.heading,
           script,
@@ -2352,7 +2118,6 @@ const useStore = create((set, get) => ({
         const { time, place } = inferSceneContext(sceneLines)
         const sceneState = current.sceneStates[scene.id] || current.sceneStates['scene-0']
 
-        // eslint-disable-next-line no-await-in-loop
         const planned = await planCuts({
           heading: scene.heading,
           beats,
@@ -2413,7 +2178,6 @@ const useStore = create((set, get) => ({
           cut.beat >= scene.startBeat && cut.beat <= scene.endBeat
         ))
         if (cuts.length === 0) continue
-        // eslint-disable-next-line no-await-in-loop
         // 대본을 함께 보낸다. 컷 목록만으로는 어디가 중요한 대목인지 알 수 없다.
         const script = state.screenplay
           .filter((element) => (
@@ -3040,7 +2804,6 @@ const useStore = create((set, get) => ({
           .map((element) => element.text)
           .join('\n')
 
-        // eslint-disable-next-line no-await-in-loop
         const designed = await designSeams({ heading: scene.heading, cuts, script })
 
         designed.forEach((seam) => {
@@ -3116,8 +2879,10 @@ const useStore = create((set, get) => ({
   // action이 'merge'/'split'이면 그 미리보기까지 연다. 나누고 합치는 도구가
   // 이미 이음새에 있으므로, 진단은 그 자리로 보내기만 하면 된다.
   seamFocusRequest: null,
-  requestSeamFocus: (shotId, action = null) => set({
-    seamFocusRequest: { id: `seam-focus-${Date.now()}`, shotId, action },
+  requestSeamFocus: (shotId, action = null, proposal = null) => set({
+    // 진단 카드의 선택지를 이음새 편집창으로 함께 보낸다. 화면을 옮긴 뒤
+    // '왜 여기서 나누거나 넣으려 했는지'를 다시 기억에 의존하지 않는다.
+    seamFocusRequest: { id: `seam-focus-${Date.now()}`, shotId, action, proposal },
   }),
 
   requestPanelTool: (shotId, tool, payload = {}) => set({
@@ -3355,6 +3120,27 @@ const useStore = create((set, get) => ({
       // 점검은 실패해도 작업이 멈추면 안 된다. mock으로 채우지도 않는다 —
       // 서사가 짚지 않은 것을 짚은 것처럼 보이면 판단이 오염된다.
       set({ narrativeCheckPending: false, narrativeCheckError: error.message })
+    }
+  },
+  cameraCheck: null,
+  cameraCheckPending: false,
+  cameraCheckError: null,
+  requestCameraCheck: async () => {
+    const state = get()
+    if (state.cameraCheckPending || state.cutPlan.length === 0) return
+    set({ cameraCheckPending: true, cameraCheckError: null, cameraCheck: null })
+    try {
+      const { checkNarrative } = await import('../services/api.js')
+      logScaffold({ feature: 'lens', action: 'open', lens: 'camera', stage: 'cutplan' })
+      const result = await checkNarrative({
+        cuts: state.cutPlan,
+        sceneIntention: state.sceneIntention || '',
+        script: state.screenplay.map((element) => element.text).join('\n'),
+        lens: 'camera',
+      })
+      set({ cameraCheck: result, cameraCheckPending: false })
+    } catch (error) {
+      set({ cameraCheckPending: false, cameraCheckError: error.message })
     }
   },
   requestNarrativeSuggestions: async (input = {}) => {
@@ -4336,8 +4122,15 @@ const useStore = create((set, get) => ({
   // 아직 수락하지 않은 Panels AI 초안. Panels에서는 후보로 남겨 두되,
   // 관객 분석은 지금 화면에 보이는 그림을 읽어야 하므로 별도로 공유한다.
   panelDraftImages: {},
+  // 같은 컷을 다시 생성해도 이미지가 도착했다는 사실을 구분한다. 이미지
+  // 문자열만 보면 이전 초안이 남아 있을 때 완료 상태를 잘못 띄울 수 있다.
+  panelDraftVersions: {},
   setPanelDraftImage: (shotId, image) => set((state) => ({
     panelDraftImages: { ...state.panelDraftImages, [shotId]: image },
+    panelDraftVersions: {
+      ...state.panelDraftVersions,
+      [shotId]: (state.panelDraftVersions[shotId] || 0) + 1,
+    },
   })),
   clearPanelDraftImage: (shotId) => set((state) => {
     const panelDraftImages = { ...state.panelDraftImages }

@@ -131,7 +131,7 @@ function App() {
   if (zenMode) {
     return (
       <div className="zen-mode">
-        <DecisionBoard boardView={boardView} />
+        <DecisionBoard boardView="split" />
         <button className="zen-exit-btn" onClick={() => setZenMode(false)}>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
           Exit (Z)
@@ -181,40 +181,44 @@ function App() {
                 </button>
               ) : (
                 <>
-                  <button
-                    className="panel-control-btn"
-                    onClick={() => {
-                      // 그리는 중이면 그리기를 끝내고 나간다. 패널만 넓히면
-                      // 그리기 화면에 남은 채 왼쪽만 커져 어디에 있는지
-                      // 알 수 없게 된다.
-                      if (drawingWorkspaceOpen) {
-                        closeDrawingWorkspace()
-                        setLeftPanelVisible(true)
+                  {leftPanelVisible && (
+                    <button
+                      className="panel-control-btn"
+                      onClick={() => {
+                        // 그리는 중이면 그리기를 끝내고 나간다. 패널만 넓히면
+                        // 그리기 화면에 남은 채 왼쪽만 커져 어디에 있는지
+                        // 알 수 없게 된다.
+                        if (drawingWorkspaceOpen) {
+                          closeDrawingWorkspace()
+                          setLeftPanelVisible(true)
+                          setMaximizedPanel('left')
+                          return
+                        }
                         setMaximizedPanel('left')
-                        return
-                      }
-                      if (!leftPanelVisible) setLeftPanelVisible(true)
-                      else setMaximizedPanel('left')
-                    }}
-                    style={{ marginLeft: 'auto' }}
-                    title={drawingWorkspaceOpen ? '그리기를 끝내고 패널로' : '스토리보드를 넓게 보기'}
-                  >
-                    ← 스토리보드
-                  </button>
+                      }}
+                      style={{ marginLeft: 'auto' }}
+                      title={drawingWorkspaceOpen ? '그리기를 끝내고 패널로' : '스토리보드를 넓게 보기'}
+                    >
+                      ← 스토리보드
+                    </button>
+                  )}
                   <button
                     className="panel-control-btn"
                     onClick={() => setLeftPanelVisible(!leftPanelVisible)}
+                    aria-label={leftPanelVisible ? '왼쪽 패널 접기' : '왼쪽 패널 펼치기'}
                   >
                     {leftPanelVisible ? '‹' : '›'}
                   </button>
                 </>
               )}
             </div>
-            {leftPanelVisible && (
-              <div className="panel-content">
-                <StoryboardView />
-              </div>
-            )}
+            {/* 접힌 패널도 스토리보드의 생성 요청을 받을 수 있어야 한다.
+                검토 화면에서 재생성할 때 이 컴포넌트가 언마운트되면, 요청을
+                전달하려고 왼쪽 대본 패널을 강제로 다시 열어야 했다. 숨겨도
+                마운트는 유지해 패널을 열지 않고 백그라운드 재생성한다. */}
+            <div className="panel-content">
+              <StoryboardView />
+            </div>
           </section>
         )}
 

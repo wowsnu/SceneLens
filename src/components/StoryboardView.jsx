@@ -18,7 +18,6 @@ import useStore, {
   isSeamMarked,
   SEAM_JOINS,
   SEAM_ELAPSED,
-  diagnoseCoverage,
   diagnoseSeams,
   PROBLEM_LAYERS,
 } from '../store/useStore'
@@ -68,22 +67,6 @@ const layerOfCheckFinding = (finding) => {
 
 const EMPTY_SHOTS = []
 
-
-// 관객 관점 Initial Reading을 실제 화면으로 점검하기 위한 고정 테스트 시퀀스.
-// 생성 API의 결과가 아니라 public에 저장된 패널이므로, 비어 있는 컷에만
-// 명시적으로 연결한다. 기존 드로잉·가져온 이미지를 덮어쓰지 않는다.
-const VIEWER_TEST_PANEL_IMAGES = [
-  '/img/viewer-test/panel-01-control-room-establishing.png',
-  '/img/viewer-test/panel-02-jaein-enters.png',
-  '/img/viewer-test/panel-03-minho-looks-back.png',
-  '/img/viewer-test/panel-04-minho-turns.png',
-  '/img/viewer-test/panel-05-jaein-points-camera.png',
-  '/img/viewer-test/panel-06-monitor-wall.png',
-  '/img/viewer-test/panel-07-remote-revealed.png',
-  '/img/viewer-test/panel-08-jaein-cornered.png',
-  '/img/viewer-test/panel-09-child-platform.png',
-  '/img/viewer-test/panel-10-jaein-lunges.png',
-]
 
 // 줄 종류는 둘뿐이다. 대사·괄호·전환은 두지 않는다 — 정지 이미지가
 // 담을 수 없고, 스토리보드가 평가하려는 것도 아니다.
@@ -148,6 +131,37 @@ const rasterizeLayout = (svgDataUrl) => new Promise((resolve) => {
 const stripDataUrl = (value = '') => {
   if (!value.startsWith('data:image/')) return ''
   return value.replace(/^data:image\/\w+;base64,/, '')
+}
+
+const PANEL_STYLE_PRESETS = [
+  { id: 'rough', label: '러프 콘티', image: '/img/style-anchors/lab-rough-storyboard.png' },
+  { id: 'detailed', label: '디테일 스케치', image: '/img/style-anchors/lab-detailed-storyboard.png' },
+  { id: 'photoreal', label: '실사 프리비즈', image: '/img/style-anchors/lab-photoreal-previz.png' },
+]
+
+// 예시 데이터의 레퍼런스는 public 파일 경로이고, 사용자가 만든 레퍼런스는
+// data URL이다. 서버에는 어느 쪽이든 base64 PNG로 보내야 실제 입력 이미지가
+// 된다. 파일 경로를 버리면 화면에는 같은 인물이 보여도 생성 모델은 그 기준을
+// 한 번도 보지 못한다.
+const referenceImageBase64 = async (value = '') => {
+  const embedded = stripDataUrl(value)
+  if (embedded) return embedded
+  if (!value.startsWith('/')) return ''
+
+  try {
+    const response = await fetch(value)
+    if (!response.ok) return ''
+    const blob = await response.blob()
+    const dataUrl = await new Promise((resolve, reject) => {
+      const reader = new FileReader()
+      reader.onload = () => resolve(reader.result)
+      reader.onerror = reject
+      reader.readAsDataURL(blob)
+    })
+    return stripDataUrl(String(dataUrl || ''))
+  } catch {
+    return ''
+  }
 }
 
 function SceneFactRow({ fact, onCommit, cutOptions = [], onAddChange, onRemoveChange }) {
@@ -279,6 +293,7 @@ function DiagnosisList({
   findings, emptyLabel, onGoTo,
   onRequestFix, fixPending, fixProposal, fixError, onAcceptFix, onRejectFix,
   onRequestInsert, insertPending, insertProposal, insertError, onAcceptInsert, onRejectInsert,
+  onApplyEdit,
   cutLabelOf,
 }) {
   if (findings.length === 0) {
@@ -304,6 +319,7 @@ function DiagnosisList({
         // 합쳐야 하는 것은 층위가 다르다.
         const canFix = Boolean(onRequestFix) && SHOT_FIXABLE.has(finding.type)
         const canInsert = Boolean(onRequestInsert) && CUT_INSERTABLE.has(finding.type)
+        const canApplyEdit = Boolean(onApplyEdit) && ['split', 'merge', 'delete'].includes(finding.operation)
         const proposal = fixProposal?.findingId === finding.id ? fixProposal : null
         const insertion = insertProposal?.findingId === finding.id ? insertProposal : null
         const cutLabel = cutLabelOf?.(finding)
@@ -328,7 +344,7 @@ function DiagnosisList({
                   컷인지 목록에서 구분되지 않는다. */}
               {cutLabel && <span className="rail-coverage-cut">{cutLabel}</span>}
               <strong>{finding.title}</strong>
-              <p>{finding.detail}</p>
+              <p>{finding.suggestedAction || finding.detail}</p>
             </button>
             {canFix && (
               <div className="rail-fix-actions">
@@ -350,6 +366,13 @@ function DiagnosisList({
                   disabled={insertPending === finding.id}
                 >
                   {insertPending === finding.id ? '편집에 묻는 중…' : '넣을 컷 받기'}
+                </button>
+              </div>
+            )}
+            {canApplyEdit && (
+              <div className="rail-fix-actions">
+                <button type="button" onClick={() => onApplyEdit(finding)}>
+                  {finding.operation === 'split' ? '나누기' : finding.operation === 'merge' ? '합치기' : '삭제'}
                 </button>
               </div>
             )}
@@ -969,6 +992,7 @@ export default function StoryboardView() {
   const narrativeCheck = useStore((s) => s.narrativeCheck)
   // 지금 펼쳐 둔 지적. 누른 것만 대본에 표시된다.
   const [openFindingId, setOpenFindingId] = useState(null)
+  const [stylePickerOpen, setStylePickerOpen] = useState(false)
   // 패널을 격자로 모아 본다. 컷 하나씩만 보면 이어지는지 알 수 없다.
   const [panelGridView, setPanelGridView] = useState(false)
   const narrativeCheckPending = useStore((s) => s.narrativeCheckPending)
@@ -1054,14 +1078,21 @@ export default function StoryboardView() {
   const setScenePromptNote = useStore((s) => s.setScenePromptNote)
   const panelImageModel = useStore((s) => s.panelImageModel)
   const setPanelImageModel = useStore((s) => s.setPanelImageModel)
+  const panelStylePreset = useStore((s) => s.panelStylePreset)
+  const setPanelStylePreset = useStore((s) => s.setPanelStylePreset)
+  // Pro는 선택지에서 제외했다. 열려 있던 화면에 그 값이 남아 있어도 다음
+  // 생성이 실패하거나 빈 select가 되지 않도록 기본 모델로 돌린다.
+  useEffect(() => {
+    if (panelImageModel === 'flux-2-pro') setPanelImageModel('gpt-image-1')
+  }, [panelImageModel, setPanelImageModel])
   const requestCutPlan = useStore((s) => s.requestCutPlan)
   const cutPlanPending = useStore((s) => s.cutPlanPending)
   const cutPlanRunPending = useStore((s) => s.cutPlanRunPending)
   const cutPlanError = useStore((s) => s.cutPlanError)
-  const requestShotDesign = useStore((s) => s.requestShotDesign)
-  const shotDesignPending = useStore((s) => s.shotDesignPending)
-  const shotDesignError = useStore((s) => s.shotDesignError)
-  const sceneCoverages = useStore((s) => s.sceneCoverages)
+  const requestCameraCheck = useStore((s) => s.requestCameraCheck)
+  const cameraCheck = useStore((s) => s.cameraCheck)
+  const cameraCheckPending = useStore((s) => s.cameraCheckPending)
+  const cameraCheckError = useStore((s) => s.cameraCheckError)
   const updateCutPlanItem = useStore((s) => s.updateCutPlanItem)
   const addCutPlanItem = useStore((s) => s.addCutPlanItem)
   const removeCutPlanItem = useStore((s) => s.removeCutPlanItem)
@@ -1069,6 +1100,7 @@ export default function StoryboardView() {
   const acceptCutPlan = useStore((s) => s.acceptCutPlan)
 
   const [isEditingRaw, setIsEditingRaw] = useState(false)
+  const [appliedEditingFindingIds, setAppliedEditingFindingIds] = useState(() => new Set())
   const [rawText, setRawText] = useState('')
   const [rawSceneIntention, setRawSceneIntention] = useState('')
   // 장면 전체 지시는 컷 플랜을 확인한 뒤 적용한다. 입력 중인 문장이
@@ -1239,6 +1271,19 @@ export default function StoryboardView() {
     autoCheckedPlanKey.current = planKey
     requestNarrativeCheck('cutplan')
   }, [cutStage, cutPlan, requestNarrativeCheck])
+
+  // 촬영 점검은 샷이 모두 정해진 뒤에만 한 번 돌린다. 컷 플랜이 막
+  // 만들어진 순간에는 아직 크기가 비어 있으므로, 그때 점검하면 근거 없는
+  // 결과가 굳는다. 이후 표를 고치는 동안에는 자동 재호출하지 않고 버튼으로
+  // 다시 보게 한다.
+  const autoCameraCheckedPlanKey = useRef(null)
+  useEffect(() => {
+    if (cutStage !== 'cutplan' || cutPlan.length === 0 || undecidedShots > 0) return
+    const planKey = cutPlan[0].id
+    if (autoCameraCheckedPlanKey.current === planKey) return
+    autoCameraCheckedPlanKey.current = planKey
+    requestCameraCheck()
+  }, [cutStage, cutPlan, undecidedShots, requestCameraCheck])
 
   useEffect(() => {
     if (!panelToolRequest || handledPanelToolRequestId.current === panelToolRequest.id) return
@@ -1432,14 +1477,10 @@ export default function StoryboardView() {
     return `컷 ${shown}`
   }
 
-  const coverageFindings = diagnoseCoverage(cutPlan)
   // 컷 사이의 문제. scriptScenes가 필요하므로 그 뒤에 둔다.
-  const seamFindings = diagnoseSeams(cutPlan, screenplay, {
+  const seamFindings = diagnoseSeams(cutPlan, {
     seams,
     shots: flowShots,
-    // 샷이 이어지는지도 편집이 본다 — 컷 사이의 문제이기 때문이다.
-    coverages: sceneCoverages,
-    scenes: scriptScenes,
   })
   // 편집이 보여주는 진단 하나. 규칙으로 늘 계산되는 것(seamFindings)과
   // 눌러야 오는 AI 점검이 섞이지만, 둘 다 컷 구성의 문제라 목록을 나누면
@@ -1450,27 +1491,36 @@ export default function StoryboardView() {
   const editingFindings = [
     ...seamFindings,
     ...(narrativeCheck?.stage === 'cutplan' ? narrativeCheck.findings : [])
+      // 촬영 판단은 Cinematography rail에서만 보인다. 이전 요청 결과가
+      // 남아 있어도 Editing에서 샷 크기 처방으로 이어지면 안 된다.
+      .filter((finding) => finding.ruleId !== 'camera-information-selection')
       // 컷을 못 짚은 지적은 버린다. 데려다줄 자리가 없으면 목록에 있어도
       // 사용자가 할 수 있는 것이 없다.
       .filter((finding) => finding.cutIds?.length > 0)
       .map((finding) => ({
         id: `check-${finding.ruleId}`,
-        // DiagnosisList의 `수정본 받기`는 샷 크기로 풀리는 것만 받는다.
-        // AI 지적은 컷 구성의 문제라 거기 해당하지 않는다 — 표에서 보고
-        // 나누거나 합친다.
-        // 크기 문제는 촬영에 수정본을 물을 수 있다. 나머지는 컷 구성의
-        // 문제라 표에서 나누거나 합친다.
-        type: finding.ruleId === 'camera-information-selection'
-          ? 'size-mismatch'
-          : 'narrative-check',
+        type: finding.operation === 'insert' ? 'skipped-beat' : 'narrative-check',
+        operation: finding.operation,
         layer: layerOfCheckFinding(finding),
         title: NARRATIVE_RULE_LABELS[finding.ruleId] || '편집',
         // 무엇이 문제인지만. suggestedAction까지 붙이면 두 문장이 한 줄에
         // 들어가 카드가 길어지고, 조치는 아래 버튼이 이미 말한다.
         detail: finding.finding,
+        suggestedAction: finding.suggestedAction,
         cutIds: finding.cutIds,
       })),
   ]
+  const visibleEditingFindings = editingFindings.filter((finding) => !appliedEditingFindingIds.has(finding.id))
+  const cameraFindings = (cameraCheck?.findings || [])
+    .filter((finding) => finding.cutIds?.length > 0)
+    .map((finding) => ({
+      id: `camera-${finding.ruleId}`,
+      type: 'size-mismatch',
+      layer: 'attribute',
+      title: NARRATIVE_RULE_LABELS[finding.ruleId] || '촬영',
+      detail: finding.finding,
+      cutIds: finding.cutIds,
+    }))
   // 이 컷이 속한 씬의 기준. 없으면 기본값으로 떨어진다.
   // 상태 변화는 컷 id로 기록된다. 값을 읽을 때 순서로 옮길 표.
   const cutOrder = cutOrderOf(cutPlan)
@@ -1491,7 +1541,7 @@ export default function StoryboardView() {
 
   // 이 컷에 걸리는 레퍼런스 그림. 화면에 나오는 인물과 그 씬의 공간만
   // 넣는다 — 씬의 모든 인물을 매 컷에 물리면 없는 사람까지 그려진다.
-  const referencesForCut = (cut, layoutImage = null) => {
+  const referencesForCut = (cut, layoutImage = null, stylePreset = 'rough') => {
     const scene = withSharedReferences(sceneStateForCut(cut))
     if (!scene || !cut) return []
     const cast = (cut.characters || '').split(',').map((n) => n.trim()).filter(Boolean)
@@ -1501,19 +1551,24 @@ export default function StoryboardView() {
       .map((character) => ({
         name: character.name,
         kind: 'character',
-        image: stripDataUrl(character.image),
+        image: character.image,
       }))
-      // 레퍼런스로 만든 그림만 물린다. 예제 데이터의 파일 경로는 여기서 빠진다.
+      // data URL과 예시 데이터의 public 파일 경로를 모두 보존한다. 실제 요청
+      // 직전에 같은 base64 형식으로 바꾼다.
       .filter((entry) => entry.image)
-    if (stripDataUrl(scene.location?.image || '')) {
+    if (scene.location?.image) {
       refs.push({
         name: scene.location.name || '공간',
         kind: 'location',
-        image: stripDataUrl(scene.location.image),
+        image: scene.location.image,
       })
     }
     // 참조가 많을수록 느리고 서로를 흐린다. 인물 2명 + 공간이면 충분하다.
     const picked = refs.slice(0, 3)
+    const styleAnchor = PANEL_STYLE_PRESETS.find((preset) => preset.id === stylePreset)
+    if (styleAnchor) {
+      picked.unshift({ name: styleAnchor.label, kind: 'style', image: styleAnchor.image })
+    }
     if (layoutImage) {
       picked.push({
         name: scene.location?.name || '이 공간',
@@ -1637,7 +1692,6 @@ export default function StoryboardView() {
       ? selectedShots
       : allBlankShots
   const eligibleScopeShots = scopeShots.filter(({ shot, shotIdx }) => !getShotVisual(shot, shotIdx))
-  const viewerTestTargets = allBlankShots.slice(0, VIEWER_TEST_PANEL_IMAGES.length)
   const currentShotIds = new Set(flowShots.map((shot) => shot.id))
   const currentPanelCandidates = Object.values(panelCandidates)
     .filter((candidate) => currentShotIds.has(candidate.shotId))
@@ -1726,10 +1780,16 @@ export default function StoryboardView() {
           previous: previous?.effective || '',
           // 레퍼런스 그림이 있으면 물린다. 글만으로는 컷마다 같은 얼굴이
           // 나오지 않는다.
-          references: referencesForCut(cut, layoutImage),
+          references: (await Promise.all(
+            referencesForCut(cut, layoutImage, panelStylePreset).map(async (reference) => ({
+              ...reference,
+              image: await referenceImageBase64(reference.image),
+            })),
+          )).filter((reference) => reference.image),
           // 그림체는 미장센의 '그림체' 항목에서 온다. 화면에 칸이 있는데
           // 반영되지 않으면 정한 것이 무시되는 셈이다.
           style: styleOfCut(cut),
+          stylePreset: panelStylePreset,
           // 2D 구조도의 배치. 컷마다 콘솔이 좌우로 옮겨 다니는 것을
           // 글로만 막기는 어렵다.
           layout: layoutLine,
@@ -1766,16 +1826,6 @@ export default function StoryboardView() {
   }
   // 검토 화면의 `다시 그리기`가 이 참조로 부른다.
   generatePanelsRef.current = handleGeneratePanels
-
-  const connectViewerTestPanels = () => {
-    viewerTestTargets.forEach(({ shot }, index) => {
-      updateFlowShotById(shot.id, {
-        image: VIEWER_TEST_PANEL_IMAGES[index],
-        source: 'viewer-test',
-        isAIGenerated: false,
-      })
-    })
-  }
 
   const dismissPanelCandidate = (shotId) => {
     setPanelCandidates((current) => {
@@ -2768,18 +2818,6 @@ export default function StoryboardView() {
                 {eligibleScopeShots.length} blank panel{eligibleScopeShots.length === 1 ? '' : 's'} in scope
               </strong>
               <p>Existing drawings and imported images stay untouched.</p>
-              {/* 개발·시연용. 작업 흐름에 끼어들 이유가 없으므로 설명
-                  아래에 작게 둔다. */}
-              {viewerTestTargets.length > 0 && (
-                <button
-                  type="button"
-                  className="generation-viewer-test"
-                  onClick={connectViewerTestPanels}
-                  title="비어 있는 컷에 저장된 관객 검토용 패널을 순서대로 연결합니다"
-                >
-                  테스트 이미지 채우기 · {viewerTestTargets.length}
-                </button>
-              )}
             </div>
             <div className="generation-scope-tabs" aria-label="Generation scope">
               <button
@@ -2803,19 +2841,55 @@ export default function StoryboardView() {
                 All blanks {allBlankShots.length}
               </button>
             </div>
-            <label className="generation-model-picker">
-              <span>모델</span>
-              <select
-                value={panelImageModel}
-                onChange={(event) => setPanelImageModel(event.target.value)}
+            <div className="generation-settings">
+              <label className="generation-model-picker">
+                <span>모델</span>
+                <select
+                  value={panelImageModel}
+                  onChange={(event) => setPanelImageModel(event.target.value)}
+                  disabled={isGenerating}
+                  aria-label="이미지 생성 모델"
+                >
+                  <option value="gpt-image-1">GPT Image 1</option>
+                  <option value="gpt-image-2">GPT Image 2</option>
+                  <option value="flux-2-klein">FLUX.2 Klein (빠름)</option>
+                </select>
+              </label>
+              <div className="generation-style-picker">
+              <button
+                type="button"
+                className="generation-style-trigger"
+                onClick={() => setStylePickerOpen((open) => !open)}
                 disabled={isGenerating}
-                aria-label="이미지 생성 모델"
+                aria-expanded={stylePickerOpen}
               >
-                <option value="gpt-image-1">GPT Image 1</option>
-                <option value="gpt-image-2">GPT Image 2</option>
-                <option value="flux-2-pro">FLUX.2 Pro</option>
-              </select>
-            </label>
+                <img src={PANEL_STYLE_PRESETS.find((preset) => preset.id === panelStylePreset)?.image} alt="" />
+                <span>{PANEL_STYLE_PRESETS.find((preset) => preset.id === panelStylePreset)?.label}</span>
+                <span aria-hidden="true">⌄</span>
+              </button>
+              {stylePickerOpen && (
+                <div className="generation-style-popover" role="dialog" aria-label="표현 스타일 선택">
+                  <p>표현 스타일</p>
+                  <div>
+                    {PANEL_STYLE_PRESETS.map((preset) => (
+                      <button
+                        type="button"
+                        key={preset.id}
+                        className={panelStylePreset === preset.id ? 'active' : ''}
+                        onClick={() => {
+                          setPanelStylePreset(preset.id)
+                          setStylePickerOpen(false)
+                        }}
+                      >
+                        <img src={preset.image} alt="" />
+                        <span>{preset.label}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+              </div>
+            </div>
             <div className="generation-bar-actions">
               {/* 전체 생성은 한 번에 나오는데 화면은 Beat마다 한 줄씩
                   쌓아 보여 준다. 이어지는지 보려면 늘어놓고 봐야 한다. */}
@@ -3908,9 +3982,6 @@ export default function StoryboardView() {
                   {undecidedShots > 0 && (
                     <em className="rail-agent-badge is-warn">{undecidedShots}컷 미정</em>
                   )}
-                  {coverageFindings.length > 0 && (
-                    <em className="rail-agent-badge is-open">{coverageFindings.length}</em>
-                  )}
                   <svg className="rail-agent-caret" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
                     <path d="m6 9 6 6 6-6" />
                   </svg>
@@ -3923,42 +3994,34 @@ export default function StoryboardView() {
                   <button
                     type="button"
                     className="rail-lens-primary"
-                    onClick={requestShotDesign}
-                    disabled={shotDesignPending || cutPlan.length === 0}
+                    onClick={requestCameraCheck}
+                    disabled={cameraCheckPending || cutPlan.length === 0}
                   >
-                    {shotDesignPending
-                      ? '샷 정하는 중…'
-                      : undecidedShots > 0
-                        ? `샷 정하기 · ${undecidedShots}컷 미정`
-                        : '샷 다시 정하기'}
+                    {cameraCheckPending ? '촬영 점검 중…' : '촬영 다시 점검'}
                   </button>
-                  {shotDesignError && (
+                  {cameraCheckError && (
                     <p className="rail-lens-error">
-                      AI 호출 실패 · {shotDesignError}
+                      AI 호출 실패 · {cameraCheckError}
                     </p>
                   )}
+                  {cameraCheck && !cameraCheckPending && cameraFindings.length === 0 && (
+                    <p className="rail-check-summary">걸리는 것이 없습니다.</p>
+                  )}
+                  {cameraFindings.length > 0 && (
+                    <DiagnosisList
+                      findings={cameraFindings}
+                      emptyLabel=""
+                      onGoTo={goToFindingCut}
+                      onRequestFix={requestShotFix}
+                      cutLabelOf={cutLabelOf}
+                      fixPending={shotFixPending}
+                      fixProposal={shotFixProposal}
+                      fixError={shotFixError}
+                      onAcceptFix={acceptShotFix}
+                      onRejectFix={rejectShotFix}
+                    />
+                  )}
 
-                  {/* 편집과 같은 길을 쓴다 — 접힌 것을 펴고, 그 컷으로
-                      옮기고, 골라 두고, 한 번 깜빡인다. 진단이 짚은 컷을
-                      찾아가는 일은 렌즈마다 다를 이유가 없다. */}
-                  <DiagnosisList
-                    findings={coverageFindings}
-                    emptyLabel="지금 구성에서 걸리는 것이 없습니다."
-                    onGoTo={goToFindingCut}
-                    onRequestFix={requestShotFix}
-                    cutLabelOf={cutLabelOf}
-                    onRequestInsert={requestCutInsert}
-                    insertPending={cutInsertPending}
-                    insertProposal={cutInsertProposal}
-                    insertError={cutInsertError}
-                    onAcceptInsert={acceptCutInsert}
-                    onRejectInsert={rejectCutInsert}
-                    fixPending={shotFixPending}
-                    fixProposal={shotFixProposal}
-                    fixError={shotFixError}
-                    onAcceptFix={acceptShotFix}
-                    onRejectFix={rejectShotFix}
-                  />
                 </div>
                 )}
               </section>
@@ -4054,22 +4117,28 @@ export default function StoryboardView() {
                       고른 컷에 걸리므로, beat만 옮기면 짚어준 자리에 도착해도
                       고칠 것이 열리지 않는다. */}
                   <DiagnosisList
-                    findings={editingFindings}
+                    findings={visibleEditingFindings}
                     emptyLabel="지금 이음새에서 걸리는 것이 없습니다."
                     onGoTo={goToFindingCut}
-                    onRequestFix={requestShotFix}
                     cutLabelOf={cutLabelOf}
                     onRequestInsert={requestCutInsert}
                     insertPending={cutInsertPending}
                     insertProposal={cutInsertProposal}
                     insertError={cutInsertError}
-                    onAcceptInsert={acceptCutInsert}
+                    onAcceptInsert={() => {
+                      const findingId = cutInsertProposal?.findingId
+                      acceptCutInsert()
+                      if (findingId) setAppliedEditingFindingIds((current) => new Set([...current, findingId]))
+                    }}
                     onRejectInsert={rejectCutInsert}
-                    fixPending={shotFixPending}
-                    fixProposal={shotFixProposal}
-                    fixError={shotFixError}
-                    onAcceptFix={acceptShotFix}
-                    onRejectFix={rejectShotFix}
+                    onApplyEdit={(finding) => {
+                      const firstCutId = finding.cutIds?.[0]
+                      if (!firstCutId) return
+                      if (finding.operation === 'split') splitCut(firstCutId)
+                      if (finding.operation === 'merge') mergeCuts(firstCutId)
+                      if (finding.operation === 'delete') deleteCut(firstCutId)
+                      setAppliedEditingFindingIds((current) => new Set([...current, finding.id]))
+                    }}
                   />
                 </div>
                 )}

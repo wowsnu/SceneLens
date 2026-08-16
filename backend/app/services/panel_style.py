@@ -39,7 +39,23 @@ BASE_LOOK = (
 STYLE = f"{BASE_LOOK} {NO_TEXT} {ROUGHNESS}"
 
 
-def style_prelude(look: str = "") -> str:
-    """이 패널의 그림체 한 덩어리. look이 있으면 그것을 기본 대신 쓴다."""
-    chosen = look.strip() if look else BASE_LOOK
-    return f"{chosen} {NO_TEXT} {ROUGHNESS}"
+def style_prelude(look: str = "", preset: str = "rough") -> str:
+    """이 패널의 그림체 한 덩어리. preset은 앵커 카드의 표현 밀도다."""
+    chosen = look.strip()
+    if preset == "photoreal":
+        return (
+            "Cinematic photorealistic previsualization still. "
+            f"{chosen} {NO_TEXT} "
+            "Natural materials, believable lighting and a restrained neutral grade. "
+            "Preserve real camera perspective, practical production-design detail and "
+            "a grounded film-still feel. Do not make this glossy concept art or a beauty portrait."
+        )
+    if preset == "detailed":
+        return (
+            "Detailed monochrome graphite storyboard sketch. "
+            f"{chosen} {NO_TEXT} "
+            "Clear controlled linework and moderate tonal shading; retain a hand-drawn "
+            "planning-image quality, not a finished illustration. Faces and important "
+            "props may be resolved; peripheral space stays selectively simple."
+        )
+    return f"{chosen or BASE_LOOK} {NO_TEXT} {ROUGHNESS}"

@@ -36,6 +36,8 @@ def _decodable(value: str) -> bool:
 
 def _describe(ref) -> str:
     """레퍼런스가 무엇인지 한 줄로. 도면은 그림이 아니라 배치도임을 밝힌다."""
+    if ref.kind == "style":
+        return f"the rendering style reference {ref.name}"
     if ref.kind == "layout":
         return f"a top-down floor plan of {ref.name} (a diagram, not artwork)"
     if ref.kind == "location":
@@ -43,8 +45,8 @@ def _describe(ref) -> str:
     return f"the character {ref.name}"
 
 
-async def _generate_panel_with_bfl(prompt: str) -> PanelImageResponse:
-    """FLUX.2 Pro의 새 패널 생성 경로.
+async def _generate_panel_with_bfl(prompt: str, references: list) -> PanelImageResponse:
+    """FLUX.2 Klein 패널 생성 경로.
 
     BFL은 요청을 비동기로 받고 polling URL을 돌려준다. 결과 URL은 짧게만
     유효하므로 여기서 바로 내려받아 기존 API와 같은 base64 PNG로 돌려준다.
@@ -54,14 +56,42 @@ async def _generate_panel_with_bfl(prompt: str) -> PanelImageResponse:
         raise ValueError("BFL_API_KEY not found in environment variables")
 
     headers = {"accept": "application/json", "x-key": api_key}
+    endpoint = "flux-2-klein-9b-preview"
+    # BFL은 base64도 input_image로 받는다. Klein은 최대 4장까지라서 인물 →
+    # 공간 → 배치 순서의 기준을 우선한다.
+    max_references = 4
+    usable_references = [
+        ref for ref in references if _decodable(ref.image)
+    ][:max_references]
+    if usable_references:
+        inventory = "; ".join(
+            f"input image {index + 1}: {_describe(ref)}"
+            for index, ref in enumerate(usable_references)
+        )
+        prompt = "\n\n".join([
+            prompt,
+            f"Reference image inventory: {inventory}.",
+            "Use the input images as exact visual references, not loose inspiration. "
+            "Keep each referenced character's face, hair, build, clothing and "
+            "distinctive features consistent. Keep the referenced location consistent. "
+            "Use the style reference to keep the rendering medium, detail level and "
+            "lighting treatment consistent across every panel. "
+            "Use a character reference for identity, not its neutral pose; pose and "
+            "frame the character as this panel describes.",
+        ])
     payload = {
+        # 레퍼런스 inventory까지 붙인 최종 프롬프트여야 한다. 먼저 payload를
+        # 만들면 아래에서 보강한 역할 설명이 Flux 요청에는 빠진다.
         "prompt": prompt,
         "aspect_ratio": "16:9",
         "output_format": "png",
     }
+    for index, ref in enumerate(usable_references):
+        field = "input_image" if index == 0 else f"input_image_{index + 1}"
+        payload[field] = ref.image
     async with httpx.AsyncClient(timeout=90) as http:
         created = await http.post(
-            "https://api.bfl.ai/v1/flux-2-pro-preview",
+            f"https://api.bfl.ai/v1/{endpoint}",
             headers={**headers, "Content-Type": "application/json"},
             json=payload,
         )
@@ -97,7 +127,7 @@ async def generate_panel(request: PanelImageRequest) -> PanelImageResponse:
 
     # 그림체는 미장센이 정할 수 있다. 정하지 않았으면 기본 스케치체를 쓴다.
     # 글자·테두리 금지는 어떤 그림체에서도 유지되어야 한다.
-    parts = [style_prelude(request.style or "")]
+    parts = [style_prelude(request.style or "", request.style_preset)]
     if request.shared:
         parts.append(f"Consistent across every panel in this scene: {request.shared}")
     if request.layout:
@@ -129,8 +159,10 @@ async def generate_panel(request: PanelImageRequest) -> PanelImageResponse:
 
     # 생성 바에서 고른 모델이 우선이다. FLUX는 BFL API로, GPT Image는
     # OpenAI Images API로 보내며, 프롬프트 조립 규칙은 세 모델이 공유한다.
-    if request.model == "flux-2-pro":
-        return await _generate_panel_with_bfl("\n\n".join(parts))
+    if request.model == "flux-2-klein":
+        return await _generate_panel_with_bfl(
+            "\n\n".join(parts), request.references
+        )
 
     api_key = os.getenv("OPENAI_API_KEY")
     if not api_key:

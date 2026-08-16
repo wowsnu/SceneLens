@@ -6,9 +6,11 @@ import { GapFillPicker } from './GapFillPanel'
 import useStore from '../store/useStore'
 import './SceneOverview.css'
 
-function SplitShotFocus({ shotIndex, shotPreview, onClose, onNavigate }) {
+function SplitShotFocus({ shotIndex, shotPreview, draftImages, draftVersions, onClose, onNavigate }) {
   const scene = useStore((s) => s.scenes[s.activeScene])
   const setActiveShot = useStore((s) => s.setFlowActiveShot)
+  const screenplay = useStore((s) => s.screenplay)
+  const cutPlan = useStore((s) => s.cutPlan)
   const activeBranch = scene?.activeBranch ?? 0
   const shots = scene?.branches?.[activeBranch]?.shots || []
   const shot = shots[shotIndex]
@@ -16,11 +18,17 @@ function SplitShotFocus({ shotIndex, shotPreview, onClose, onNavigate }) {
   if (!shot) return null
 
   const preview = shotPreview?.shotId === shot.id ? shotPreview : null
-  const image = preview?.image ?? shot.image
+  const image = preview?.image ?? draftImages?.[shot.id] ?? shot.image
   const cir = preview?.cir ?? shot.cir ?? {}
+  const scriptLines = screenplay
+    .filter((line) => line.type === 'action' && (line.beat ?? 0) === (shot.scriptBeat ?? 0))
+    .map((line) => line.text)
+    .filter(Boolean)
+  // 대본이 아직 비어 있거나 이 컷만 별도로 추가된 경우에도, 컷에 적힌
+  // 사건은 남긴다. 확대 패널에서 그림과 무엇을 검토하는지 함께 읽는다.
+  const cutContent = cutPlan.find((cut) => cut.id === shot.cutPlanItemId)?.content || ''
+  const scriptText = scriptLines.join(' ') || cutContent
   const details = [
-    ['Beat', `Beat ${(shot.scriptBeat ?? 0) + 1}`],
-    ['샷 크기', cir.shotSize],
     ['관계', cir.relation],
     ['앵글', cir.angle || cir.horizontalAngle || cir.verticalLevel],
     ['프레이밍', cir.framing || cir.viewpointFraming],
@@ -45,12 +53,23 @@ function SplitShotFocus({ shotIndex, shotPreview, onClose, onNavigate }) {
 
       <div className="split-shot-focus-frame">
         {image ? (
-          <img src={image} alt={shot.label} />
+          <img
+            key={`${shot.id}:${preview ? 'preview' : draftVersions?.[shot.id] || 0}`}
+            src={image}
+            alt={shot.label}
+          />
         ) : (
           <span>S{shotIndex + 1}</span>
         )}
         {preview && <em>촬영 미리보기</em>}
       </div>
+
+      {scriptText && (
+        <section className="split-shot-script" aria-label={`S${shotIndex + 1} 대본`}>
+          <span>대본</span>
+          <p>{scriptText}</p>
+        </section>
+      )}
 
       <dl>
         {details.map(([label, value]) => (
@@ -87,8 +106,13 @@ export default function SceneOverview({
   compact = false,
   decisionScope = null,
   sequencePreview = null,
+  viewerReadingSlot = null,
+  viewerFocusShotIndex = null,
+  lensFocusShotIndex = null,
+  onClearLensFocus = null,
 }) {
   const [focusedShotIndex, setFocusedShotIndex] = useState(null)
+  const visibleFocusedShotIndex = viewerFocusShotIndex ?? lensFocusShotIndex ?? focusedShotIndex
   const flowView = useStore((s) => s.flowView)
   const setFlowView = useStore((s) => s.setFlowView)
   const scenes = useStore((s) => s.scenes)
@@ -98,6 +122,10 @@ export default function SceneOverview({
   const removeScene = useStore((s) => s.removeScene)
   const overviewMode = useStore((s) => s.overviewMode)
   const setOverviewMode = useStore((s) => s.setOverviewMode)
+  // 아직 수락하지 않은 재생성본도 현재 검토 중인 결과다. Decision Board가
+  // 이전 그림만 계속 보여 주면 '프롬프트 적용'의 결과를 판정할 수 없다.
+  const panelDraftImages = useStore((s) => s.panelDraftImages)
+  const panelDraftVersions = useStore((s) => s.panelDraftVersions)
 
   return (
     <div className={`scene-overview ${compact ? 'compact' : ''}`}>
@@ -193,11 +221,16 @@ export default function SceneOverview({
       </div>
       )}
       <div className="scene-overview-body">
-        {compact && focusedShotIndex !== null ? (
+        {compact && visibleFocusedShotIndex !== null ? (
           <SplitShotFocus
-            shotIndex={focusedShotIndex}
+            shotIndex={visibleFocusedShotIndex}
             shotPreview={shotPreview}
-            onClose={() => setFocusedShotIndex(null)}
+            draftImages={panelDraftImages}
+            draftVersions={panelDraftVersions}
+            onClose={() => {
+              setFocusedShotIndex(null)
+              if (viewerFocusShotIndex === null) onClearLensFocus?.()
+            }}
             onNavigate={setFocusedShotIndex}
           />
         ) : compact ? (
@@ -207,6 +240,7 @@ export default function SceneOverview({
             onOpenShot={setFocusedShotIndex}
             decisionScope={decisionScope}
             sequencePreview={sequencePreview}
+            draftImages={panelDraftImages}
           />
         ) : overviewMode === 'film' ? (
           <FilmOverview />
@@ -217,6 +251,7 @@ export default function SceneOverview({
                 shotPreview={shotPreview}
                 decisionScope={decisionScope}
                 sequencePreview={sequencePreview}
+                draftImages={panelDraftImages}
               />
             )}
             {flowView === 'graph' && <GraphView />}
@@ -224,6 +259,7 @@ export default function SceneOverview({
           </>
         )}
       </div>
+      {viewerReadingSlot && <div className="scene-overview-viewer-slot">{viewerReadingSlot}</div>}
       <FillShotPicker />
       <GapFillPicker />
     </div>

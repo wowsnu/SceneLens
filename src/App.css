@@ -83,6 +83,27 @@
   max-width: 40px;
 }
 
+/* 재생성 요청을 받기 위해 접힌 상태에서도 StoryboardView는 마운트한다.
+   다만 40px 폭에서 그 내부 레이아웃이 그려지면 대본이 찌그러져 보이므로
+   내용만 숨긴다. visibility는 언마운트가 아니어서 생성 effect는 계속 돈다. */
+.left-panel.collapsed .panel-content {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.left-panel.collapsed .panel-header {
+  justify-content: center;
+  padding: 0 4px;
+}
+
+.left-panel.collapsed .panel-control-btn {
+  width: 30px;
+  min-width: 30px;
+  margin-left: 0 !important;
+  padding: 0;
+  justify-content: center;
+}
+
 .left-panel.maximized {
   flex: 1;
   max-width: 100vw;
