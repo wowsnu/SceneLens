@@ -1027,6 +1027,10 @@ export default function StoryboardView() {
   const [expandedPromptCutId, setExpandedPromptCutId] = useState(null)
   // 표에서 고른 컷. 편집 렌즈가 이 컷을 나누거나 합친다.
   const [selectedCutId, setSelectedCutId] = useState(null)
+  // 표에서 직접 고른 것인지, 진단이 짚어 보낸 것인지. 나누기·합치기는
+  // 앞의 경우에만 낸다 — 진단을 읽는 중에 컷 구성을 바꾸는 버튼이 함께
+  // 뜨면, 그 진단이 시키는 일로 읽힌다.
+  const [cutSelectedFromTable, setCutSelectedFromTable] = useState(false)
   // Panels 단계에서 인스펙터에 띄운 패널.
   const [inspectedShotId, setInspectedShotId] = useState(null)
   // 화살표를 그리는 중인 패널. 한 번에 하나만 그린다.
@@ -1987,6 +1991,7 @@ export default function StoryboardView() {
     }
     // 옮기기만 하면 어느 줄인지 모른다. 그 컷을 골라 둔다.
     setSelectedCutId(cutId)
+    setCutSelectedFromTable(false)
     // 펼쳐 둔 프롬프트가 있으면 닫는다. 그 자리에 긴 칸이 열려 있으면
     // 짚어준 컷이 화면 밖으로 밀린다.
     setExpandedPromptCutId(null)
@@ -2390,9 +2395,16 @@ export default function StoryboardView() {
                         <tr
                           data-cut-id={item.id}
                           className={`provenance-row-${item.provenance.toLowerCase()}${selectedCutId === item.id ? ' selected' : ''}`}
-                          onClick={() => setSelectedCutId(
-                            selectedCutId === item.id ? null : item.id,
-                          )}
+                          onClick={() => {
+                            // 진단이 짚어 보내 이미 골라져 있던 컷이면, 누른 것은
+                            // 끄려는 것이 아니라 여기서 직접 고치겠다는 뜻이다.
+                            // 그대로 토글하면 선택이 풀려 나누기·합치기가 안 열린다.
+                            const arrivedFromDiagnosis = selectedCutId === item.id && !cutSelectedFromTable
+                            setCutSelectedFromTable(true)
+                            if (!arrivedFromDiagnosis) {
+                              setSelectedCutId(selectedCutId === item.id ? null : item.id)
+                            }
+                          }}
                         >
                           <td className="col-cut">
                             <span className="cut-plan-number">
@@ -3887,7 +3899,7 @@ export default function StoryboardView() {
                       컷 구성을 바꾸는 일은 컷 플랜에서 하는 것이 맞다.
                       컷을 고르기 전 안내 문구는 두지 않는다 — 아무것도
                       할 수 없는 상태에서 자리만 차지한다. */}
-                  {selectedCutId && (() => {
+                  {selectedCutId && cutSelectedFromTable && (() => {
                     const index = cutPlan.findIndex((cut) => cut.id === selectedCutId)
                     const cut = cutPlan[index]
                     const next = cutPlan[index + 1]
