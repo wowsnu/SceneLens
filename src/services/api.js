@@ -427,27 +427,6 @@ export async function rewritePrompt({
   }, 60000)
 }
 
-// --- 편집: 진단 → 빠진 컷의 내용 --------------------------------------------
-// 빈 컷만 넣으면 진단이 "여기 빠졌다"까지만 하고 멈추는 것과 같다. 무엇이
-// 빠졌는지 말할 수 있어야 감독이 받아들일지 판정할 수 있다.
-export async function insertCut({
-  heading, script = '', cuts, afterIndex, findingTitle, findingDetail = '', sceneIntention = '',
-}) {
-  return fetchWithTimeout(`${API_BASE}/cut-insert`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      heading,
-      script,
-      cuts,
-      after_index: afterIndex,
-      finding_title: findingTitle,
-      finding_detail: findingDetail,
-      scene_intention: sceneIntention,
-    }),
-  }, 60000)
-}
-
 // --- 촬영: 진단 → 샷 수정본 ------------------------------------------------
 // 진단은 무엇이 잘못됐는지까지만 말한다. 어느 크기로 바꿀지는 그 컷이
 // 무엇을 보여주려는지 봐야 정해지고, 그것은 촬영의 판단이다.

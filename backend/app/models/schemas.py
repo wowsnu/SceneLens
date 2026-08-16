@@ -924,39 +924,6 @@ class ShotFixCut(BaseModel):
     shot_size: Optional[str] = ""
     dominant: Optional[str] = ""
 
-class CutInsertCut(BaseModel):
-    """컷 하나. 어디가 비었는지 세려면 순번이 필요하다."""
-    beat: int
-    beat_order: int
-    content: str = ""
-
-
-class CutInsertRequest(BaseModel):
-    """빠진 자리에 들어갈 컷의 내용을 받는다.
-
-    빈 컷만 넣으면 진단이 "여기 빠졌다"까지만 하고 멈추는 것과 같다.
-    무엇이 빠졌는지 말할 수 있어야 감독이 받아들일지 판정할 수 있다.
-    """
-
-    heading: str
-    # 진단이 걸린 씬의 대본. 없는 것을 지어내지 않게 하는 근거다.
-    script: str = ""
-    cuts: List[CutInsertCut]
-    # 이 순번의 컷 **뒤**가 비었다. -1이면 맨 앞이다.
-    after_index: int
-    finding_title: str
-    finding_detail: Optional[str] = ""
-    scene_intention: Optional[str] = ""
-
-
-class CutInsertResponse(BaseModel):
-    content: str
-    purpose: str
-    characters: str
-    # 왜 이 컷이 필요한지. 감독이 판정할 근거다.
-    reason: str
-
-
 class PromptRewriteRequest(BaseModel):
     """진단이 짚은 것을 지금 프롬프트에 반영한 문장을 받는다.
 
