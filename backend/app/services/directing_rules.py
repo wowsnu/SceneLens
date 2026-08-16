@@ -323,6 +323,37 @@ LENS_RULES: dict[DirectingLens, tuple[DirectingRule, ...]] = {
 }
 
 
+# 렌즈는 문제를 발견하는 관점이고, level은 고칠 위치다. 네 칸을 모두
+# 평가하되 결함을 억지로 만들지 않게, 각 조합에서 먼저 볼 내용을 짧게
+# 고정한다. 이는 개별 규칙의 판정 기준을 대체하지 않는다.
+LENS_LEVEL_FOCUS: dict[DirectingLens, dict[str, str]] = {
+    "narrative": {
+        "attribute": "이 컷이 맡은 사건·행동이 화면에서 읽히는가?",
+        "shot_structure": "이 컷에는 하나의 분명한 변화가 있는가?",
+        "shot_relation": "앞 컷에서 생긴 행동·질문·이유가 다음 컷으로 이어지는가?",
+        "scene_structure": "사건과 정보가 관객이 알아야 할 순서로 쌓이는가?",
+    },
+    "mise": {
+        "attribute": "인물·사물·공간의 위치와 관계가 의도대로 읽히는가?",
+        "shot_structure": "인물과 사물의 자리를 따로 보여주는 컷이 필요한가?",
+        "shot_relation": "인물·사물의 위치, 자세, 동선 변화가 설명되는가?",
+        "scene_structure": "공간의 지리와 인물 관계 변화가 장면 동안 길을 잃지 않고 쌓이는가?",
+    },
+    "camera": {
+        "attribute": "이 프레임·시점·거리로 필요한 정보와 관계가 보이는가?",
+        "shot_structure": "현재 커버리지에 이 정보나 관점을 맡을 컷이 필요한가, 혹은 빠졌는가?",
+        "shot_relation": "축·시선·화면 방향·움직임이 다음 컷의 보기 방식을 이어주는가?",
+        "scene_structure": "거리·각도·시점의 변화가 장면의 강조와 감정 변화를 쌓는가?",
+    },
+    "editing": {
+        "attribute": "이 이미지가 컷의 변화나 정보를 선명하게 멈춰 세우는가?",
+        "shot_structure": "이 컷은 독립된 기능이 있는가, 아니면 삭제·병합·분할해야 하는가?",
+        "shot_relation": "이 전환에서 시간·행동·공간·주의가 이해되게 이어지는가?",
+        "scene_structure": "컷의 순서, 정보 공개, 반복과 간격이 장면의 리듬을 만드는가?",
+    },
+}
+
+
 def rule_prompt(lens: DirectingLens) -> str:
     """Render the lens rules as a compact, stable prompt packet."""
     blocks = []
@@ -338,6 +369,20 @@ def rule_prompt(lens: DirectingLens) -> str:
             )
         )
     return "\n".join(blocks)
+
+
+def level_focus_prompt(lens: DirectingLens) -> str:
+    """Render the four lens-specific review focuses for the model prompt."""
+    focus = LENS_LEVEL_FOCUS[lens]
+    return "\n".join(
+        [
+            "각 범위에서 아래 내용을 우선 검토하세요. 이 질문에 맞추어 결함을 만들지 말고, "
+            "화면 근거가 없으면 keep, 감독의 의도에 따라 갈리면 check로 남기세요.",
+            *(f"- {level}: {focus[level]}" for level in (
+                "attribute", "shot_structure", "shot_relation", "scene_structure",
+            )),
+        ]
+    )
 
 
 def validate_rule_choice(lens: DirectingLens, rule_id: str) -> None:

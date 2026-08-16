@@ -26,6 +26,7 @@ from app.models.schemas import (
 from app.services.directing_rules import (
     LENS_RULES,
     criterion_for_rule,
+    level_focus_prompt,
     rule_prompt,
     validate_rule_choice,
     validate_rule_theory_choice,
@@ -808,6 +809,7 @@ async def analyze_lens(
                 "비우세요. 선택한 규칙 ID를 diagnosis.rule_id에 정확히 복사하세요.\n"
                 f"{rule_prompt(lens)}"
             ),
+            f"[범위별 검토 초점]\n{level_focus_prompt(lens)}",
             # alternatives의 patch가 쓸 수 있는 값. 컷 표의 셀렉트와 같은
             # 목록이어야 감독이 누른 것이 그대로 적용된다.
             (

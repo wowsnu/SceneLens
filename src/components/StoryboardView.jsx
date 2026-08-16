@@ -42,10 +42,28 @@ const NARRATIVE_RULE_LABELS = {
 
 // AI 점검이 짚은 규칙이 어느 층위의 문제인가. 이것이 없으면 전부
 // '컷 구성'으로 뜬다 — 순서 문제도, 크기 문제도.
+//
+// 층위는 모델에게 묻지 않는다. 규칙이 무엇을 보는지가 층위를 이미 정하기
+// 때문이다 — `이 컷이 있어야 하는가`로 발견한 문제는 컷 하나의 문제고,
+// `크기가 담는가`는 그 컷의 값 문제다. 컷마다 달라지지 않는다.
+//
+// 다만 정보 순서는 짚은 컷 수로 갈린다. 두 컷의 앞뒤가 뒤집힌 것과 씬
+// 전체의 배치가 어긋난 것은 고치는 자리가 다르다. shot_relation과
+// scene_structure는 둘 다 컷 2개 이상을 요구하므로(schemas.py) 컷 하나만
+// 짚었으면 순서 문제로 성립하지 않는다.
 const CHECK_RULE_LAYERS = {
   'editing-shot-function': 'shot_structure',
-  'editing-information-order': 'scene_structure',
   'camera-information-selection': 'attribute',
+}
+
+const layerOfCheckFinding = (finding) => {
+  if (finding.ruleId === 'editing-information-order') {
+    const count = finding.cutIds?.length ?? 0
+    if (count >= 3) return 'scene_structure'
+    if (count === 2) return 'shot_relation'
+    return 'shot_structure'
+  }
+  return CHECK_RULE_LAYERS[finding.ruleId] || 'shot_structure'
 }
 
 const EMPTY_SHOTS = []
@@ -1416,7 +1434,7 @@ export default function StoryboardView() {
         type: finding.ruleId === 'camera-information-selection'
           ? 'size-mismatch'
           : 'narrative-check',
-        layer: CHECK_RULE_LAYERS[finding.ruleId] || 'shot_structure',
+        layer: layerOfCheckFinding(finding),
         title: NARRATIVE_RULE_LABELS[finding.ruleId] || '편집',
         // 무엇이 문제인지만. suggestedAction까지 붙이면 두 문장이 한 줄에
         // 들어가 카드가 길어지고, 조치는 아래 버튼이 이미 말한다.
