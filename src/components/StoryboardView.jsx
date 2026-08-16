@@ -279,6 +279,7 @@ function DiagnosisList({
   findings, emptyLabel, onGoTo,
   onRequestFix, fixPending, fixProposal, fixError, onAcceptFix, onRejectFix,
   onRequestInsert, insertPending, insertProposal, insertError, onAcceptInsert, onRejectInsert,
+  cutLabelOf,
 }) {
   if (findings.length === 0) {
     return <p className="rail-coverage-clear">{emptyLabel}</p>
@@ -305,6 +306,7 @@ function DiagnosisList({
         const canInsert = Boolean(onRequestInsert) && CUT_INSERTABLE.has(finding.type)
         const proposal = fixProposal?.findingId === finding.id ? fixProposal : null
         const insertion = insertProposal?.findingId === finding.id ? insertProposal : null
+        const cutLabel = cutLabelOf?.(finding)
         return (
           <li key={finding.id}>
             {/* 카드 전체가 그 컷으로 가는 길이다. `표에서 보기` 버튼을
@@ -321,6 +323,10 @@ function DiagnosisList({
                   {layer.label}
                 </span>
               )}
+              {/* 어느 컷의 이야기인지 적는다. 표에서 하이라이트되기는 하지만
+                  카드만 읽고는 알 수 없고, 지적이 여럿이면 어느 것이 어느
+                  컷인지 목록에서 구분되지 않는다. */}
+              {cutLabel && <span className="rail-coverage-cut">{cutLabel}</span>}
               <strong>{finding.title}</strong>
               <p>{finding.detail}</p>
             </button>
@@ -1403,6 +1409,26 @@ export default function StoryboardView() {
   })
   const referencesReadyForPanels = missingReferenceRequirements.length === 0
   // 여러 컷을 함께 읽어야 보이는 문제. scriptScenes가 필요하므로 그 뒤에 둔다.
+  // 지적이 어느 컷의 이야기인지. 제목이 이미 컷을 말하는 진단도 있어서
+  // 그때는 두 번 적지 않는다 — 규칙 진단은 대개 제목에 컷 번호가 들어 있고,
+  // AI 지적은 규칙 이름만 제목으로 쓰므로 여기서 붙는다.
+  const cutLabelOf = (finding) => {
+    const ids = finding.cutIds || []
+    if (ids.length === 0) return ''
+    const labels = ids
+      .map((id) => cutPlan.find((cut) => cut.id === id))
+      .filter(Boolean)
+      .map((cut) => `${cut.beat + 1}-${cut.beatOrder}`)
+    if (labels.length === 0) return ''
+    // 제목이 이미 그 컷을 말하고 있으면 붙이지 않는다.
+    if (labels.every((label) => finding.title?.includes(label))) return ''
+    // 여럿이면 처음과 끝만. 다섯 컷을 다 적으면 카드가 번호로 찬다.
+    const shown = labels.length > 2
+      ? `${labels[0]}–${labels[labels.length - 1]}`
+      : labels.join(', ')
+    return `컷 ${shown}`
+  }
+
   const coverageFindings = diagnoseCoverage(cutPlan)
   // 컷 사이의 문제. scriptScenes가 필요하므로 그 뒤에 둔다.
   const seamFindings = diagnoseSeams(cutPlan, screenplay, {
@@ -3917,6 +3943,7 @@ export default function StoryboardView() {
                     emptyLabel="지금 구성에서 걸리는 것이 없습니다."
                     onGoTo={goToFindingCut}
                     onRequestFix={requestShotFix}
+                    cutLabelOf={cutLabelOf}
                     onRequestInsert={requestCutInsert}
                     insertPending={cutInsertPending}
                     insertProposal={cutInsertProposal}
@@ -4028,6 +4055,7 @@ export default function StoryboardView() {
                     emptyLabel="지금 이음새에서 걸리는 것이 없습니다."
                     onGoTo={goToFindingCut}
                     onRequestFix={requestShotFix}
+                    cutLabelOf={cutLabelOf}
                     onRequestInsert={requestCutInsert}
                     insertPending={cutInsertPending}
                     insertProposal={cutInsertProposal}

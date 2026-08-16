@@ -3672,6 +3672,20 @@
   letter-spacing: 0.03em;
 }
 
+/* 어느 컷의 지적인지. 층위 태그 옆에 나란히 둔다 — 둘 다 이 지적이
+   무엇에 대한 것인지를 말하는 꼬리표다. */
+.rail-coverage-cut {
+  display: inline-block;
+  margin: 0 0 5px 5px;
+  padding: 2px 7px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 4px;
+  color: rgba(255, 255, 255, 0.62);
+  font-size: 10px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
 .rail-layer-tag.layer-attribute {
   background: rgba(255, 255, 255, 0.08);
   color: rgba(255, 255, 255, 0.55);
