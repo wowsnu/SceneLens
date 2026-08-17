@@ -8,6 +8,7 @@ import useStore, {
   selectCutPrompt,
   selectScenes,
   spatialStagesFor,
+  factValueAt,
   SEAM_JOINS,
   SEAM_ELAPSED,
 } from '../store/useStore'
@@ -52,7 +53,7 @@ const CREATIVE_LENSES = [
     glyph: '🎥',
     tagline: '어디서 볼 것인가',
     brief: '어디서, 얼마나 가까이, 어떤 톤으로 볼지 본다.',
-    prompt: '예: 공간은 보이되 감정 밀도는 잃지 않게',
+    prompt: '예: 좀 더 감정을 극대화하게',
     accent: '#3b82f6',
   },
   {
@@ -63,7 +64,7 @@ const CREATIVE_LENSES = [
     glyph: '✂️',
     tagline: '어디서 자르고 이을 것인가',
     brief: '몇 컷으로 나누고 어디서 끊을지 본다.',
-    prompt: '예: 깨달음의 정지를 더 오래 유지하기',
+    prompt: '예: 더 필요한 컷이 있을까',
     accent: '#ef4444',
   },
 ]
@@ -941,8 +942,69 @@ function buildMockRangePlan(pattern, scopedShots) {
 
 // 씬 안의 상태 변화를 보여주고 더한다 (DG2 P2).
 // 인물·장소·환경이 같은 모양을 쓴다 — 셋 다 컷을 가로지르며 변한다.
-function SceneFactChanges({ fact, group, characterId = null, shots, onAdd, onRemove, disabled = false }) {
+// 씬 안에서 변할 수 있는 항목. 나머지는 사람이 바뀌지 않는 한 그대로다 —
+// 다섯 항목이 각자 `+ 변화` 버튼을 갖고 있어 화면이 복잡했다.
+const CHANGEABLE_FACT_LABELS = new Set(['상태', '시간', '고정 소품'])
+
+// 변화를 적는 폼. 전에는 카드 밖 아래쪽에 따로 떠서, 어느 항목의 변화를
+// 쓰는지 스크롤해 올라가 확인해야 했다. 항목 바로 아래에서 쓴다.
+function FactChangeForm({ draft, shots, onChange, onCancel, onSave }) {
+  return (
+    <div className="mise-change-inline">
+      <label>
+        <span>시작 컷</span>
+        <select
+          value={draft.cutId || ''}
+          onChange={(event) => onChange({ ...draft, cutId: event.target.value })}
+        >
+          {/* 컷과 이어지지 않은 패널은 고를 수 없다 — 변화는 컷 id로 기록된다. */}
+          {shots.filter((shot) => shot.cutPlanItemId).map((shot, index) => (
+            <option
+              key={shot.id}
+              value={shot.cutPlanItemId}
+              disabled={
+                shot.cutPlanItemId !== draft.originalCutId
+                && draft.takenCutIds?.includes(shot.cutPlanItemId)
+              }
+            >
+              S{index + 1}
+            </option>
+          ))}
+        </select>
+      </label>
+      <input
+        value={draft.value}
+        placeholder="이렇게 바뀐다 · 예: 오래 앉아 지친 상태"
+        autoFocus
+        onChange={(event) => onChange({ ...draft, value: event.target.value })}
+        onKeyDown={(event) => {
+          if (event.key === 'Escape') onCancel()
+          if (event.key === 'Enter' && draft.value.trim() && draft.cutId) onSave()
+        }}
+      />
+      <div>
+        <button
+          type="button"
+          className="mise-change-save"
+          disabled={!draft.value.trim() || !draft.cutId}
+          onClick={onSave}
+        >
+          {draft.editing ? '저장' : '추가'}
+        </button>
+        <button type="button" onClick={onCancel}>취소</button>
+      </div>
+    </div>
+  )
+}
+
+function SceneFactChanges({
+  fact, group, characterId = null, shots, onAdd, onRemove, disabled = false,
+  // 이 항목의 변화를 쓰는 중이면 폼을 여기에 그린다.
+  draft = null, onDraftChange, onDraftCancel, onDraftSave,
+}) {
   if (fact.open) return null
+  // 생김새(성별·나이·체형·외형)에는 변화를 걸 수 없다.
+  if (!CHANGEABLE_FACT_LABELS.has(fact.label) && !(fact.changes || []).length) return null
 
   const orderedChanges = (fact.changes || [])
     .map((change) => ({
@@ -987,7 +1049,12 @@ function SceneFactChanges({ fact, group, characterId = null, shots, onAdd, onRem
   }
 
   return (
-    <section className="mise-fact-timeline" aria-label={`${fact.label} 상태 진행`}>
+    <section
+      // 변화가 없으면 머리글과 목록을 접는다. 값마다 `상태 진행` 상자가
+      // 붙으면 화면이 상자로 뒤덮인다.
+      className={`mise-fact-timeline${orderedChanges.length === 0 && !draft ? ' is-empty' : ''}`}
+      aria-label={`${fact.label} 상태 진행`}
+    >
       <header>
         <span>상태 진행</span>
         <small>각 단계는 다음 변화 전까지 유지됩니다.</small>
@@ -1025,23 +1092,33 @@ function SceneFactChanges({ fact, group, characterId = null, shots, onAdd, onRem
           )
         })}
       </ol>
-      <button
-        type="button"
-        className="mise-fact-add-change"
-        disabled={disabled || !nextShot}
-        onClick={() => onAdd({
-          group,
-          characterId,
-          label: fact.label,
-          cutId: nextShot?.cutPlanItemId || null,
-          originalCutId: null,
-          takenCutIds: [...usedCutIds],
-          value: '',
-          editing: false,
-        })}
-      >
-        + 다음 상태
-      </button>
+      {draft ? (
+        <FactChangeForm
+          draft={draft}
+          shots={shots}
+          onChange={onDraftChange}
+          onCancel={onDraftCancel}
+          onSave={onDraftSave}
+        />
+      ) : (
+        <button
+          type="button"
+          className="mise-fact-add-change"
+          disabled={disabled || !nextShot}
+          onClick={() => onAdd({
+            group,
+            characterId,
+            label: fact.label,
+            cutId: nextShot?.cutPlanItemId || null,
+            originalCutId: null,
+            takenCutIds: [...usedCutIds],
+            value: '',
+            editing: false,
+          })}
+        >
+          + 다음 상태
+        </button>
+      )}
     </section>
   )
 }
@@ -1271,6 +1348,21 @@ function DirectingReviewResult({
   const statusClass = { keep: 'clear', check: 'check', change: 'has-issue' }
   const diagnosisByLevel = new Map(diagnoses.map((diagnosis) => [diagnosis.level, diagnosis]))
 
+  // 어느 층위를 펴 두었나. `open`을 계산값으로만 주면 React가 매 렌더마다
+  // 그 값으로 되돌려, 감독이 눌러도 `keep` 카드는 열리지 않고 `change`
+  // 카드는 닫히지 않는다. 처음 상태는 판정에서 정하고 그 뒤는 여기서 든다.
+  const [openLevels, setOpenLevels] = useState(null)
+  const initialOpen = assessments
+    .filter((assessment) => assessment.status === 'change' || assessment.open_question)
+    .map((assessment) => assessment.level)
+  const openSet = openLevels ?? new Set(initialOpen)
+  const toggleLevel = (level) => setOpenLevels((current) => {
+    const next = new Set(current ?? initialOpen)
+    if (next.has(level)) next.delete(level)
+    else next.add(level)
+    return next
+  })
+
   if (!result) return null
 
   return (
@@ -1306,7 +1398,7 @@ function DirectingReviewResult({
             <details
               key={assessment.level}
               className={`directing-level-card ${statusClass[assessment.status]}`}
-              open={assessment.status === 'change' || Boolean(assessment.open_question)}
+              open={openSet.has(assessment.level)}
             >
               {/* 기준은 이 카드를 펴야 보인다. summary 클릭만 센다 —
                   기본 열림인 details는 마운트 때 onToggle이 한 번 발생해서
@@ -1314,7 +1406,11 @@ function DirectingReviewResult({
                   들어오므로 열려 있던 카드를 접은 경우는 뺀다. */}
               <summary
                 onClick={(event) => {
-                  const closing = event.currentTarget.parentElement?.open
+                  // open을 state로 들고 있으므로 브라우저 기본 동작을 막고
+                  // 여기서 직접 토글한다. 막지 않으면 DOM과 state가 갈린다.
+                  event.preventDefault()
+                  const closing = openSet.has(assessment.level)
+                  toggleLevel(assessment.level)
                   if (closing || !diagnosis?.criterion) return
                   logScaffold({
                     feature: 'criterion',
@@ -1657,7 +1753,71 @@ export default function DecisionBoard({ boardView = 'split' }) {
   const removeFactChange = useStore((s) => s.removeFactChange)
   // 어느 컷부터 무엇으로 바뀌는지 입력받는 중.
   const [changeDraft, setChangeDraft] = useState(null)
-  const miseCharacters = sceneState.characters
+  // 이 항목의 변화를 지금 쓰는 중인가. 폼을 항목 아래에 그리려면
+  // 어느 항목인지 맞춰봐야 한다.
+  const draftFor = (group, label, characterId = null) => (
+    changeDraft
+      && changeDraft.group === group
+      && changeDraft.label === label
+      && (changeDraft.characterId || null) === characterId
+      ? changeDraft
+      : null
+  )
+  const saveChangeDraft = () => {
+    if (!changeDraft?.value.trim() || !changeDraft.cutId) return
+    // 인물 카드는 편집 중에 draft(characterDraft)를 그린다. 스토어에만 쓰면
+    // 화면에 안 나타나고, 이어서 Save를 누르면 draft가 스토어를 덮어써
+    // 방금 넣은 변화가 사라진다 — draft에도 같이 넣는다.
+    if (changeDraft.group === 'character' && characterDraft?.id === changeDraft.characterId) {
+      setCharacterDraft((current) => (current ? {
+        ...current,
+        facts: current.facts.map((fact) => {
+          if (fact.label !== changeDraft.label) return fact
+          const kept = (fact.changes || []).filter((entry) => (
+            entry.cutId !== changeDraft.cutId && entry.cutId !== changeDraft.originalCutId
+          ))
+          return {
+            ...fact,
+            changes: [...kept, { cutId: changeDraft.cutId, value: changeDraft.value.trim() }],
+          }
+        }),
+      } : current))
+    }
+    addFactChange(
+      changeDraft.group,
+      changeDraft.label,
+      changeDraft.cutId,
+      changeDraft.value.trim(),
+      { characterId: changeDraft.characterId },
+    )
+    // 시작 컷을 옮긴 경우 옛 자리의 변화를 지운다.
+    if (changeDraft.originalCutId && changeDraft.originalCutId !== changeDraft.cutId) {
+      removeFactChange(
+        changeDraft.group,
+        changeDraft.label,
+        changeDraft.originalCutId,
+        { characterId: changeDraft.characterId },
+      )
+    }
+    setChangeDraft(null)
+  }
+
+  // 삭제도 draft와 스토어 양쪽에서 지운다. 한쪽만 지우면 Save 때 되살아난다.
+  const removeCharacterAwareChange = (group, label, cutId, options = {}) => {
+    if (group === 'character' && characterDraft?.id === options.characterId) {
+      setCharacterDraft((current) => (current ? {
+        ...current,
+        facts: current.facts.map((fact) => (
+          fact.label === label
+            ? { ...fact, changes: (fact.changes || []).filter((entry) => entry.cutId !== cutId) }
+            : fact
+        )),
+      } : current))
+    }
+    removeFactChange(group, label, cutId, options)
+  }
+  // 고른 구간 시점의 값으로 보여 준다. 정의는 아래 activeStage 계산 뒤에 있다.
+  const miseCharactersRaw = sceneState.characters
   const [editingCharacterId, setEditingCharacterId] = useState(null)
   const [characterDraft, setCharacterDraft] = useState(null)
   const [locationReferenceOpen, setLocationReferenceOpen] = useState(false)
@@ -1730,10 +1890,88 @@ export default function DecisionBoard({ boardView = 'split' }) {
   const activeBranch = scene?.activeBranch ?? 0
   const branch = scene?.branches?.[activeBranch]
   const shots = useMemo(() => branch?.shots || [], [branch?.shots])
+  // 구간은 **이 씬 안에서만** 나뉜다. shots는 브랜치 전체(여러 씬)라, 그대로
+  // 넘기면 `S1–S19`처럼 씬을 넘어가는 구간이 나온다 — sceneState는 한 씬의
+  // 기준이므로 범위가 어긋난다.
+  const sceneShots = useMemo(() => {
+    const scenes = selectScenes(screenplay)
+    const activeScriptScene = scenes.find((entry) => entry.id === activeSceneId)
+    if (!activeScriptScene) return shots
+    return shots.filter((shot) => {
+      const cut = cutPlan.find((item) => item.id === shot.cutPlanItemId)
+      const beat = cut?.beat ?? shot.scriptBeat ?? 0
+      return beat >= activeScriptScene.startBeat && beat <= activeScriptScene.endBeat
+    })
+  }, [shots, cutPlan, screenplay, activeSceneId])
+
+  // 이 씬의 첫 컷이 보드 전체에서 몇 번째인가. 라벨을 감독이 보는 컷 번호로
+  // 맞추는 데 쓴다 — Scene 2의 첫 구간은 S1이 아니라 S16이다.
+  const sceneNumberFrom = useMemo(() => {
+    const first = sceneShots[0]
+    if (!first) return 1
+    const index = shots.findIndex((shot) => shot.id === first.id)
+    return index >= 0 ? index + 1 : 1
+  }, [sceneShots, shots])
+
   const spatialStages = useMemo(
-    () => spatialStagesFor(sceneState, shots, scene?.id),
-    [scene?.id, sceneState, shots],
+    () => spatialStagesFor(sceneState, sceneShots, scene?.id, sceneNumberFrom),
+    [scene?.id, sceneState, sceneShots, sceneNumberFrom],
   )
+  // 지금 보고 있는 구간. Scene State는 씬 단위 화면이므로 "언제부터 무엇이
+  // 달라지는가"가 먼저 보여야 한다 — 전에는 카드를 뒤집어 항목마다 들어가야
+  // 변화를 볼 수 있었고, 여러 인물·공간의 변화가 같은 컷에서 함께 일어나는지
+  // 알 수 없었다.
+  //
+  // 구간은 spatialStages를 그대로 쓴다. 2D 도면의 단계와 같은 기준이어야
+  // 값과 배치가 갈리지 않는다.
+  const activeStage = useMemo(() => (
+    spatialStages.find((stage) => stage.id === activeSpatialStageId)
+      || spatialStages[0]
+      || null
+  ), [spatialStages, activeSpatialStageId])
+
+  const stageCutOrder = useMemo(
+    () => new Map(cutPlan.map((cut, index) => [cut.id, index])),
+    [cutPlan],
+  )
+  // 이 구간이 시작되는 컷의 **cutPlan 기준** 순번. activeStage.start는 씬 안의
+  // 순번이라(sceneShots) 그대로 쓰면 factValueAt이 엉뚱한 시점을 본다.
+  const stageCutIndex = useMemo(() => {
+    const startCutId = sceneShots[activeStage?.start ?? 0]?.cutPlanItemId
+    return startCutId != null ? (stageCutOrder.get(startCutId) ?? 0) : 0
+  }, [sceneShots, activeStage, stageCutOrder])
+  // 이 구간에서 처음 바뀌는 항목들. 무엇 때문에 이 구간이 생겼는지 말해 준다.
+  const stageChanges = useMemo(() => {
+    if (!activeStage || activeStage.start === 0) return []
+    const startCutId = sceneShots[activeStage.start]?.cutPlanItemId
+    if (!startCutId) return []
+    const found = []
+    const collect = (label, owner, facts) => {
+      (facts || []).forEach((fact) => {
+        const change = (fact.changes || []).find((entry) => entry.cutId === startCutId)
+        if (change) found.push({ owner, label: fact.label, value: change.value, group: label })
+      })
+    }
+    ;(sceneState.characters || []).forEach((character) => {
+      collect('character', character.name, character.facts)
+    })
+    collect('location', sceneState.location?.name || '공간', sceneState.location?.facts)
+    collect('environment', '장면 공통', sceneState.environment?.facts)
+    return found
+  }, [activeStage, sceneShots, sceneState])
+
+  // 카드에 보이는 값은 고른 구간 시점의 값이다. 처음 값만 보여 주면 S6부터
+  // 젖은 인물을 S6 구간에서도 마른 채로 보게 된다.
+  const resolveFactsAtStage = useCallback((facts = []) => facts.map((fact) => {
+    const value = factValueAt(fact, stageCutIndex, stageCutOrder)
+    return value === fact.value ? fact : { ...fact, value, atStage: true }
+  }), [stageCutIndex, stageCutOrder])
+
+  const miseCharacters = useMemo(() => miseCharactersRaw.map((character) => ({
+    ...character,
+    facts: resolveFactsAtStage(character.facts),
+  })), [miseCharactersRaw, resolveFactsAtStage])
+
   const scriptScenes = useMemo(() => selectScenes(screenplay), [screenplay])
   const scopeFrom = Math.min(rangeStart, rangeEnd)
   const scopeTo = Math.max(rangeStart, rangeEnd)
@@ -1827,7 +2065,10 @@ export default function DecisionBoard({ boardView = 'split' }) {
   }, [])
 
   const primaryLens = optionsByLens.find((lens) => lens.id === primaryLensId) || optionsByLens[0]
-  const lensReviewKey = `${multiReviewScopeKey}:${primaryLens.id}${primaryLens.id === 'staging' ? `:${miseWorkspace}` : ''}`
+  // 작업대(miseWorkspace)는 키에 넣지 않는다. 미장센 분석은 Shot Staging에서만
+  // 돌므로 결과는 언제나 하나뿐인데, 작업대를 키에 넣으면 Scene State로 열렸을
+  // 때만 다른 칸을 읽어 "분석이 사라진" 것처럼 보인다.
+  const lensReviewKey = `${multiReviewScopeKey}:${primaryLens.id}`
   const lensIntentDraft = lensIntents[primaryLens.id] || ''
   const appliedLensIntent = appliedLensIntents[lensReviewKey] || ''
   const lensIntentDirty = lensIntentDraft.trim() !== appliedLensIntent.trim()
@@ -2101,8 +2342,8 @@ export default function DecisionBoard({ boardView = 'split' }) {
         MULTI_LENS_ORDER.forEach(({ backendId, lensId }) => {
           const result = response.lens_results?.[backendId]
           if (!result) return
-          // 미장센은 shot 작업대에서만 분석한다 (lensReviewKey와 같은 규칙).
-          const key = `${scopeKey}:${lensId}${lensId === 'staging' ? ':shot' : ''}`
+          // lensReviewKey와 같은 규칙이어야 한다. 작업대는 키에 넣지 않는다.
+          const key = `${scopeKey}:${lensId}`
           next[key] = {
             status: 'ready',
             requestId,
@@ -2184,6 +2425,12 @@ export default function DecisionBoard({ boardView = 'split' }) {
     setPrimaryLensId(lensId)
     if (lensId !== 'camera') setCameraPreview(null)
     if (lensId !== 'editing') setEditingSequencePreview(null)
+    // 미장센은 작업대가 둘이고, 분석은 Shot Staging에만 있다. 기본값인
+    // Scene State로 열면 감독이 분석을 보러 왔는데 빈 화면을 만난다.
+    //
+    // 범위(scopeMode)는 건드리지 않는다. 여기서 single로 바꾸면
+    // multiReviewScopeKey가 달라져 다관점 결과가 사라진 것처럼 보인다.
+    if (lensId === 'staging') setMiseWorkspace('shot')
   }
 
   const openCharacterDetails = (character) => {
@@ -3443,10 +3690,11 @@ export default function DecisionBoard({ boardView = 'split' }) {
                   <button
                     type="button"
                     className={miseWorkspace === 'shot' ? 'active' : ''}
-                    onClick={() => {
-                      setMiseWorkspace('shot')
-                      switchScopeMode('single')
-                    }}
+                    // 범위를 single로 되돌리지 않는다. scopeMode를 바꾸면
+                    // multiReviewScopeKey가 달라져, 방금 돌린 다관점 결과가
+                    // 지워진 것처럼 보인다. 한 컷만 보려면 감독이 범위
+                    // 선택에서 직접 바꾼다.
+                    onClick={() => setMiseWorkspace('shot')}
                   >
                     Shot Staging
                   </button>
@@ -3917,6 +4165,74 @@ export default function DecisionBoard({ boardView = 'split' }) {
                   </div>
                   <p className="mise-state-description">{sceneState.description}</p>
 
+                  {/* 씬 단위 화면이므로 "언제부터 무엇이 달라지는가"를 먼저
+                      둔다. 구간은 2D 도면의 단계와 같은 기준(spatialStages)을
+                      쓰므로, 여기서 고르면 아래 값과 배치가 함께 바뀐다. */}
+                  {/* 구간이 하나여도 보여 준다. 숨기면 이 화면이 씬 안의
+                      변화를 다루는 곳이라는 것 자체를 알 수 없다 — 변화를
+                      걸기 전에는 "아직 나뉜 구간이 없다"고 말해 준다. */}
+                  {spatialStages.length > 0 && (
+                    <section className="mise-stage-bar" aria-label="씬 안의 상태 구간">
+                      {/* 대본에 씬이 여럿이면 어느 씬의 기준을 보고 있는지
+                          고를 수 있어야 한다. Scene State는 씬 단위 화면인데
+                          전에는 이 화면에 씬을 고르는 자리가 없어, 컷 플랜
+                          레일로 나가 Beat를 옮겨야 다른 씬이 보였다. */}
+                      {scriptScenes.length > 1 && (
+                        <div className="mise-scene-switcher" aria-label="씬 선택">
+                          {scriptScenes.map((scriptScene) => (
+                            <button
+                              key={scriptScene.id}
+                              type="button"
+                              aria-pressed={scriptScene.id === activeSceneId}
+                              className={scriptScene.id === activeSceneId ? 'is-active' : ''}
+                              onClick={() => setActiveBeat(scriptScene.startBeat)}
+                            >
+                              Scene {scriptScene.number}
+                              <em>{scriptScene.heading}</em>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                      <div className="mise-stage-tabs" role="tablist">
+                        {spatialStages.map((stage) => (
+                          <button
+                            key={stage.id}
+                            type="button"
+                            role="tab"
+                            aria-selected={activeStage?.id === stage.id}
+                            className={activeStage?.id === stage.id ? 'is-active' : ''}
+                            onClick={() => selectSpatialStage(stage.id)}
+                          >
+                            {stage.label}
+                          </button>
+                        ))}
+                      </div>
+                      <p className="mise-stage-note">
+                        {stageChanges.length > 0 ? (
+                          <>
+                            <em>이 구간에서 바뀌는 것</em>
+                            {stageChanges.map((change) => (
+                              <span key={`${change.owner}-${change.label}`}>
+                                {change.owner} · {change.label} → {change.value}
+                              </span>
+                            ))}
+                          </>
+                        ) : spatialStages.length === 1 ? (
+                          <>
+                            <em>씬 전체가 한 구간입니다</em>
+                            <span>
+                              인물 `상태`나 `시간`에 변화를 걸면 그 컷부터
+                              구간이 나뉘고, 구간마다 값과 2D 배치를 따로 둘 수
+                              있습니다.
+                            </span>
+                          </>
+                        ) : (
+                          <em>씬이 시작되는 기준값입니다.</em>
+                        )}
+                      </p>
+                    </section>
+                  )}
+
                   <section className="mise-state-group">
                     <div className="mise-state-group-heading">
                       <div>
@@ -3972,11 +4288,10 @@ export default function DecisionBoard({ boardView = 'split' }) {
                                 className="mise-character-card-face mise-character-card-back"
                                 aria-hidden={!isEditing}
                               >
-                                {detail.image && (
-                                  <div className="mise-reference-image">
-                                    <img src={detail.image} alt={`${detail.name} reference`} />
-                                  </div>
-                                )}
+                                {/* 큰 사진은 앞면이 이미 보여 준다. 뒷면은 값을
+                                    고치는 자리이므로 사진이 자리를 차지하면
+                                    항목이 스크롤 밖으로 밀린다. 어느 인물의
+                                    카드인지 알려주는 작은 썸네일만 남긴다. */}
                                 <div className="mise-character-edit-heading">
                                   <div className="mise-character-edit-thumb">
                                     <img src={detail.image} alt="" />
@@ -4029,8 +4344,12 @@ export default function DecisionBoard({ boardView = 'split' }) {
                                         characterId={character.id}
                                         shots={shots}
                                         onAdd={setChangeDraft}
-                                        onRemove={removeFactChange}
+                                        onRemove={removeCharacterAwareChange}
                                         disabled={!isEditing}
+                                        draft={draftFor('character', fact.label, character.id)}
+                                        onDraftChange={setChangeDraft}
+                                        onDraftCancel={() => setChangeDraft(null)}
+                                        onDraftSave={saveChangeDraft}
                                       />
                                     </div>
                                   ))}
@@ -4104,83 +4423,6 @@ export default function DecisionBoard({ boardView = 'split' }) {
 
                   {/* 어느 컷부터 바뀌는지 정한다. 컷을 고르는 것이므로
                       자유 입력이 아니라 목록에서 고른다. */}
-                  {changeDraft && changeDraft.group !== 'environment' && (
-                    <div className="mise-change-form">
-                      <header>
-                        {/* 셋이 같은 폼을 쓰므로 어느 것의 변화인지 밝힌다. */}
-                        <strong>
-                          {changeDraft.characterId
-                            ? sceneState.characters.find((c) => c.id === changeDraft.characterId)?.name
-                            : changeDraft.group === 'location'
-                              ? sceneState.location.name
-                              : sceneState.environment.name}
-                          {' · '}{changeDraft.label}
-                        </strong>
-                        <button type="button" onClick={() => setChangeDraft(null)}>✕</button>
-                      </header>
-                      <label>
-                        <span>이 상태가 시작되는 컷</span>
-                        <select
-                          value={changeDraft.cutId || ''}
-                          onChange={(event) => setChangeDraft({
-                            ...changeDraft,
-                            cutId: event.target.value,
-                          })}
-                        >
-                          {/* 컷과 이어지지 않은 패널은 고를 수 없다.
-                              변화는 컷 id로 기록되기 때문이다. */}
-                          {shots.filter((shot) => shot.cutPlanItemId).map((shot, index) => (
-                            <option
-                              key={shot.id}
-                              value={shot.cutPlanItemId}
-                              disabled={
-                                shot.cutPlanItemId !== changeDraft.originalCutId
-                                && changeDraft.takenCutIds?.includes(shot.cutPlanItemId)
-                              }
-                            >
-                              S{index + 1} · {shot.label}
-                            </option>
-                          ))}
-                        </select>
-                      </label>
-                      <label>
-                        <span>이렇게 바뀐다</span>
-                        <input
-                          value={changeDraft.value}
-                          placeholder="예: 오래 앉아 지친 상태"
-                          onChange={(event) => setChangeDraft({
-                            ...changeDraft,
-                            value: event.target.value,
-                          })}
-                        />
-                      </label>
-                      <button
-                        type="button"
-                        className="mise-change-save"
-                        disabled={!changeDraft.value.trim() || !changeDraft.cutId}
-                        onClick={() => {
-                          addFactChange(
-                            changeDraft.group,
-                            changeDraft.label,
-                            changeDraft.cutId,
-                            changeDraft.value.trim(),
-                            { characterId: changeDraft.characterId },
-                          )
-                          if (changeDraft.originalCutId && changeDraft.originalCutId !== changeDraft.cutId) {
-                            removeFactChange(
-                              changeDraft.group,
-                              changeDraft.label,
-                              changeDraft.originalCutId,
-                              { characterId: changeDraft.characterId },
-                            )
-                          }
-                          setChangeDraft(null)
-                        }}
-                      >
-                        {changeDraft.editing ? '이 단계 저장' : '다음 단계 추가'}
-                      </button>
-                    </div>
-                  )}
                   <div className="mise-place-grid">
                     <article className={`mise-character-reference-card mise-location-reference-card ${locationReferenceOpen ? 'flipped' : ''}`}>
                       <div className="mise-character-card-inner">
@@ -4225,9 +4467,15 @@ export default function DecisionBoard({ boardView = 'split' }) {
                         </section>
 
                         <section className="mise-character-card-face mise-character-card-back">
+                          {/* 인물 카드와 달리 공간 앞면은 2D 배치도다 —
+                              레퍼런스 그림을 보여 주는 곳이 여기뿐이라
+                              뒷면에 남긴다. 없으면 자리를 차지하지 않는다. */}
                           {sceneState.location.image && (
-                            <div className="mise-reference-image">
-                              <img src={sceneState.location.image} alt={`${sceneState.location.name} reference`} />
+                            <div className="mise-location-reference-image">
+                              <img
+                                src={sceneState.location.image}
+                                alt={`${sceneState.location.name} 레퍼런스`}
+                              />
                             </div>
                           )}
                           <div className="mise-reference-card-heading">
@@ -4299,61 +4547,15 @@ export default function DecisionBoard({ boardView = 'split' }) {
                                 shots={shots}
                                 onAdd={setChangeDraft}
                                 onRemove={removeFactChange}
+                                draft={draftFor('environment', fact.label)}
+                                onDraftChange={setChangeDraft}
+                                onDraftCancel={() => setChangeDraft(null)}
+                                onDraftSave={saveChangeDraft}
                               />
                             </dd>
                           </div>
                         ))}
                       </dl>
-                      {changeDraft?.group === 'environment' && (
-                        <div className="mise-change-form mise-shared-change-form">
-                          <header>
-                            <strong>{sceneState.environment.name} · {changeDraft.label}</strong>
-                            <button type="button" onClick={() => setChangeDraft(null)}>✕</button>
-                          </header>
-                          <label>
-                            <span>이 상태가 시작되는 컷</span>
-                            <select
-                              value={changeDraft.cutId || ''}
-                              onChange={(event) => setChangeDraft({ ...changeDraft, cutId: event.target.value })}
-                            >
-                              {shots.filter((shot) => shot.cutPlanItemId).map((shot, index) => (
-                                <option
-                                  key={shot.id}
-                                  value={shot.cutPlanItemId}
-                                  disabled={
-                                    shot.cutPlanItemId !== changeDraft.originalCutId
-                                    && changeDraft.takenCutIds?.includes(shot.cutPlanItemId)
-                                  }
-                                >
-                                  S{index + 1} · {shot.label}
-                                </option>
-                              ))}
-                            </select>
-                          </label>
-                          <label>
-                            <span>이렇게 바뀐다</span>
-                            <input
-                              value={changeDraft.value}
-                              placeholder="예: 조명이 점차 어두워짐"
-                              onChange={(event) => setChangeDraft({ ...changeDraft, value: event.target.value })}
-                            />
-                          </label>
-                          <button
-                            type="button"
-                            className="mise-change-save"
-                            disabled={!changeDraft.value.trim() || !changeDraft.cutId}
-                            onClick={() => {
-                              addFactChange('environment', changeDraft.label, changeDraft.cutId, changeDraft.value.trim())
-                              if (changeDraft.originalCutId && changeDraft.originalCutId !== changeDraft.cutId) {
-                                removeFactChange('environment', changeDraft.label, changeDraft.originalCutId)
-                              }
-                              setChangeDraft(null)
-                            }}
-                          >
-                            {changeDraft.editing ? '이 단계 저장' : '다음 단계 추가'}
-                          </button>
-                        </div>
-                      )}
                     </section>
                   </div>
                   <p className="mise-state-footnote">
@@ -4497,7 +4699,39 @@ export default function DecisionBoard({ boardView = 'split' }) {
                 {MULTI_LENS_ORDER.map(({ backendId, lensId, mark }) => {
                   const perspective = PERSPECTIVES.find((item) => item.id === lensId)
                   const result = multiReviewRun.lensResults?.[backendId]
-                  if (!perspective || !result) return null
+                  if (!perspective) return null
+                  // 렌즈 하나가 실패하면 서버는 나머지만 돌려준다. 그때
+                  // 카드를 그리지 않으면 감독은 그 관점을 '문제 없음'으로
+                  // 읽는다 — 실제로는 답을 못 받은 것이다. 빈 자리를 남겨
+                  // 다시 시도할 수 있게 한다.
+                  if (!result) {
+                    return (
+                      <article
+                        key={lensId}
+                        className="multi-review-card is-missing"
+                        style={{ '--lens-color': perspective.accent }}
+                      >
+                        <header>
+                          <span>{mark}</span>
+                          <div>
+                            <strong>{perspective.displayName}</strong>
+                            <em>{perspective.lens}</em>
+                          </div>
+                        </header>
+                        <p className="multi-review-missing-note">
+                          이 관점은 답을 받지 못했습니다. 다시 분석하거나
+                          아래 `열기`로 이 렌즈만 따로 볼 수 있습니다.
+                        </p>
+                        <button
+                          type="button"
+                          className="multi-review-card-open"
+                          onClick={() => selectReviewMode(lensId)}
+                        >
+                          열기
+                        </button>
+                      </article>
+                    )
+                  }
                   return (
                     <article
                       key={lensId}
@@ -4540,19 +4774,32 @@ export default function DecisionBoard({ boardView = 'split' }) {
                         </div>
                       ))}
                       {/* 진단은 `change` 판정에만 나온다. 고칠 것이 없다고
-                          본 렌즈는 대신 무엇을 묻고 있는지 낸다. */}
-                      {(result.diagnoses || []).length === 0 && result.questions?.[0] && (
-                        <div className="multi-review-card-action is-question">
-                          <strong>{result.questions[0].prompt}</strong>
-                        </div>
-                      )}
-                      {/* 고칠 것도 물을 것도 없는 렌즈. 이 말이 없으면 카드가
-                          비어, 분석이 안 돈 것처럼 보인다. */}
-                      {(result.diagnoses || []).length === 0 && !result.questions?.[0] && (
-                        <div className="multi-review-card-action is-clear">
-                          <strong>이 관점에서 걸리는 것이 없습니다</strong>
-                        </div>
-                      )}
+                          본 렌즈는 대신 무엇을 묻고 있는지 낸다.
+                          `check` 층위의 open_question도 함께 낸다 — 렌즈는
+                          네 층위를 다 보고 "의도에 따라 갈린다"고 판정한
+                          것인데, 그것을 버리면 카드가 '걸리는 것 없음'으로
+                          보여 실제로는 물어볼 것이 있는데도 넘어간다. */}
+                      {(() => {
+                        if ((result.diagnoses || []).length > 0) return null
+                        const asked = [
+                          result.questions?.[0]?.prompt,
+                          ...(result.level_assessments || [])
+                            .filter((assessment) => assessment.status === 'check')
+                            .map((assessment) => assessment.open_question),
+                        ].filter(Boolean)
+                        if (asked.length === 0) {
+                          return (
+                            <div className="multi-review-card-action is-clear">
+                              <strong>이 관점에서 걸리는 것이 없습니다</strong>
+                            </div>
+                          )
+                        }
+                        return asked.slice(0, 2).map((prompt) => (
+                          <div key={prompt} className="multi-review-card-action is-question">
+                            <strong>{prompt}</strong>
+                          </div>
+                        ))
+                      })()}
                     </article>
                   )
                 })}

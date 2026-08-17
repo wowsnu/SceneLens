@@ -158,6 +158,10 @@ const stripDataUrl = (value = '') => {
 // data URL이다. 서버에는 어느 쪽이든 base64 PNG로 보내야 실제 입력 이미지가
 // 된다. 파일 경로를 버리면 화면에는 같은 인물이 보여도 생성 모델은 그 기준을
 // 한 번도 보지 못한다.
+// 씬 안에서 변할 수 있는 항목. DecisionBoard의 같은 목록과 맞춰야 한다 —
+// 한쪽에서만 변화를 걸면 다른 화면에서 그 변화를 지울 방법이 없다.
+const CHANGEABLE_FACT_LABELS = new Set(['상태', '시간', '고정 소품'])
+
 const referenceImageBase64 = async (value = '') => {
   const embedded = stripDataUrl(value)
   if (embedded) return embedded
@@ -225,7 +229,11 @@ function SceneFactRow({
   }
 
   const changes = fact.changes || []
-  const canChange = Boolean(onAddChange) && cutOptions.length > 0
+  // 씬 안에서 변할 수 있는 항목만. 생김새(성별·나이·체형·외형)는 사람이
+  // 바뀌지 않는 한 그대로다 — 항목마다 버튼을 달면 화면이 복잡해진다.
+  const canChange = Boolean(onAddChange)
+    && cutOptions.length > 0
+    && CHANGEABLE_FACT_LABELS.has(fact.label)
 
   const addChange = () => {
     // 아직 변화가 없는 첫 컷을 고른다. 같은 컷에 두 번 얹을 수 없다.

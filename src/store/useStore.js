@@ -997,7 +997,7 @@ const CORRIDOR_SCENE_STATE = {
   // 이 씬에서 달라진 것만 적는다 — 복도에서는 노트를 손에 들고 있다.
   characterIds: ['cast-하린'],
   characterOverrides: {
-    'cast-하린': { '소지품': '노트를 손에 든 상태' },
+    'cast-하린': { '상태': '구부정한 자세, 노트를 든 채' },
   },
   location: {
     name: '연구동 복도',
@@ -1189,11 +1189,11 @@ const DEMO_CAST = [
     summary: '20대 중반 · 대학원생',
     image: '/img/lab_discovery_cu.png',
     facts: [
+      // 생김새는 고정, `상태`만 씬 안에서 변한다 (scene_state.py의 두 갈래).
       { label: '성별·나이', value: '여성, 20대 중반' },
       { label: '외형 기준', value: '후드를 입고 머리를 묶은 상태' },
       { label: '체형', value: '마른 체형' },
-      { label: '기본 태도', value: '구부정한 자세' },
-      { label: '소지품', value: '', open: true },
+      { label: '상태', value: '구부정한 자세' },
     ],
   },
 ]
@@ -1235,7 +1235,7 @@ const SCENE_STATE = {
 //
 // 값 자체를 바꾸는 것이 아니라 구간을 더하는 이유: 처음 상태가 지워지면
 // 앞 컷들이 무엇이었는지 알 수 없게 된다.
-const factValueAt = (fact, cutIndex, cutOrder = null) => {
+export const factValueAt = (fact, cutIndex, cutOrder = null) => {
   if (!fact.changes?.length || cutIndex == null) return fact.value
   // 이 시점까지 일어난 변화 중 마지막 것. 순서는 컷 플랜의 순서를 따른다.
   const applied = fact.changes
@@ -1421,7 +1421,10 @@ export const layoutToImage = (elements = [], size = 768) => {
 // 스토어에 두는 이유: 단계를 만드는 것은 Decision Board지만, 그 결과를
 // 읽어야 하는 것은 패널 생성이다. 컴포넌트 안에 두면 생성이 못 읽어
 // 단계를 나눠 그려도 그림에 반영되지 않는다.
-export const spatialStagesFor = (sceneState, shots, sceneId) => {
+// `shots`가 씬 하나로 걸러진 목록이면 배열 첨자가 1부터 다시 시작한다.
+// 그때 라벨을 첨자로 만들면 Scene 2의 첫 구간이 `S1`로 나오는데, 감독이
+// 보는 컷 번호는 S16이다. numberFrom으로 보정한다.
+export const spatialStagesFor = (sceneState, shots, sceneId, numberFrom = 1) => {
   const factGroups = [
     ...(sceneState?.characters || []).flatMap((character) => character.facts || []),
     ...(sceneState?.location?.facts || []),
@@ -1439,10 +1442,12 @@ export const spatialStagesFor = (sceneState, shots, sceneId) => {
     const nextStart = indexes[index + 1] ?? shots.length
     const end = Math.max(start, nextStart - 1)
     const cutId = start === 0 ? 'initial' : shots[start]?.cutPlanItemId || `shot-${start}`
+    const from = start + numberFrom
+    const to = end + numberFrom
     return {
       id: `${sceneId || 'scene'}:${cutId}`,
       start,
-      label: start === end ? `S${start + 1}` : `S${start + 1}–S${end + 1}`,
+      label: from === to ? `S${from}` : `S${from}–S${to}`,
     }
   })
 }
@@ -1460,12 +1465,27 @@ export const selectLayoutForCut = (state, cutId) => {
 
   const scenes = selectScenes(state.screenplay)
   const cut = state.cutPlan.find((item) => item.id === cutId)
-  const sceneId = cut ? sceneOfBeat(scenes, cut.beat)?.id : null
+  const scriptScene = cut ? sceneOfBeat(scenes, cut.beat) : null
+  const sceneId = scriptScene?.id || null
   const sceneState = selectSceneStates(state)[sceneId] || selectSceneStates(state)['scene-0']
-  const stages = spatialStagesFor(sceneState, shots, sceneId)
+
+  // 단계는 씬 안에서만 나뉜다. Decision Board도 씬 범위로 계산하므로
+  // 여기서 브랜치 전체를 넘기면 stage.id가 서로 달라져, 감독이 그린
+  // 단계별 도면을 생성이 찾지 못한다.
+  const sceneShots = scriptScene
+    ? shots.filter((shot) => {
+      const shotCut = state.cutPlan.find((item) => item.id === shot.cutPlanItemId)
+      const beat = shotCut?.beat ?? shot.scriptBeat ?? 0
+      return beat >= scriptScene.startBeat && beat <= scriptScene.endBeat
+    })
+    : shots
+  const sceneShotIndex = sceneShots.findIndex((shot) => shot.cutPlanItemId === cutId)
+  if (sceneShotIndex < 0) return state.spatialElements
+
+  const stages = spatialStagesFor(sceneState, sceneShots, sceneId)
 
   const stageIndex = stages.reduce(
-    (found, stage, index) => (stage.start <= shotIndex ? index : found),
+    (found, stage, index) => (stage.start <= sceneShotIndex ? index : found),
     0,
   )
   for (let index = stageIndex; index >= 0; index -= 1) {
@@ -2579,15 +2599,37 @@ const useStore = create((set, get) => ({
       ? next.findIndex((item) => item.id === afterItemId)
       : next.length - 1
     const anchorBeat = index >= 0 ? next[index].beat : beat
-    next.splice(index + 1, 0, createCutPlanItem({
+    const inserted = createCutPlanItem({
       beat: anchorBeat,
       content: '',
       purpose: '',
       // 제안을 받아 넣었으면 사용자가 쓴 것이 아니다.
       provenance: fields.content ? 'AI' : 'User',
       ...fields,
-    }))
-    return { cutPlan: reorderCutPlan(next) }
+    })
+    next.splice(index + 1, 0, inserted)
+
+    // 패널이 이미 컷에 붙어 있으면(확정 후) 패널도 함께 만든다. 컷만 넣으면
+    // 이음새에서 `넣기`를 눌러도 그림 자리가 생기지 않아 화면에 아무 변화가
+    // 없고, 프롬프트도 붙을 자리가 없다 — splitCut·mergeCuts와 같은 규칙이다.
+    //
+    // 컷 플랜 표에서 부를 때는 아직 패널이 없다(확정 전). 그때는 컷만 넣고,
+    // `Accept cut plan`이 패널을 한 번에 만든다.
+    const scene = state.scenes?.[state.activeScene]
+    const shots = scene?.branches?.[scene.activeBranch ?? 0]?.shots || []
+    const anchorHasPanel = shots.some((shot) => shot.cutPlanItemId)
+    if (!anchorHasPanel) return { cutPlan: reorderCutPlan(next) }
+
+    const withPanel = updateActiveBranchShots(state, (current) => {
+      const shotIndex = current.findIndex((shot) => shot.cutPlanItemId === afterItemId)
+      const copy = [...current]
+      copy.splice(shotIndex < 0 ? copy.length : shotIndex + 1, 0, {
+        ...createFlowShot({ index: current.length, scriptBeat: anchorBeat }),
+        cutPlanItemId: inserted.id,
+      })
+      return copy
+    })
+    return { ...withPanel, cutPlan: reorderCutPlan(next) }
   })
   },
   // 진단을 받아 촬영에 수정본을 묻는다. 어느 크기로 바꿀지는 그 컷이
@@ -2740,19 +2782,55 @@ const useStore = create((set, get) => ({
   acceptCutInsert: () => {
     const proposal = get().cutInsertProposal
     if (!proposal) return
-    const state = get()
-    const screenplay = [...state.screenplay]
-    screenplay.splice(proposal.afterElementIndex + 1, 0, {
-      type: 'action',
-      text: proposal.text,
-      beat: proposal.beat,
+
+    logEdit({
+      lens: 'editing',
+      level: 'seam',
+      target: proposal.afterCutId,
+      action: 'insert',
+      source: 'seam',
+      proposed: true,
     })
-    set({ screenplay })
-    get().addCutPlanItem(proposal.afterCutId, proposal.beat, {
-      content: proposal.text,
-      purpose: '',
+
+    set((state) => {
+      const screenplay = [...state.screenplay]
+      screenplay.splice(proposal.afterElementIndex + 1, 0, {
+        type: 'action',
+        text: proposal.text,
+        beat: proposal.beat,
+      })
+
+      const index = state.cutPlan.findIndex((item) => item.id === proposal.afterCutId)
+      const anchorBeat = index >= 0 ? state.cutPlan[index].beat : proposal.beat
+      const inserted = createCutPlanItem({
+        beat: anchorBeat,
+        content: proposal.text,
+        purpose: '',
+        // 제안을 받아 넣은 것이므로 사용자가 쓴 것이 아니다.
+        provenance: 'AI',
+      })
+      const cutPlan = reorderCutPlan([
+        ...state.cutPlan.slice(0, index + 1),
+        inserted,
+        ...state.cutPlan.slice(index + 1),
+      ])
+
+      // 패널도 함께 만든다. 컷만 넣으면 그림이 없어 화면에 아무 변화가
+      // 없고, 프롬프트도 붙을 자리가 없다 — splitCut과 같은 규칙이다.
+      const next = updateActiveBranchShots(state, (shots) => {
+        const shotIndex = shots.findIndex((shot) => (
+          shot.cutPlanItemId === proposal.afterCutId
+        ))
+        const copy = [...shots]
+        copy.splice(shotIndex < 0 ? copy.length : shotIndex + 1, 0, {
+          ...createFlowShot({ index: shots.length, scriptBeat: anchorBeat }),
+          cutPlanItemId: inserted.id,
+        })
+        return copy
+      })
+
+      return { ...next, screenplay, cutPlan, cutInsertProposal: null }
     })
-    set({ cutInsertProposal: null })
   },
 
   rejectCutInsert: () => set({ cutInsertProposal: null, cutInsertError: null }),

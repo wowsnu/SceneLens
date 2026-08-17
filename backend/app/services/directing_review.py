@@ -132,10 +132,19 @@ targets 규칙:
 이론 후보는 판단을 돕는 참고 자료입니다. 실제 패널과 관련된 경우에만 사용하고,
 사용했다면 theory_source의 맨 앞에 후보의 참조 ID를 정확히 복사하세요. 후보에 없는
 이론은 인용하지 마세요. 관련 이론이 없으면 theory_basis와 theory_source를 모두 null로
-두세요. theory_basis에는 인용문이나 ID가 아니라 해당 이론이 이 진단을 설명하는 이유를
-한 문장으로 쓰세요. 선택한 rule_id 아래에 연결된 이론만 사용할 수 있습니다. 다른 규칙의
+두세요. 선택한 rule_id 아래에 연결된 이론만 사용할 수 있습니다. 다른 규칙의
 이론을 가져오지 말고, 진단 하나에는 가장 직접적인 이론 하나만 인용하세요. 이론만으로
 문제를 만들어내지 마세요.
+
+theory_basis는 `책 이름 — 쉬운 설명 한 문장` 형식으로 씁니다. 후보의 `책:` 뒤에 있는
+이름만 적고 `책:`이라는 말은 옮기지 마세요. 줄표 뒤에는 그 이론이 **왜 이 컷에 해당하는지**를 감독이 읽고 바로
+이해할 말로 풉니다. 이론 요약을 번역해 옮기지 마세요 — 책의 문장은 일반론이고, 여기
+필요한 것은 지금 이 화면에 대한 설명입니다. 학술적인 명사구(`서사적 응축`, `정보의
+위계`)를 쓰지 말고, 짧은 서술문 하나로 쓰세요. 30자 안팎이면 충분합니다.
+  ✓ "Murch, In the Blink of an Eye — 컷은 이야기를 밀고 나가야 값을 합니다."
+  ✓ "The Five C's of Cinematography — 동작이 이어져 보여야 두 컷이 한 사건으로 읽혀요."
+  ✗ "b_8_walter_murch___:t_pg39_02 — Rule of Six"   ← ID와 제목만 옮겼다
+  ✗ "편집자는 관객의 기대를 선도하는 안내자로 기능한다."  ← 번역투 일반론이다
 
 수정 여부는 감독이 결정합니다. 의도적으로 유지할 수 있는 차이는 결함으로 단정하지 말고,
 선택이 필요한 경우 questions에 질문으로 남기세요. 질문에도 위와 동일한 targets 규칙을
@@ -477,6 +486,26 @@ def _load_theory_db() -> dict:
         return json.load(theory_file)
 
 
+# 책을 감독이 알아볼 만한 짧은 이름으로 부른다. DB의 title은 파일명이라
+# 확장자·판차·업로드 표시가 붙어 있어 화면에 그대로 쓸 수 없다.
+BOOK_SHORT_NAMES = {
+    "b_0_art_of_the_stor": "Art of the Storyboard",
+    "b_1_dialogue": "McKee, Dialogue",
+    "b_2_the_five_c_s_of": "The Five C's of Cinematography",
+    "b_3_the_filmmaker_s": "The Filmmaker's Eye",
+    "b_4_grammar_of_the_": "Grammar of the Film Language",
+    "b_5_robert_mckee___": "McKee, Story",
+    "b_6_master_shots__1": "Master Shots",
+    "b_7_film_directing_": "Film Directing Shot by Shot",
+    "b_8_walter_murch___": "Murch, In the Blink of an Eye",
+    "b_9_the_filmmaker_s": "The Filmmaker's Eye",
+}
+
+
+def _book_short_name(book_id: str) -> str:
+    return BOOK_SHORT_NAMES.get(book_id, "영화 이론")
+
+
 def _theory_reference_id(theory: dict) -> str:
     identity = f"{theory.get('title', '')}|{theory.get('summary', '')}"
     digest = hashlib.sha1(identity.encode("utf-8")).hexdigest()[:8]
@@ -486,7 +515,6 @@ def _theory_reference_id(theory: dict) -> str:
 def _rule_theory_packet(lens: DirectingLens) -> str:
     """Return only the small, reviewed theory set linked to each fixed rule."""
     database = _load_theory_db()
-    books = {book["id"]: book["title"] for book in database.get("books", [])}
     theories_by_key = {
         (theory.get("book_id", ""), theory.get("id", "")): theory
         for theory in database.get("theory_units", [])
@@ -515,19 +543,20 @@ def _rule_theory_packet(lens: DirectingLens) -> str:
                 else []
             )
             operation = operations[0] if operations else None
-            source = books.get(theory.get("book_id"), "Film theory library")
-            source = re.sub(r"\.pdf$", "", source, flags=re.IGNORECASE)
+            # 출판사·연도·판차는 넣지 않는다. 검증기는 참조 ID만 확인하고,
+            # 화면에는 감독이 알아볼 짧은 책 이름이면 충분하다.
             lines.extend(
                 [
-                    f"- {_theory_reference_id(theory)} | {theory.get('title')} | {source}",
+                    f"- {_theory_reference_id(theory)} | {theory.get('title')} "
+                    f"| 책: {_book_short_name(theory.get('book_id', ''))}",
                     f"  핵심: {theory.get('summary', '')}",
                     f"  적용 조건: {theory.get('applies_when', '')}",
-                    (
-                        "  관련 차원: "
-                        f"{', '.join(operation.get('related_dimensions', [])) if operation else '없음'}"
-                    ),
                 ]
             )
+            # 관련 차원은 있을 때만. 8개 중 6개가 `없음`이라 빈 줄만 쌓였다.
+            dimensions = operation.get("related_dimensions", []) if operation else []
+            if dimensions:
+                lines.append(f"  관련 차원: {', '.join(dimensions)}")
         blocks.append("\n".join(lines))
     return "\n\n".join(blocks)
 
@@ -805,10 +834,23 @@ async def analyze_lens(
         )
         for order, panel in enumerate(request.panels, start=1)
     )
+    # 블록 순서: 역할 → 이번 건의 입력 → 판단 기준 → 출력 형식.
+    #
+    # 감독의 의도와 사건 목록이 형식 규칙 13,000자 뒤에 있었다. 정작 판단의
+    # 기준이 되는 정보인데 "하지 마세요" 목록에 묻혔다. 모델은 앞뒤를 더 잘
+    # 보므로, 이번 건에만 해당하는 입력을 앞으로 올리고 매번 같은 형식 규칙을
+    # 뒤로 보낸다.
     prompt = "\n\n".join(
         [
+            # 1. 나는 누구이며 무엇을 보는가
             LENS_PROMPTS[lens],
-            COMMON_LENS_PROMPT,
+
+            # 2. 이번 건의 입력 — 이것을 보고 판단한다
+            f"[감독의 의도]\n{intent or '입력되지 않음'}",
+            f"[선택 범위의 확정된 순서]\n{ordered_scope}",
+            f"[같은 순서로 정리한 사건 목록]\n{sequence_packet}",
+
+            # 3. 무엇을 근거로 판단하는가
             (
                 "[이 에이전트의 고정 진단 규칙]\n"
                 "진단은 아래 규칙 중 실제 화면에서 확인된 하나에만 근거하세요. "
@@ -817,6 +859,10 @@ async def analyze_lens(
                 f"{rule_prompt(lens)}"
             ),
             f"[범위별 검토 초점]\n{level_focus_prompt(lens)}",
+            f"[관련 이론 후보]\n{theory_packet}",
+
+            # 4. 어떻게 쓰는가 — 매번 같은 형식 규칙
+            COMMON_LENS_PROMPT,
             # alternatives의 patch가 쓸 수 있는 값. 컷 표의 셀렉트와 같은
             # 목록이어야 감독이 누른 것이 그대로 적용된다.
             (
@@ -826,10 +872,6 @@ async def analyze_lens(
                 f"move: {', '.join(MOVES)}"
             ),
             f"[ID 규칙]\n모든 diagnosis와 question의 id는 반드시 `{lens}-`로 시작하세요.",
-            f"[감독의 의도]\n{intent or '입력되지 않음'}",
-            f"[선택 범위의 확정된 순서]\n{ordered_scope}",
-            f"[같은 순서로 정리한 사건 목록]\n{sequence_packet}",
-            f"[관련 이론 후보]\n{theory_packet}",
         ]
     )
     content = [{"type": "text", "text": prompt}]
@@ -1190,11 +1232,14 @@ async def _review_all_lenses(request: DirectingReviewRequest) -> DirectingReview
     )
 
     lens_results = {}
+    failed_lenses = []
     questions = []
     for lens, outcome in zip(lenses, outcomes):
-        # 한 렌즈가 실패해도 나머지 판단은 살린다.
+        # 한 렌즈가 실패해도 나머지 판단은 살린다. 다만 실패했다는 사실은
+        # 화면까지 올린다 — 빠진 렌즈를 '문제 없음'으로 읽으면 안 된다.
         if isinstance(outcome, Exception):
             print(f"[directing-review] {lens} lens failed: {outcome}")
+            failed_lenses.append(lens)
             continue
         result, lens_questions = outcome
         lens_results[lens] = result
@@ -1207,5 +1252,6 @@ async def _review_all_lenses(request: DirectingReviewRequest) -> DirectingReview
     # 'relate' 모드로 따로 부른다 — 한 번에 하면 70초를 기다린다.
     return DirectingReviewResponse(
         lens_results=lens_results,
+        failed_lenses=failed_lenses,
         questions=questions,
     )

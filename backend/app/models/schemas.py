@@ -692,6 +692,9 @@ class DirectingQuestion(BaseModel):
 
 class DirectingReviewResponse(BaseModel):
     lens_results: Dict[DirectingLens, DirectingLensResult]
+    # 다관점에서 답을 못 받은 렌즈. 조용히 빼면 감독이 그 관점을 '문제 없음'
+    # 으로 읽는다 — 실제로는 검증에 걸려 결과가 없는 것이다.
+    failed_lenses: List[DirectingLens] = Field(default_factory=list)
     common_findings: List[DirectingCommonFinding] = Field(default_factory=list)
     # 다관점에서만 나온다. 관계를 근거로 어느 렌즈부터 볼지 제안한다.
     order: Optional[DirectingOrder] = None

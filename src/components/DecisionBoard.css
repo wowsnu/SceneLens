@@ -2059,6 +2059,8 @@ button.active .lens-glass::after {
   font-weight: 800;
 }
 
+/* 접힌 카드는 한 줄로 줄여 목록을 훑을 수 있게 한다. 펴면 전문을 보여
+   준다 — 전에는 열어도 계속 잘려 있어 판단 문장을 읽을 수 없었다. */
 .directing-level-card > summary > p {
   overflow: hidden;
   margin: 0;
@@ -2068,6 +2070,15 @@ button.active .lens-glass::after {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+.directing-level-card[open] > summary > p {
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
+}
+
+/* 펴면 라벨과 상태가 위로 붙어야 여러 줄 요약과 어긋나지 않는다. */
+.directing-level-card[open] > summary { align-items: start; }
 
 .directing-level-card > summary > em {
   padding: 4px 7px;
@@ -2282,6 +2293,109 @@ button.active .lens-glass::after {
   line-height: 1.55;
 }
 
+/* 씬 안의 상태 구간. Scene State에서 가장 먼저 읽을 것이 "언제부터 무엇이
+   달라지는가"이므로 항목들보다 위에 둔다. 2D 도면의 단계와 같은 기준이다. */
+.mise-stage-bar {
+  display: grid;
+  gap: 7px;
+  padding: 10px 11px;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.028);
+}
+
+/* 어느 씬의 기준을 보고 있는가. 구간 탭보다 위에 둔다 — 씬이 더 큰 단위다. */
+.mise-scene-switcher {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  padding-bottom: 7px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.mise-scene-switcher > button {
+  display: grid;
+  gap: 1px;
+  padding: 5px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 6px;
+  background: transparent;
+  color: rgba(226, 232, 240, 0.58);
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 800;
+  text-align: left;
+  cursor: pointer;
+}
+
+.mise-scene-switcher > button > em {
+  color: rgba(148, 163, 184, 0.58);
+  font-size: 9.5px;
+  font-style: normal;
+  font-weight: 700;
+}
+
+.mise-scene-switcher > button:hover {
+  border-color: rgba(255, 255, 255, 0.24);
+  color: rgba(226, 232, 240, 0.9);
+}
+
+.mise-scene-switcher > button.is-active {
+  border-color: color-mix(in srgb, var(--lens-color), transparent 45%);
+  background: color-mix(in srgb, var(--lens-color), transparent 88%);
+  color: color-mix(in srgb, var(--lens-color), white 30%);
+}
+
+.mise-stage-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.mise-stage-tabs > button {
+  padding: 6px 11px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 6px;
+  background: transparent;
+  color: rgba(226, 232, 240, 0.6);
+  font-family: inherit;
+  font-size: 11.5px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.mise-stage-tabs > button:hover {
+  border-color: rgba(255, 255, 255, 0.24);
+  color: rgba(226, 232, 240, 0.9);
+}
+
+.mise-stage-tabs > button.is-active {
+  border-color: color-mix(in srgb, var(--lens-color), transparent 45%);
+  background: color-mix(in srgb, var(--lens-color), transparent 86%);
+  color: color-mix(in srgb, var(--lens-color), white 30%);
+}
+
+.mise-stage-note {
+  display: grid;
+  gap: 3px;
+  margin: 0;
+  font-size: 11.5px;
+  line-height: 1.5;
+}
+
+.mise-stage-note > em {
+  color: rgba(148, 163, 184, 0.72);
+  font-size: 10.5px;
+  font-style: normal;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.mise-stage-note > span {
+  color: rgba(226, 232, 240, 0.9);
+}
+
 .mise-state-group {
   display: grid;
   gap: 8px;
@@ -2324,17 +2438,27 @@ button.active .lens-glass::after {
   gap: 8px;
 }
 
+/* auto-fit + 1fr이면 인물이 한 명일 때 카드가 레일 폭 전체를 먹는다.
+   폭 1300px 카드는 aspect-ratio 때문에 높이가 1700px이 되어 사진만 화면을
+   가득 채운다 — 비율을 낮춰도 이 문제는 그대로다.
+   auto-fill과 최대 폭으로 카드 크기를 고정한다. */
 .mise-character-grid {
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(200px, 260px));
+  justify-content: start;
 }
 
 .mise-place-grid {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
+/* 카드가 원본 그림과 같은 2/3이면 240px 폭에서 360px 높이가 되어, 인물 카드
+   몇 장만 세워도 화면을 다 먹는다. 사진은 이미 object-fit: cover로 채워지므로
+   카드가 원본 비율을 따를 이유가 없다 — 3/4로 낮춘다.
+   전신 그림이라 아래가 잘리는데, 인물을 구분하는 것은 얼굴과 옷차림이고
+   그 둘은 위쪽에 있다. 전신은 뒷면 썸네일과 패널 생성이 쓴다. */
 .mise-character-reference-card {
   min-width: 0;
-  aspect-ratio: 2 / 3;
+  aspect-ratio: 3 / 4;
   perspective: 1200px;
 }
 
@@ -2349,6 +2473,13 @@ button.active .lens-glass::after {
 .mise-character-reference-card.flipped .mise-character-card-inner {
   transform: rotateY(180deg);
 }
+
+/* backface-visibility는 보이지 않게만 한다 — 뒤로 돌아간 면의 버튼은 여전히
+   클릭을 받는다. 그래서 `정보 보기`로 넘어간 뒤 앞면의 `다시 생성`이 눌려
+   Cancel을 눌렀는데도 그림이 생성됐다. 안 보이는 면은 클릭도 받지 않는다. */
+.mise-character-reference-card .mise-character-card-back { pointer-events: none; }
+.mise-character-reference-card.flipped .mise-character-card-back { pointer-events: auto; }
+.mise-character-reference-card.flipped .mise-character-card-front { pointer-events: none; }
 
 .mise-character-card-face {
   position: absolute;
@@ -2386,7 +2517,9 @@ button.active .lens-glass::after {
   height: 100%;
   display: block;
   object-fit: cover;
-  object-position: center;
+  /* 카드가 원본보다 납작해 아래가 잘린다. 위쪽을 기준으로 잘라 얼굴과
+     옷차림을 남긴다 — 인물을 구분하는 것은 발이 아니다. */
+  object-position: center 18%;
   filter: saturate(0.8) contrast(1.04);
 }
 
@@ -2598,19 +2731,27 @@ button.active .lens-glass::after {
   border-color: color-mix(in srgb, var(--lens-color), transparent 38%);
 }
 
+/* 뒷면은 스크롤된다. Cancel/Save가 맨 아래에 있으면 항목이 길 때 화면 밖으로
+   밀려 돌아갈 길이 없어 보인다 — 아래에 붙여 둔다. */
 .mise-character-edit-actions {
+  position: sticky;
+  bottom: 0;
+  z-index: 1;
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 6px;
   margin-top: auto;
+  padding-top: 8px;
+  /* 스크롤 내용이 버튼 뒤로 비치지 않게. */
+  background: #101512;
 }
 
 .mise-character-edit-actions button {
   min-height: 31px;
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 5px;
-  background: rgba(255, 255, 255, 0.035);
-  color: rgba(226, 232, 240, 0.72);
+  background: #151b17;
+  color: rgba(226, 232, 240, 0.86);
   font-size: 11px;
   font-weight: 800;
   cursor: pointer;
@@ -2639,21 +2780,22 @@ button.active .lens-glass::after {
   aspect-ratio: 3 / 2;
 }
 
-/* 생성된 인물·공간 기준은 편집 폼의 작은 썸네일이 아니라 카드 뒷면에서
-   충분히 비교할 수 있게 둔다. 이 그림과 아래 값이 패널 생성의 공통 기준이다. */
-.mise-reference-image {
+/* 공간 레퍼런스 그림. 인물은 카드 앞면이 사진이지만 공간 앞면은 2D
+   배치도라, 이 그림을 보여 주는 곳이 뒷면뿐이다. */
+.mise-location-reference-image {
   flex: 0 0 auto;
   overflow: hidden;
-  min-height: 145px;
   border: 1px solid color-mix(in srgb, var(--lens-color), transparent 62%);
   border-radius: 7px;
   background: rgba(0, 0, 0, 0.28);
 }
 
-.mise-reference-image img {
+.mise-location-reference-image img {
   display: block;
   width: 100%;
-  height: 165px;
+  /* 공간은 가로 그림이다(1536x1024). 비율을 지켜 잘리지 않게 한다 —
+     object-fit: cover로 높이를 고정하면 창이나 문이 잘려 나간다. */
+  aspect-ratio: 3 / 2;
   object-fit: cover;
 }
 
@@ -2697,12 +2839,19 @@ button.active .lens-glass::after {
 .mise-reference-facts dt { color: rgba(148, 163, 184, 0.58); }
 .mise-reference-facts dd { color: rgba(226, 232, 240, 0.76); }
 
+/* 뒷면은 스크롤된다. 돌아가는 버튼이 맨 아래에 있으면 내용이 길 때
+   화면 밖으로 밀려 "돌아갈 길이 없다"고 보인다 — 아래에 붙여 둔다. */
 .mise-reference-back {
+  position: sticky;
+  bottom: 0;
+  z-index: 1;
+  flex: 0 0 auto;
   min-height: 31px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.14);
   border-radius: 5px;
-  background: rgba(255, 255, 255, 0.035);
-  color: rgba(226, 232, 240, 0.72);
+  /* 반투명이면 스크롤되는 내용이 뒤로 비쳐 글자가 안 읽힌다. */
+  background: #151b17;
+  color: rgba(226, 232, 240, 0.86);
   font-size: 11px;
   font-weight: 800;
   cursor: pointer;
@@ -5192,14 +5341,14 @@ button.active .lens-glass::after {
   gap: 5px;
 }
 
+/* 변화가 없을 때가 대부분이다. 테두리와 배경을 두르면 값 한 줄에 상자가
+   하나씩 붙어 화면이 상자로 뒤덮인다 — 선 하나로 구분한다. */
 .mise-fact-timeline {
   display: grid;
-  gap: 6px;
-  margin-top: 8px;
-  padding: 8px;
-  border: 1px solid rgba(126, 200, 160, 0.14);
-  border-radius: 7px;
-  background: rgba(16, 185, 129, 0.035);
+  gap: 4px;
+  margin-top: 5px;
+  padding-top: 5px;
+  border-top: 1px solid rgba(126, 200, 160, 0.12);
 }
 
 .mise-fact-timeline > header {
@@ -5208,6 +5357,10 @@ button.active .lens-glass::after {
   justify-content: space-between;
   gap: 8px;
 }
+
+/* 변화가 없으면 머리글도 설명도 접는다 — `+ 다음 상태` 버튼만 남는다. */
+.mise-fact-timeline.is-empty > header,
+.mise-fact-timeline.is-empty > ol { display: none; }
 
 .mise-fact-timeline > header > span { color: rgba(150, 220, 185, 0.94); font-size: 9px; font-weight: 850; }
 .mise-fact-timeline > header > small { color: rgba(148, 163, 184, 0.66); font-size: 8.5px; text-align: right; }
@@ -5276,69 +5429,6 @@ button.active .lens-glass::after {
 .mise-fact-stage-remove:disabled {
   opacity: 0.35;
   cursor: default;
-}
-
-.mise-change-form {
-  margin-top: 12px;
-  padding: 12px 13px;
-  border: 1px solid rgba(126, 200, 160, 0.35);
-  border-radius: 9px;
-  background: rgba(126, 200, 160, 0.05);
-}
-
-.mise-change-form header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 9px;
-}
-
-.mise-change-form header strong {
-  color: rgba(255, 255, 255, 0.9);
-  font-size: 12px;
-  font-weight: 700;
-}
-
-.mise-change-form header button {
-  width: 20px;
-  height: 20px;
-  border: 0;
-  border-radius: 5px;
-  background: transparent;
-  color: rgba(255, 255, 255, 0.4);
-  cursor: pointer;
-}
-
-.mise-change-form label {
-  display: block;
-  margin-bottom: 8px;
-}
-
-.mise-change-form label span {
-  display: block;
-  margin-bottom: 4px;
-  color: rgba(255, 255, 255, 0.42);
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-}
-
-.mise-change-form select,
-.mise-change-form input {
-  width: 100%;
-  padding: 6px 8px;
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  border-radius: 6px;
-  background: rgba(0, 0, 0, 0.3);
-  color: rgba(255, 255, 255, 0.9);
-  font-family: inherit;
-  font-size: 11.5px;
-}
-
-.mise-change-form select:focus,
-.mise-change-form input:focus {
-  border-color: rgba(126, 200, 160, 0.55);
-  outline: none;
 }
 
 .mise-change-save {
@@ -6185,3 +6275,72 @@ button.active .lens-glass::after {
 .multi-review-tension-where button:hover {
   background: rgba(216, 170, 98, 0.16);
 }
+
+/* 답을 못 받은 렌즈. 카드를 빼면 '문제 없음'으로 읽히므로 자리를 남긴다. */
+.multi-review-card.is-missing { opacity: .72; border-style: dashed; }
+.multi-review-missing-note {
+  margin: 6px 0 8px;
+  color: rgba(203, 213, 225, .72);
+  font-size: 11.5px;
+  line-height: 1.5;
+}
+
+/* 변화를 적는 폼. 항목 바로 아래에서 쓴다 — 전에는 카드 밖 아래쪽에 따로
+   떠서, 어느 항목의 변화인지 스크롤해 올라가 확인해야 했다. */
+.mise-change-inline {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 5px;
+  align-items: center;
+  margin-top: 4px;
+}
+
+.mise-change-inline > label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: rgba(148, 163, 184, 0.7);
+  font-size: 9.5px;
+  font-weight: 800;
+}
+
+.mise-change-inline select,
+.mise-change-inline input {
+  min-width: 0;
+  padding: 4px 6px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 5px;
+  background: rgba(0, 0, 0, 0.3);
+  color: rgba(226, 232, 240, 0.9);
+  font-family: inherit;
+  font-size: 10.5px;
+}
+
+/* 입력칸은 두 칸을 걸쳐 넓게 쓴다. 짧은 칸에 문장을 적기 어렵다. */
+.mise-change-inline > input { grid-column: 1 / -1; }
+
+.mise-change-inline > div {
+  grid-column: 1 / -1;
+  display: flex;
+  gap: 4px;
+}
+
+.mise-change-inline > div > button {
+  padding: 4px 9px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 5px;
+  background: transparent;
+  color: rgba(226, 232, 240, 0.72);
+  font-family: inherit;
+  font-size: 10px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.mise-change-inline > div > button.mise-change-save {
+  border-color: color-mix(in srgb, var(--lens-color), transparent 50%);
+  background: color-mix(in srgb, var(--lens-color), transparent 84%);
+  color: color-mix(in srgb, var(--lens-color), white 26%);
+}
+
+.mise-change-inline > div > button:disabled { opacity: 0.45; cursor: default; }
