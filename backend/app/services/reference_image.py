@@ -28,20 +28,41 @@ REFERENCE_CLEAN = (
 
 # 표현 밀도. 패널과 같은 값을 써야 한다 — 레퍼런스만 다른 화풍이면 참조로
 # 물렸을 때 패널의 화풍이 흔들린다. panel_style.style_prelude와 짝이다.
+# 패널과 같은 네 항목(선 / 얼굴 / 음영 / 배경)으로 쓴다. panel_style과
+# 어긋나면 기준 그림이 패널보다 완성돼 나오고, 그것이 참조로 물려 패널까지
+# 끌어올린다 — 실제로 러프인데 얼굴이 다 그려진 기준이 나왔다.
+#
+# `cinematic`, `tonal indication` 같은 말은 쓰지 않는다. 완성도를 낮추라는
+# 지시와 반대로 당긴다.
 PRESET_LOOKS = {
+    # 감독이 종이에 펜으로 20초 만에 긋는 그림. 얼굴은 **비운다** —
+    # 이목구비를 하나라도 요구하면 모델이 거기서부터 그리기 시작해
+    # detailed 수준으로 올라간다.
     "rough": (
-        "Black-and-white cinematic line drawing, clear restrained contours, "
-        f"light tonal indication. {REFERENCE_CLEAN}"
+        "A crude pen thumbnail scribbled on paper in twenty seconds to block out "
+        "a composition. Stick-figure level. "
+        "Bodies: a few straight strokes for limbs and a simple shape for the "
+        "torso. No anatomy, no muscle, no clothing folds. "
+        "HEADS ARE BLANK: draw the head as an empty oval outline with NO face "
+        "inside it — no eyes, no nose, no mouth, no hair. Leave it empty. "
+        "Objects: plain boxes and lines standing in for furniture and props. "
+        "Shading: none, except a few quick parallel strokes if an area must read "
+        "as dark. Most of the paper stays blank. "
+        "Wobbly, uneven, obviously hand-drawn in haste. This is a planning "
+        f"scribble, not a drawing — it should look almost too crude. {REFERENCE_CLEAN}"
     ),
     "detailed": (
-        "Monochrome graphite drawing with clear controlled linework and moderate "
-        f"tonal shading. Hand-drawn planning-image quality. {REFERENCE_CLEAN}"
+        "A monochrome graphite drawing with controlled, cleaned-up linework. "
+        "Face: features readable — eyes, nose and mouth resolved, hair as shaped "
+        "masses. No skin texture, no individual hairs. "
+        "Shading: moderate tone where it gives form. "
+        f"Still hand-drawn: a planning image, not a finished illustration. {REFERENCE_CLEAN}"
     ),
     # 실사 보드의 기준은 실사여야 한다. 선화를 기준으로 물리면 패널이
     # 실사로 나오지 않거나, 두 화풍이 한 그림 안에서 섞인다.
     "photoreal": (
-        "Photorealistic reference still. Natural materials, believable lighting, "
-        "restrained neutral grade, real camera perspective. "
+        "A photorealistic reference photograph. Natural materials, believable "
+        "lighting, restrained neutral grade, real camera perspective. "
         f"Not concept art, not a beauty portrait. {REFERENCE_CLEAN}"
     ),
 }
@@ -54,6 +75,10 @@ def _base_style(preset: str) -> str:
 CHARACTER_BODY = (
     "One single standing figure, full body, front view, neutral pose, "
     "arms relaxed at the sides. "
+    # 대본은 한국어이고 인물 이름도 한국 이름인데, 모델은 그냥 두면 서양
+    # 인물을 그린다. 대본이 다른 국적을 말하면 그 값이 프롬프트 뒤쪽에
+    # 오므로 이 기본값을 덮는다.
+    "The character is Korean unless the description says otherwise. "
     # 얼굴이 잘리면 레퍼런스가 아니다. 컷마다 같은 인물로 보이게 하는 것이
     # 이 그림의 목적인데, 그것을 결정하는 것은 얼굴과 머리다.
     "FRAMING IS CRITICAL: the entire figure must fit inside the frame, "
@@ -70,6 +95,11 @@ CHARACTER_BODY = (
 
 LOCATION_BODY = (
     "Wide establishing view of an empty space. "
+    # 공간도 마찬가지다. 카페·실험실·복도가 서양식으로 나오면 인물만
+    # 한국인이고 배경은 아닌 그림이 된다.
+    # 글자는 위에서 금지했으므로 간판 문구가 아니라 건축·가구로만 말한다.
+    "A place in South Korea unless the description says otherwise: "
+    "Korean architecture, interior proportions and furniture. "
     # 사람이 들어가면 패널마다 그 사람이 따라 나온다.
     "No people, no figures, no characters in the frame."
 )
@@ -78,9 +108,11 @@ LOCATION_BODY = (
 def _subject_style(kind: str, preset: str) -> str:
     """이 레퍼런스의 화풍 + 담을 것. 화풍은 preset이, 나머지는 kind가 정한다."""
     base = _base_style(preset)
+    # `reference sheet`는 쓰지 않는다 — 모델이 잡지 화보 같은 캐릭터 시트로
+    # 읽어 완성도를 올린다. 무엇에 쓰는 그림인지는 아래 본문이 이미 말한다.
     if kind == "character":
-        return f"Character reference sheet. {base} {CHARACTER_BODY}"
-    return f"Location reference. {base} {LOCATION_BODY}"
+        return f"{base} {CHARACTER_BODY}"
+    return f"{base} {LOCATION_BODY}"
 
 
 async def generate_reference(request: ReferenceImageRequest) -> ReferenceImageResponse:
@@ -104,9 +136,13 @@ async def generate_reference(request: ReferenceImageRequest) -> ReferenceImageRe
 
     client = AsyncOpenAI(api_key=api_key)
     result = await client.images.generate(
-        model="gpt-image-1",
+        # 패널 생성에서 고른 모델을 그대로 쓴다. 기준 그림만 다른 모델로
+        # 그리면 지시를 받아들이는 정도가 달라 화풍이 그 지점에서 갈린다.
+        model=request.model,
         prompt=f"{style}\n\n{request.prompt}",
         size=size,
+        # 기준 그림은 인물·공간마다 여러 장을 만들고, 마음에 안 들면 다시
+        # 그린다. 화질보다 기다리는 시간이 작업을 막는다.
         quality="low",
         n=1,
     )

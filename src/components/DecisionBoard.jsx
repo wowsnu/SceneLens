@@ -1162,14 +1162,20 @@ function ViewerDecisionCard({
           />
         </label>
       )}
-      {status === 'revise' && routes.length > 0 && (
-        <div className="viewer-decision-routes">
+      {/* 이 지적을 어디서 고치는지는 판정 전에도 보여야 한다. 새눈이 카드는
+          바로 보여 주는데 여기만 `수정 검토`를 누른 뒤에 나타나서, 감독이
+          고칠 자리를 보지 못한 채 판정하게 됐다.
+          판정 후에는 강조해 다음 할 일로 읽히게 한다. */}
+      {routes.length > 0 && (
+        <div className={`viewer-decision-routes${status === 'revise' ? ' is-active' : ''}`}>
           {routes.map((route) => (
             <button
               key={route}
               type="button"
               onClick={() => onRoute(route, panelOrders, {
-                title: '제작자가 수정 검토로 남긴 읽힘',
+                title: status === 'revise'
+                  ? '제작자가 수정 검토로 남긴 읽힘'
+                  : '관객이 헷갈릴 수 있는 지점',
                 interpretations,
                 visibleCues: evidence,
               })}

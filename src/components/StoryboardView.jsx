@@ -35,12 +35,30 @@ const NARRATIVE_RULE_LABELS = {
   'narrative-information-reveal': '알려주는 때가 안 맞아요',
   'narrative-causal-link': '앞뒤가 안 이어져요',
   // 컷 플랜 — 편집이 본다. 컷 단위 판단은 편집의 일이다.
+  // 이 규칙은 네 가지를 함께 본다(기능 없음 / 필수 단계 누락 / 반복 / 압축).
+  // 기본 문구는 '있는 컷을 덜어낼까'이고, 없는 컷을 넣자는 제안일 때는
+  // 아래 RULE_LABEL_BY_OPERATION이 뒤집는다.
   'editing-shot-function': '이 컷이 필요할까요',
   'editing-information-order': '보여주는 순서가 아쉬워요',
   // 컷 플랜 — 촬영이 보는 하나. 크기가 내용을 담는지는 그림 없이도
   // 판단할 수 있고, 그린 뒤에 알면 다시 그려야 한다.
   'camera-information-selection': '이 크기로 보일까요',
 }
+
+// 같은 규칙이라도 제안하는 조치가 반대면 묻는 말도 반대여야 한다.
+// `이 컷이 필요할까요`는 있는 컷을 덜어내자는 말인데, insert는 없는 컷을
+// 넣자는 제안이다 — 같은 문구로 두면 감독이 무엇을 판정하는지 어긋난다.
+const RULE_LABEL_BY_OPERATION = {
+  'editing-shot-function': {
+    insert: '이 컷도 필요할까요',
+  },
+}
+
+const ruleLabelOf = (finding, fallback) => (
+  RULE_LABEL_BY_OPERATION[finding?.ruleId]?.[finding?.operation]
+  || NARRATIVE_RULE_LABELS[finding?.ruleId]
+  || fallback
+)
 
 // AI 점검이 짚은 규칙이 어느 층위의 문제인가. 이것이 없으면 전부
 // '컷 구성'으로 뜬다 — 순서 문제도, 크기 문제도.
@@ -1450,7 +1468,11 @@ export default function StoryboardView() {
       missingReferenceRequirements.push(requirement)
     }
   }
-  cutPlan.forEach((cut) => {
+  // 러프 콘티는 기준 그림을 물리지 않는다(referencesForCut). 쓰지도 않을
+  // 그림을 요구하면 컷 플랜 확정이 막히므로, 이 검사 자체를 건너뛴다.
+  const needsReferences = panelStylePreset !== 'rough'
+  const cutsNeedingReferences = needsReferences ? cutPlan : []
+  cutsNeedingReferences.forEach((cut) => {
     const scriptScene = sceneOfBeat(scriptScenes, cut.beat)
     const sceneState = sceneStates[scriptScene?.id]
     if (!sceneState) {
@@ -1544,7 +1566,7 @@ export default function StoryboardView() {
         type: finding.operation === 'insert' ? 'skipped-beat' : 'narrative-check',
         operation: finding.operation,
         layer: layerOfCheckFinding(finding),
-        title: NARRATIVE_RULE_LABELS[finding.ruleId] || '편집',
+        title: ruleLabelOf(finding, '편집'),
         // 무엇이 문제인지만. suggestedAction까지 붙이면 두 문장이 한 줄에
         // 들어가 카드가 길어지고, 조치는 아래 버튼이 이미 말한다.
         detail: finding.finding,
@@ -1606,7 +1628,11 @@ export default function StoryboardView() {
       })
     }
     // 참조가 많을수록 느리고 서로를 흐린다. 인물 2명 + 공간이면 충분하다.
-    const picked = refs.slice(0, 3)
+    //
+    // 러프는 인물·공간 기준을 물리지 않는다. 얼굴이 빈 타원이고 공간이 선
+    // 몇 개인 그림에 "같은 얼굴로 이어지게" 할 것이 없고, 오히려 그려진
+    // 기준을 물리면 그쪽으로 완성도가 끌려 올라간다. 앵커만 물려 구도만 잡는다.
+    const picked = stylePreset === 'rough' ? [] : refs.slice(0, 3)
     const styleAnchor = PANEL_STYLE_PRESETS.find((preset) => preset.id === stylePreset)
     if (styleAnchor) {
       picked.unshift({ name: styleAnchor.label, kind: 'style', image: styleAnchor.image })
@@ -2089,7 +2115,7 @@ export default function StoryboardView() {
                     aria-pressed={openFindingId === finding.ruleId}
                     onClick={() => selectFinding(finding, stage)}
                   >
-                    <span>{NARRATIVE_RULE_LABELS[finding.ruleId] || '서사'}</span>
+                    <span>{ruleLabelOf(finding, '서사')}</span>
                     <em>
                       {isScript
                         ? lineLabelsOf(finding.lineIndexes)
@@ -2361,7 +2387,7 @@ export default function StoryboardView() {
           {showWriteScene && (
             <div className="inline-script-editor">
               <div className="editor-header">
-                <h3>Write scene</h3>
+                <h3>Story</h3>
                 <p>
                   장면을 적거나 붙여넣으세요. 완성된 대본이 아니어도 됩니다 —
                   거친 메모나 간단한 대사도 괜찮습니다.
@@ -3816,6 +3842,16 @@ export default function StoryboardView() {
                       ))}
                     </div>
                   )}
+                  {/* 러프 콘티는 기준 그림이 필요 없다. 얼굴이 빈 타원이고
+                      공간이 선 몇 개인 그림에 "같은 인물로 이어지게" 할 것이
+                      없다 — 화풍은 앵커가 잡는다.
+                      디테일·실사에서만 레퍼런스를 세운다. */}
+                  {panelStylePreset === 'rough' ? (
+                    <p className="rail-scene-rough-note">
+                      러프 콘티는 기준 그림 없이 구도만 잡습니다.
+                      인물·공간 기준은 디테일 스케치부터 필요합니다.
+                    </p>
+                  ) : (
                   <ul className="rail-scene-state">
                     {visibleSceneState.characters.map((character) => {
                       const referenceOpen = openReferenceCards[character.id] && character.image
@@ -4023,6 +4059,7 @@ export default function StoryboardView() {
                       </li>
                     )}
                   </ul>
+                  )}
                   <button
                     type="button"
                     className="rail-scene-reread"

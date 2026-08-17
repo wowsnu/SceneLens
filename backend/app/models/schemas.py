@@ -846,6 +846,9 @@ class ReferenceImageRequest(BaseModel):
     # 표현 밀도. 패널과 같은 값이어야 한다 — 기준 그림이 선화인데 패널이
     # 실사면, 참조로 물렸을 때 두 화풍이 서로 경쟁한다.
     style_preset: Literal["rough", "detailed", "photoreal"] = "rough"
+    # 기준 그림을 만들 모델. 패널과 같은 것을 쓸 수 있어야 한다 — 여기서만
+    # 다른 모델로 그리면 화풍이 그 지점에서 갈린다.
+    model: Literal["gpt-image-1", "gpt-image-2"] = "gpt-image-1"
 
 class ReferenceImageResponse(BaseModel):
     image: str      # base64 PNG

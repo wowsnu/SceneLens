@@ -407,11 +407,15 @@ export async function generatePanelImage(
 // 미장센: 인물·공간의 레퍼런스 그림. 이 그림이 패널 생성의 기준이 된다.
 // preset은 패널과 같은 표현 밀도다 — 기준 그림만 다른 화풍이면 참조로
 // 물렸을 때 패널의 화풍이 흔들린다.
-export async function generateReferenceImage(kind, prompt, { style = '', preset = 'rough' } = {}) {
+export async function generateReferenceImage(kind, prompt, {
+  style = '', preset = 'rough', model = 'gpt-image-1',
+} = {}) {
   const data = await fetchWithTimeout(`${API_BASE}/reference-image`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ kind, prompt, style, style_preset: preset }),
+    // 패널과 같은 모델을 쓴다. 기준 그림만 다른 모델로 그리면 지시를
+    // 받아들이는 정도가 달라 화풍이 그 지점에서 갈린다.
+    body: JSON.stringify({ kind, prompt, style, style_preset: preset, model }),
   }, 180000)
   return `data:image/png;base64,${data.image}`
 }

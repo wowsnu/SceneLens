@@ -4882,19 +4882,24 @@ button.active .lens-glass::after {
 .viewer-reading-card h3 { margin: 4px 0 0; color: #f1f5f9; font-size: 15px; }
 .viewer-reading-card header > p { margin: 6px 0 0; color: rgba(203, 213, 225, .76); font-size: 12px; line-height: 1.5; }
 
+/* 새눈이는 남긴다 — 이 말이 '시스템의 판정'이 아니라 '한 관객의 읽기'임을
+   얼굴이 말해 준다(관객 의견이 판결이 되지 않게 하는 장치). 다만 본문이
+   커진 만큼 자리를 줄여 글에 폭을 넘긴다. */
 .viewer-guide-card {
   display: grid;
-  grid-template-columns: 64px minmax(0, 1fr);
+  grid-template-columns: 48px minmax(0, 1fr);
   gap: 12px;
   align-items: start;
-  padding: 12px;
+  padding: 12px 12px 12px 4px;
   border: 0;
   border-radius: 10px;
   background: transparent;
 }
 
-.viewer-guide-character { display: grid; justify-items: center; gap: 5px; }
-.viewer-guide-character > strong { color: #c4b5fd; font-size: 10px; }
+/* scale은 레이아웃 박스를 줄이지 않는다. 50px 얼굴이 48px 칸을 넘지 않게
+   여기서 잘라 준다 — 넘치면 말풍선 쪽으로 밀고 들어온다. */
+.viewer-guide-character { display: grid; justify-items: center; gap: 3px; overflow: hidden; }
+.viewer-guide-character > strong { color: #c4b5fd; font-size: 10.5px; }
 .viewer-guide-face {
   position: relative;
   width: 50px;
@@ -4903,7 +4908,10 @@ button.active .lens-glass::after {
   border-radius: 44% 48% 46% 50%;
   background: #fef3c7;
   box-shadow: inset 0 -6px 0 rgba(245, 158, 11, .1), 0 4px 12px rgba(0, 0, 0, .2);
-  transform: rotate(-2deg);
+  /* 눈·입이 px 좌표로 붙어 있어 width를 줄이면 얼굴이 어긋난다.
+     통째로 축소해 비율을 지킨다. */
+  transform: rotate(-2deg) scale(.86);
+  transform-origin: top center;
 }
 .viewer-guide-face::before {
   content: '';
@@ -4926,29 +4934,37 @@ button.active .lens-glass::after {
 .viewer-guide-bubble {
   position: relative;
   display: grid;
-  gap: 7px;
-  padding: 11px 12px;
+  /* 글씨를 키웠으므로 줄 사이도 넓힌다. 간격이 그대로면 문단이 뭉쳐 보인다. */
+  gap: 10px;
+  padding: 14px 16px;
   border: 1px solid rgba(167, 139, 250, .22);
   border-radius: 10px;
   background: rgba(109, 40, 217, .07);
+  /* 한 줄이 너무 길면 눈이 다음 줄 첫머리를 놓친다. 읽는 글이므로 제한한다. */
+  max-width: 62ch;
 }
 .viewer-guide-bubble::before { content: ''; position: absolute; left: -7px; top: 18px; width: 12px; height: 12px; border-left: 1px solid rgba(167, 139, 250, .22); border-bottom: 1px solid rgba(167, 139, 250, .22); background: #16152a; transform: rotate(45deg); }
-.viewer-guide-bubble > span { color: #a5b4fc; font-size: 10px; font-weight: 850; }
-.viewer-guide-bubble h3 { margin: 0; color: rgba(248, 250, 252, .94); font-size: 14px; line-height: 1.45; }
-.viewer-guide-feeling { display: flex; gap: 6px; margin: 0; color: rgba(253, 230, 138, .78); font-size: 10.5px; line-height: 1.45; }
-.viewer-guide-feeling strong { flex: 0 0 auto; color: rgba(253, 224, 71, .9); font-size: 9.5px; }
-.viewer-current-hypothesis { padding: 8px 9px; border-radius: 7px; background: rgba(99, 102, 241, .1); }
-.viewer-current-hypothesis > strong { color: #c4b5fd; font-size: 9.5px; }
-.viewer-current-hypothesis > p { margin: 4px 0 0; color: rgba(241, 245, 249, .88); font-size: 11.5px; line-height: 1.45; }
-.viewer-open-question { display: grid; grid-template-columns: auto 1fr; gap: 6px; margin: 0; color: rgba(203, 213, 225, .74); font-size: 10.5px; line-height: 1.45; }
-.viewer-open-question strong { color: rgba(147, 197, 253, .9); font-size: 9.5px; }
-.viewer-guide-bubble details { border-top: 1px solid rgba(148, 163, 184, .1); padding-top: 6px; }
-.viewer-guide-bubble summary { color: rgba(196, 181, 253, .82); font-size: 10px; font-weight: 800; cursor: pointer; }
-.viewer-guide-bubble details p { margin: 5px 0 0; color: rgba(203, 213, 225, .72); font-size: 11px; line-height: 1.45; }
-.viewer-inline-review { margin-top: 2px; padding: 8px 9px; border: 1px solid rgba(251, 191, 36, .18); border-radius: 7px; background: rgba(245, 158, 11, .07); }
-.viewer-inline-review > span { color: #fde68a; font-size: 9.5px; font-weight: 850; }
-.viewer-inline-review > p { margin: 4px 0 0; color: rgba(254, 243, 199, .84); font-size: 11px; line-height: 1.45; }
-.viewer-inline-review > small { display: block; margin-top: 4px; color: rgba(203, 213, 225, .62); font-size: 9.5px; line-height: 1.4; }
+/* 관객 읽기는 이 화면에서 유일하게 '읽는' 콘텐츠다. 나머지 카드는 값을
+   훑어보는 것이지만 여기는 문장을 따라가야 하므로, 목록용 9~11px로는
+   작다. 본문을 14~15px로 올리고 나머지를 그 아래로 줄 세운다.
+
+   대비도 함께 올린다 — 글씨만 키우고 .72 알파로 두면 여전히 안 읽힌다. */
+.viewer-guide-bubble > span { color: #a5b4fc; font-size: 11.5px; font-weight: 850; letter-spacing: .02em; }
+.viewer-guide-bubble h3 { margin: 0; color: rgba(248, 250, 252, .98); font-size: 17px; line-height: 1.55; font-weight: 700; letter-spacing: -.01em; }
+.viewer-guide-feeling { display: flex; gap: 7px; margin: 0; color: rgba(253, 230, 138, .92); font-size: 13.5px; line-height: 1.55; }
+.viewer-guide-feeling strong { flex: 0 0 auto; color: rgba(253, 224, 71, .95); font-size: 11px; }
+.viewer-current-hypothesis { padding: 9px 11px; border-radius: 7px; background: rgba(99, 102, 241, .1); }
+.viewer-current-hypothesis > strong { color: #c4b5fd; font-size: 11px; }
+.viewer-current-hypothesis > p { margin: 5px 0 0; color: rgba(241, 245, 249, .95); font-size: 14px; line-height: 1.55; }
+.viewer-open-question { display: grid; grid-template-columns: auto 1fr; gap: 7px; margin: 0; color: rgba(203, 213, 225, .9); font-size: 13.5px; line-height: 1.55; }
+.viewer-open-question strong { color: rgba(147, 197, 253, .95); font-size: 11px; }
+.viewer-guide-bubble details { border-top: 1px solid rgba(148, 163, 184, .12); padding-top: 8px; }
+.viewer-guide-bubble summary { color: rgba(196, 181, 253, .9); font-size: 12px; font-weight: 800; cursor: pointer; }
+.viewer-guide-bubble details p { margin: 7px 0 0; color: rgba(203, 213, 225, .88); font-size: 13.5px; line-height: 1.6; }
+.viewer-inline-review { margin-top: 3px; padding: 10px 11px; border: 1px solid rgba(251, 191, 36, .18); border-radius: 7px; background: rgba(245, 158, 11, .07); }
+.viewer-inline-review > span { color: #fde68a; font-size: 11px; font-weight: 850; }
+.viewer-inline-review > p { margin: 5px 0 0; color: rgba(254, 243, 199, .95); font-size: 14px; line-height: 1.55; }
+.viewer-inline-review > small { display: block; margin-top: 6px; color: rgba(203, 213, 225, .78); font-size: 12px; line-height: 1.5; }
 
 .viewer-branches,
 .viewer-review-points { display: grid; gap: 7px; padding: 11px; border: 1px solid rgba(148, 163, 184, .12); border-radius: 9px; background: rgba(15, 23, 42, .3); }
@@ -5010,8 +5026,10 @@ button.active .lens-glass::after {
 .viewer-decision-note > span { color: rgba(187, 247, 208, .78); font-size: 9px; font-weight: 800; }
 .viewer-decision-note textarea { min-height: 48px; resize: vertical; border: 1px solid rgba(148, 163, 184, .16); border-radius: 6px; padding: 7px; background: rgba(2, 6, 23, .34); color: rgba(241, 245, 249, .88); font: inherit; font-size: 10px; line-height: 1.4; }
 .viewer-decision-note textarea:focus { outline: 1px solid rgba(74, 222, 128, .55); border-color: rgba(74, 222, 128, .4); }
-.viewer-decision-routes { display: flex; flex-wrap: wrap; gap: 5px; }
-.viewer-decision-routes button { padding: 5px 7px; border: 1px solid rgba(251, 191, 36, .22); border-radius: 5px; background: rgba(245, 158, 11, .08); color: #fde68a; font-size: 9px; font-weight: 800; cursor: pointer; }
+/* 판정 전에는 조용히, 판정 후에는 다음 할 일로 보이게. */
+.viewer-decision-routes { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 2px; opacity: .75; }
+.viewer-decision-routes.is-active { opacity: 1; }
+.viewer-decision-routes button { padding: 6px 9px; border: 1px solid rgba(251, 191, 36, .22); border-radius: 5px; background: rgba(245, 158, 11, .08); color: #fde68a; font-size: 11px; font-weight: 800; cursor: pointer; }
 .viewer-decision-routes button:hover { border-color: rgba(251, 191, 36, .46); background: rgba(245, 158, 11, .14); }
 
 .viewer-reading-steps { display: grid; gap: 8px; margin: 12px 0; padding: 0; list-style: none; }

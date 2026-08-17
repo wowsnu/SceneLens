@@ -259,6 +259,8 @@ Add a review_point only when comprehension or emotional flow may actually suffer
 Use issue_kind exactly as follows: story_context for identity, relationship, goal, or causal meaning that the visible sequence cannot establish; element_visibility for a needed person, object, or action that is hard to identify; spatial_relation for blocking, position, gesture, prop placement, or spatial relation; framing_readability for scale, crop, viewpoint, focus, or visual emphasis; cut_connection for an unclear relation across two or more panels; information_order for information revealed too early, too late, or in a confusing order.
 Use suspected_cause for the most direct source: narrative, mise, camera, or editing. It is only a hypothesis and will be checked by a routing rule; do not choose more than one.
 
+Look at each panel before writing about it. Work through it in this order: who or what is in frame and where they stand relative to each other; which way each face and body is turned and where the eyes look; what the hands are doing and what they hold or touch; how much of the subject the frame includes and from what height; what the space and light tell you. Ground every cue you cite in one of these. If something is drawn too roughly to identify, say it is unclear rather than guessing a specific object or expression — a rough storyboard leaves much undrawn, and treating a blank face as an emotion is the most common mistake.
+
 Adjacent panels do not by themselves prove cause and effect. When a location, composition, or subject changes, keep the connection as a possibility or an open question unless a visible action establishes it.
 One still panel establishes appearance and position more reliably than motion. Do not say that a person, train, or object is moving, attacking, or causing an event unless pose, motion blur, or the ordered sequence visibly supports that action.
 Do not invent off-screen facts, screenplay events, creator goals, correctness scores, demographics, or audience percentages. Avoid academic language and repeated hedging. Write emotional_arc as one natural sentence, not a numbered chart. Keep every field compact: summary at most two short sentences, each step field one short sentence, and lists short enough that all panels fit."""
@@ -272,7 +274,13 @@ Do not invent off-screen facts, screenplay events, creator goals, correctness sc
         ])
 
     response = await client.chat.completions.create(
-        model="gpt-5.4-nano",
+        # 관객 읽기는 그림에서 직접 읽어야 하는 일이다 — 대본도 샷 라벨도
+        # 주지 않으므로 픽셀이 유일한 근거다. nano로는 자세·시선·소품을
+        # 자주 놓쳐 "그림을 잘 못 본다"는 인상을 줬다.
+        #
+        # 연출 렌즈가 같은 이유로 mini → gpt-5.4로 올린 전례가 있다
+        # (directing_review.DEFAULT_LENS_MODELS의 미장센 주석).
+        model=os.getenv("VIEWER_READING_MODEL", "gpt-5.4"),
         messages=[{"role": "user", "content": content}],
         response_format={"type": "json_schema", "json_schema": RESPONSE_SCHEMA},
         max_completion_tokens=5000,
@@ -351,7 +359,9 @@ Use issue_kind and suspected_cause only to classify where to inspect the differe
 
 Here are the independent records:\n""" + json.dumps(records, ensure_ascii=False)
     response = await client.chat.completions.create(
-        model="gpt-5.4-nano",
+        # 이쪽은 이미 쓰인 기록을 비교하는 텍스트 작업이라 그림을 보지 않는다.
+        # 다만 지적을 뭉뚱그리지 않고 컷별로 갈라내야 해서 nano로는 얕았다.
+        model=os.getenv("VIEWER_COMPARISON_MODEL", "gpt-5.4-mini"),
         messages=[{"role": "user", "content": prompt}],
         response_format={"type": "json_schema", "json_schema": COMPARISON_SCHEMA},
         max_completion_tokens=2200,

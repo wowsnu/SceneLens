@@ -50,23 +50,6 @@ const DEMO_PANEL_IMAGES = {
   '6-2': '/img/lab_window_reveal.png',      // 창가
 }
 
-// Dummy strategy data with image paths and spatial coordinates
-const DEMO_STRATEGIES = [
-  {
-    id: 'A',
-    name: 'Quiet Discovery',
-    shots: [
-      { order: 1, beat: 0, image: '/img/lab_wide_establishing.png', x: 450, y: 700, angle: -90, intent: 'ESTABLISH SPACE', cir: { shotSize: 'Wide', relation: 'Master' } },
-      { order: 2, beat: 1, image: '/img/lab_student_ots.png', x: 200, y: 450, angle: -30, intent: 'SUBJECTIVE FOCUS', cir: { shotSize: 'Medium', relation: 'OTS' } },
-      { order: 3, beat: 2, image: null, x: 500, y: 250, angle: 90, intent: 'FATIGUE / STALL', cir: { shotSize: 'Medium Close', relation: 'Single' } },
-      { order: 4, beat: 3, image: null, x: 750, y: 450, angle: -150, intent: 'THE NOTICING', cir: { shotSize: 'Close-Up', relation: 'Single' } },
-      { order: 5, beat: 4, image: '/img/lab_pattern_ecu.png', x: 350, y: 350, angle: 0, intent: 'EVIDENCE DETAIL', cir: { shotSize: 'ECU', relation: 'Insert' } },
-      { order: 6, beat: 5, image: '/img/lab_discovery_cu.png', x: 450, y: 800, angle: -90, intent: 'REALIZATION', cir: { shotSize: 'Close-Up', relation: 'Single' } },
-      { order: 7, beat: 6, image: '/img/lab_window_reveal.png', x: 450, y: 900, angle: -90, intent: 'WORLD RESEEN', cir: { shotSize: 'Wide', relation: 'Single' } },
-    ]
-  },
-]
-
 const STRATEGY_COLORS = [
   { color: '#10b981', bg: 'rgba(16, 185, 129, 0.1)', raw: '#10b981' },
   { color: '#8b5cf6', bg: 'rgba(139, 92, 246, 0.1)', raw: '#8b5cf6' },
@@ -1866,7 +1849,10 @@ const useStore = create((set, get) => ({
   cutPlanMoves: CUT_PLAN_MOVES,
   // 패널을 그리기 전에 고르는 제공자/모델. 같은 선택을 개별 재생성에도
   // 유지해야 한 보드 안에서 모델이 섞이지 않는다.
-  panelImageModel: 'gpt-image-1',
+  // 기본을 gpt-image-2로 둔다. 컷 플랜의 레퍼런스 생성은 모델을 고르는
+  // 자리보다 앞이라 이 값을 그대로 쓰는데, gpt-image-1은 화풍·국적 지시를
+  // 자주 흘렸다.
+  panelImageModel: 'gpt-image-2',
   setPanelImageModel: (panelImageModel) => set({ panelImageModel }),
   // 표현 밀도. 컷 플랜(레퍼런스 생성)과 Panels(패널 생성) 양쪽에서 고르되
   // 값은 하나다 — 기준 그림과 패널이 다른 화풍으로 갈리면 안 된다.
@@ -2181,7 +2167,15 @@ const useStore = create((set, get) => ({
       // 레퍼런스부터 패널과 같은 화풍으로 만든다. 기준 그림이 다른 화풍이면
       // 패널 생성 때 참조로 물려 두 화풍이 서로 경쟁하게 된다.
       const preset = get().panelStylePreset
-      const image = await generateReferenceImage(kind, prompt.effective, { preset })
+      // 모델도 패널과 같은 것을 쓴다. 기준 그림만 다른 모델로 그리면
+      // 프롬프트를 받아들이는 정도가 달라 화풍이 그 지점에서 갈린다.
+      // FLUX는 레퍼런스 경로가 없으므로(OpenAI images.generate만 쓴다)
+      // 그때만 기본값으로 떨어진다.
+      const panelModel = get().panelImageModel
+      const image = await generateReferenceImage(kind, prompt.effective, {
+        preset,
+        model: panelModel === 'flux-2-klein' ? 'gpt-image-1' : panelModel,
+      })
       // 어떤 밀도로 만든 기준인지 그림 옆에 남긴다. preset을 바꾸면 이 값이
       // 현재 값과 달라져, 화풍이 갈렸다는 것을 화면이 알아챌 수 있다.
       if (kind === 'character') {
@@ -3749,7 +3743,10 @@ const useStore = create((set, get) => ({
       ),
     }
   }),
-  strategies: DEMO_STRATEGIES,
+  // 예시 그림이 든 전략은 초기값에 두지 않는다. DrawingCanvas가 패널에
+  // 그림이 없으면 여기로 떨어지므로, 두면 빈 패널을 열었을 때 남의 그림이
+  // 캔버스에 올라온다. 예시는 loadExampleScreenplay에서만 붙인다.
+  strategies: [],
   activeStrategy: 0,
   setStrategies: (strategies) => set((state) => {
     const scenes = syncScenesFromStrategies(state, strategies)
@@ -3906,48 +3903,26 @@ const useStore = create((set, get) => ({
     return { reframeHistory: nextHistory }
   }),
   // ── Scenes hierarchy ────────────────────────────────────
+  // 빈 상태에서 시작한다. 예시 그림을 초기값에 두면 감독이 자기 대본을
+  // 써도 그 그림이 남는다 — `applyCutPlanToShots`의 `findDrawnInBeat`가
+  // 그림이 있는 패널을 beat로 물려받으므로, 남의 컷에 붙어 버린다.
+  //
+  // 예시 그림은 `loadExampleScreenplay`에서만 붙인다. 예시를 부르는 것은
+  // 감독이 명시적으로 고른 일이다.
   scenes: [
     {
       id: 'scene-1',
-      label: 'Physics Lab',
+      label: 'Scene 1',
       activeBranch: 0,
       activeShot: 0,
       branches: [
         {
           id: 'branch-main',
-          label: 'Quiet Discovery',
-          isMain: true,
-          branchPoint: 0,
-          rationale: '',
-          shots: DEMO_STRATEGIES[0].shots.map((s, i) => ({
-            id: `shot-s1-main-${i}`,
-            image: s.image,
-            cir: {},
-            label: s.intent || `Shot ${i + 1}`,
-            scriptBeat: i,
-            isAIGenerated: false,
-            source: 'canvas',
-          })),
-        },
-      ],
-    },
-    {
-      id: 'scene-2',
-      label: 'Faculty Corridor',
-      activeBranch: 0,
-      activeShot: 0,
-      branches: [
-        {
-          id: 'branch-main-s2',
           label: 'Main',
           isMain: true,
           branchPoint: 0,
           rationale: '',
-          shots: [
-            { id: 'shot-s2-0', image: null, cir: {}, label: 'Empty Corridor', scriptBeat: 0, isAIGenerated: false, source: 'canvas' },
-            { id: 'shot-s2-1', image: null, cir: {}, label: 'Knocking', scriptBeat: 1, isAIGenerated: false, source: 'canvas' },
-            { id: 'shot-s2-2', image: null, cir: {}, label: 'Held Notebook', scriptBeat: 2, isAIGenerated: false, source: 'canvas' },
-          ],
+          shots: [],
         },
       ],
     },

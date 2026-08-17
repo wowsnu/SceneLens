@@ -4876,3 +4876,15 @@
   font-weight: 700;
   white-space: nowrap;
 }
+
+/* 러프 콘티는 기준 그림 없이 간다. 카드를 그냥 숨기면 왜 사라졌는지
+   알 수 없으므로 이유를 남긴다. */
+.rail-scene-rough-note {
+  margin: 0 14px 10px;
+  padding: 9px 11px;
+  border: 1px dashed rgba(255, 255, 255, 0.16);
+  border-radius: 7px;
+  color: rgba(255, 255, 255, 0.44);
+  font-size: 10.5px;
+  line-height: 1.55;
+}

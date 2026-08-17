@@ -71,13 +71,16 @@ async def _generate_panel_with_bfl(prompt: str, references: list) -> PanelImageR
         prompt = "\n\n".join([
             prompt,
             f"Reference image inventory: {inventory}.",
-            "Use the input images as exact visual references, not loose inspiration. "
-            "Keep each referenced character's face, hair, build, clothing and "
-            "distinctive features consistent. Keep the referenced location consistent. "
-            "Use the style reference to keep the rendering medium, detail level and "
-            "lighting treatment consistent across every panel. "
+            "Use the character and location images as exact visual references, not "
+            "loose inspiration. Keep each referenced character's face, hair, build, "
+            "clothing and distinctive features consistent. Keep the referenced "
+            "location consistent. "
             "Use a character reference for identity, not its neutral pose; pose and "
-            "frame the character as this panel describes.",
+            "frame the character as this panel describes. "
+            # 앵커는 밀도만 정한다. 거기 그려진 인물·공간은 이 컷과 무관하다.
+            "The style reference sets ONLY the rendering medium, detail level and "
+            "lighting treatment. Ignore its people, their ethnicity and clothing, "
+            "its room and its framing — never copy a person from it.",
         ])
     payload = {
         # 레퍼런스 inventory까지 붙인 최종 프롬프트여야 한다. 먼저 payload를
@@ -181,14 +184,31 @@ async def generate_panel(request: PanelImageRequest) -> PanelImageResponse:
         )
         note = [
             f"Reference images are provided: {who}.",
-            "These images are identity references, not loose inspiration. Draw "
-            "those exact characters and that exact place — keep each face, hair, "
-            "build, clothing, distinctive features and the room identical to the "
-            "reference in every panel.",
+            # '이 그림들 전부'라고 말하면 화풍 앵커의 인물까지 따라 그린다.
+            # 어떤 그림이 무엇을 정하는지 종류별로 나눠 말해야 한다.
+            "The character and location references are identity references, not "
+            "loose inspiration. Draw those exact characters and that exact place — "
+            "keep each face, hair, build, clothing, distinctive features and the "
+            "room identical to the reference in every panel.",
             # 레퍼런스는 서 있는 자세다. 그대로 두면 패널의 행동이 사라진다.
             "The character references show neutral standing poses; do not copy "
             "those poses. Pose and frame them as this panel describes.",
         ]
+        if any(ref.kind == "style" for ref in request.references):
+            # 앵커는 밀도만 보여 준다. 거기 누가 그려져 있는지, 어떤 방인지는
+            # 이 컷과 무관하다 — 그것까지 따라 그리면 감독이 세운 인물 기준이
+            # 앵커의 인물로 덮인다.
+            note.append(
+                "The rendering style reference shows ONLY how finished the drawing "
+                "should look — line weight, shading density, level of detail. "
+                # 완성도를 글로 통제하기 어려우니 이 그림을 기준으로 삼게 한다.
+                # 앵커가 실제로 그 밀도의 그림이므로 가장 곧은 지시다.
+                "Match it: your panel must look drawn by the same hand at the same "
+                "stage of work, no more finished than this image. "
+                "Ignore everything else in it: its people, their faces and "
+                "ethnicity, their clothing, its room, its props and its framing "
+                "are not part of this panel. Never copy a person from it."
+            )
         if any(ref.kind == "layout" for ref in request.references):
             # 도면은 배치를 알려주는 것이지 그려야 할 그림이 아니다.
             note.append(
