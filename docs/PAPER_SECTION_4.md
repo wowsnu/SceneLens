@@ -203,9 +203,10 @@ System에서는 이 정도만 명확히 한다:
 이 논리가 `reflective probe, not audience replacement` framing을 강하게
 해준다.
 
-**주의.** 이 절은 "페르소나"라는 말을 쓰지 않는다. 앞선 논의에서 나왔던
-`처음 보는 관객 / 영화에 익숙한 관객 / 이 이야기와 가까운 관객`은
-persona가 아니라 **attention condition**으로 서술해야 이 framing과
+**주의.** 이 절은 "페르소나"라는 말을 쓰지 않는다. 세 조건은
+`처음 보는 관객 / 영화에 익숙한 관객 / 이야기 흐름을 따라가는 관객`이며,
+각각 이해 가능성, 영화적 표현에 대한 민감성, 컷 사이의 순차·인과적
+연결을 우선해서 보는 **attention condition**으로 서술해야 이 framing과
 어긋나지 않는다.
 
 ---
@@ -224,7 +225,7 @@ persona가 아니라 **attention condition**으로 서술해야 이 framing과
 | 4.5 intent 비공개 | `ViewerPanelInput`이 `image` 하나뿐. 프롬프트도 명시 |
 | 4.5 순차 해석 | `noticed_cues / immediate_reading / relation_to_previous / current_hypothesis / open_question` |
 | 4.5 독립 읽기 | 조건별로 따로 호출하고, 비교는 그 뒤 별도 프롬프트 |
-| 4.5 reading conditions | `first_viewer / film_literate / context_close` — 이미 **persona가 아니라 attention condition**으로 되어 있다 (`focus` 필드) |
+| 4.5 reading conditions | `first_viewer / film_literate / context_close` — 이해 가능성 / 영화적 표현 / 순차·인과적 연결을 나누는 **attention condition**이다 (`instruction` 필드) |
 | 4.5 Difference ≠ Error | `revise / retain / defer` 세 판정이 UI에 있음 |
 
 ### 어긋나는 것

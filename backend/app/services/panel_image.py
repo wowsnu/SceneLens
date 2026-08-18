@@ -45,6 +45,11 @@ def _describe(ref) -> str:
     # 이 패널의 지금 그림. 값 하나만 바꿔 다시 그릴 때 기준이 된다.
     if ref.kind == "current":
         return "the CURRENT version of this exact panel"
+    # 앞뒤 패널. 삽입은 두 컷 사이에, 합치기는 두 컷을 하나로 접는다.
+    if ref.kind == "neighbor-before":
+        return f"the panel that comes BEFORE this one ({ref.name})"
+    if ref.kind == "neighbor-after":
+        return f"the panel that comes AFTER this one ({ref.name})"
     return f"the character {ref.name}"
 
 
@@ -63,9 +68,19 @@ async def _generate_panel_with_bfl(prompt: str, references: list) -> PanelImageR
     # BFL은 base64도 input_image로 받는다. Klein은 최대 4장까지라서 인물 →
     # 공간 → 배치 순서의 기준을 우선한다.
     max_references = 4
-    usable_references = [
-        ref for ref in references if _decodable(ref.image)
-    ][:max_references]
+    decodable = [ref for ref in references if _decodable(ref.image)]
+    # 4장을 넘기면 뒤가 잘린다. 앞뒤 패널과 지금 그림은 "이 컷이 무엇과
+    # 이어져야 하는가"를 정하므로, 인물·공간 기준보다 먼저 넣어야 한다 —
+    # 뒤에 두면 그대로 잘려 나가 물린 의미가 없어진다.
+    continuity_kinds = {"current", "neighbor-before", "neighbor-after"}
+    usable_references = (
+        [ref for ref in decodable if ref.kind == "style"]
+        + [ref for ref in decodable if ref.kind in continuity_kinds]
+        + [
+            ref for ref in decodable
+            if ref.kind != "style" and ref.kind not in continuity_kinds
+        ]
+    )[:max_references]
     if usable_references:
         inventory = "; ".join(
             f"input image {index + 1}: {_describe(ref)}"
@@ -247,6 +262,25 @@ async def generate_panel(request: PanelImageRequest) -> PanelImageResponse:
                 "and do not change what the people are doing. "
                 "If the change is a camera change, keep the scene identical and "
                 "only move the camera."
+            )
+        # 앞뒤 패널. 삽입은 두 컷 **사이**에 들어가고 합치기는 두 컷을 하나로
+        # 접는다. 글로 "이어지게 그려라"라고만 하면 같은 방인지도 알 수 없다.
+        # 다만 따라 그리게 두면 앞 컷을 복제하므로, 무엇을 잇고 무엇을 새로
+        # 그릴지 갈라 말해야 한다.
+        if any(
+            ref.kind in {"neighbor-before", "neighbor-after"}
+            for ref in request.references
+        ):
+            note.append(
+                "Some of the images are the panels next to this one in the "
+                "sequence. They are continuity references, NOT things to copy. "
+                "Take from them the same place, the same people with the same "
+                "faces and clothing, the same lighting and the same drawing "
+                "style, so this panel reads as the same scene moments away. "
+                "But this panel is a DIFFERENT moment: do not repeat their "
+                "framing, their poses or the action they already show. Draw "
+                "what this panel describes, staged so it could sit between "
+                "them without a jump."
             )
         if any(ref.kind == "layout" for ref in request.references):
             # 도면은 배치를 알려주는 것이지 그려야 할 그림이 아니다.

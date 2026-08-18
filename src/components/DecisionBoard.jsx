@@ -82,17 +82,18 @@ const VIEWER_READING_CONDITIONS = [
   {
     id: 'first_viewer',
     title: '처음 보는 관객',
-    attention: '사전 정보 없이, 인물이 누구고 지금 무슨 일이 벌어지는지 따라간다.',
+    attention: '사전 정보 없이 누가 누구고 무슨 일이 벌어지는지 따라갑니다.',
   },
   {
     id: 'film_literate',
     title: '영화에 익숙한 관객',
-    attention: '프레이밍·반복·생략이 어떤 기대나 긴장을 만드는지 살핀다.',
+    attention: '프레이밍·반복·생략·컷의 관계가 만드는 영화적 기대와 강조를 따라갑니다.',
   },
   {
+    // 저장된 관객 읽기와의 호환성을 위해 기존 id는 유지한다.
     id: 'context_close',
-    title: '상황을 꼼꼼히 보는 관객',
-    attention: '장소와 인물의 상황이 화면만으로 납득되는지 살핀다.',
+    title: '이야기 흐름을 따라가는 관객',
+    attention: '컷 사이에서 사건과 정보가 어떻게 이어지는지 살핍니다.',
   },
 ]
 

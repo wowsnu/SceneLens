@@ -145,17 +145,20 @@ READING_CONDITIONS = {
     "film_literate": {
         "label": "영화에 익숙한 관객",
         "instruction": (
-            "You are familiar with cinematic framing, repetition, omission, and "
-            "visual rhythm. Treat ambiguity as potentially meaningful, but only when "
-            "the panel sequence supplies visible support for it."
+            "You are familiar with cinematic framing, repetition, omission, shot relations, "
+            "and visual rhythm. Follow the expectations and emphasis these choices create. "
+            "Treat ambiguity as potentially meaningful, but only when the panel sequence "
+            "supplies visible support for it."
         ),
     },
+    # Keep the existing key so saved Viewer results remain selectable in the UI.
     "context_close": {
-        "label": "상황을 꼼꼼히 보는 관객",
+        "label": "이야기 흐름을 따라가는 관객",
         "instruction": (
-            "Attend to whether the depicted place and the characters' situation feel "
-            "legible from the panels themselves. Do not invent real-world facts or expertise; "
-            "flag only what the visible situation does or does not establish."
+            "Follow how events, causal links, and the viewer's information change from one "
+            "cut to the next. Prioritize whether each panel visibly follows from or updates "
+            "the previous panel. Adjacency alone is not evidence of causality; when an event "
+            "or information bridge is missing, keep the connection open instead of inventing it."
         ),
     },
 }

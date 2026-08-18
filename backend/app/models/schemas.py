@@ -277,7 +277,7 @@ class ViewerInitialReading(BaseModel):
     inferred_assumptions: List[str] = []
     routes: List[str] = []
 
-class ViewerPersonaReading(BaseModel):
+class ViewerConditionReading(BaseModel):
     condition_id: str
     reading: ViewerInitialReading
 
@@ -309,7 +309,7 @@ class ViewerPerspectiveComparison(BaseModel):
 
 class ViewerInitialReadingResponse(BaseModel):
     initial_reading: ViewerInitialReading
-    readings: List[ViewerPersonaReading] = []
+    readings: List[ViewerConditionReading] = []
     comparison: Optional[ViewerPerspectiveComparison] = None
 
 

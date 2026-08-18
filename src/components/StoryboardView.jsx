@@ -1410,6 +1410,11 @@ export default function StoryboardView() {
           // 값 하나를 바꿔 다시 그리는 경우에만 채워 온다. 합치기·삽입은
           // 내용 자체가 달라지는 일이라 지금 그림을 기준으로 삼으면 안 된다.
           changes: panelToolRequest.changes || [],
+          // 대신 앞뒤 패널을 물린다. 삽입은 두 컷 **사이**에 들어가는 일이라
+          // 글로만 "이어지게"라고 하면 같은 방인지도 알 수 없다. 합치기도
+          // 두 컷을 하나로 접는 것이므로 양쪽을 다 봐야 한다.
+          neighbors: panelToolRequest.reason === 'insert'
+            || panelToolRequest.reason === 'merge',
         },
       )
     }
@@ -1781,6 +1786,8 @@ export default function StoryboardView() {
   }
 
   const getShotVisual = (shot, shotIdx) => {
+    // 앞뒤 패널을 물릴 때 첫 컷의 앞이나 마지막 컷의 뒤를 묻는다.
+    if (!shot) return null
     const flowSketchKey = `${activeScene}-${activeBranch}-${shotIdx}`
     const legacySketchKey = `0-${shotIdx}`
     return shot.image || shotSketches[flowSketchKey] || shotSketches[legacySketchKey] || null
@@ -1830,6 +1837,9 @@ export default function StoryboardView() {
       // 없이 그리면 앵글 하나를 고쳐도 자세·소품·구도까지 전부 새로 나와,
       // 감독이 고른 한 가지가 무엇을 바꾸는지 비교할 수 없다.
       changes = [],
+      // 삽입·합치기처럼 앞뒤와 이어져야 하는 경우. 앞뒤 패널 그림을 함께
+      // 물려 같은 장소·인물·조명으로 이어지게 한다.
+      neighbors = false,
     } = {},
   ) => {
     const eligibleTargets = includeExisting
@@ -1916,6 +1926,23 @@ export default function StoryboardView() {
               // 글로만 "유지하라"고 하면 무엇을 유지할지 알 수 없다.
               ...(changes.length > 0 && getShotVisual(shot, shotIdx)
                 ? [{ name: '현재 패널', kind: 'current', image: getShotVisual(shot, shotIdx) }]
+                : []),
+              // 앞뒤 패널. 삽입은 두 컷 사이에 들어가고 합치기는 두 컷을
+              // 하나로 접으므로, 양옆이 어떤 그림인지 봐야 같은 장면으로
+              // 이어진다. 이미 그려진 것만 물린다.
+              ...(neighbors && getShotVisual(flowShots[shotIdx - 1], shotIdx - 1)
+                ? [{
+                  name: `S${shotIdx}`,
+                  kind: 'neighbor-before',
+                  image: getShotVisual(flowShots[shotIdx - 1], shotIdx - 1),
+                }]
+                : []),
+              ...(neighbors && getShotVisual(flowShots[shotIdx + 1], shotIdx + 1)
+                ? [{
+                  name: `S${shotIdx + 2}`,
+                  kind: 'neighbor-after',
+                  image: getShotVisual(flowShots[shotIdx + 1], shotIdx + 1),
+                }]
                 : []),
             ].map(async (reference) => ({
               ...reference,
