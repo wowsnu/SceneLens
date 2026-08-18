@@ -42,6 +42,9 @@ def _describe(ref) -> str:
         return f"a top-down floor plan of {ref.name} (a diagram, not artwork)"
     if ref.kind == "location":
         return f"the location {ref.name}"
+    # 이 패널의 지금 그림. 값 하나만 바꿔 다시 그릴 때 기준이 된다.
+    if ref.kind == "current":
+        return "the CURRENT version of this exact panel"
     return f"the character {ref.name}"
 
 
@@ -190,6 +193,13 @@ async def generate_panel(request: PanelImageRequest) -> PanelImageResponse:
             "loose inspiration. Draw those exact characters and that exact place — "
             "keep each face, hair, build, clothing, distinctive features and the "
             "room identical to the reference in every panel.",
+            # POV 컷은 보는 사람이 화면에 없다. 레퍼런스가 있으면 "그 인물을
+            # 정확히 그려라"가 이겨서 POV가 사라졌다 — 패널 지시가 누구를
+            # 넣지 말라고 하면 그것이 우선이다.
+            "A reference only tells you what someone looks like if they are in "
+            "this panel at all. If the panel description says a character is not "
+            "visible — a POV shot seen through their eyes, for instance — then do "
+            "not draw them, even though their reference is attached.",
             # 레퍼런스는 서 있는 자세다. 그대로 두면 패널의 행동이 사라진다.
             "The character references show neutral standing poses; do not copy "
             "those poses. Pose and frame them as this panel describes.",
@@ -207,7 +217,36 @@ async def generate_panel(request: PanelImageRequest) -> PanelImageResponse:
                 "stage of work, no more finished than this image. "
                 "Ignore everything else in it: its people, their faces and "
                 "ethnicity, their clothing, its room, its props and its framing "
-                "are not part of this panel. Never copy a person from it."
+                "are not part of this panel. Never copy a person from it. "
+                # 러프 앵커의 얼굴은 완전히 비어 있다. 그것까지 화풍으로 읽으면
+                # 눈이 사라지고, 시선을 보는 연출 규칙 셋이 판단할 근거를
+                # 잃는다 — 눈은 앵커가 아니라 위 지시가 정한다.
+                "One exception: if that reference leaves faces completely blank, "
+                "do not copy that. Follow the face instruction above and give each "
+                "head its two eye marks so the direction of the gaze is readable."
+            )
+        # 값 하나를 바꿔 다시 그리는 경우. 지금 그림을 물리고 "이것만
+        # 바꿔라"라고 말해야 한다. 최종 값만 주면 모델은 무엇이 달라졌는지
+        # 모른 채 처음부터 새로 그려, 감독이 고른 한 가지가 화면에서 무엇을
+        # 바꾸는지 비교할 수 없다.
+        if any(ref.kind == "current" for ref in request.references):
+            changed = "; ".join(request.changes) if request.changes else ""
+            note.append(
+                "One of the images is the CURRENT version of this exact panel. "
+                "You are not drawing a new panel — you are redrawing this same "
+                "moment with one thing changed. "
+                + (
+                    f"The ONLY thing that changes is: {changed}. "
+                    if changed else
+                    "Only the stated revision changes. "
+                )
+                + "Everything else must stay as it already is: the same characters "
+                "in the same poses and expressions, the same clothing, the same "
+                "props in the same places, the same background elements, the same "
+                "composition. Do not reinvent the shot, do not rearrange the room, "
+                "and do not change what the people are doing. "
+                "If the change is a camera change, keep the scene identical and "
+                "only move the camera."
             )
         if any(ref.kind == "layout" for ref in request.references):
             # 도면은 배치를 알려주는 것이지 그려야 할 그림이 아니다.

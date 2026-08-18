@@ -1005,6 +1005,10 @@ function SceneFactChanges({
   if (fact.open) return null
   // 생김새(성별·나이·체형·외형)에는 변화를 걸 수 없다.
   if (!CHANGEABLE_FACT_LABELS.has(fact.label) && !(fact.changes || []).length) return null
+  // 보기 모드에서 변화가 하나도 없으면 이 항목은 씬 내내 그대로라는 뜻이다.
+  // 값은 위에 이미 적혀 있으므로 "처음 상태" 한 줄짜리 표를 덧붙이면 같은
+  // 것을 두 번 말한다.
+  if (disabled && !(fact.changes || []).length) return null
 
   const orderedChanges = (fact.changes || [])
     .map((change) => ({
@@ -1071,19 +1075,20 @@ function SceneFactChanges({
                 <small>{nextLabel}</small>
                 <strong>{stage.value || '아직 정하지 않음'}</strong>
               </div>
-              {!isInitial && (
+              {/* 보기 모드에서는 손잡이를 흐리게 두지 않고 아예 없앤다.
+                  비활성 버튼이 줄마다 붙으면 "지금 못 누르는 것"이 화면을
+                  채워, 읽으러 온 사람에게 할 일처럼 보인다. */}
+              {!isInitial && !disabled && (
                 <button
                   type="button"
                   className="mise-fact-stage-edit"
-                  disabled={disabled}
                   onClick={() => openStageEditor(stage)}
                 >수정</button>
               )}
-              {!isInitial && (
+              {!isInitial && !disabled && (
                 <button
                   type="button"
                   className="mise-fact-stage-remove"
-                  disabled={disabled}
                   aria-label={`${label} 상태 삭제`}
                   onClick={() => onRemove(group, fact.label, stage.cutId, { characterId })}
                 >×</button>
@@ -1100,11 +1105,11 @@ function SceneFactChanges({
           onCancel={onDraftCancel}
           onSave={onDraftSave}
         />
-      ) : (
+      ) : disabled ? null : (
         <button
           type="button"
           className="mise-fact-add-change"
-          disabled={disabled || !nextShot}
+          disabled={!nextShot}
           onClick={() => onAdd({
             group,
             characterId,
@@ -1338,7 +1343,14 @@ const editingActionFor = (alternative) => {
 function DirectingReviewResult({
   run, onTool, onApply, onOpenPrompt, onSavePrompt, promptDrafts,
   rewritingId, rewriteNotes, promptBefore, applyingId, promptGenerationStatus,
-  cutOf, lensName, lensId, onFocusDiagnosis, focusedShotIndex,
+  cutOf, lensName, lensId, onFocusDiagnosis, focusedShotIndex, editingOperationCompletions,
+  // `check` 질문에 감독이 답한 것을 실어 다시 분석한다.
+  onAnswerCheck, answering,
+  // 고른 선택지들을 한 번에 적용한다.
+  onApplyBatch,
+  // 다시 그린 그림을 받을지 버릴지. 판정은 감독이 선택지를 고른 자리에서
+  // 한다 — 결과 카드 위에 두면 내려둔 스크롤 밖에 남는다.
+  revisionPending, onAcceptRevision, onRejectRevision,
 }) {
   const result = run.result
   const diagnoses = result?.diagnoses || []
@@ -1352,6 +1364,21 @@ function DirectingReviewResult({
   // 그 값으로 되돌려, 감독이 눌러도 `keep` 카드는 열리지 않고 `change`
   // 카드는 닫히지 않는다. 처음 상태는 판정에서 정하고 그 뒤는 여기서 든다.
   const [openLevels, setOpenLevels] = useState(null)
+  // `check` 질문에 쓰는 답. 층위별로 따로 든다.
+  const [answerDrafts, setAnswerDrafts] = useState({})
+  // 함께 적용하려고 고른 선택지들. `진단id::선택지label`로 든다.
+  //
+  // 하나씩 적용하면 그때마다 그림을 다시 그린다. 셋을 고치려면 같은 패널을
+  // 세 번 그리고 앞의 두 장은 버려진다 — 시간도 비용도 세 배다. 더 나쁜 것은
+  // 중간 결과가 감독을 오도한다는 점이다. 앵글만 바꾼 그림을 보고 판단하지만
+  // 정작 셋을 다 적용해야 의도한 화면이 나오는 경우가 있다.
+  const [pickedAlternatives, setPickedAlternatives] = useState(() => new Set())
+  const togglePicked = (key) => setPickedAlternatives((current) => {
+    const next = new Set(current)
+    if (next.has(key)) next.delete(key)
+    else next.add(key)
+    return next
+  })
   const initialOpen = assessments
     .filter((assessment) => assessment.status === 'change' || assessment.open_question)
     .map((assessment) => assessment.level)
@@ -1363,15 +1390,43 @@ function DirectingReviewResult({
     return next
   })
 
+  // 고른 선택지들을 실제 객체로 되찾는다.
+  const pickedEntries = diagnoses.flatMap((diagnosis) => (
+    (diagnosis.alternatives || [])
+      .filter((alternative) => pickedAlternatives.has(`${diagnosis.id}::${alternative.label}`))
+      .map((alternative) => ({ diagnosis, alternative }))
+  ))
+  // 두 선택지가 같은 항목을 서로 다른 값으로 바꾸려 하면 나중 것이 앞의 것을
+  // 덮는다. 조용히 덮으면 감독은 고른 것 중 하나가 사라진 줄 모른다.
+  const pickedFieldValues = {}
+  const conflictFields = new Set()
+  for (const { alternative } of pickedEntries) {
+    for (const [field, value] of Object.entries(alternative.patch || {})) {
+      if (!value) continue
+      if (pickedFieldValues[field] && pickedFieldValues[field] !== value) {
+        conflictFields.add(field)
+      }
+      pickedFieldValues[field] = value
+    }
+  }
+  const conflictLabels = { shot_size: '샷 사이즈', angle: '앵글', move: '카메라' }
+
   if (!result) return null
 
   return (
-    <section className="directing-review-result" aria-label={`${lensName} 분석 결과`}>
+    <section
+      /* 답을 받아 다시 도는 중에는 지난 판정을 지우지 않고 흐리게 둔다.
+         감독이 방금 쓴 답과 그 답으로 무엇이 바뀌는지를 이어서 봐야 한다. */
+      className={`directing-review-result${answering ? ' is-reanalyzing' : ''}`}
+      aria-label={`${lensName} 분석 결과`}
+      aria-busy={answering || undefined}
+    >
       <div className="directing-review-result-heading">
         <div>
           <span>{lensName} 검토</span>
           <strong>어디를 볼지</strong>
         </div>
+        {answering && <em className="directing-reanalyzing">답을 반영해 다시 분석 중…</em>}
       </div>
 
       <p className="directing-review-summary">{result.summary}</p>
@@ -1427,7 +1482,37 @@ function DirectingReviewResult({
               {/* 화면만으로는 판단할 수 없는 것. 감독만 답할 수 있으므로
                   요약 문장이 아니라 질문으로 되돌린다 (DG1 P2). */}
               {assessment.open_question && (
-                <p className="directing-open-question">{assessment.open_question}</p>
+                <div className="directing-open-question">
+                  <p>{assessment.open_question}</p>
+                  {/* 질문만 두면 답할 자리가 없어 이 층위가 영원히 갈리지
+                      않고, 다시 분석할 때마다 같은 질문이 나온다. 답을 받아
+                      의도와 함께 보내면 렌즈가 keep으로 내리거나 change로
+                      올려 선택지를 낸다 (발견과 처분의 분리). */}
+                  <textarea
+                    value={answerDrafts[assessment.level] || ''}
+                    placeholder="화면만으로는 알 수 없는 것입니다 — 짧게 답해 주세요"
+                    rows={2}
+                    onChange={(event) => setAnswerDrafts((current) => ({
+                      ...current,
+                      [assessment.level]: event.target.value,
+                    }))}
+                  />
+                  <button
+                    type="button"
+                    disabled={answering || !(answerDrafts[assessment.level] || '').trim()}
+                    onClick={() => onAnswerCheck?.({
+                      level: DIAGNOSTIC_LEVEL_LABELS[assessment.level] || assessment.level,
+                      question: assessment.open_question,
+                      answer: answerDrafts[assessment.level].trim(),
+                    })}
+                  >
+                    {answering ? '다시 분석 중…' : '이 답으로 다시 분석'}
+                  </button>
+                  {/* 이 버튼은 네 렌즈를 다시 돌린다. "다시 봐줘"라고만 쓰면
+                      이 카드 하나만 고쳐 본다는 뜻으로 읽혀, 다른 층위의
+                      판단이 바뀌어 있는 것이 사고처럼 보인다. */}
+                  <small>답을 의도에 더해 네 렌즈를 다시 돌립니다.</small>
+                </div>
               )}
               {diagnosis && (
                 <article
@@ -1497,6 +1582,7 @@ function DirectingReviewResult({
                           const isApplied = all.length > 0 && fields.length === 0
                           // 값은 바꿨고 그림을 기다리는 중.
                           const isApplying = applyingId === `${diagnosis.id}::${alternative.label}`
+                          const pickKey = `${diagnosis.id}::${alternative.label}`
                           // '그대로 두기'는 바꿀 것이 없으므로 읽기만 한다.
                           const isKeep = alternative.kind === 'keep'
                           // 진단 JSON에는 lens 필드가 없다. 결과가 어느 렌즈에서
@@ -1505,6 +1591,15 @@ function DirectingReviewResult({
                           const editingAction = lensId === 'editing'
                             ? editingActionFor(alternative)
                             : null
+                          const completedEditingAction = editingAction
+                            ? editingOperationCompletions?.[`${diagnosis.id}::${alternative.label}`]
+                            : null
+                          const completionLabel = {
+                            delete: '삭제됨',
+                            split: '분할됨',
+                            insert: '삽입됨',
+                            merge: '병합됨',
+                          }[completedEditingAction]
                           return (
                             <li
                               key={alternative.label}
@@ -1514,7 +1609,9 @@ function DirectingReviewResult({
                                 <strong>{alternative.label}</strong>
                                 {/* 고르는 자리에서 바로 바꾼다. 샷 값으로
                                     풀리지 않는 선택지는 프롬프트를 연다. */}
-                                {!isKeep && (editingAction ? (
+                                {!isKeep && (completionLabel ? (
+                                  <em className="directing-alternative-applied">{completionLabel}</em>
+                                ) : editingAction ? (
                                   <button
                                     type="button"
                                     onClick={() => onTool?.(editingAction.id, diagnosis, alternative)}
@@ -1529,12 +1626,26 @@ function DirectingReviewResult({
                                   </em>
                                 ) : isApplied ? (
                                   <em className="directing-alternative-applied">새 그림 적용됨</em>
+                                ) : fields.length > 0 ? (
+                                  // 샷 값으로 풀리는 선택지는 모아서 한 번에
+                                  // 적용한다. 하나씩 누르면 같은 패널을 여러 번
+                                  // 그리게 되고, 중간 그림이 감독을 오도한다.
+                                  <label className="directing-alternative-pick">
+                                    <input
+                                      type="checkbox"
+                                      checked={pickedAlternatives.has(pickKey)}
+                                      onChange={() => togglePicked(pickKey)}
+                                    />
+                                    <span>함께 적용</span>
+                                  </label>
                                 ) : (
+                                  // 샷 값이 아니라 프롬프트를 고치는 선택지.
+                                  // 문장을 열어 확인해야 하므로 묶지 않는다.
                                   <button
                                     type="button"
                                     onClick={() => onApply?.(diagnosis, alternative)}
                                   >
-                                    {fields.length > 0 ? '적용' : '프롬프트에 반영'}
+                                    프롬프트에 반영
                                   </button>
                                 ))}
                               </div>
@@ -1656,6 +1767,59 @@ function DirectingReviewResult({
           )
         })}
       </div>
+
+      {/* 다시 그린 그림이 도착했다. 감독이 받을지 버릴지 정하기 전까지는
+          아직 이 패널의 그림이 아니다 — 적용하는 순간 확정되면 결과를 보기
+          전에 이미 바뀐 상태가 된다. */}
+      {revisionPending && (
+        <section className="directing-revision-verdict" role="status">
+          <div>
+            <strong>이 그림으로 바꿀까요?</strong>
+            <small>왼쪽에 새로 그린 결과가 보입니다. 버리면 컷 값도 되돌립니다.</small>
+          </div>
+          <div className="directing-revision-actions">
+            <button type="button" className="primary" onClick={onAcceptRevision}>
+              이걸로 하기
+            </button>
+            <button type="button" onClick={onRejectRevision}>
+              버리고 되돌리기
+            </button>
+          </div>
+        </section>
+      )}
+
+      {/* 고른 선택지를 한 번에 적용한다. 그림은 한 번만 그린다 — 하나씩
+          누르면 같은 패널을 여러 번 그리고 앞의 것들은 버려진다. */}
+      {pickedEntries.length > 0 && (
+        <div className="directing-batch-apply">
+          <div>
+            <strong>선택한 {pickedEntries.length}개를 함께 적용</strong>
+            <small>그림은 한 번만 그립니다.</small>
+          </div>
+          {conflictFields.size > 0 && (
+            <p className="directing-batch-conflict">
+              {[...conflictFields].map((field) => conflictLabels[field] || field).join(', ')}
+              을(를) 두 선택지가 서로 다르게 바꿉니다 — 하나만 두세요.
+            </p>
+          )}
+          <div className="directing-batch-actions">
+            <button
+              type="button"
+              className="primary"
+              disabled={conflictFields.size > 0 || Boolean(applyingId)}
+              onClick={() => {
+                onApplyBatch?.(pickedEntries)
+                setPickedAlternatives(new Set())
+              }}
+            >
+              {applyingId ? '적용하는 중…' : '적용하고 그리기'}
+            </button>
+            <button type="button" onClick={() => setPickedAlternatives(new Set())}>
+              선택 해제
+            </button>
+          </div>
+        </div>
+      )}
 
       {question && (
         <div className="directing-review-question">
@@ -1820,6 +1984,11 @@ export default function DecisionBoard({ boardView = 'split' }) {
   const miseCharactersRaw = sceneState.characters
   const [editingCharacterId, setEditingCharacterId] = useState(null)
   const [characterDraft, setCharacterDraft] = useState(null)
+  // Scene State는 기본이 **보는 화면**이다. 감독은 여기 오기 전에 이미 컷을
+  // 나누고 샷을 정하는 중이라, 기준까지 손보라고 열어 두면 할 일이 하나 더
+  // 늘어난 것으로 읽힌다. 기준은 대개 AI가 채운 값이 맞으므로, 고칠 것이
+  // 생겼을 때만 편집으로 들어간다 (발견과 처분의 분리).
+  const [sceneStateEditing, setSceneStateEditing] = useState(false)
   const [locationReferenceOpen, setLocationReferenceOpen] = useState(false)
   const [spatialEditorOpen, setSpatialEditorOpen] = useState(false)
   const [activeSpatialStageId, setActiveSpatialStageId] = useState(null)
@@ -1833,6 +2002,10 @@ export default function DecisionBoard({ boardView = 'split' }) {
     }))
   ))
   const [scopeMode, setScopeMode] = useState('single')
+  // Decision Board의 한 컷은 그리드의 전역 선택(activeShot)을 계속 따라가지
+  // 않는다. 검토를 시작한 컷의 ID를 잡아 두어, 다른 패널을 잠깐 열어도 의도·
+  // 분석 결과·적용 대상이 바뀌지 않게 한다.
+  const [singleScopeShotId, setSingleScopeShotId] = useState(null)
   const [rangeStart, setRangeStart] = useState(0)
   const [rangeEnd, setRangeEnd] = useState(0)
   const [scopePickerOpen, setScopePickerOpen] = useState(false)
@@ -1858,6 +2031,8 @@ export default function DecisionBoard({ boardView = 'split' }) {
   const updateFlowShotById = useStore((s) => s.updateFlowShotById)
   const requestPanelTool = useStore((s) => s.requestPanelTool)
   const requestSeamFocus = useStore((s) => s.requestSeamFocus)
+  const editingOperationCompletions = useStore((s) => s.editingOperationCompletions)
+  const completeEditingOperation = useStore((s) => s.completeEditingOperation)
   const requestNarrativeSuggestions = useStore((s) => s.requestNarrativeSuggestions)
   const openDrawingWorkspace = useStore((s) => s.openDrawingWorkspace)
   const backToScript = useStore((s) => s.backToScript)
@@ -1871,6 +2046,12 @@ export default function DecisionBoard({ boardView = 'split' }) {
   const viewerDecisions = useStore((s) => s.viewerDecisions)
   const panelDraftImages = useStore((s) => s.panelDraftImages)
   const panelDraftVersions = useStore((s) => s.panelDraftVersions)
+  // 다시 그린 그림을 받을지 버릴지. 적용하는 순간 확정되면 감독은 결과를
+  // 보기 전에 이미 바꾼 상태가 된다.
+  const panelRevisionPending = useStore((s) => s.panelRevisionPending)
+  const beginPanelRevision = useStore((s) => s.beginPanelRevision)
+  const acceptPanelRevision = useStore((s) => s.acceptPanelRevision)
+  const rejectPanelRevision = useStore((s) => s.rejectPanelRevision)
   // 다시 그린 그림이 도착하면 `적용 중`을 푼다. 생성은 스토리보드 화면이
   // 하므로 완료 신호가 따로 없고, 초안 이미지가 바뀌는 것이 그 신호다.
   useEffect(() => {
@@ -1890,6 +2071,24 @@ export default function DecisionBoard({ boardView = 'split' }) {
   const activeBranch = scene?.activeBranch ?? 0
   const branch = scene?.branches?.[activeBranch]
   const shots = useMemo(() => branch?.shots || [], [branch?.shots])
+  const scopedShotIndex = useMemo(() => {
+    const lockedIndex = shots.findIndex((shot) => shot.id === singleScopeShotId)
+    if (lockedIndex >= 0) return lockedIndex
+    return Math.max(0, Math.min(activeShot, Math.max(shots.length - 1, 0)))
+  }, [activeShot, shots, singleScopeShotId])
+  const scopedShot = shots[scopedShotIndex] || null
+
+  // 첫 진입 때만 현재 패널을 검토 대상으로 잡는다. 컷이 삭제됐거나 씬을
+  // 바꿔 기존 ID가 사라진 경우에만 새 씬의 현재 패널로 안전하게 되돌린다.
+  useEffect(() => {
+    if (shots.length === 0) {
+      if (singleScopeShotId !== null) setSingleScopeShotId(null)
+      return
+    }
+    if (!singleScopeShotId || !shots.some((shot) => shot.id === singleScopeShotId)) {
+      setSingleScopeShotId(shots[scopedShotIndex]?.id || null)
+    }
+  }, [shots, scopedShotIndex, singleScopeShotId])
   // 구간은 **이 씬 안에서만** 나뉜다. shots는 브랜치 전체(여러 씬)라, 그대로
   // 넘기면 `S1–S19`처럼 씬을 넘어가는 구간이 나온다 — sceneState는 한 씬의
   // 기준이므로 범위가 어긋난다.
@@ -1977,7 +2176,7 @@ export default function DecisionBoard({ boardView = 'split' }) {
   const scopeTo = Math.max(rangeStart, rangeEnd)
   const scope = scopeMode === 'range'
     ? { mode: 'range', from: scopeFrom, to: scopeTo, shotIds: shots.slice(scopeFrom, scopeTo + 1).map((shot) => shot.id) }
-    : { mode: 'single', shot: activeShot, shotIds: shots[activeShot]?.id ? [shots[activeShot].id] : [] }
+    : { mode: 'single', shot: scopedShotIndex, shotIds: scopedShot?.id ? [scopedShot.id] : [] }
 
   // 기본은 현재 보고 있는 한 컷이다. 이미지가 있는 연속 구간을 임의로
   // 범위 선택하지 않는다. 다관점으로 전체 흐름을 읽고 싶을 때만 사용자가
@@ -1997,17 +2196,17 @@ export default function DecisionBoard({ boardView = 'split' }) {
   const cameraRangeInterpretation = firstScopedCameraShot && lastScopedCameraShot
     ? `${firstScopedCameraShot.role}에서 ${lastScopedCameraShot.role}(으)로 시각적 중심이 이동합니다. 이 흐름을 유지하거나 더 분명한 진행으로 재구성할 수 있습니다.`
     : '분석할 패널 범위를 선택해주세요.'
-  const currentMiseStaging = getMockMiseShotStaging(activeShot)
-  const currentMiseStagingMoves = getMockMiseStagingMoves(activeShot)
-  const currentEditingSingle = getMockEditingSingle(activeShot)
+  const currentMiseStaging = getMockMiseShotStaging(scopedShotIndex)
+  const currentMiseStagingMoves = getMockMiseStagingMoves(scopedShotIndex)
+  const currentEditingSingle = getMockEditingSingle(scopedShotIndex)
   const currentEditingSuggestions = [
     ...currentEditingSingle.operations,
-    ...getMockEditingBoundaries(activeShot, shots.length),
+    ...getMockEditingBoundaries(scopedShotIndex, shots.length),
   ]
-  const currentShot = shots[activeShot]
+  const currentShot = scopedShot
   const multiReviewScopeKey = scopeMode === 'range'
     ? `${scene?.id || activeScene}:range:${scopeFrom}-${scopeTo}`
-    : `${scene?.id || activeScene}:shot:${currentShot?.id || activeShot}`
+    : `${scene?.id || activeScene}:shot:${currentShot?.id || scopedShotIndex}`
   // 검토한 패널의 지문. 그림이나 샷이 바뀌면 이 값이 달라진다.
   // 분석 결과에 함께 저장해 두고, 다를 때 '지난 결과'로 표시한다 —
   // 고치러 갔다 오면 옛 분석이 최신인 것처럼 남아 있으면 안 된다.
@@ -2037,7 +2236,7 @@ export default function DecisionBoard({ boardView = 'split' }) {
     .some((result) => (result.diagnoses || []).length > 0)
   const multiScopeLabel = scopeMode === 'range'
     ? `S${scopeFrom + 1}–S${scopeTo + 1}`
-    : `S${activeShot + 1}`
+    : `S${scopedShotIndex + 1}`
   const cameraPreviewOption = allOptions.find((option) => option.id === cameraPreview?.optionId)
   const cameraPreviewShot = shots.find((shot) => shot.id === cameraPreview?.shotId)
   const cameraPreviewShotIndex = shots.findIndex((shot) => shot.id === cameraPreview?.shotId)
@@ -2074,7 +2273,13 @@ export default function DecisionBoard({ boardView = 'split' }) {
   const lensIntentDirty = lensIntentDraft.trim() !== appliedLensIntent.trim()
   const lensReviewRun = lensReviewRuns[lensReviewKey] || { status: 'idle' }
   const lensReviewLoading = lensReviewRun.status === 'loading'
+  // 답을 받아 다시 도는 중에는 지난 결과를 그대로 들고 있다(runLensReview).
+  // 그 동안에도 결과를 그려야 감독이 자기 답과 바뀐 판정을 이어서 본다.
   const lensReviewHasResult = ['ready', 'stale'].includes(lensReviewRun.status)
+    || (lensReviewLoading && Boolean(lensReviewRun.result))
+  // 결과를 띄운 채 다시 도는 경우에는 전면 로딩 배너를 쓰지 않는다.
+  // 배너가 결과 위에 겹쳐 뜨면 같은 것을 두 번 말한다.
+  const lensReviewLoadingAlone = lensReviewLoading && !lensReviewRun.result
   // 검토한 뒤 패널이 바뀌었으면 이 결과는 지난 것이다.
   const lensReviewOutdated = lensReviewHasResult
     && Boolean(lensReviewRun.fingerprint)
@@ -2130,7 +2335,7 @@ export default function DecisionBoard({ boardView = 'split' }) {
       shotIndex: scopeFrom + offset,
     }))
     : currentShot
-      ? [{ shot: currentShot, shotIndex: activeShot }]
+      ? [{ shot: currentShot, shotIndex: scopedShotIndex }]
       : [])
 
   // 패널을 API가 받는 모양으로 만든다. 이미지 로딩이 있어 async다.
@@ -2167,7 +2372,7 @@ export default function DecisionBoard({ boardView = 'split' }) {
     })
   }
 
-  const runLensReview = async () => {
+  const runLensReview = async ({ answers = [] } = {}) => {
     logEvent('review', { mode: 'single' })
     logScaffold({ feature: 'lens', action: 'open', mode: 'single' })
     if (!lensAnalysisEnabled || lensIntentDirty || lensReviewLoading) return
@@ -2194,9 +2399,15 @@ export default function DecisionBoard({ boardView = 'split' }) {
       return
     }
 
+    // `check` 질문에 답해서 다시 도는 것이면 지난 결과를 지우지 않는다.
+    // 지우면 방금 쓴 답과 질문이 화면에서 사라져 20초 동안 빈 패널만 남고,
+    // 그것이 "이 카드만 보는 게 아니라 처음부터 다시 도는" 것처럼 읽힌다.
+    // 답이 무엇이었는지 보이는 채로 판정만 바뀌어야 비교가 된다.
+    const keepPrevious = answers.length > 0
     setLensReviewRuns((current) => ({
       ...current,
       [reviewKey]: {
+        ...(keepPrevious ? current[reviewKey] : null),
         status: 'loading',
         requestId,
         intent: appliedLensIntent,
@@ -2210,6 +2421,9 @@ export default function DecisionBoard({ boardView = 'split' }) {
         mode: backendLens,
         panels,
         intent: appliedLensIntent,
+        // 감독이 `check` 질문에 답했으면 함께 보낸다. 렌즈가 그 층위를
+        // 다시 판정해 keep으로 내리거나 change로 올려 선택지를 낸다.
+        answers,
       })
       const result = response.lens_results?.[backendLens]
       if (!result) throw new Error('분석 결과 형식이 올바르지 않습니다.')
@@ -2543,17 +2757,29 @@ export default function DecisionBoard({ boardView = 'split' }) {
     setViewerPanelOrder(null)
     setScopeMode(mode)
     if (mode === 'single') {
-      setRangeStart(activeShot)
-      setRangeEnd(activeShot)
+      setRangeStart(scopedShotIndex)
+      setRangeEnd(scopedShotIndex)
       setScopePickerOpen(false)
     } else {
-      // 범위를 처음 열 때는 지금 보던 컷과 바로 이웃한 컷만 잡는다.
+      // 범위를 처음 열 때는 고정해 둔 한 컷과 바로 이웃한 컷만 잡는다.
       // 전체를 기본으로 잡아 두면 의도치 않게 모든 패널을 분석하게 된다.
-      const start = activeShot >= shots.length - 1 ? Math.max(0, activeShot - 1) : activeShot
+      const start = scopedShotIndex >= shots.length - 1 ? Math.max(0, scopedShotIndex - 1) : scopedShotIndex
       const end = Math.min(shots.length - 1, start + 1)
       setRangeStart(start)
       setRangeEnd(end)
     }
+  }
+
+  const lockSingleScopeToActiveShot = () => {
+    const nextShot = shots[activeShot]
+    if (!nextShot) return
+    setScopeMode('single')
+    setSingleScopeShotId(nextShot.id)
+    setRangeStart(activeShot)
+    setRangeEnd(activeShot)
+    setScopePickerOpen(false)
+    setViewerReport(null)
+    setViewerPanelOrder(null)
   }
 
   const updateScopeRange = (edge, nextIndex) => {
@@ -2627,7 +2853,7 @@ export default function DecisionBoard({ boardView = 'split' }) {
       ...history,
       {
         shotId: currentShot.id,
-        shotNumber: activeShot + 1,
+        shotNumber: scopedShotIndex + 1,
         optionId: option.id,
         title: option.title,
         before,
@@ -2661,7 +2887,7 @@ export default function DecisionBoard({ boardView = 'split' }) {
       return
     }
     if (scopeMode !== 'range' || rangeStart === rangeEnd) {
-      const start = activeShot >= shots.length - 1 ? Math.max(0, activeShot - 1) : activeShot
+      const start = scopedShotIndex >= shots.length - 1 ? Math.max(0, scopedShotIndex - 1) : scopedShotIndex
       setRangeStart(start)
       setRangeEnd(Math.min(shots.length - 1, start + 1))
     }
@@ -2745,8 +2971,8 @@ export default function DecisionBoard({ boardView = 'split' }) {
   }
 
   const snapshotShots = viewerSnapshot?.shots || []
-  const viewerScopeFrom = scopeMode === 'range' ? scopeFrom + 1 : activeShot + 1
-  const viewerScopeTo = scopeMode === 'range' ? scopeTo + 1 : activeShot + 1
+  const viewerScopeFrom = scopeMode === 'range' ? scopeFrom + 1 : scopedShotIndex + 1
+  const viewerScopeTo = scopeMode === 'range' ? scopeTo + 1 : scopedShotIndex + 1
   const selectedSnapshotShots = snapshotShots.filter((shot) => (
     shot.order >= viewerScopeFrom && shot.order <= viewerScopeTo
   ))
@@ -2860,7 +3086,7 @@ export default function DecisionBoard({ boardView = 'split' }) {
       (Array.isArray(panelOrderOrOrders) ? panelOrderOrOrders : [panelOrderOrOrders])
         .filter((panelOrder) => Number.isInteger(panelOrder) && panelOrder > 0 && panelOrder <= shots.length),
     )].sort((left, right) => left - right)
-    const targetShot = (panelOrders[0] || activeShot + 1) - 1
+    const targetShot = (panelOrders[0] || scopedShotIndex + 1) - 1
     const rangeEndShot = (panelOrders[panelOrders.length - 1] || targetShot + 1) - 1
     const scope = panelOrders.length > 1 ? 'range' : 'single'
     const target = shots[targetShot]
@@ -2900,6 +3126,7 @@ export default function DecisionBoard({ boardView = 'split' }) {
       setScopeMode(scope)
       setRangeStart(targetShot)
       setRangeEnd(rangeEndShot)
+      if (scope === 'single') setSingleScopeShotId(target?.id || null)
     }
   }
 
@@ -2917,18 +3144,22 @@ export default function DecisionBoard({ boardView = 'split' }) {
     const panelTarget = (diagnosis?.targets || [])
       .map((target) => target.split('.', 1)[0])
       .find((target) => /^S\d+$/.test(target))
-    const targetShot = shots[panelTarget ? Number(panelTarget.slice(1)) - 1 : activeShot]
+    const targetShot = shots[panelTarget ? Number(panelTarget.slice(1)) - 1 : scopedShotIndex]
     return cutPlan.find((cut) => cut.id === targetShot?.cutPlanItemId) || null
   }
 
-  const beginPanelRegeneration = (statusKey, cutId) => {
+  const beginPanelRegeneration = (statusKey, cutId, before = null) => {
     const shotIndex = shots.findIndex((shot) => shot.cutPlanItemId === cutId)
     const shot = shots[shotIndex]
     if (!shot) return false
+    // 무엇을 바꾸기 전이었는지 들고 있는다. 결과를 보고 버리면 컷 값도
+    // 여기로 되돌린다 — 그림만 버리고 값이 남으면 표와 그림이 어긋난다.
+    if (before) beginPanelRevision(shot.id, cutId, before)
     // 남아 있던 촬영 미리보기는 새 초안을 덮어쓸 수 있다. 적용 후에는
     // 실제 생성 결과만 확대 패널에 보이게 한다.
     setCameraPreview(null)
     setFlowActiveShot(shotIndex)
+    setSingleScopeShotId(shot.id)
     setLensFocusedShotIndex(shotIndex)
     setPendingPanelGeneration({
       shotId: shot.id,
@@ -3062,14 +3293,22 @@ export default function DecisionBoard({ boardView = 'split' }) {
     // 없는데도 그 컷의 출처가 User로 넘어간다.
     const patch = alternative.patch || {}
     const changes = {}
+    // 무엇이 무엇으로 바뀌는지를 생성에 함께 보낸다. 최종 값만 주면 모델은
+    // 달라진 것을 모른 채 처음부터 새로 그려, 앵글 하나를 고쳐도 자세와
+    // 소품까지 전부 바뀐다 — 그러면 감독이 고른 한 가지가 화면에서 무엇을
+    // 바꾸는지 비교할 수 없다.
+    const changeLines = []
     if (patch.shot_size && patch.shot_size !== targetCut.shotSize) {
       changes.shotSize = patch.shot_size
+      changeLines.push(`shot size: ${targetCut.shotSize || '미정'} → ${patch.shot_size}`)
     }
     if (patch.angle && patch.angle !== targetCut.angle) {
       changes.angle = patch.angle
+      changeLines.push(`camera angle: ${targetCut.angle || '미정'} → ${patch.angle}`)
     }
     if (patch.move && patch.move !== targetCut.cameraMove) {
       changes.cameraMove = patch.move
+      changeLines.push(`camera move: ${targetCut.cameraMove || '고정'} → ${patch.move}`)
     }
     // 샷 값으로 바뀌는 것이 없는 선택지. 고른 방향을 반영한 문장을 받아
     // 편집기에 띄운다 — 제안해 놓고 감독이 직접 쓰게 두면 제안이 읽을거리로
@@ -3083,8 +3322,11 @@ export default function DecisionBoard({ boardView = 'split' }) {
     // 값만 바꾸고 멈추면 그림은 이전 프롬프트로 만든 것 그대로다. 감독이
     // `다시 그리기`를 한 번 더 눌러야 결과를 보는 것은 한 동작을 둘로
     // 나눈 것이다 — 바꾸는 순간 그려서 결과까지 보인다.
-    if (!beginPanelRegeneration(`${diagnosis.id}::${alternative.label}`, targetCut.id)) return
-    routeDiagnosisTool('regenerate', diagnosis)
+    const before = {
+      shotSize: targetCut.shotSize, angle: targetCut.angle, cameraMove: targetCut.cameraMove,
+    }
+    if (!beginPanelRegeneration(`${diagnosis.id}::${alternative.label}`, targetCut.id, before)) return
+    routeDiagnosisTool('regenerate', diagnosis, null, { changes: changeLines })
     logEvent('edit', {
       source: 'diagnosis-alternative',
       lens: diagnosis.lens || null,
@@ -3098,7 +3340,56 @@ export default function DecisionBoard({ boardView = 'split' }) {
     })
   }
 
-  const routeDiagnosisTool = (tool, diagnosis, alternative = null) => {
+  // 고른 선택지 여러 개를 한 번에 적용한다.
+  //
+  // 하나씩 적용하면 그때마다 그림을 다시 그려, 셋을 고치면 같은 패널을 세 번
+  // 그리고 앞의 두 장은 버려진다. 값을 모두 합친 뒤 한 번만 그린다.
+  const applyAlternativeBatch = (entries) => {
+    if (!entries?.length) return
+    // 같은 컷의 것만 묶는다. 다른 컷은 어차피 다른 그림이라 한 번에 그릴 수
+    // 없다 — 지금 화면의 진단들은 한 컷을 보는 것이므로 첫 컷을 기준으로 한다.
+    const targetCut = cutForDiagnosis(entries[0].diagnosis)
+    if (!targetCut) return
+
+    const changes = {}
+    const changeLines = []
+    // 뒤에 고른 것이 앞의 값을 덮는다. 충돌은 화면에서 이미 막았다.
+    for (const { alternative } of entries) {
+      const patch = alternative.patch || {}
+      if (patch.shot_size && patch.shot_size !== targetCut.shotSize) changes.shotSize = patch.shot_size
+      if (patch.angle && patch.angle !== targetCut.angle) changes.angle = patch.angle
+      if (patch.move && patch.move !== targetCut.cameraMove) changes.cameraMove = patch.move
+    }
+    if (changes.shotSize) changeLines.push(`shot size: ${targetCut.shotSize || '미정'} → ${changes.shotSize}`)
+    if (changes.angle) changeLines.push(`camera angle: ${targetCut.angle || '미정'} → ${changes.angle}`)
+    if (changes.cameraMove) changeLines.push(`camera move: ${targetCut.cameraMove || '고정'} → ${changes.cameraMove}`)
+    if (changeLines.length === 0) return
+
+    const before = {
+      shotSize: targetCut.shotSize, angle: targetCut.angle, cameraMove: targetCut.cameraMove,
+    }
+    updateCutPlanItem(targetCut.id, changes)
+    const statusKey = entries.map(({ diagnosis, alternative }) => (
+      `${diagnosis.id}::${alternative.label}`
+    )).join('|')
+    if (!beginPanelRegeneration(statusKey, targetCut.id, before)) return
+    routeDiagnosisTool('regenerate', entries[0].diagnosis, null, { changes: changeLines })
+    for (const { diagnosis } of entries) {
+      logEvent('edit', {
+        source: 'diagnosis-alternative-batch',
+        lens: diagnosis.lens || null,
+        level: normalizeLevel(diagnosis.level),
+      })
+      logScaffold({
+        feature: 'diagnosis',
+        action: 'accept',
+        target: diagnosis.id || null,
+        lens: diagnosis.lens || null,
+      })
+    }
+  }
+
+  const routeDiagnosisTool = (tool, diagnosis, alternative = null, options = {}) => {
     // 진단에서 고칠 자리로 보낸 것. 아직 수정은 아니므로 edit이 아니다.
     logEvent('route', {
       source: 'diagnosis',
@@ -3125,18 +3416,24 @@ export default function DecisionBoard({ boardView = 'split' }) {
       ? Number(alternativePanelTarget) - 1
       : panelTarget
       ? Number(panelTarget.slice(1)) - 1
-      : activeShot
+      : scopedShotIndex
     const targetShot = shots[targetShotIndex]
     if (!targetShot) return
 
     setFlowActiveShot(targetShotIndex)
+    setSingleScopeShotId(targetShot.id)
     setZenMode(false)
 
     // 그림만 다시 그린다. 생성에 필요한 것(레퍼런스·구조도·그림체)은
     // 스토리보드 쪽에 있지만, 그 화면은 접혀 있어도 마운트를 유지한다.
     // 따라서 검토 도중 왼쪽 대본 패널을 강제로 열 필요가 없다.
     if (tool === 'regenerate') {
-      requestPanelTool(targetShot.id, 'regenerate', { diagnosisId: diagnosis.id })
+      requestPanelTool(targetShot.id, 'regenerate', {
+        diagnosisId: diagnosis.id,
+        // 값 하나만 바꾼 재생성이면 무엇이 달라지는지 함께 보낸다. 지금
+        // 그림을 기준으로 그 항목만 고치게 하기 위해서다.
+        changes: options.changes || [],
+      })
       return
     }
 
@@ -3189,7 +3486,10 @@ export default function DecisionBoard({ boardView = 'split' }) {
     }
 
     if (tool === 'delete') {
-      if (targetShot?.cutPlanItemId) deleteCut(targetShot.cutPlanItemId)
+      if (targetShot?.cutPlanItemId) {
+        deleteCut(targetShot.cutPlanItemId)
+        completeEditingOperation(`${diagnosis.id}::${alternative?.label}`, 'delete')
+      }
       return
     }
 
@@ -3201,10 +3501,15 @@ export default function DecisionBoard({ boardView = 'split' }) {
         : Math.max(0, targetShotIndex - 1)
       const seamShot = shots[anchorIndex]
       if (seamShot) {
+        // 분할 화면에서는 선택된 패널이 확대되어 GridView가 마운트되지
+        // 않는다. 이음새 조작은 GridView가 받으므로, 카드가 잡아 둔 확대를
+        // 먼저 닫아 즉시 해당 컷 사이의 확정 창으로 보낸다.
+        setLensFocusedShotIndex(null)
         requestSeamFocus(seamShot.id, tool === 'seam' ? null : tool, {
           title: alternative?.label || diagnosis.suggested_action,
           detail: alternative?.effect || diagnosis.suggested_action,
           diagnosisId: diagnosis.id,
+          operationId: `${diagnosis.id}::${alternative?.label}`,
         })
       }
       return
@@ -3517,7 +3822,7 @@ export default function DecisionBoard({ boardView = 'split' }) {
             <strong>
               {reviewMode === 'viewer' || scope.mode === 'range'
                 ? `S${scopeFrom + 1}–S${scopeTo + 1}`
-                : `S${activeShot + 1} · ${currentShot?.label || 'Current shot'}`}
+                : `S${scopedShotIndex + 1} · ${currentShot?.label || 'Current shot'}`}
             </strong>
           </div>
           <div className="scope-controls">
@@ -3549,6 +3854,16 @@ export default function DecisionBoard({ boardView = 'split' }) {
                 >
                   범위
                 </button>
+                {scopeMode === 'single' && activeShot !== scopedShotIndex && (
+                  <button
+                    type="button"
+                    className="scope-use-current"
+                    onClick={lockSingleScopeToActiveShot}
+                    title="그리드에서 현재 고른 패널을 이 검토 대상으로 바꿉니다."
+                  >
+                    현재 선택 S{activeShot + 1}로 변경
+                  </button>
+                )}
                 {scopePickerOpen && scopeMode === 'range' && (
                   <div className="scope-range-popover" role="dialog" aria-label="분석 범위 지정">
                     <div className="scope-range-popover-heading">
@@ -3726,7 +4041,7 @@ export default function DecisionBoard({ boardView = 'split' }) {
                   <button
                     type="button"
                     className="lens-review-run-button"
-                    onClick={runLensReview}
+                    onClick={() => runLensReview()}
                     disabled={lensReviewLoading || lensIntentDirty}
                     title={lensIntentDirty ? '변경한 의도를 먼저 적용해주세요.' : undefined}
                   >
@@ -3742,7 +4057,7 @@ export default function DecisionBoard({ boardView = 'split' }) {
                   </button>
                 </div>
               )}
-              {lensAnalysisEnabled && lensReviewLoading && (
+              {lensAnalysisEnabled && lensReviewLoadingAlone && (
                 <section className="multi-review-loading lens-review-loading" role="status" aria-live="polite">
                   <div>
                     <strong>{primaryLens.displayName} 관점으로 분석하고 있습니다</strong>
@@ -3778,6 +4093,15 @@ export default function DecisionBoard({ boardView = 'split' }) {
                   cutOf={cutForDiagnosis}
                   lensName={primaryLens.displayName}
                   lensId={primaryLens.id}
+                  editingOperationCompletions={editingOperationCompletions}
+                  onAnswerCheck={(answer) => runLensReview({ answers: [answer] })}
+                  answering={lensReviewLoading}
+                  onApplyBatch={applyAlternativeBatch}
+                  revisionPending={panelRevisionPending && !applyingAlternative
+                    && panelDraftImages[panelRevisionPending.shotId]
+                    ? panelRevisionPending : null}
+                  onAcceptRevision={acceptPanelRevision}
+                  onRejectRevision={rejectPanelRevision}
                   onFocusDiagnosis={focusDiagnosis}
                   focusedShotIndex={lensFocusedShotIndex}
                 />
@@ -3790,7 +4114,7 @@ export default function DecisionBoard({ boardView = 'split' }) {
                         <strong>
                           {scopeMode === 'range'
                             ? `S${scopeFrom + 1}–S${scopeTo + 1} · ${scopedCameraShots.length} shots`
-                            : `S${activeShot + 1} · ${shots[activeShot]?.label || 'Current shot'}`}
+                            : `S${scopedShotIndex + 1} · ${currentShot?.label || 'Current shot'}`}
                         </strong>
                       </div>
                       <em>Mock reading</em>
@@ -3938,7 +4262,7 @@ export default function DecisionBoard({ boardView = 'split' }) {
                                   onClick={() => applyCameraOption(option)}
                                   disabled={isApplied}
                                 >
-                                  {isApplied ? `S${activeShot + 1}에 적용됨` : `S${activeShot + 1}에 적용`}
+                                  {isApplied ? `S${scopedShotIndex + 1}에 적용됨` : `S${scopedShotIndex + 1}에 적용`}
                                 </button>
                               </div>
                             ) : (
@@ -3965,7 +4289,7 @@ export default function DecisionBoard({ boardView = 'split' }) {
                       <strong>
                         {scopeMode === 'range'
                           ? `S${scopeFrom + 1}–S${scopeTo + 1} · ${scopeTo - scopeFrom + 1}컷`
-                          : `S${activeShot + 1} · ${currentShot?.label || 'Current shot'}`}
+                          : `S${scopedShotIndex + 1} · ${currentShot?.label || 'Current shot'}`}
                       </strong>
                     </div>
                     <em>{scopeMode === 'range' ? '범위 분석' : `${currentEditingSuggestions.length}개 편집 제안`}</em>
@@ -4103,7 +4427,7 @@ export default function DecisionBoard({ boardView = 'split' }) {
                   <div className="lens-section-heading">
                     <div>
                       <span>Shot Staging</span>
-                      <strong>S{activeShot + 1} · {currentShot?.label || 'Current shot'}</strong>
+                      <strong>S{scopedShotIndex + 1} · {currentShot?.label || 'Current shot'}</strong>
                     </div>
                     <em>{currentMiseStagingMoves.length}개 제안</em>
                   </div>
@@ -4161,7 +4485,26 @@ export default function DecisionBoard({ boardView = 'split' }) {
                       <span>Current scene state</span>
                       <strong>{sceneState.title}</strong>
                     </div>
-                    <em>Global reference</em>
+                    {/* 보는 것이 기본. 고칠 것이 눈에 띄었을 때만 연다. */}
+                    <button
+                      type="button"
+                      className={`mise-state-edit-toggle${sceneStateEditing ? ' is-editing' : ''}`}
+                      aria-pressed={sceneStateEditing}
+                      onClick={() => {
+                        const next = !sceneStateEditing
+                        setSceneStateEditing(next)
+                        // 편집을 닫을 때는 열려 있던 인물 카드와 쓰던 변화도
+                        // 같이 닫는다. 남겨 두면 보기 모드인데 뒷면이 펼쳐진
+                        // 카드가 섞인다.
+                        if (!next) {
+                          setEditingCharacterId(null)
+                          setCharacterDraft(null)
+                          setChangeDraft(null)
+                        }
+                      }}
+                    >
+                      {sceneStateEditing ? '보기로 돌아가기' : '기준 고치기'}
+                    </button>
                   </div>
                   <p className="mise-state-description">{sceneState.description}</p>
 
@@ -4243,17 +4586,21 @@ export default function DecisionBoard({ boardView = 'split' }) {
                     </div>
                     <div className="mise-character-grid">
                       {miseCharacters.map((character) => {
-                        const isEditing = editingCharacterId === character.id && characterDraft?.id === character.id
-                        const detail = isEditing ? characterDraft : character
+                        // 카드 뒷면은 보기 모드에서도 연다 — 레퍼런스 그림과
+                        // 항목을 읽는 자리이기도 하기 때문이다. 다만 값을
+                        // 고칠 수 있는 것은 '기준 고치기'를 켰을 때뿐이다.
+                        const isOpen = editingCharacterId === character.id && characterDraft?.id === character.id
+                        const isEditing = isOpen && sceneStateEditing
+                        const detail = isOpen ? characterDraft : character
                         return (
                           <article
                             key={character.id}
-                            className={`mise-character-reference-card ${isEditing ? 'flipped' : ''}`}
+                            className={`mise-character-reference-card ${isOpen ? 'flipped' : ''}`}
                           >
                             <div className="mise-character-card-inner">
                               <section
                                 className="mise-character-card-face mise-character-card-front"
-                                aria-hidden={isEditing}
+                                aria-hidden={isOpen}
                               >
                                 <div className="mise-character-portrait">
                                   <img src={character.image} alt={`${character.name} reference`} />
@@ -4267,7 +4614,7 @@ export default function DecisionBoard({ boardView = 'split' }) {
                                   <button
                                     type="button"
                                     onClick={() => openCharacterDetails(character)}
-                                    tabIndex={isEditing ? -1 : 0}
+                                    tabIndex={isOpen ? -1 : 0}
                                   >
                                     {character.image ? '레퍼런스·정보 보기' : '레퍼런스 만들기'}
                                   </button>
@@ -4286,7 +4633,7 @@ export default function DecisionBoard({ boardView = 'split' }) {
 
                               <section
                                 className="mise-character-card-face mise-character-card-back"
-                                aria-hidden={!isEditing}
+                                aria-hidden={!isOpen}
                               >
                                 {/* 큰 사진은 앞면이 이미 보여 준다. 뒷면은 값을
                                     고치는 자리이므로 사진이 자리를 차지하면
@@ -4547,6 +4894,7 @@ export default function DecisionBoard({ boardView = 'split' }) {
                                 shots={shots}
                                 onAdd={setChangeDraft}
                                 onRemove={removeFactChange}
+                                disabled={!sceneStateEditing}
                                 draft={draftFor('environment', fact.label)}
                                 onDraftChange={setChangeDraft}
                                 onDraftCancel={() => setChangeDraft(null)}

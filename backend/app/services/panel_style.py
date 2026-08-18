@@ -28,21 +28,41 @@ MATCH_ANCHOR = (
     "resolved than it is."
 )
 
-# 감독이 종이에 펜으로 20초 만에 긋는 그림. 얼굴은 **비운다** — 이목구비를
-# 하나라도 요구하면 모델이 거기서부터 그리기 시작해 detailed로 올라간다.
+# 감독이 종이에 펜으로 20초 만에 긋는 그림. 얼굴은 **눈까지만** 그린다 —
+# 이목구비를 다 열면 모델이 거기서부터 그려 detailed로 올라가지만, 완전히
+# 비우면 시선을 보는 규칙 셋이 늘 "확인되지 않는다"로 끝난다.
 ROUGHNESS = (
     f"{MATCH_ANCHOR} "
+    # 모델의 기본 습관이 "잘 그리기"다. 금지 항목을 늘려도 그 습관 자체를
+    # 짚지 않으면, 지시를 지키면서도 완성도만 슬금슬금 올라간다.
+    # 그래서 습관을 먼저 이름 붙여 막는다.
+    "IGNORE YOUR DEFAULT INSTINCT TO DRAW WELL. Your habit is to add detail, "
+    "clean up lines, and make the image look finished — every one of those is "
+    "wrong here. A drawing that looks skilled has failed this task. "
+    "When you feel the urge to add one more line, stop instead. "
     "A crude pen thumbnail scribbled to block out the composition. "
     "Stick-figure level. "
     "Bodies: a few straight strokes for limbs, a simple shape for the torso. "
     "No anatomy, no clothing folds. "
-    "HEADS ARE BLANK: an empty oval outline with NO face inside — no eyes, no "
-    "nose, no mouth, no hair. Leave it empty, however close the shot. "
+    # 얼굴은 눈까지만. 연출 규칙 12개 중 셋이 시선을 본다
+    # (mise-relational-blocking, camera-axis-direction, editing-cut-continuity).
+    # 얼굴을 완전히 비우면 그 셋이 늘 "시선 방향이 확인되지 않는다"로 끝난다.
+    # 표정은 여전히 그리지 않는다 — 시선은 방향이고 표정은 감정이라, 표정을
+    # 열면 얼굴 전체가 따라 그려진다.
+    "FACES: two small dots or short dashes for the eyes and nothing else. "
+    "The eyes exist only to show which way the person looks, so place them "
+    "off-center or draw them as short lines when the gaze is to one side. "
+    "No mouth, no nose, no eyebrows, no hair strands, no expression of any "
+    "kind. A head is an empty oval plus two eye marks, however close the shot. "
     "Objects: plain boxes and lines standing in for furniture and props. "
     "Shading: none, except a few quick parallel strokes where an area must read "
     "as dark. Most of the frame stays blank. "
     "Wobbly and obviously hand-drawn in haste — it should look almost too crude. "
-    "Unfinished is correct: this panel exists to be judged and redrawn."
+    "Unfinished is correct: this panel exists to be judged and redrawn. "
+    # 마지막에 한 번 더. 프롬프트가 길면 앞의 지시가 묻히고, 모델은 끝을
+    # 가장 잘 기억한다.
+    "Final check before you draw: if this looks like a finished sketch rather "
+    "than a 20-second scribble, it is too detailed. Err on the side of too crude."
 )
 
 # 대본은 한국어이고 인물 이름도 한국 이름인데, 모델은 그냥 두면 서양

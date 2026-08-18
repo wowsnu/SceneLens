@@ -50,7 +50,9 @@ export default function GridView({
   const splitCut = useStore((s) => s.splitCut)
   const addCutPlanItem = useStore((s) => s.addCutPlanItem)
   const swapCutsAtSeam = useStore((s) => s.swapCutsAtSeam)
+  const completeEditingOperation = useStore((s) => s.completeEditingOperation)
   const autoFill = useStore((s) => s.autoFill)
+  const panelGenerationPending = useStore((s) => s.panelGenerationPending)
 
   // Build shotId → preview insertions map (when a version is being previewed)
   const previewInsertionsByShotId = {}
@@ -289,6 +291,7 @@ export default function GridView({
             && (i === decisionScope.from || i === decisionScope.to)
           const activeLensPreview = shotPreview?.shotId === shot.id ? shotPreview : null
           const hasDraftImage = Boolean(draftImages[shot.id]) && !activeLensPreview
+          const generationLabel = panelGenerationPending[shot.id]
           const displayImage = activeLensPreview?.image ?? draftImages[shot.id] ?? shot.image
           const displayCir = activeLensPreview?.cir ?? shot.cir
 
@@ -469,6 +472,13 @@ export default function GridView({
                   )}
                   {hasDraftImage && <span className="grid-cell-draft-badge">새 초안</span>}
                   {shot.isAIGenerated && <span className="grid-cell-ai-badge">AI</span>}
+                  {generationLabel && (
+                    <div className="grid-cell-generating" role="status" aria-live="polite">
+                      <span className="grid-cell-generating-spinner" aria-hidden="true" />
+                      <strong>{generationLabel}</strong>
+                      <small>S{i + 1}에 새 초안이 만들어집니다</small>
+                    </div>
+                  )}
 
                   {isHovered && shots.length > 1 && (
                     <button
@@ -654,9 +664,12 @@ export default function GridView({
               <div className="grid-edit-after">
                 <span>바뀐 뒤</span>
                 {isMerge ? (
+                  // 왼쪽 `지금`이 원문 두 문단을 다 보여주므로 이쪽도 그만큼은
+                  // 보여야 한다. CSS가 남은 높이를 채우지만, rows가 작으면
+                  // 최소 높이가 그만큼으로 잡혀 스크롤이 생긴다.
                   <textarea
                     value={mergeDraft}
-                    rows={3}
+                    rows={8}
                     onChange={(e) => setMergeDraft(e.target.value)}
                     aria-label="합쳐진 내용"
                   />
@@ -744,7 +757,9 @@ export default function GridView({
               {kind === 'insert' && (
                 <>
                   <li>컷 {cutPlan.length} → {cutPlan.length + 1}</li>
-                  <li>새 컷은 그림이 없습니다 · 나중에 그리거나 생성합니다</li>
+                  <li>{insertChoice
+                    ? '선택한 내용으로 새 패널을 바로 생성합니다'
+                    : '내용을 고르지 않으면 빈 패널로 추가됩니다'}</li>
                   <li>이 이음새는 새 컷 뒤로 옮겨집니다</li>
                 </>
               )}
@@ -783,6 +798,9 @@ export default function GridView({
                     swapCutsAtSeam(pendingEdit.cutId)
                   } else {
                     splitCut(pendingEdit.cutId)
+                  }
+                  if (pendingEdit.proposal?.operationId) {
+                    completeEditingOperation(pendingEdit.proposal.operationId, kind)
                   }
                   setPendingEdit(null)
                   setOpenSeamId(null)

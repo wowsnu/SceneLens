@@ -11,6 +11,10 @@ function SplitShotFocus({ shotIndex, shotPreview, draftImages, draftVersions, on
   const setActiveShot = useStore((s) => s.setFlowActiveShot)
   const screenplay = useStore((s) => s.screenplay)
   const cutPlan = useStore((s) => s.cutPlan)
+  // 이 패널을 지금 그리고 있는가. 확대 보기는 결과를 보라고 여는 화면인데,
+  // 그리는 동안 옛 그림이 그대로 떠 있으면 감독은 이미 끝난 줄 알고 그것을
+  // 판정한다 — 20초 뒤에 다른 그림으로 바뀐다.
+  const panelGenerationPending = useStore((s) => s.panelGenerationPending)
   const activeBranch = scene?.activeBranch ?? 0
   const shots = scene?.branches?.[activeBranch]?.shots || []
   const shot = shots[shotIndex]
@@ -62,6 +66,13 @@ function SplitShotFocus({ shotIndex, shotPreview, draftImages, draftVersions, on
           <span>S{shotIndex + 1}</span>
         )}
         {preview && <em>촬영 미리보기</em>}
+        {/* 그리는 중에는 옛 그림을 덮어 지금 무엇을 기다리는지 알린다. */}
+        {panelGenerationPending?.[shot.id] && (
+          <div className="split-shot-focus-generating" role="status">
+            <i aria-hidden="true" />
+            <span>새 그림을 그리고 있습니다…</span>
+          </div>
+        )}
       </div>
 
       {scriptText && (

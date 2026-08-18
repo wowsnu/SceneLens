@@ -486,11 +486,26 @@ class DirectingSettledRelation(BaseModel):
     verdict: str = ""
 
 
+class DirectingCheckAnswer(BaseModel):
+    """`check` 층위의 질문에 감독이 답한 것.
+
+    `check`는 "화면만 보고는 알 수 없고 감독만 답할 수 있다"는 판정이다.
+    답을 받아 다시 보내지 않으면 그 층위는 영원히 갈리지 않고, 다시 분석할
+    때마다 같은 질문이 나온다 (design_goal.md — 발견과 처분의 분리).
+    """
+
+    level: str = ""
+    question: str = ""
+    answer: str = ""
+
+
 class DirectingReviewRequest(BaseModel):
     mode: DirectingReviewMode = "multi"
     panels: List[DirectingReviewPanel] = Field(min_length=1)
     intent: Optional[str] = ""
     settled: List[DirectingSettledRelation] = Field(default_factory=list, max_length=8)
+    # 감독이 답한 `check` 질문. 의도와 함께 보내 그 층위를 다시 판정하게 한다.
+    answers: List[DirectingCheckAnswer] = Field(default_factory=list, max_length=8)
     # mode="relate"일 때만 쓴다. 이미 받은 렌즈 결과를 그대로 돌려보낸다 —
     # 이미지를 다시 올리지 않으므로 관계 찾기는 훨씬 빠르다.
     lens_results: Optional[Dict[DirectingLens, "DirectingLensResult"]] = None
@@ -905,7 +920,7 @@ class SpaceLayoutResponse(BaseModel):
 class PanelReference(BaseModel):
     # 화면에서 이 그림이 무엇인지. 프롬프트에서 인물 이름으로 가리킨다.
     name: str
-    # "character" | "location"
+    # "character" | "location" | "style" | "layout" | "current"
     kind: str
     image: str      # base64 PNG
 
@@ -929,6 +944,14 @@ class PanelImageRequest(BaseModel):
     style_preset: Literal["rough", "detailed", "photoreal"] = "rough"
     # 2D 구조도를 문장으로 옮긴 것. 무엇이 어디에 있는지 컷마다 같아야 한다.
     layout: Optional[str] = ""
+    # 이번에 **무엇만 달라지는가**. 값 하나를 바꿔 다시 그릴 때 채운다
+    # (예: "앵글: Eye level → POV"). 비어 있으면 처음 그리는 것이므로
+    # 기존 그림을 유지하라는 지시를 붙이지 않는다.
+    #
+    # 이 값이 없으면 모델은 무엇이 바뀌었는지 모른 채 최종 값만 받아, 앵글
+    # 하나를 고쳐도 자세·소품·구도까지 전부 새로 그린다. 그러면 감독은 방금
+    # 고른 한 가지가 화면에서 무엇을 바꾸는지 볼 수 없다.
+    changes: List[str] = []
     # 생성 전에 고른 모델. 제공자 자동 감지보다 사용자 선택을 우선한다.
     model: Literal["gpt-image-1", "gpt-image-2", "flux-2-klein"] = "gpt-image-1"
 

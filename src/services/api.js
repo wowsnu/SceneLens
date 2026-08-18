@@ -211,14 +211,17 @@ export async function requestViewerReflection({
 }
 
 export async function requestDirectingReview({
-  mode, panels, intent = '', settled = [], lensResults = null,
+  mode, panels, intent = '', settled = [], lensResults = null, answers = [],
 }) {
   return fetchWithTimeout(`${API_BASE}/directing-review`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     // settled는 감독이 이미 판정한 관계다. 다시 짚지 않게 함께 보낸다.
     // lensResults는 mode='relate'일 때만 쓴다 — 이미지를 다시 올리지 않는다.
-    body: JSON.stringify({ mode, panels, intent, settled, lens_results: lensResults }),
+    // answers는 `check` 질문에 감독이 답한 것. 그 층위를 다시 판정하게 한다.
+    body: JSON.stringify({
+      mode, panels, intent, settled, lens_results: lensResults, answers,
+    }),
   }, 180000)
 }
 
@@ -390,6 +393,8 @@ export async function buildSpaceLayout({ heading, script, locationFacts = '' }) 
 export async function generatePanelImage(
   prompt, {
     shared = '', previous = '', references = [], style = '', stylePreset = 'rough', layout = '', model = 'gpt-image-1',
+    // 값 하나를 바꿔 다시 그릴 때 무엇이 달라지는지. 비어 있으면 새로 그린다.
+    changes = [],
   } = {},
 ) {
   const data = await fetchWithTimeout(`${API_BASE}/panel-image`, {
@@ -399,7 +404,9 @@ export async function generatePanelImage(
     // 둘 다 이 컷 하나만으로는 알 수 없는 것이라 따로 넘긴다.
     // references는 인물·공간의 레퍼런스 그림 — 글로만 기준을 주면
     // 컷마다 다른 얼굴이 나온다.
-    body: JSON.stringify({ prompt, shared, previous, references, style, style_preset: stylePreset, layout, model }),
+    body: JSON.stringify({
+      prompt, shared, previous, references, style, style_preset: stylePreset, layout, model, changes,
+    }),
   }, 240000)
   return `data:image/png;base64,${data.image}`
 }

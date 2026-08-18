@@ -506,6 +506,32 @@ def _book_short_name(book_id: str) -> str:
     return BOOK_SHORT_NAMES.get(book_id, "영화 이론")
 
 
+def _ensure_theory_book_names(result: DirectingLensResult) -> None:
+    """Make the visible rationale identify its already-validated source book.
+
+    The model returns the human explanation in ``theory_basis`` and the linked
+    library reference in ``theory_source``. The card deliberately shows only
+    the former, so restore the book name here instead of exposing an internal
+    reference ID in the UI.
+    """
+    for diagnosis in result.diagnoses:
+        if not diagnosis.theory_basis or not diagnosis.theory_source:
+            continue
+        reference_id = diagnosis.theory_source.split("|", 1)[0].strip()
+        book_id = reference_id.split(":", 1)[0]
+        if not book_id.startswith("b_"):
+            continue
+        book_name = _book_short_name(book_id)
+        basis = diagnosis.theory_basis.strip()
+        # The model often follows the requested format already. Do not repeat
+        # a title it included; otherwise retain only its explanation after the
+        # dash and prepend the canonical display name from our theory library.
+        if book_name.casefold() in basis.casefold():
+            continue
+        explanation = basis.split("—", 1)[-1].strip()
+        diagnosis.theory_basis = f"{book_name} — {explanation}"
+
+
 def _theory_reference_id(theory: dict) -> str:
     identity = f"{theory.get('title', '')}|{theory.get('summary', '')}"
     digest = hashlib.sha1(identity.encode("utf-8")).hexdigest()[:8]
@@ -822,6 +848,28 @@ async def analyze_lens(
 
     intent = (request.intent or "").strip()
     theory_packet = _theory_packet(lens, intent)
+
+    # 감독이 `check` 질문에 답했으면 그 답이 이 층위의 판정을 가른다.
+    # 답을 그냥 의도에 섞지 않고 따로 두는 이유: 의도는 작품의 목표이고
+    # 이것은 특정 층위의 물음에 대한 답이라, 어느 층위를 다시 보라는
+    # 뜻인지가 분명해야 한다.
+    answered = [
+      item for item in (request.answers or []) if (item.answer or "").strip()
+    ]
+    answer_packet = ""
+    if answered:
+        lines = [
+            f"- {item.level or '해당 범위'}: {item.question}\n  → {item.answer.strip()}"
+            for item in answered
+        ]
+        answer_packet = (
+            "[감독이 답한 것]\n"
+            + "\n".join(lines)
+            + "\n이 답은 화면만으로는 알 수 없던 것이므로 확정된 창작 결정입니다. "
+            "그 층위를 다시 판정하세요 — 답이 지금 화면을 지지하면 keep으로, "
+            "화면이 그 답과 어긋나면 change로 두고 진단과 선택지를 내세요. "
+            "이미 답한 것을 open_question으로 다시 묻지 마세요."
+        )
     ordered_scope = " → ".join(
         f"{order}:{panel.id}"
         for order, panel in enumerate(request.panels, start=1)
@@ -840,13 +888,16 @@ async def analyze_lens(
     # 기준이 되는 정보인데 "하지 마세요" 목록에 묻혔다. 모델은 앞뒤를 더 잘
     # 보므로, 이번 건에만 해당하는 입력을 앞으로 올리고 매번 같은 형식 규칙을
     # 뒤로 보낸다.
+    # 빈 블록은 걸러낸다 — 답이 없으면 answer_packet이 빈 문자열이고,
+    # 그대로 두면 프롬프트에 빈 줄만 벌어진다.
     prompt = "\n\n".join(
-        [
+        block for block in [
             # 1. 나는 누구이며 무엇을 보는가
             LENS_PROMPTS[lens],
 
             # 2. 이번 건의 입력 — 이것을 보고 판단한다
             f"[감독의 의도]\n{intent or '입력되지 않음'}",
+            answer_packet,
             f"[선택 범위의 확정된 순서]\n{ordered_scope}",
             f"[같은 순서로 정리한 사건 목록]\n{sequence_packet}",
 
@@ -872,7 +923,7 @@ async def analyze_lens(
                 f"move: {', '.join(MOVES)}"
             ),
             f"[ID 규칙]\n모든 diagnosis와 question의 id는 반드시 `{lens}-`로 시작하세요.",
-        ]
+        ] if block
     )
     content = [{"type": "text", "text": prompt}]
     for order, panel in enumerate(request.panels, start=1):
@@ -963,6 +1014,7 @@ async def analyze_lens(
             _validate_theory_sources(lens, result, theory_packet)
             _validate_referenced_panels(request, result, questions)
             _validate_remedy_scope(lens, result)
+            _ensure_theory_book_names(result)
             return result, questions
         except (ValidationError, ValueError) as error:
             if attempt == 2:

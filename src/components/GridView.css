@@ -341,6 +341,48 @@
   object-fit: cover;
 }
 
+/* StoryboardView에서 시작한 생성도 Decision Board의 같은 패널 위에 보인다.
+   병합 직후 기존 S1 그림이 남아 있어도 새 결과를 기다리는 중임을 가리지 않는다. */
+.grid-cell-generating {
+  position: absolute;
+  inset: 0;
+  z-index: 8;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 14px;
+  background: rgba(8, 12, 22, 0.82);
+  color: #f8fafc;
+  text-align: center;
+  backdrop-filter: blur(3px);
+}
+
+.grid-cell-generating strong {
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.grid-cell-generating small {
+  color: rgba(255, 255, 255, 0.55);
+  font-size: 9px;
+  line-height: 1.35;
+}
+
+.grid-cell-generating-spinner {
+  width: 20px;
+  height: 20px;
+  border: 2px solid rgba(255, 255, 255, 0.18);
+  border-top-color: #fbbf24;
+  border-radius: 50%;
+  animation: grid-cell-generating-spin 0.8s linear infinite;
+}
+
+@keyframes grid-cell-generating-spin {
+  to { transform: rotate(360deg); }
+}
+
 .grid-cell-empty {
   display: flex;
   align-items: center;
@@ -875,12 +917,18 @@
   left: 50%;
   bottom: 18px;
   transform: translateX(-50%);
-  width: min(520px, calc(100% - 32px));
+  /* 합치기 입력칸이 원문 길이만큼 늘어나므로 폭도 넉넉해야 한다 — 520px에서는
+     두 칸이 나란히 서면 한 줄에 대여섯 자만 들어간다. */
+  width: min(760px, calc(100% - 32px));
   padding: 14px 16px;
   border: 1px solid rgba(196, 150, 210, 0.4);
   border-radius: 11px;
   background: #14101a;
   box-shadow: 0 16px 44px rgba(0, 0, 0, 0.7);
+  /* 대본이 길면 대화상자가 화면을 넘는다. 넘치면 안에서 스크롤한다 —
+     `취소`/`합치기`가 화면 밖으로 밀리면 되돌릴 길이 없다. */
+  max-height: calc(100% - 36px);
+  overflow-y: auto;
 }
 
 .grid-edit-preview header {
@@ -952,6 +1000,8 @@
 
 .grid-edit-before,
 .grid-edit-after {
+  display: flex;
+  flex-direction: column;
   flex: 1;
   min-width: 0;
   padding: 9px 10px;
@@ -988,8 +1038,13 @@
   font-style: italic;
 }
 
+/* 왼쪽 `지금`은 원문 전체가 보이는데 오른쪽 입력칸만 3줄에 갇혀 스크롤됐다.
+   합쳐진 내용을 고치는 자리이므로 원문만큼은 보여야 한다 — 남은 높이를
+   채우고, 아래로 늘릴 수도 있게 한다. */
 .grid-edit-after textarea {
+  flex: 1;
   width: 100%;
+  min-height: 8.5em;
   padding: 6px 8px;
   border: 1px solid rgba(196, 150, 210, 0.35);
   border-radius: 5px;

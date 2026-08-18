@@ -2010,6 +2010,45 @@ button.active .lens-glass::after {
   font-weight: 850;
 }
 
+/* 답을 받아 다시 도는 중. 결과를 지우는 대신 흐리게 두고 손대지 못하게
+   한다 — 곧 바뀔 판정을 누르면 사라진 카드에 명령을 내리는 셈이다. */
+/* 부모에 opacity를 걸면 자식이 되돌릴 수 없다(합성 레이어가 통째로
+   흐려진다). 그래서 흐리게 할 것들만 각각 짚는다 — 감독이 방금 쓴 답은
+   빼고. 무엇을 답했는지가 지금 기다리는 이유이므로 그것까지 지우면
+   빈 화면과 다를 바 없다. */
+.directing-review-result.is-reanalyzing {
+  pointer-events: none;
+}
+
+/* 층위 카드 자체가 아니라 그 요약줄을 흐리게 한다 — 카드 안에 답 입력이
+   들어 있어, 카드를 흐리게 하면 답까지 같이 흐려진다. */
+.directing-review-result.is-reanalyzing .directing-review-summary,
+.directing-review-result.is-reanalyzing .directing-level-card > summary,
+.directing-review-result.is-reanalyzing .directing-diagnosis-card,
+.directing-review-result.is-reanalyzing .directing-review-question {
+  opacity: 0.4;
+}
+
+/* 답은 또렷하게 남기고, 다시 누르는 것만 막는다. */
+.directing-review-result.is-reanalyzing .directing-open-question {
+  pointer-events: auto;
+}
+
+.directing-review-result.is-reanalyzing .directing-open-question > button {
+  pointer-events: none;
+}
+
+.directing-reanalyzing {
+  color: color-mix(in srgb, var(--lens-color), white 24%);
+  background: color-mix(in srgb, var(--lens-color) 16%, transparent);
+  animation: directing-reanalyzing-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes directing-reanalyzing-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
 .directing-review-result-heading > em.has-issue {
   background: rgba(251, 191, 36, 0.14);
   color: #fde68a;
@@ -5740,7 +5779,9 @@ button.active .lens-glass::after {
 
 /* 감독만 답할 수 있는 것. 진단이 아니라 되돌린 질문이므로 다르게 보인다. */
 .directing-open-question {
-  margin: 8px 0 0;
+  display: grid;
+  gap: 7px;
+  margin: 8px 11px 11px;
   padding: 9px 11px;
   border: 1px dashed rgba(150, 190, 210, 0.4);
   border-radius: 7px;
@@ -5748,6 +5789,53 @@ button.active .lens-glass::after {
   color: rgba(186, 220, 234, 0.95);
   font-size: 11.5px;
   line-height: 1.55;
+}
+
+.directing-open-question > p { margin: 0; }
+
+.directing-open-question > textarea {
+  width: 100%;
+  min-width: 0;
+  padding: 7px 8px;
+  border: 1px solid rgba(150, 190, 210, 0.28);
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.28);
+  color: rgba(226, 240, 246, 0.95);
+  font-family: inherit;
+  font-size: 11.5px;
+  line-height: 1.5;
+  resize: vertical;
+}
+
+.directing-open-question > textarea::placeholder {
+  color: rgba(186, 220, 234, 0.42);
+}
+
+.directing-open-question > button {
+  justify-self: start;
+  padding: 6px 11px;
+  border: 1px solid rgba(150, 190, 210, 0.5);
+  border-radius: 6px;
+  background: rgba(150, 190, 210, 0.14);
+  color: rgba(206, 234, 244, 0.98);
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.directing-open-question > button:disabled {
+  opacity: 0.42;
+  cursor: default;
+}
+
+/* 버튼이 네 렌즈를 다시 돌린다는 사실. 이것을 적지 않으면 다른 층위의
+   판단이 바뀐 것이 고장으로 읽힌다. */
+.directing-open-question > small {
+  margin-top: -2px;
+  color: rgba(186, 220, 234, 0.55);
+  font-size: 10.5px;
+  line-height: 1.45;
 }
 
 /* 갈 수 있는 길. 하나를 고르는 것이지 전부 하는 것이 아니다. */
@@ -6344,3 +6432,161 @@ button.active .lens-glass::after {
 }
 
 .mise-change-inline > div > button:disabled { opacity: 0.45; cursor: default; }
+
+/* Scene State는 보는 것이 기본이다. 감독은 이 화면에 오기 전에 이미 컷과
+   샷을 정하는 중이라, 기준까지 손보라고 열어 두면 할 일이 하나 더 늘어난
+   것으로 읽힌다. 고칠 것이 눈에 띄었을 때만 이 버튼으로 편집을 연다. */
+.mise-state-edit-toggle {
+  flex: 0 0 auto;
+  padding: 6px 11px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.05);
+  color: rgba(226, 232, 240, 0.82);
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.mise-state-edit-toggle:hover {
+  border-color: rgba(255, 255, 255, 0.3);
+  color: rgba(248, 250, 252, 0.96);
+}
+
+/* 편집 중일 때는 화면이 지금 손대는 상태라는 것이 한눈에 보여야 한다. */
+.mise-state-edit-toggle.is-editing {
+  border-color: color-mix(in srgb, var(--lens-color) 60%, transparent);
+  background: color-mix(in srgb, var(--lens-color) 18%, transparent);
+  color: color-mix(in srgb, var(--lens-color), white 28%);
+}
+
+/* 여러 선택지를 모아 한 번에 적용하는 자리. 하나씩 적용하면 같은 패널을
+   여러 번 그리고, 중간 그림이 감독을 오도한다. */
+.directing-alternative-pick {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  flex: 0 0 auto;
+  padding: 5px 9px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.04);
+  color: rgba(226, 232, 240, 0.86);
+  font-size: 11px;
+  font-weight: 800;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.directing-alternative-pick:hover {
+  border-color: rgba(255, 255, 255, 0.32);
+}
+
+.directing-alternative-pick input {
+  margin: 0;
+  accent-color: var(--lens-color);
+  cursor: pointer;
+}
+
+.directing-batch-apply {
+  display: grid;
+  gap: 9px;
+  margin-top: 12px;
+  padding: 11px 13px;
+  border: 1px solid color-mix(in srgb, var(--lens-color) 45%, transparent);
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--lens-color) 10%, transparent);
+}
+
+.directing-batch-apply > div:first-child { display: grid; gap: 2px; }
+
+.directing-batch-apply strong {
+  color: rgba(248, 250, 252, 0.96);
+  font-size: 13px;
+}
+
+.directing-batch-apply small {
+  color: rgba(226, 232, 240, 0.6);
+  font-size: 11px;
+}
+
+/* 두 선택지가 같은 항목을 다르게 바꾸는 경우. 조용히 덮으면 감독은 고른
+   것 중 하나가 사라진 줄 모른다. */
+.directing-batch-conflict {
+  margin: 0;
+  color: rgba(252, 211, 153, 0.95);
+  font-size: 11.5px;
+  line-height: 1.5;
+}
+
+.directing-batch-actions { display: flex; gap: 7px; }
+
+.directing-batch-actions button {
+  padding: 7px 13px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.05);
+  color: rgba(226, 232, 240, 0.9);
+  font-family: inherit;
+  font-size: 11.5px;
+  font-weight: 850;
+  cursor: pointer;
+}
+
+.directing-batch-actions button.primary {
+  border-color: color-mix(in srgb, var(--lens-color) 65%, transparent);
+  background: color-mix(in srgb, var(--lens-color) 24%, transparent);
+  color: rgba(248, 250, 252, 0.98);
+}
+
+.directing-batch-actions button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+/* 다시 그린 그림을 받을지 버릴지. 적용하는 순간 확정되면 감독은 결과를
+   보기 전에 이미 바꾼 상태가 되고, 마음에 안 들어도 어떤 값이었는지
+   기억해서 손으로 되돌려야 한다. */
+.directing-revision-verdict {
+  display: grid;
+  gap: 9px;
+  margin-bottom: 11px;
+  padding: 11px 13px;
+  border: 1px solid color-mix(in srgb, var(--lens-color) 55%, transparent);
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--lens-color) 13%, transparent);
+}
+
+.directing-revision-verdict > div:first-child { display: grid; gap: 2px; }
+
+.directing-revision-verdict strong {
+  color: rgba(248, 250, 252, 0.96);
+  font-size: 13.5px;
+}
+
+.directing-revision-verdict small {
+  color: rgba(226, 232, 240, 0.62);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.directing-revision-actions { display: flex; gap: 7px; }
+
+.directing-revision-actions button {
+  padding: 7px 13px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.05);
+  color: rgba(226, 232, 240, 0.9);
+  font-family: inherit;
+  font-size: 11.5px;
+  font-weight: 850;
+  cursor: pointer;
+}
+
+.directing-revision-actions button.primary {
+  border-color: color-mix(in srgb, var(--lens-color) 65%, transparent);
+  background: color-mix(in srgb, var(--lens-color) 26%, transparent);
+  color: rgba(248, 250, 252, 0.98);
+}

@@ -701,6 +701,20 @@ const SHOT_SIZE_PHRASES = {
   ECU: '익스트림 클로즈업, 부분만 크게',
 }
 
+// 앵글도 샷 사이즈처럼 풀어 써야 한다. `POV.` 두 글자만 넣으면 모델이
+// 무엇을 하라는 것인지 모르고 그냥 인물을 정면에서 그린다 — 실제로 POV로
+// 고쳐도 POV가 안 나오던 이유가 이것이다.
+const ANGLE_PHRASES = {
+  'High angle': '하이 앵글, 카메라가 위에서 내려다본다',
+  'Low angle': '로 앵글, 카메라가 아래에서 올려다본다',
+  'Over the shoulder': '오버 더 숄더, 다른 인물의 어깨 너머로 본다',
+  // POV는 카메라가 인물의 눈이 되는 것이라, 그 인물이 화면에 없어야 한다.
+  // 이것을 말하지 않으면 모델이 인물을 그려 넣어 POV가 성립하지 않는다.
+  POV: 'POV, 카메라가 그 인물의 눈이다 — 그 인물이 보는 것만 화면에 담고 '
+    + '그 인물 자신은 화면에 넣지 않는다(손이나 몸 일부는 허용)',
+  'Bird eye': '버드 아이, 카메라가 수직으로 내려다본다',
+}
+
 // purpose는 묘사가 아니라 무엇을 강조할지를 정한다. 구도 지시로 옮긴다.
 const PURPOSE_PHRASES = {
   '공간 설정': '공간의 배치와 분위기가 읽히도록',
@@ -736,11 +750,17 @@ export const buildCutPrompt = (cut, {
   // 빈 값으로 문장을 만들면 ". ."처럼 깨진다.
   const place = cut.place ? `${cut.place}${cut.time ? ` ${cut.time}` : ''}` : cut.time
   // 앵글은 기본값(눈높이)이거나 미정일 때 굳이 적지 않는다.
-  const angleText = cut.angle && cut.angle !== 'Eye level' ? `${cut.angle}. ` : ''
+  const angleText = cut.angle && cut.angle !== 'Eye level'
+    ? `${ANGLE_PHRASES[cut.angle] || cut.angle}.`
+    : ''
+  // POV는 그 인물이 화면에 없는 컷이라 `바스트 샷, 가슴 위로` 같은 인물
+  // 프레이밍과 부딪힌다. 두 지시가 싸우면 모델은 인물을 그리는 쪽을 따르고
+  // POV가 사라진다 — 앵글이 이겨야 하므로 샷 사이즈는 적지 않는다.
+  const isPov = cut.angle === 'POV'
   const opening = [
     place && `${place}.`,
-    angleText.trim(),
-    shot && `${shot}.`,
+    angleText,
+    !isPov && shot && `${shot}.`,
   ].filter(Boolean).join(' ')
 
   // 2문장: 화면 안에서 무슨 일이 일어나는가.
@@ -760,11 +780,17 @@ export const buildCutPrompt = (cut, {
   }
 
   // 3문장: 화면에 누가 있는가. 앞 문장에 이미 나온 인물은 다시 적지 않는다.
+  //
+  // POV에서는 보는 사람이 화면에 없다. `화면에는 하린이 보인다`를 그대로
+  // 두면 앵글 지시와 정면으로 부딪혀, 모델이 인물을 그리고 POV가 사라진다.
+  // 대신 그 사람의 시점이라는 것을 한 번 더 못박는다.
   const others = cast.filter((name) => !action.includes(name))
   const castNames = others.join(', ')
-  const castLine = others.length > 0
-    ? `화면에는 ${castNames}${hasFinalConsonant(castNames) ? '이' : '가'} ${others.length > 1 ? '함께 ' : ''}보인다.`
-    : ''
+  const castLine = isPov
+    ? (cast[0] ? `이 화면은 ${cast[0]}의 시점이다. ${cast[0]}은 화면에 보이지 않는다.` : '')
+    : others.length > 0
+      ? `화면에는 ${castNames}${hasFinalConsonant(castNames) ? '이' : '가'} ${others.length > 1 ? '함께 ' : ''}보인다.`
+      : ''
 
   // 4문장: 무엇이 읽혀야 하는가.
   // 촬영이 정한 dominant가 있으면 그것을 쓴다 — 화면에서 시선이 먼저 가야
@@ -2620,16 +2646,44 @@ const useStore = create((set, get) => ({
     const anchorHasPanel = shots.some((shot) => shot.cutPlanItemId)
     if (!anchorHasPanel) return { cutPlan: reorderCutPlan(next) }
 
+    const anchorShot = shots.find((shot) => shot.cutPlanItemId === afterItemId)
+    const insertedShot = {
+      ...createFlowShot({ index: shots.length, scriptBeat: anchorBeat }),
+      cutPlanItemId: inserted.id,
+    }
     const withPanel = updateActiveBranchShots(state, (current) => {
       const shotIndex = current.findIndex((shot) => shot.cutPlanItemId === afterItemId)
       const copy = [...current]
-      copy.splice(shotIndex < 0 ? copy.length : shotIndex + 1, 0, {
-        ...createFlowShot({ index: current.length, scriptBeat: anchorBeat }),
-        cutPlanItemId: inserted.id,
-      })
+      copy.splice(shotIndex < 0 ? copy.length : shotIndex + 1, 0, insertedShot)
       return copy
     })
-    return { ...withPanel, cutPlan: reorderCutPlan(next) }
+
+    // 원래 이음새는 anchor → 다음 컷 사이의 결정이었다. 새 컷을 그 사이에
+    // 넣으면 그 결정은 inserted → 다음 컷으로 이동하고, anchor → inserted는
+    // 새 기본 이음새가 된다. UI가 약속한 "새 컷 뒤로 이동"을 실제로 반영한다.
+    const nextSeams = { ...state.seams }
+    if (anchorShot && nextSeams[seamKeyFor(anchorShot.id)]) {
+      nextSeams[seamKeyFor(insertedShot.id)] = nextSeams[seamKeyFor(anchorShot.id)]
+      delete nextSeams[seamKeyFor(anchorShot.id)]
+    }
+
+    // 편집 제안의 내용을 골라 넣었다면 빈 자리만 만들지 않고, 그 content로
+    // 조립된 프롬프트를 즉시 생성한다. 사용자가 직접 추가한 빈 컷은 내용이
+    // 없으므로 기존처럼 빈 패널로 남긴다.
+    const shouldGenerate = Boolean((fields.content || '').trim())
+    return {
+      ...withPanel,
+      cutPlan: reorderCutPlan(next),
+      seams: nextSeams,
+      ...(shouldGenerate ? {
+        panelToolRequest: {
+          id: `panel-tool-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+          shotId: insertedShot.id,
+          tool: 'regenerate',
+          reason: 'insert',
+        },
+      } : {}),
+    }
   })
   },
   // 진단을 받아 촬영에 수정본을 묻는다. 어느 크기로 바꿀지는 그 컷이
@@ -2936,7 +2990,27 @@ const useStore = create((set, get) => ({
       delete nextSeams[seamKeyFor(secondShot.id)]
     }
 
-    return { ...next, cutPlan: nextCutPlan, seams: nextSeams }
+    // 병합은 텍스트 구조만 바꾸는 작업이 아니다. 앞 패널의 기존 그림은
+    // 병합 전 첫 컷만 표현하므로 그대로 두면 새 content와 화면이 어긋난다.
+    // 남은 앞 패널을 새로 조립된 프롬프트로 즉시 다시 그리게 한다.
+    const panelDraftImages = { ...(state.panelDraftImages || {}) }
+    if (firstShot) delete panelDraftImages[firstShot.id]
+    if (secondShot) delete panelDraftImages[secondShot.id]
+
+    return {
+      ...next,
+      cutPlan: nextCutPlan,
+      seams: nextSeams,
+      panelDraftImages,
+      ...(firstShot ? {
+        panelToolRequest: {
+          id: `panel-tool-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+          shotId: firstShot.id,
+          tool: 'regenerate',
+          reason: 'merge',
+        },
+      } : {}),
+    }
   })
   },
 
@@ -3223,6 +3297,16 @@ const useStore = create((set, get) => ({
   },
 
   clearSeamProposals: () => set({ seamProposals: [] }),
+
+  // Decision Board에서 보낸 편집 제안은 실제 컷 조작이 끝난 뒤에만 완료로
+  // 표시한다. 이음새 미리보기만 연 상태를 '적용됨'으로 오해하지 않는다.
+  editingOperationCompletions: {},
+  completeEditingOperation: (operationId, action) => set((state) => ({
+    editingOperationCompletions: {
+      ...state.editingOperationCompletions,
+      [operationId]: action,
+    },
+  })),
 
   // 패널 메모. 오버레이로 그릴 수 없는 것을 적어두는 자리다 —
   // 화살표나 배지로 표현되지 않는 지시가 갈 곳이 없으면 결국 누락된다.
@@ -4465,6 +4549,15 @@ const useStore = create((set, get) => ({
   // 아직 수락하지 않은 Panels AI 초안. Panels에서는 후보로 남겨 두되,
   // 관객 분석은 지금 화면에 보이는 그림을 읽어야 하므로 별도로 공유한다.
   panelDraftImages: {},
+  // 패널 생성은 StoryboardView에서 실행되지만 결과를 기다리는 동안에는
+  // Decision Board의 같은 패널에도 상태가 보여야 한다. shotId별 문구를
+  // 공유해 병합 재생성인지 일반 생성인지도 구분한다.
+  panelGenerationPending: {},
+  setPanelGenerationPending: (next) => set((state) => ({
+    panelGenerationPending: typeof next === 'function'
+      ? next(state.panelGenerationPending)
+      : next,
+  })),
   // 같은 컷을 다시 생성해도 이미지가 도착했다는 사실을 구분한다. 이미지
   // 문자열만 보면 이전 초안이 남아 있을 때 완료 상태를 잘못 띄울 수 있다.
   panelDraftVersions: {},
@@ -4479,6 +4572,50 @@ const useStore = create((set, get) => ({
     const panelDraftImages = { ...state.panelDraftImages }
     delete panelDraftImages[shotId]
     return { panelDraftImages }
+  }),
+
+  // 검토 화면에서 제안을 적용해 다시 그린 것. 감독이 받을지 버릴지 정할
+  // 때까지 원래 값을 들고 있는다.
+  //
+  // 적용하는 순간 확정되면 감독은 결과를 보기 전에 이미 바꾼 상태가 된다.
+  // 마음에 안 들어도 어떤 값이었는지 기억해서 손으로 되돌려야 한다 —
+  // 발견과 처분을 나누려면 처분에 되돌릴 길이 있어야 한다.
+  panelRevisionPending: null,
+  beginPanelRevision: (shotId, cutId, before) => set({
+    panelRevisionPending: { shotId, cutId, before },
+  }),
+  // 받는다. 초안을 패널의 그림으로 굳힌다.
+  acceptPanelRevision: () => set((state) => {
+    const pending = state.panelRevisionPending
+    if (!pending) return { panelRevisionPending: null }
+    const image = state.panelDraftImages[pending.shotId]
+    if (!image) return { panelRevisionPending: null }
+    const panelDraftImages = { ...state.panelDraftImages }
+    delete panelDraftImages[pending.shotId]
+    return {
+      ...updateActiveBranchShots(state, (shots) => shots.map((shot) => (
+        shot.id === pending.shotId
+          ? { ...shot, image, source: 'ai', isAIGenerated: true }
+          : shot
+      ))),
+      panelDraftImages,
+      panelRevisionPending: null,
+    }
+  }),
+  // 버린다. 컷 값도 적용 전으로 되돌린다 — 그림만 버리고 값이 남으면
+  // 표는 바뀐 채로 그림만 옛것이 되어 둘이 어긋난다.
+  rejectPanelRevision: () => set((state) => {
+    const pending = state.panelRevisionPending
+    if (!pending) return { panelRevisionPending: null }
+    const panelDraftImages = { ...state.panelDraftImages }
+    delete panelDraftImages[pending.shotId]
+    return {
+      cutPlan: state.cutPlan.map((item) => (
+        item.id === pending.cutId ? { ...item, ...pending.before } : item
+      )),
+      panelDraftImages,
+      panelRevisionPending: null,
+    }
   }),
   // 그리기로 들어오기 전에 어느 화면이었는지. 나갈 때 그리로 돌려보낸다 —
   // 늘 분할 화면으로 떨어지면 Panels에서 Draw를 눌렀을 때 다른 곳에 도착한다.

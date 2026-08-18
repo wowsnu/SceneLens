@@ -430,3 +430,34 @@
   display: flex;
   flex-direction: column;
 }
+
+/* 확대 보기에서 다시 그리는 중. 옛 그림이 그대로 떠 있으면 감독은 이미
+   끝난 줄 알고 그것을 판정한다 — 20초 뒤에 다른 그림으로 바뀐다. */
+.split-shot-focus-generating {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 11px;
+  background: rgba(8, 10, 14, 0.74);
+  backdrop-filter: blur(2px);
+  color: rgba(233, 240, 248, 0.95);
+  font-size: 12.5px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+.split-shot-focus-generating i {
+  width: 22px;
+  height: 22px;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  border-top-color: rgba(233, 240, 248, 0.9);
+  border-radius: 50%;
+  animation: split-shot-focus-spin 0.85s linear infinite;
+}
+
+@keyframes split-shot-focus-spin {
+  to { transform: rotate(360deg); }
+}

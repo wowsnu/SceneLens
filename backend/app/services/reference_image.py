@@ -43,8 +43,11 @@ PRESET_LOOKS = {
         "a composition. Stick-figure level. "
         "Bodies: a few straight strokes for limbs and a simple shape for the "
         "torso. No anatomy, no muscle, no clothing folds. "
-        "HEADS ARE BLANK: draw the head as an empty oval outline with NO face "
-        "inside it — no eyes, no nose, no mouth, no hair. Leave it empty. "
+        # 패널과 같은 규칙. 눈까지만 — 시선을 보는 연출 규칙이 셋 있어
+        # 얼굴을 완전히 비우면 그 셋이 판단할 근거가 없어진다.
+        "FACES: two small dots for the eyes and nothing else — no mouth, no "
+        "nose, no eyebrows, no hair strands, no expression. A head is an empty "
+        "oval plus two eye marks. "
         "Objects: plain boxes and lines standing in for furniture and props. "
         "Shading: none, except a few quick parallel strokes if an area must read "
         "as dark. Most of the paper stays blank. "

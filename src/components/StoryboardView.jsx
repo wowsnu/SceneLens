@@ -1066,6 +1066,8 @@ export default function StoryboardView() {
   const setSelectedShotIds = useStore((s) => s.setSelectedStoryboardShotIds)
   const setPanelDraftImage = useStore((s) => s.setPanelDraftImage)
   const clearPanelDraftImage = useStore((s) => s.clearPanelDraftImage)
+  const panelGenPending = useStore((s) => s.panelGenerationPending)
+  const setPanelGenPending = useStore((s) => s.setPanelGenerationPending)
   const scriptEditorRequestKey = useStore((s) => s.scriptEditorRequestKey)
   const narrativeSuggestions = useStore((s) => s.narrativeSuggestions)
   const requestNarrativeSuggestions = useStore((s) => s.requestNarrativeSuggestions)
@@ -1243,8 +1245,6 @@ export default function StoryboardView() {
   const [panelCandidates, setPanelCandidates] = useState({})
   const [openReferenceCards, setOpenReferenceCards] = useState({})
   const [referenceLightbox, setReferenceLightbox] = useState(null)
-  // 어느 패널이 생성 중인가. 여러 장을 한 번에 만들 수 있어 shotId별로 둔다.
-  const [panelGenPending, setPanelGenPending] = useState({})
   const [panelGenError, setPanelGenError] = useState(null)
 
   const generatingCount = Object.keys(panelGenPending).length
@@ -1388,9 +1388,29 @@ export default function StoryboardView() {
       // effect가 매번 다시 돈다.
       setArrowDrawingShotId(null)
       setNoteEditingShotId(null)
+      // 구조 변경 전에 만든 후보가 남아 있으면 새 생성이 시작돼도 잠시 옛
+      // 그림이 보인다. 특히 병합에서는 첫 컷만 그린 후보가 합쳐진 컷의 그림처럼
+      // 보이므로, 요청을 받는 순간 이전 후보와 공유 초안을 함께 비운다.
+      setPanelCandidates((current) => {
+        const next = { ...current }
+        delete next[shot.id]
+        return next
+      })
+      clearPanelDraftImage(shot.id)
       generatePanelsRef.current?.(
         [{ shot, shotIdx: shotIndex }],
-        { includeExisting: true, keepView: true },
+        {
+          includeExisting: true,
+          keepView: true,
+          statusLabel: panelToolRequest.reason === 'merge'
+            ? '합친 내용으로 생성 중…'
+            : panelToolRequest.reason === 'insert'
+              ? '삽입한 컷 생성 중…'
+            : '새 이미지 생성 중…',
+          // 값 하나를 바꿔 다시 그리는 경우에만 채워 온다. 합치기·삽입은
+          // 내용 자체가 달라지는 일이라 지금 그림을 기준으로 삼으면 안 된다.
+          changes: panelToolRequest.changes || [],
+        },
       )
     }
 
@@ -1403,6 +1423,7 @@ export default function StoryboardView() {
     clearPanelToolRequest()
   }, [
     clearPanelToolRequest,
+    clearPanelDraftImage,
     flowShots,
     panelToolRequest,
     setFlowActiveShot,
@@ -1800,7 +1821,16 @@ export default function StoryboardView() {
     targets,
     // keepView: 검토 화면에서 부른 경우. 화면을 옮기면 감독이 보고 있던
     // 진단이 가려진다 — 바뀌는 것은 그림뿐이어야 한다.
-    { includeExisting = false, keepView = false } = {},
+    {
+      includeExisting = false, keepView = false, statusLabel = '새 이미지 생성 중…',
+      // 값 하나를 바꿔 다시 그리는 경우, 무엇이 달라지는지를 문장으로 받는다
+      // (예: `['앵글: Eye level → POV']`). 이것이 있으면 지금 그림을 함께
+      // 물려 "이것만 바꾸고 나머지는 그대로"라고 지시한다.
+      //
+      // 없이 그리면 앵글 하나를 고쳐도 자세·소품·구도까지 전부 새로 나와,
+      // 감독이 고른 한 가지가 무엇을 바꾸는지 비교할 수 없다.
+      changes = [],
+    } = {},
   ) => {
     const eligibleTargets = includeExisting
       ? targets
@@ -1811,7 +1841,7 @@ export default function StoryboardView() {
     setPanelGenError(null)
     setPanelGenPending((current) => {
       const next = { ...current }
-      eligibleTargets.forEach(({ shot }) => { next[shot.id] = true })
+      eligibleTargets.forEach(({ shot }) => { next[shot.id] = statusLabel })
       return next
     })
 
@@ -1879,11 +1909,21 @@ export default function StoryboardView() {
           // 레퍼런스 그림이 있으면 물린다. 글만으로는 컷마다 같은 얼굴이
           // 나오지 않는다.
           references: (await Promise.all(
-            referencesForCut(cut, layout.image, panelStylePreset).map(async (reference) => ({
+            [
+              ...referencesForCut(cut, layout.image, panelStylePreset),
+              // 값 하나만 바꿔 다시 그리는 중이면 지금 그림을 함께 물린다.
+              // 이 그림이 있어야 "나머지는 그대로"가 지킬 대상을 갖는다 —
+              // 글로만 "유지하라"고 하면 무엇을 유지할지 알 수 없다.
+              ...(changes.length > 0 && getShotVisual(shot, shotIdx)
+                ? [{ name: '현재 패널', kind: 'current', image: getShotVisual(shot, shotIdx) }]
+                : []),
+            ].map(async (reference) => ({
               ...reference,
               image: await referenceImageBase64(reference.image),
             })),
           )).filter((reference) => reference.image),
+          // 이번에 무엇이 달라지는지. 비어 있으면 처음 그리는 것이다.
+          changes,
           // 화풍은 표현 스타일 하나가 정한다. 글로 받던 그림체 칸은 없앴다 —
           // 앵커 이미지보다 약해서, 어긋나면 어차피 무시되는 쪽이었다.
           stylePreset: panelStylePreset,
