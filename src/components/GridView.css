@@ -1245,3 +1245,27 @@
   color: rgba(232, 168, 168, 0.9);
   font-size: 10.5px;
 }
+
+/* 나눈 안. 두 칸 모두 감독이 고칠 수 있다 — 제안이지 결정이 아니다. */
+.grid-edit-after textarea.grid-edit-new {
+  border-color: rgba(150, 200, 170, 0.42);
+  background: rgba(150, 200, 170, 0.08);
+}
+
+/* 왜 이 자리에서 끊었는가. 받아들일지 판정할 근거다. */
+.grid-edit-split-reason {
+  margin: 6px 0 0;
+  padding-top: 6px;
+  border-top: 1px solid rgba(255, 255, 255, 0.09);
+  color: rgba(226, 232, 240, 0.62);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+/* 안을 못 받아도 직접 나눌 수 있다. 막다른 길이 아니라는 것을 말해 준다. */
+.grid-edit-split-error {
+  margin: 0 0 10px;
+  color: rgba(252, 211, 153, 0.9);
+  font-size: 11.5px;
+  line-height: 1.5;
+}

@@ -893,6 +893,37 @@ class SeamInsertCandidate(BaseModel):
 class SeamInsertResponse(BaseModel):
     candidates: List[SeamInsertCandidate] = []
 
+class SeamSplitRequest(BaseModel):
+    """한 컷을 두 컷으로 나눈 안을 제안받는다.
+
+    감독이 직접 나눌 때는 제안하지 않는다 — 어디서 끊을지는 감독의 판단이다.
+    편집 렌즈가 "두 사건이 겹쳐 있다"고 진단한 경우에만, 그 진단이 이미
+    무엇과 무엇이 겹쳤는지 알고 있으므로 나눈 안을 낸다.
+    """
+
+    # 나눌 컷.
+    content: str = ""
+    purpose: str = ""
+    characters: str = ""
+    # 앞뒤 컷. 나눈 결과가 이 둘 사이에 자연스럽게 놓여야 한다.
+    before_content: Optional[str] = ""
+    after_content: Optional[str] = ""
+    script: Optional[str] = ""
+    # 편집 진단. 무엇과 무엇이 겹쳤다고 보았는지가 나누는 근거다.
+    diagnosis: Optional[str] = ""
+
+class SeamSplitPart(BaseModel):
+    content: str
+    purpose: str = ""
+    characters: str = ""
+
+class SeamSplitResponse(BaseModel):
+    # 앞 컷과 뒤 컷. 원본 컷의 내용이 둘로 나뉜다.
+    first: SeamSplitPart
+    second: SeamSplitPart
+    # 왜 이 자리에서 끊었는가. 감독이 판정할 근거다.
+    reason: str = ""
+
 class SpaceLayoutRequest(BaseModel):
     heading: str
     script: str

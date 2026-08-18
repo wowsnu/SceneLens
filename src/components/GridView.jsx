@@ -105,6 +105,11 @@ export default function GridView({
   const [insertChoice, setInsertChoice] = useState(null)
   const [insertPending, setInsertPending] = useState(false)
   const [insertError, setInsertError] = useState(null)
+  // 나눈 안. 감독이 직접 나눌 때는 비워 둔다 — 어디서 끊을지는 연출 판단이다.
+  // 편집 렌즈가 "두 사건이 겹쳤다"고 진단한 경우에만 채운다.
+  const [splitDraft, setSplitDraft] = useState(null)
+  const [splitPending, setSplitPending] = useState(false)
+  const [splitError, setSplitError] = useState(null)
 
   // 미리보기를 열 때 초안을 만든다. 두 컷 사이에 생략해 둔 것이 있으면
   // 그것도 넣는다 — 합치면 그 일이 한 컷 안에서 일어나기 때문이다.
@@ -158,6 +163,34 @@ export default function GridView({
     }
   }
 
+  // 나눈 안을 받는다. 진단에서 온 경우에만 부른다 — 감독이 직접 나눌 때
+  // AI가 끊는 자리를 정하면 그 판단을 대신 내리는 것이 된다.
+  const requestSplitDraft = async (cut, prevCut, nextCut, diagnosis) => {
+    if (!cut?.content?.trim()) return
+    setSplitPending(true)
+    setSplitError(null)
+    try {
+      const { suggestSeamSplit } = await import('../services/api')
+      const draft = await suggestSeamSplit({
+        content: cut.content,
+        purpose: cut.purpose || '',
+        characters: cut.characters || '',
+        beforeContent: prevCut?.content || '',
+        afterContent: nextCut?.content || '',
+        script: screenplay
+          .filter((element) => element.type === 'action')
+          .map((element) => element.text)
+          .join('\n'),
+        diagnosis: diagnosis || '',
+      })
+      setSplitDraft(draft)
+    } catch (error) {
+      setSplitError(error.message)
+    } finally {
+      setSplitPending(false)
+    }
+  }
+
   const [rangeMode, setRangeMode] = useState(false)   // true = waiting for second tap
   const [rangeAnchor, setRangeAnchor] = useState(null) // first tap index
 
@@ -176,7 +209,20 @@ export default function GridView({
     } else if (seamFocusRequest.action === 'split' && index >= 0) {
       const target = shots[index]
       if (target?.cutPlanItemId) {
+        setSplitDraft(null)
+        setSplitError(null)
         setPendingEdit({ kind: 'split', cutId: target.cutPlanItemId, index, proposal: seamFocusRequest.proposal })
+        // 진단에서 왔으므로 나눈 안을 함께 받는다. 진단은 이미 무엇과 무엇이
+        // 겹쳤는지 알고 있는데, 그것을 적어 주지 않으면 감독이 진단을 읽고
+        // 같은 것을 처음부터 다시 찾아야 한다.
+        const cutIndex = cutPlan.findIndex((item) => item.id === target.cutPlanItemId)
+        requestSplitDraft(
+          cutPlan[cutIndex],
+          cutPlan[cutIndex - 1],
+          cutPlan[cutIndex + 1],
+          [seamFocusRequest.proposal?.title, seamFocusRequest.proposal?.detail]
+            .filter(Boolean).join(' — '),
+        )
       }
     } else if (seamFocusRequest.action === 'insert' && index >= 0) {
       const target = shots[index]
@@ -643,7 +689,7 @@ export default function GridView({
           <div className="grid-edit-preview" role="dialog" aria-label="편집 미리보기">
             <header>
               <strong>{TITLES[kind]}</strong>
-              <button type="button" onClick={() => setPendingEdit(null)} aria-label="닫기">✕</button>
+              <button type="button" onClick={() => { setPendingEdit(null); setSplitDraft(null) }} aria-label="닫기">✕</button>
             </header>
 
             {pendingEdit.proposal?.detail && (
@@ -651,7 +697,17 @@ export default function GridView({
                 <span>편집 렌즈 제안</span>
                 {pendingEdit.proposal.title && <strong>{pendingEdit.proposal.title}</strong>}
                 <p>{pendingEdit.proposal.detail}</p>
+                {/* 왜 이 자리에서 끊었는지. 감독이 이 안을 받아들일지
+                    판정하려면 근거가 보여야 한다. */}
+                {kind === 'split' && splitDraft?.reason && (
+                  <p className="grid-edit-split-reason">{splitDraft.reason}</p>
+                )}
               </div>
+            )}
+            {kind === 'split' && splitError && (
+              <p className="grid-edit-split-error">
+                나눈 안을 받지 못했습니다 · {splitError} — 직접 나눌 수 있습니다.
+              </p>
             )}
 
             <div className="grid-edit-diff">
@@ -686,10 +742,36 @@ export default function GridView({
                     </p>
                     <p>{nextCut?.content || '(비어 있음)'}</p>
                   </>
+                ) : splitDraft ? (
+                  // 진단에서 온 나누기. 두 컷의 내용을 채워 보여주되 둘 다
+                  // 고칠 수 있게 한다 — 제안이지 결정이 아니다.
+                  <>
+                    <textarea
+                      value={splitDraft.first.content}
+                      rows={4}
+                      onChange={(e) => setSplitDraft((current) => ({
+                        ...current,
+                        first: { ...current.first, content: e.target.value },
+                      }))}
+                      aria-label="앞 컷 내용"
+                    />
+                    <textarea
+                      className="grid-edit-new"
+                      value={splitDraft.second.content}
+                      rows={4}
+                      onChange={(e) => setSplitDraft((current) => ({
+                        ...current,
+                        second: { ...current.second, content: e.target.value },
+                      }))}
+                      aria-label="뒤 컷 내용"
+                    />
+                  </>
                 ) : (
                   <>
                     <p>{cut.content || '(비어 있음)'}</p>
-                    <p className="grid-edit-new">새 컷 · 내용은 직접 씁니다</p>
+                    <p className="grid-edit-new">
+                      {splitPending ? '나눌 자리를 찾는 중…' : '새 컷 · 내용은 직접 씁니다'}
+                    </p>
                   </>
                 )}
               </div>
@@ -751,7 +833,11 @@ export default function GridView({
                 <>
                   <li>컷 {cutPlan.length} → {cutPlan.length + 1}</li>
                   <li>사이에 새 이음새가 생깁니다 · 컷 · 연속</li>
-                  <li>기존 그림은 앞 컷에 남습니다</li>
+                  {/* 나눈 안을 받으면 앞 컷의 내용도 줄어든다. 옛 그림은 더
+                      이상 그 컷이 아니므로 두 컷을 다 다시 그린다. */}
+                  {splitDraft
+                    ? <li className="warn">앞 컷의 내용도 줄어들어 두 컷을 다시 그립니다</li>
+                    : <li>기존 그림은 앞 컷에 남습니다</li>}
                 </>
               )}
               {kind === 'insert' && (
@@ -773,7 +859,7 @@ export default function GridView({
             </ul>
 
             <div className="grid-edit-actions">
-              <button type="button" onClick={() => setPendingEdit(null)}>취소</button>
+              <button type="button" onClick={() => { setPendingEdit(null); setSplitDraft(null) }}>취소</button>
               <button
                 type="button"
                 className="primary"
@@ -797,12 +883,19 @@ export default function GridView({
                   } else if (kind === 'swap') {
                     swapCutsAtSeam(pendingEdit.cutId)
                   } else {
-                    splitCut(pendingEdit.cutId)
+                    splitCut(pendingEdit.cutId, {
+                      // 감독이 고친 내용까지 실어 보낸다. 한쪽이 비면 나눈
+                      // 것이 아니므로 빈 컷을 붙이는 기존 동작으로 둔다.
+                      parts: splitDraft?.first?.content?.trim()
+                        && splitDraft?.second?.content?.trim()
+                        ? splitDraft : null,
+                    })
                   }
                   if (pendingEdit.proposal?.operationId) {
                     completeEditingOperation(pendingEdit.proposal.operationId, kind)
                   }
                   setPendingEdit(null)
+                  setSplitDraft(null)
                   setOpenSeamId(null)
                 }}
               >

@@ -349,6 +349,29 @@ export async function designShots({ heading, cuts, script = '', sceneIntention =
   return { shots: data.shots, coverage: data.coverage || null }
 }
 
+// --- 편집: 한 컷을 두 컷으로 --------------------------------------------------
+// 감독이 직접 나눌 때는 부르지 않는다 — 어디서 끊을지는 연출 판단이다.
+// 편집 렌즈가 "두 사건이 겹쳤다"고 진단한 경우에만, 그 진단이 이미 무엇과
+// 무엇이 겹쳤는지 알고 있으므로 나눈 안을 받는다.
+export async function suggestSeamSplit({
+  content = '', purpose = '', characters = '',
+  beforeContent = '', afterContent = '', script = '', diagnosis = '',
+}) {
+  return fetchWithTimeout(`${API_BASE}/seam-split`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      content,
+      purpose,
+      characters,
+      before_content: beforeContent,
+      after_content: afterContent,
+      script,
+      diagnosis,
+    }),
+  }, 60000)
+}
+
 // --- 편집: 이음새에 넣을 컷 --------------------------------------------------
 // 빈 컷을 만들어 두면 대개 비어 있는 채로 남는다. 무엇을 넣어야 하는지는
 // 앞뒤 컷에 이미 드러나 있다.

@@ -1397,8 +1397,16 @@ export default function StoryboardView() {
         return next
       })
       clearPanelDraftImage(shot.id)
+      // 분할은 두 컷을 다 그린다 — 앞 컷은 내용이 줄었고 뒤 컷은 그림이 없다.
+      // 순서대로 그려야 뒤 컷이 앞 컷의 새 그림을 이웃으로 물릴 수 있다.
+      const targets = (panelToolRequest.shotIds || [panelToolRequest.shotId])
+        .map((id) => {
+          const idx = flowShots.findIndex((entry) => entry.id === id)
+          return idx < 0 ? null : { shot: flowShots[idx], shotIdx: idx }
+        })
+        .filter(Boolean)
       generatePanelsRef.current?.(
-        [{ shot, shotIdx: shotIndex }],
+        targets.length > 0 ? targets : [{ shot, shotIdx: shotIndex }],
         {
           includeExisting: true,
           keepView: true,
@@ -1406,6 +1414,8 @@ export default function StoryboardView() {
             ? '합친 내용으로 생성 중…'
             : panelToolRequest.reason === 'insert'
               ? '삽입한 컷 생성 중…'
+              : panelToolRequest.reason === 'split'
+                ? '나눈 두 컷 생성 중…'
             : '새 이미지 생성 중…',
           // 값 하나를 바꿔 다시 그리는 경우에만 채워 온다. 합치기·삽입은
           // 내용 자체가 달라지는 일이라 지금 그림을 기준으로 삼으면 안 된다.
@@ -1413,8 +1423,11 @@ export default function StoryboardView() {
           // 대신 앞뒤 패널을 물린다. 삽입은 두 컷 **사이**에 들어가는 일이라
           // 글로만 "이어지게"라고 하면 같은 방인지도 알 수 없다. 합치기도
           // 두 컷을 하나로 접는 것이므로 양쪽을 다 봐야 한다.
+          // 분할도 마찬가지다. 한 컷을 쪼갠 두 장이라 같은 장소·같은 인물로
+          // 이어져야 하는데, 앞뒤를 안 보고 그리면 한 컷 만에 다른 방이 된다.
           neighbors: panelToolRequest.reason === 'insert'
-            || panelToolRequest.reason === 'merge',
+            || panelToolRequest.reason === 'merge'
+            || panelToolRequest.reason === 'split',
         },
       )
     }

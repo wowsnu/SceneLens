@@ -3017,7 +3017,16 @@ const useStore = create((set, get) => ({
   // 분할: 하나의 컷에 압축된 사건을 둘 이상의 단계로 나눈다.
   // 새로 생기는 이음새는 '컷 · 연속'이 기본이다 — 한 컷을 쪼갠 것이므로
   // 그 사이에 시간이 흐르지 않았다.
-  splitCut: (cutId) => {
+  // 한 컷을 두 컷으로 나눈다.
+  //
+  // `parts`가 없으면 감독이 직접 나누는 것이다 — 원본은 그대로 두고 빈 컷만
+  // 뒤에 붙인다. 어디서 끊을지는 연출 판단이라 AI가 대신 정하지 않는다.
+  //
+  // `parts`가 있으면 편집 렌즈의 진단에서 온 것이다. 진단은 이미 무엇과
+  // 무엇이 겹쳤는지 알고 있으므로 두 컷의 내용을 함께 받는다. 이때는 원본도
+  // 앞 컷의 내용으로 줄여야 한다 — 원본이 통째로 남으면 나눈 것이 아니라
+  // 뒤에 하나 더 붙인 것이 된다.
+  splitCut: (cutId, { parts = null } = {}) => {
     logEdit({ lens: 'editing', level: 'shot', target: cutId, action: 'split', source: 'seam' })
     return set((state) => {
     const index = state.cutPlan.findIndex((item) => item.id === cutId)
@@ -3026,14 +3035,28 @@ const useStore = create((set, get) => ({
 
     const second = createCutPlanItem({
       ...source,
-      // 내용은 사용자가 나눈다. AI가 자르면 어디서 끊을지를 대신 정하게 된다.
-      content: '',
+      content: parts?.second?.content || '',
+      purpose: parts?.second?.purpose || source.purpose,
+      characters: parts?.second?.characters ?? source.characters,
       promptOverride: '',
       provenance: 'User',
     })
 
     const nextCutPlan = reorderCutPlan([
-      ...state.cutPlan.slice(0, index + 1),
+      ...state.cutPlan.slice(0, index).concat(
+        // 나눈 안을 받았으면 원본도 앞 컷의 내용으로 줄인다. 프롬프트 덮어쓰기는
+        // 옛 내용으로 쓴 것이라 함께 비운다.
+        parts?.first?.content
+          ? [{
+            ...source,
+            content: parts.first.content,
+            purpose: parts.first.purpose || source.purpose,
+            characters: parts.first.characters ?? source.characters,
+            promptOverride: '',
+            provenance: 'User',
+          }]
+          : [source],
+      ),
       second,
       ...state.cutPlan.slice(index + 1),
     ])
@@ -3053,7 +3076,33 @@ const useStore = create((set, get) => ({
       return copy
     })
 
-    return { ...next, cutPlan: nextCutPlan }
+    // 나눈 안을 받았으면 두 컷을 다 다시 그린다. 앞 컷은 내용이 줄었으므로
+    // 옛 그림이 더는 그 컷을 담고 있지 않고, 뒤 컷은 그림이 아직 없다.
+    const branchShots = next.scenes?.[state.activeScene]?.branches?.[
+      state.scenes[state.activeScene]?.activeBranch ?? 0
+    ]?.shots || []
+    const firstShot = branchShots.find((shot) => shot.cutPlanItemId === cutId)
+    const secondShot = branchShots.find((shot) => shot.cutPlanItemId === second.id)
+    // 앞 컷의 옛 그림은 줄어든 내용과 맞지 않는다. 남겨 두면 새 그림이 올
+    // 때까지 감독이 옛 그림을 그 컷으로 읽는다.
+    const panelDraftImages = { ...(state.panelDraftImages || {}) }
+    if (parts?.first?.content && firstShot) delete panelDraftImages[firstShot.id]
+    return {
+      ...next,
+      cutPlan: nextCutPlan,
+      panelDraftImages,
+      ...(parts?.first?.content && firstShot ? {
+        panelToolRequest: {
+          id: `panel-tool-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+          // 두 컷을 순서대로 그린다. 앞 컷을 먼저 그려야 뒤 컷이 그것을
+          // 이웃으로 물릴 수 있다.
+          shotId: firstShot.id,
+          shotIds: [firstShot.id, secondShot?.id].filter(Boolean),
+          tool: 'regenerate',
+          reason: 'split',
+        },
+      } : {}),
+    }
   })
   },
 
