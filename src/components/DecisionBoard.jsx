@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import useStore, {
   buildReferencePrompt,
+  describeLayout,
   referencePendingKey,
   sceneOfBeat,
   selectActiveSceneId,
@@ -92,7 +93,7 @@ const VIEWER_READING_CONDITIONS = [
   {
     // 저장된 관객 읽기와의 호환성을 위해 기존 id는 유지한다.
     id: 'context_close',
-    title: '이야기 흐름을 따라가는 관객',
+    title: '이야기 흐름을 중요하게 보는 관객',
     attention: '컷 사이에서 사건과 정보가 어떻게 이어지는지 살핍니다.',
   },
 ]
@@ -1915,8 +1916,15 @@ export default function DecisionBoard({ boardView = 'split' }) {
   const anyReferenceImagePending = Object.keys(referenceImagePending || {})
     .some((key) => key.startsWith(`${activeSceneId}:`))
   // 항목 값에서 조립한 문장. 사용자가 고쳤으면 그것을 보여준다.
+  //
+  // 공간이면 도면을 문장으로 옮긴 것도 들어간다 — 실제로 그렇게 보내므로
+  // 화면에도 같은 문장이 보여야 한다.
   const referencePromptOf = (subject, kind = 'character') => (
-    subject?.promptOverride ?? buildReferencePrompt(subject, kind).auto
+    subject?.promptOverride ?? buildReferencePrompt(
+      subject,
+      kind,
+      kind === 'location' ? describeLayout(spatialElements) : '',
+    ).auto
   )
   const removeFactChange = useStore((s) => s.removeFactChange)
   // 어느 컷부터 무엇으로 바뀌는지 입력받는 중.

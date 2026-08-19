@@ -153,7 +153,7 @@ READING_CONDITIONS = {
     },
     # Keep the existing key so saved Viewer results remain selectable in the UI.
     "context_close": {
-        "label": "이야기 흐름을 따라가는 관객",
+        "label": "이야기 흐름을 중요하게 보는 관객",
         "instruction": (
             "Follow how events, causal links, and the viewer's information change from one "
             "cut to the next. Prioritize whether each panel visibly follows from or updates "

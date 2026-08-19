@@ -1363,12 +1363,17 @@ export const factTimeline = (fact, cutOrder = null) => [
 // 레퍼런스 그림에 쓸 문장. 항목 값에서 조립한다 — 항목을 고치면 그림도
 // 따라 바뀌어야 텍스트와 그림이 어긋나지 않는다. 컷 프롬프트가
 // promptOverride로 하는 것과 같이, 사용자가 직접 고치면 그것을 쓴다.
-export const buildReferencePrompt = (subject, kind) => {
+// `layout`은 공간 레퍼런스에만 쓴다. 도면이 이미 무엇이 어디 있는지 정해
+// 두었는데 정면 그림이 그것을 모르고 그려지면, 같은 방을 두 그림이 다르게
+// 말하게 된다 — 패널 생성에서 둘 다 물리므로 그 어긋남이 화면으로 온다.
+export const buildReferencePrompt = (subject, kind, layout = '') => {
   if (!subject) return { auto: '', effective: '', isEdited: false }
 
   const settled = (subject.facts || [])
     .filter((fact) => !fact.open && fact.value)
     .map((fact) => fact.value)
+  // 도면을 문장으로 옮긴 것. 좌표가 아니라 서로의 상대 위치로 말한다.
+  if (kind === 'location' && layout) settled.push(`배치: ${layout}`)
 
   // summary가 이름과 같으면 "등대지기. 등대지기."가 된다 — 대본이 인물을
   // 부르는 말이 곧 이름인 경우다.
@@ -2210,7 +2215,13 @@ const useStore = create((set, get) => ({
       : scene[kind]
     if (!subject) return
 
-    const prompt = buildReferencePrompt(subject, kind)
+    // 공간이면 도면을 함께 넣는다. 컷 플랜 뒤에 이미 만들어져 있으므로
+    // (requestSpaceLayout) 정면 그림이 그 배치를 따라 그려진다.
+    const prompt = buildReferencePrompt(
+      subject,
+      kind,
+      kind === 'location' ? describeLayout(state.spatialElements) : '',
+    )
     if (!prompt.effective) {
       set({ referenceImageError: '먼저 인물이나 공간의 값을 채워 주세요.' })
       return
