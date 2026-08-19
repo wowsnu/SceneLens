@@ -1047,9 +1047,7 @@ export default function StoryboardView() {
   const splitCut = useStore((s) => s.splitCut)
   const mergeCuts = useStore((s) => s.mergeCuts)
   const mergeBeat = useStore((s) => s.mergeBeat)
-  const activeScene = useStore((s) => s.activeScene)
   const scene = useStore((s) => s.scenes[s.activeScene])
-  const shotSketches = useStore((s) => s.shotSketches)
   const setActiveShot = useStore((s) => s.setActiveShot)
   const setFlowActiveShot = useStore((s) => s.setFlowActiveShot)
   const setActiveBeat = useStore((s) => s.setActiveBeat)
@@ -1798,12 +1796,12 @@ export default function StoryboardView() {
     else removeShot(activeBranch, shotIdx)
   }
 
-  const getShotVisual = (shot, shotIdx) => {
+  // 이 패널에 보이는 그림. 손으로 그린 것도 생성한 것도 shot.image에 있다 —
+  // 패널의 id에 붙으므로 컷을 끼우거나 순서를 바꿔도 함께 따라간다.
+  const getShotVisual = (shot) => {
     // 앞뒤 패널을 물릴 때 첫 컷의 앞이나 마지막 컷의 뒤를 묻는다.
     if (!shot) return null
-    const flowSketchKey = `${activeScene}-${activeBranch}-${shotIdx}`
-    const legacySketchKey = `0-${shotIdx}`
-    return shot.image || shotSketches[flowSketchKey] || shotSketches[legacySketchKey] || null
+    return shot.image || null
   }
 
   const selectedShots = flowShots
@@ -1811,11 +1809,11 @@ export default function StoryboardView() {
     .filter(({ shot }) => selectedShotIds.includes(shot.id))
   const allBlankShots = flowShots
     .map((shot, shotIdx) => ({ shot, shotIdx }))
-    .filter(({ shot, shotIdx }) => !getShotVisual(shot, shotIdx))
+    .filter(({ shot }) => !getShotVisual(shot))
   const scopeShots = generationScope === 'selected'
       ? selectedShots
       : allBlankShots
-  const eligibleScopeShots = scopeShots.filter(({ shot, shotIdx }) => !getShotVisual(shot, shotIdx))
+  const eligibleScopeShots = scopeShots.filter(({ shot }) => !getShotVisual(shot))
   const currentShotIds = new Set(flowShots.map((shot) => shot.id))
   const currentPanelCandidates = Object.values(panelCandidates)
     .filter((candidate) => currentShotIds.has(candidate.shotId))
@@ -1857,7 +1855,7 @@ export default function StoryboardView() {
   ) => {
     const eligibleTargets = includeExisting
       ? targets
-      : targets.filter(({ shot, shotIdx }) => !getShotVisual(shot, shotIdx))
+      : targets.filter(({ shot }) => !getShotVisual(shot))
     if (eligibleTargets.length === 0) return
     if (!isExpanded && !keepView) setMaximizedPanel('left')
 
@@ -1937,24 +1935,24 @@ export default function StoryboardView() {
               // 값 하나만 바꿔 다시 그리는 중이면 지금 그림을 함께 물린다.
               // 이 그림이 있어야 "나머지는 그대로"가 지킬 대상을 갖는다 —
               // 글로만 "유지하라"고 하면 무엇을 유지할지 알 수 없다.
-              ...(changes.length > 0 && getShotVisual(shot, shotIdx)
-                ? [{ name: '현재 패널', kind: 'current', image: getShotVisual(shot, shotIdx) }]
+              ...(changes.length > 0 && getShotVisual(shot)
+                ? [{ name: '현재 패널', kind: 'current', image: getShotVisual(shot) }]
                 : []),
               // 앞뒤 패널. 삽입은 두 컷 사이에 들어가고 합치기는 두 컷을
               // 하나로 접으므로, 양옆이 어떤 그림인지 봐야 같은 장면으로
               // 이어진다. 이미 그려진 것만 물린다.
-              ...(neighbors && getShotVisual(flowShots[shotIdx - 1], shotIdx - 1)
+              ...(neighbors && getShotVisual(flowShots[shotIdx - 1])
                 ? [{
                   name: `S${shotIdx}`,
                   kind: 'neighbor-before',
-                  image: getShotVisual(flowShots[shotIdx - 1], shotIdx - 1),
+                  image: getShotVisual(flowShots[shotIdx - 1]),
                 }]
                 : []),
-              ...(neighbors && getShotVisual(flowShots[shotIdx + 1], shotIdx + 1)
+              ...(neighbors && getShotVisual(flowShots[shotIdx + 1])
                 ? [{
                   name: `S${shotIdx + 2}`,
                   kind: 'neighbor-after',
-                  image: getShotVisual(flowShots[shotIdx + 1], shotIdx + 1),
+                  image: getShotVisual(flowShots[shotIdx + 1]),
                 }]
                 : []),
             ].map(async (reference) => ({
@@ -3133,7 +3131,7 @@ export default function StoryboardView() {
                 // 보여 준다. 한눈에 보기도 같은 초안을 읽어야 두 보기의
                 // 상태가 어긋나지 않는다.
                 const candidate = panelCandidates[shot.id]
-                const displayImage = candidate?.image || getShotVisual(shot, shotIdx)
+                const displayImage = candidate?.image || getShotVisual(shot)
                 return (
                   <button
                     type="button"
@@ -3341,7 +3339,7 @@ export default function StoryboardView() {
                         const cutLabel = shotCut
                           ? `Cut ${shotCut.order || shotIdx + 1}`
                           : `Panel ${shotIdx + 1}`
-                        const committedImage = getShotVisual(shot, shotIdx)
+                        const committedImage = getShotVisual(shot)
                         const candidate = panelCandidates[shot.id]
                         const displayImage = candidate?.image || committedImage
                         const isSelected = selectedShotIds.includes(shot.id)

@@ -4115,10 +4115,6 @@ const useStore = create((set, get) => ({
   })),
   zenMode: false,
   setZenMode: (val) => set({ zenMode: val }),
-  shotSketches: {},
-  setShotSketch: (key, dataUrl) => set((state) => ({
-    shotSketches: { ...state.shotSketches, [key]: dataUrl }
-  })),
   reframeHistory: {},
   addReframeHistoryEntry: (strategyIdx, shotIdx, entry) => set((state) => {
     const key = getShotKey(strategyIdx, shotIdx)

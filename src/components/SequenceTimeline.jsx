@@ -14,7 +14,6 @@ export default function SequenceTimeline() {
   const setActiveShot = useStore((s) => s.setFlowActiveShot)
   const removeShot = useStore((s) => s.flowRemoveShot)
   const insertShot = useStore((s) => s.flowInsertShot)
-  const shotSketches = useStore((s) => s.shotSketches)
 
   const handleDeleteShot = useCallback(() => {
     if (shots.length <= 1) return
@@ -72,8 +71,7 @@ export default function SequenceTimeline() {
   return (
     <div className="sequence-timeline" ref={timelineRef}>
       {shots.map((shot, i) => {
-        const sketchUrl = shotSketches[`${activeScene}-${activeBranch}-${i}`]
-        const displayImg = sketchUrl || shot.image
+        const displayImg = shot.image
 
         return (
           <div

@@ -51,7 +51,6 @@ export default function SpatialMap({
   const activeShot = useStore((s) => s.activeShot)
   const setActiveShot = useStore((s) => s.setActiveShot)
   const setStrategies = useStore((s) => s.setStrategies)
-  const shotSketches = useStore((s) => s.shotSketches)
 
   const mapContainerRef = useRef(null)
   const contentRef = useRef(null)
@@ -468,8 +467,8 @@ export default function SpatialMap({
           return (
             <div key={i} className="spatial-node storyboard-card" data-index={i} style={{ left: pos.x, top: pos.y }} onDoubleClick={() => { setActiveShot(i); setViewMode('detail'); }}>
               <div className="card-image-wrap">
-                {(shotSketches[`${activeStrategy}-${i}`] || shot.image) ? (
-                  <img src={shotSketches[`${activeStrategy}-${i}`] || shot.image} alt={`Shot ${i + 1}`} draggable="false" />
+                {shot.image ? (
+                  <img src={shot.image} alt={`Shot ${i + 1}`} draggable="false" />
                 ) : (
                   <div className="card-no-image">SHOT {i + 1}</div>
                 )}

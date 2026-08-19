@@ -9,7 +9,6 @@ export default function FilmOverview() {
   const setActiveBranch = useStore((s) => s.setFlowActiveBranch)
   const setOverviewMode = useStore((s) => s.setOverviewMode)
   const addScene = useStore((s) => s.addScene)
-  const shotSketches = useStore((s) => s.shotSketches)
 
   const handleShotClick = (sceneIdx, branchIdx, shotIdx) => {
     setActiveScene(sceneIdx)
@@ -55,8 +54,7 @@ export default function FilmOverview() {
 
             <div className="film-scene-strip">
               {shots.map((shot, i) => {
-                const sketchUrl = shotSketches[`${sIdx}-${branchIdx}-${i}`]
-                const img = sketchUrl || shot.image
+                const img = shot.image
                 const isActive = sIdx === activeScene && i === (scene.activeShot ?? 0)
                 return (
                   <div

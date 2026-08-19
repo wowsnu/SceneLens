@@ -7,7 +7,6 @@ export default function StoryboardStrip() {
   const activeShot = useStore((s) => s.activeShot)
   const setActiveShot = useStore((s) => s.setActiveShot)
   const getStrategyColor = useStore((s) => s.getStrategyColor)
-  const shotSketches = useStore((s) => s.shotSketches)
 
   if (strategies.length === 0) return null
 
@@ -37,8 +36,6 @@ export default function StoryboardStrip() {
             >
               {shot.image ? (
                 <img src={shot.image} alt={`Shot ${idx + 1}`} />
-              ) : shotSketches[`${activeStrategy}-${idx}`] ? (
-                <img src={shotSketches[`${activeStrategy}-${idx}`]} alt={`Shot ${idx + 1}`} />
               ) : (
                 <div className="thumb-placeholder">{idx + 1}</div>
               )}
