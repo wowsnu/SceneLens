@@ -154,7 +154,17 @@ const updateActiveBranchShots = (state, updater) => {
         nextActiveBeat = result.activeBeat ?? nextActiveBeat
       }
 
-      return { ...branch, shots: shots.map((shot, idx) => ({ ...shot, label: shot.label || `Shot ${idx + 1}` })) }
+      // 라벨은 '몇 번째 컷인가'다. 만들 때의 번호를 그대로 두면 중간에 끼워
+      // 넣은 컷이 맨 뒤 번호를 달아 S4 자리에 'Shot 19'가 붙는다. 감독이
+      // 이름을 붙인 것(기본형이 아닌 것)은 건드리지 않는다.
+      return {
+        ...branch,
+        shots: shots.map((shot, idx) => (
+          !shot.label || /^Shot \d+$/.test(shot.label)
+            ? { ...shot, label: `Shot ${idx + 1}` }
+            : shot
+        )),
+      }
     })
 
     const branchShots = branches[activeBranch]?.shots || []
@@ -3076,13 +3086,27 @@ const useStore = create((set, get) => ({
       return copy
     })
 
-    // 나눈 안을 받았으면 두 컷을 다 다시 그린다. 앞 컷은 내용이 줄었으므로
-    // 옛 그림이 더는 그 컷을 담고 있지 않고, 뒤 컷은 그림이 아직 없다.
     const branchShots = next.scenes?.[state.activeScene]?.branches?.[
       state.scenes[state.activeScene]?.activeBranch ?? 0
     ]?.shots || []
     const firstShot = branchShots.find((shot) => shot.cutPlanItemId === cutId)
     const secondShot = branchShots.find((shot) => shot.cutPlanItemId === second.id)
+
+    // 이음새는 '앞 컷 id'로 걸린다. 원본 뒤에 컷이 하나 끼면 원본에 걸려
+    // 있던 결정은 사실 '원본 → 그 다음 컷' 사이의 것이었으므로, 새 컷 뒤로
+    // 옮겨야 한다. 옮기지 않으면 감독이 정해 둔 이음새가 엉뚱하게 나눈 두
+    // 컷 사이에 붙는다 — 삽입(acceptCutInsert)과 같은 규칙이다.
+    //
+    // 나눈 두 컷 사이는 새 이음새이고 기본값('컷 · 연속')이라 적지 않는다.
+    // 한 컷을 쪼갠 것이므로 시간이 이어지는 것이 맞다.
+    const nextSeams = { ...state.seams }
+    if (firstShot && secondShot && nextSeams[seamKeyFor(firstShot.id)]) {
+      nextSeams[seamKeyFor(secondShot.id)] = nextSeams[seamKeyFor(firstShot.id)]
+      delete nextSeams[seamKeyFor(firstShot.id)]
+    }
+
+    // 나눈 안을 받았으면 두 컷을 다 다시 그린다. 앞 컷은 내용이 줄었으므로
+    // 옛 그림이 더는 그 컷을 담고 있지 않고, 뒤 컷은 그림이 아직 없다.
     // 앞 컷의 옛 그림은 줄어든 내용과 맞지 않는다. 남겨 두면 새 그림이 올
     // 때까지 감독이 옛 그림을 그 컷으로 읽는다.
     const panelDraftImages = { ...(state.panelDraftImages || {}) }
@@ -3090,6 +3114,7 @@ const useStore = create((set, get) => ({
     return {
       ...next,
       cutPlan: nextCutPlan,
+      seams: nextSeams,
       panelDraftImages,
       ...(parts?.first?.content && firstShot ? {
         panelToolRequest: {

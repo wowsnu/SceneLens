@@ -545,6 +545,14 @@ export default function GridView({
                       className="grid-cell-split"
                       onClick={(e) => {
                         e.stopPropagation()
+                        // 앞 칸에 원본을 넣어 둔다. 감독은 뒤로 보낼 부분을
+                        // 잘라 옮기면 되고, 빈 칸 둘을 마주하지 않는다.
+                        const source = cutPlan.find((item) => item.id === shot.cutPlanItemId)
+                        setSplitError(null)
+                        setSplitDraft({
+                          first: { content: source?.content || '' },
+                          second: { content: '' },
+                        })
                         setPendingEdit({ kind: 'split', cutId: shot.cutPlanItemId, index: i })
                       }}
                       title="이 컷을 둘로 나눕니다"
@@ -742,37 +750,38 @@ export default function GridView({
                     </p>
                     <p>{nextCut?.content || '(비어 있음)'}</p>
                   </>
-                ) : splitDraft ? (
-                  // 진단에서 온 나누기. 두 컷의 내용을 채워 보여주되 둘 다
-                  // 고칠 수 있게 한다 — 제안이지 결정이 아니다.
+                ) : kind === 'split' ? (
+                  // 두 칸 모두 감독이 고친다. 진단에서 왔으면 나눈 안이
+                  // 채워져 있고, 직접 나눌 때는 앞 칸에 원본이 그대로 들어와
+                  // 뒤로 보낼 부분을 잘라 옮기면 된다 — AI가 끊는 자리를
+                  // 정하지 않으면서도 이 화면에서 나누기가 끝난다.
                   <>
                     <textarea
-                      value={splitDraft.first.content}
+                      value={splitDraft?.first?.content ?? ''}
                       rows={4}
+                      placeholder={splitPending ? '나눌 자리를 찾는 중…' : '앞 컷에 남길 내용'}
                       onChange={(e) => setSplitDraft((current) => ({
                         ...current,
-                        first: { ...current.first, content: e.target.value },
+                        first: { ...(current?.first || {}), content: e.target.value },
+                        second: current?.second || { content: '' },
                       }))}
                       aria-label="앞 컷 내용"
                     />
                     <textarea
                       className="grid-edit-new"
-                      value={splitDraft.second.content}
+                      value={splitDraft?.second?.content ?? ''}
                       rows={4}
+                      placeholder={splitPending ? '' : '뒤 컷으로 보낼 내용'}
                       onChange={(e) => setSplitDraft((current) => ({
                         ...current,
-                        second: { ...current.second, content: e.target.value },
+                        first: current?.first || { content: '' },
+                        second: { ...(current?.second || {}), content: e.target.value },
                       }))}
                       aria-label="뒤 컷 내용"
                     />
                   </>
                 ) : (
-                  <>
-                    <p>{cut.content || '(비어 있음)'}</p>
-                    <p className="grid-edit-new">
-                      {splitPending ? '나눌 자리를 찾는 중…' : '새 컷 · 내용은 직접 씁니다'}
-                    </p>
-                  </>
+                  <p>{cut.content || '(비어 있음)'}</p>
                 )}
               </div>
             </div>
@@ -833,11 +842,11 @@ export default function GridView({
                 <>
                   <li>컷 {cutPlan.length} → {cutPlan.length + 1}</li>
                   <li>사이에 새 이음새가 생깁니다 · 컷 · 연속</li>
-                  {/* 나눈 안을 받으면 앞 컷의 내용도 줄어든다. 옛 그림은 더
-                      이상 그 컷이 아니므로 두 컷을 다 다시 그린다. */}
-                  {splitDraft
+                  {/* 두 칸을 다 채우면 앞 컷의 내용도 줄어든다. 옛 그림은 더
+                      이상 그 컷을 담고 있지 않으므로 두 컷을 다 다시 그린다. */}
+                  {splitDraft?.first?.content?.trim() && splitDraft?.second?.content?.trim()
                     ? <li className="warn">앞 컷의 내용도 줄어들어 두 컷을 다시 그립니다</li>
-                    : <li>기존 그림은 앞 컷에 남습니다</li>}
+                    : <li>뒤 칸을 비워 두면 기존 그림은 앞 컷에 남습니다</li>}
                 </>
               )}
               {kind === 'insert' && (
@@ -898,6 +907,11 @@ export default function GridView({
                   setSplitDraft(null)
                   setOpenSeamId(null)
                 }}
+                // 앞 칸만 고치고 뒤를 비워 두면 그 수정이 조용히 버려진다.
+                // 나누는 일이므로 두 칸이 다 차야 실행할 수 있다.
+                disabled={kind === 'split'
+                  && Boolean(splitDraft?.first?.content?.trim())
+                  !== Boolean(splitDraft?.second?.content?.trim())}
               >
                 {{ merge: '합치기', split: '나누기', insert: '넣기', swap: '바꾸기' }[kind]}
               </button>
