@@ -127,6 +127,11 @@ const layerRank = (layer) => {
 // 있다 — AI가 대본을 잘못 읽었을 때 고칠 방법이 없으면 안 된다. 다만
 // 어디서 온 값인지는 구분해 보인다 (DG1 P2: AI가 낸 것은 판정 대상이다).
 // 도면은 SVG로 만들지만 images.edit는 PNG만 받는다. 캔버스로 옮긴다.
+// 확정 직후 자동으로 그리는 장수. 감독이 기다리는 시간이 여기서 정해진다 —
+// 한 장에 20~30초이므로 아홉 장이면 4~5분이고, 그 뒤로는 검토를 시작할 수
+// 있다. 더 필요하면 생성 바에서 이어 그린다.
+const AUTO_DRAFT_LIMIT = 9
+
 // 도면은 상자와 선뿐이라 크게 보낼 이유가 없다. 매 컷에 함께 올라가므로
 // 18장이면 이 크기가 그대로 대기 시간이 된다 — 배치를 읽는 데는 이 정도로
 // 충분하다.
@@ -1359,7 +1364,10 @@ export default function StoryboardView() {
       .filter(({ shot }) => !shot.image)
     if (blanks.length === 0) return
     autoDraftedPlanKey.current = planKey
-    generatePanelsRef.current?.(blanks)
+    // 앞에서부터 AUTO_DRAFT_LIMIT장까지만 그린다. 스무 컷을 한 번에 그리면
+    // 확정을 누른 뒤 십 분 가까이 아무것도 판정할 수 없다 — 초안은 검토를
+    // 시작할 만큼만 있으면 되고, 나머지는 감독이 필요할 때 이어 그린다.
+    generatePanelsRef.current?.(blanks.slice(0, AUTO_DRAFT_LIMIT))
   }, [cutStage, flowShots, cutPlan])
 
   // 촬영 점검은 샷이 모두 정해진 뒤에만 한 번 돌린다. 컷 플랜이 막
@@ -3030,9 +3038,17 @@ export default function StoryboardView() {
                   진짜 그림을 가짜로 읽게 된다. */}
               <span>AI storyboard draft</span>
               <strong>
-                {eligibleScopeShots.length} blank panel{eligibleScopeShots.length === 1 ? '' : 's'} in scope
+                {eligibleScopeShots.length === 0
+                  ? '모든 컷에 그림이 있습니다'
+                  : `아직 그리지 않은 컷 ${eligibleScopeShots.length}개`}
               </strong>
-              <p>Existing drawings and imported images stay untouched.</p>
+              {/* 확정 직후에는 앞 아홉 장만 그린다. 남은 것이 왜 비어 있는지
+                  말해 주지 않으면 생성이 실패한 것으로 읽힌다. */}
+              <p>
+                {eligibleScopeShots.length > 0
+                  ? '먼저 앞부분을 그렸습니다. 나머지는 여기서 이어 그립니다.'
+                  : '직접 그린 그림과 불러온 이미지는 그대로 둡니다.'}
+              </p>
             </div>
             <div className="generation-settings">
               <label className="generation-model-picker">
@@ -3112,7 +3128,7 @@ export default function StoryboardView() {
               >
                 {isGenerating ? `그리는 중… · ${generatingCount}` : (
                   <>
-                    Generate storyboard draft
+                    이어 그리기
                     {eligibleScopeShots.length > 0 ? ` · ${eligibleScopeShots.length}` : ''}
                   </>
                 )}
