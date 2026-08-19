@@ -1085,8 +1085,10 @@ export default function StoryboardView() {
   // 지금 펼쳐 둔 지적. 누른 것만 대본에 표시된다.
   const [openFindingId, setOpenFindingId] = useState(null)
   const [stylePickerOpen, setStylePickerOpen] = useState(false)
-  // 패널을 격자로 모아 본다. 컷 하나씩만 보면 이어지는지 알 수 없다.
-  const [panelGridView, setPanelGridView] = useState(false)
+  // 패널을 격자로 모아 본다. 컷 하나씩만 보면 이어지는지 알 수 없다 —
+  // 스토리보드는 한 장을 잘 그리는 일이 아니라 이어지는 것을 보는 일이라
+  // 이 쪽이 기본이다. 대본과 나란히 보려면 버튼으로 돌아간다.
+  const [panelGridView, setPanelGridView] = useState(true)
   const narrativeCheckPending = useStore((s) => s.narrativeCheckPending)
   const narrativeCheckError = useStore((s) => s.narrativeCheckError)
   const dismissNarrativeSuggestion = useStore((s) => s.dismissNarrativeSuggestion)
