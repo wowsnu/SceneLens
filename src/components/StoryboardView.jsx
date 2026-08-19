@@ -1060,7 +1060,6 @@ export default function StoryboardView() {
   const setMaximizedPanel = useStore((s) => s.setMaximizedPanel)
   const drawingWorkspaceOpen = useStore((s) => s.drawingWorkspaceOpen)
   const openDrawingWorkspace = useStore((s) => s.openDrawingWorkspace)
-  const selectedShotIds = useStore((s) => s.selectedStoryboardShotIds)
   const setSelectedShotIds = useStore((s) => s.setSelectedStoryboardShotIds)
   const setPanelDraftImage = useStore((s) => s.setPanelDraftImage)
   const clearPanelDraftImage = useStore((s) => s.clearPanelDraftImage)
@@ -1239,7 +1238,6 @@ export default function StoryboardView() {
   const [pendingArrow, setPendingArrow] = useState(null)
   const [selectedArrow, setSelectedArrow] = useState(null)
   const [noteEditingShotId, setNoteEditingShotId] = useState(null)
-  const [generationScope, setGenerationScope] = useState('all')
   const [panelCandidates, setPanelCandidates] = useState({})
   const [openReferenceCards, setOpenReferenceCards] = useState({})
   const [referenceLightbox, setReferenceLightbox] = useState(null)
@@ -1337,6 +1335,25 @@ export default function StoryboardView() {
     autoCheckedPlanKey.current = planKey
     requestNarrativeCheck('cutplan')
   }, [cutStage, cutPlan, requestNarrativeCheck])
+
+  // 컷 플랜을 확정하면 초안을 바로 그린다. 확정한 뒤 `Generate`를 한 번 더
+  // 눌러야 하면 한 동작이 둘로 나뉜다 — 감독이 정한 것은 "이 구성으로
+  // 간다"이고, 그 다음에 볼 것은 그림이다.
+  //
+  // 한 번만 돈다. 그린 뒤 패널을 지우거나 컷을 넣어 빈 자리가 생겨도 다시
+  // 돌지 않는다 — 그때부터는 감독이 무엇을 다시 그릴지 정한다.
+  const autoDraftedPlanKey = useRef(null)
+  useEffect(() => {
+    if (cutStage !== 'panels' || flowShots.length === 0) return
+    const planKey = cutPlan[0]?.id
+    if (!planKey || autoDraftedPlanKey.current === planKey) return
+    const blanks = flowShots
+      .map((shot, shotIdx) => ({ shot, shotIdx }))
+      .filter(({ shot }) => !shot.image)
+    if (blanks.length === 0) return
+    autoDraftedPlanKey.current = planKey
+    generatePanelsRef.current?.(blanks)
+  }, [cutStage, flowShots, cutPlan])
 
   // 촬영 점검은 샷이 모두 정해진 뒤에만 한 번 돌린다. 컷 플랜이 막
   // 만들어진 순간에는 아직 크기가 비어 있으므로, 그때 점검하면 근거 없는
@@ -1804,28 +1821,16 @@ export default function StoryboardView() {
     return shot.image || null
   }
 
-  const selectedShots = flowShots
-    .map((shot, shotIdx) => ({ shot, shotIdx }))
-    .filter(({ shot }) => selectedShotIds.includes(shot.id))
-  const allBlankShots = flowShots
+  // 생성은 언제나 한 번에 전부다. 몇 장을 어떻게 뽑을지는 감독이 판단할
+  // 것이 아니라 이 도구가 정해 두는 조건이다 — 검토와 수정에서 차이가
+  // 나야지, 생성 방식에서 갈리면 무엇 때문의 차이인지 알 수 없다.
+  const eligibleScopeShots = flowShots
     .map((shot, shotIdx) => ({ shot, shotIdx }))
     .filter(({ shot }) => !getShotVisual(shot))
-  const scopeShots = generationScope === 'selected'
-      ? selectedShots
-      : allBlankShots
-  const eligibleScopeShots = scopeShots.filter(({ shot }) => !getShotVisual(shot))
   const currentShotIds = new Set(flowShots.map((shot) => shot.id))
   const currentPanelCandidates = Object.values(panelCandidates)
     .filter((candidate) => currentShotIds.has(candidate.shotId))
   const candidateCount = currentPanelCandidates.length
-
-  const toggleShotSelection = (shotId) => {
-    setSelectedShotIds((current) => (
-      current.includes(shotId)
-        ? current.filter((id) => id !== shotId)
-        : [...current, shotId]
-    ))
-  }
 
   const generateReferenceFromCutPlan = async (kind, subjectId = null) => {
     const cardKey = subjectId || kind
@@ -2994,28 +2999,6 @@ export default function StoryboardView() {
               </strong>
               <p>Existing drawings and imported images stay untouched.</p>
             </div>
-            <div className="generation-scope-tabs" aria-label="Generation scope">
-              <button
-                type="button"
-                className={generationScope === 'selected' ? 'active' : ''}
-                onClick={() => {
-                  setGenerationScope('selected')
-                  if (!isExpanded) setMaximizedPanel('left')
-                }}
-              >
-                Selected {selectedShots.length}
-              </button>
-              <button
-                type="button"
-                className={generationScope === 'all' ? 'active' : ''}
-                onClick={() => {
-                  setGenerationScope('all')
-                  setSelectedShotIds([])
-                }}
-              >
-                All blanks {allBlankShots.length}
-              </button>
-            </div>
             <div className="generation-settings">
               <label className="generation-model-picker">
                 <span>모델</span>
@@ -3077,15 +3060,6 @@ export default function StoryboardView() {
               >
                 {panelGridView ? '대본과 함께' : '한눈에 보기'}
               </button>
-              {selectedShots.length > 0 && (
-                <button
-                  type="button"
-                  className="generation-clear-selection"
-                  onClick={() => setSelectedShotIds([])}
-                >
-                  Clear selection
-                </button>
-              )}
               {candidateCount > 0 && (
                 <button
                   type="button"
@@ -3103,9 +3077,7 @@ export default function StoryboardView() {
               >
                 {isGenerating ? `그리는 중… · ${generatingCount}` : (
                   <>
-                    {generationScope === 'selected'
-                      ? 'Generate selected'
-                      : 'Generate storyboard draft'}
+                    Generate storyboard draft
                     {eligibleScopeShots.length > 0 ? ` · ${eligibleScopeShots.length}` : ''}
                   </>
                 )}
@@ -3342,7 +3314,6 @@ export default function StoryboardView() {
                         const committedImage = getShotVisual(shot)
                         const candidate = panelCandidates[shot.id]
                         const displayImage = candidate?.image || committedImage
-                        const isSelected = selectedShotIds.includes(shot.id)
                         // 앞 패널과의 이음새. 정한 것이 있을 때만 그린다 —
                         // 전부 '컷 · 연속'인 기본값까지 표시하면 실제로 정한
                         // 것이 묻힌다.
@@ -3391,25 +3362,12 @@ export default function StoryboardView() {
                           )}
                           <div
                             data-shot-id={shot.id}
-                            className={`sb-shot-card ${shotIdx === activeShot ? 'active-shot' : ''} ${isSelected ? 'selected-for-generation' : ''} ${candidate ? 'has-ai-candidate' : ''} ${inspectedShotId === shot.id ? 'inspected' : ''}`}
+                            className={`sb-shot-card ${shotIdx === activeShot ? 'active-shot' : ''} ${candidate ? 'has-ai-candidate' : ''} ${inspectedShotId === shot.id ? 'inspected' : ''}`}
                             onClick={(event) => {
                               event.stopPropagation()
                               setInspectedShotId(shot.id)
                             }}
                           >
-                            <button
-                              type="button"
-                              className={`sb-shot-select ${isSelected ? 'selected' : ''}`}
-                              aria-pressed={isSelected}
-                              aria-label={`${isSelected ? 'Remove' : 'Add'} ${cutLabel} ${isSelected ? 'from' : 'to'} generation selection`}
-                              onClick={(event) => {
-                                event.stopPropagation()
-                                toggleShotSelection(shot.id)
-                                setGenerationScope('selected')
-                              }}
-                            >
-                              {isSelected ? '✓' : '+'}
-                            </button>
                             <button
                               type="button"
                               className="sb-shot-delete"
