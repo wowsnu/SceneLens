@@ -1667,7 +1667,7 @@ export default function StoryboardView() {
 
   // 이 컷에 걸리는 레퍼런스 그림. 화면에 나오는 인물과 그 씬의 공간만
   // 넣는다 — 씬의 모든 인물을 매 컷에 물리면 없는 사람까지 그려진다.
-  const referencesForCut = (cut, layoutImage = null, stylePreset = 'rough') => {
+  const referencesForCut = (cut, layoutImage = null, stylePreset = 'rough', previousImage = null) => {
     const scene = withSharedReferences(sceneStateForCut(cut))
     if (!scene || !cut) return []
     const cast = (cut.characters || '').split(',').map((n) => n.trim()).filter(Boolean)
@@ -1689,15 +1689,30 @@ export default function StoryboardView() {
         image: scene.location.image,
       })
     }
-    // 참조가 많을수록 느리고 서로를 흐린다. 인물 2명 + 공간이면 충분하다.
+    // 참조가 많을수록 느리고 서로를 흐린다. 앞 컷 그림을 한 장 물리게
+    // 되었으므로 인물·공간 기준은 두 장으로 줄인다 — 총량이 늘면 매 컷의
+    // 생성이 그만큼 느려지고, 18장이면 그 차이가 대기 시간으로 쌓인다.
     //
     // 러프는 인물·공간 기준을 물리지 않는다. 얼굴이 빈 타원이고 공간이 선
     // 몇 개인 그림에 "같은 얼굴로 이어지게" 할 것이 없고, 오히려 그려진
     // 기준을 물리면 그쪽으로 완성도가 끌려 올라간다. 앵커만 물려 구도만 잡는다.
-    const picked = stylePreset === 'rough' ? [] : refs.slice(0, 3)
+    const picked = stylePreset === 'rough' ? [] : refs.slice(0, 2)
     const styleAnchor = PANEL_STYLE_PRESETS.find((preset) => preset.id === stylePreset)
     if (styleAnchor) {
       picked.unshift({ name: styleAnchor.label, kind: 'style', image: styleAnchor.image })
+    }
+    // 바로 앞 컷의 그림. 글로 "장소·조명·화풍을 맞춰라"라고만 하면 같은
+    // 방인지 알 수 없다 — 이미지가 텍스트를 이기므로 앞 장을 보여줘야
+    // 이어진다. 러프에서 특히 크다: 인물·공간 기준을 안 물리기 때문에
+    // 이것이 유일한 연속성 근거다.
+    //
+    // 앵커 다음에 둔다. 슬롯이 잘리는 경우 화풍 다음으로 지켜야 할 것이다.
+    if (previousImage) {
+      picked.splice(styleAnchor ? 1 : 0, 0, {
+        name: '앞 컷',
+        kind: 'neighbor-before',
+        image: stripDataUrl(previousImage),
+      })
     }
     if (layoutImage) {
       picked.push({
@@ -1907,6 +1922,10 @@ export default function StoryboardView() {
     // 그려져 같은 씬인데 이어지지 않는다. 앞 컷의 문장을 함께 넘긴다.
     const ordered = [...eligibleTargets].sort((a, b) => a.shotIdx - b.shotIdx)
 
+    // 방금 그린 앞 컷의 그림. 순서대로 도는 루프이므로 다음 컷을 그릴 때는
+    // 이미 나와 있다 — 추가 호출 없이 연속성 근거로 쓸 수 있다.
+    let previousImage = null
+
     for (const { shot, shotIdx } of ordered) {
       const cut = cutPlan.find((item) => item.id === shot.cutPlanItemId)
       const prompt = promptOf(cut)
@@ -1936,7 +1955,12 @@ export default function StoryboardView() {
           // 나오지 않는다.
           references: (await Promise.all(
             [
-              ...referencesForCut(cut, layout.image, panelStylePreset),
+              // 앞뒤 패널을 따로 물리는 경우(삽입·합치기·분할)에는 여기서
+              // 앞 컷을 또 넣지 않는다. 아래에서 그 관계로 다시 붙는다.
+              ...referencesForCut(
+                cut, layout.image, panelStylePreset,
+                neighbors ? null : previousImage,
+              ),
               // 값 하나만 바꿔 다시 그리는 중이면 지금 그림을 함께 물린다.
               // 이 그림이 있어야 "나머지는 그대로"가 지킬 대상을 갖는다 —
               // 글로만 "유지하라"고 하면 무엇을 유지할지 알 수 없다.
@@ -1977,6 +2001,10 @@ export default function StoryboardView() {
           // 들어오므로 새로 고른 기준이 모든 패널에 일관되게 적용된다.
           model: panelImageModel,
         })
+
+        // 다음 컷이 이 그림을 이어받는다. 실패한 컷은 갱신하지 않아, 그
+        // 앞의 성공한 그림이 계속 기준이 된다.
+        previousImage = image
 
         setPanelCandidates((current) => ({
           ...current,

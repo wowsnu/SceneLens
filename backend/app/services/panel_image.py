@@ -279,8 +279,8 @@ async def generate_panel(request: PanelImageRequest) -> PanelImageResponse:
                 "style, so this panel reads as the same scene moments away. "
                 "But this panel is a DIFFERENT moment: do not repeat their "
                 "framing, their poses or the action they already show. Draw "
-                "what this panel describes, staged so it could sit between "
-                "them without a jump."
+                "what this panel describes, staged so it follows them without "
+                "a jump."
             )
         if any(ref.kind == "layout" for ref in request.references):
             # 도면은 배치를 알려주는 것이지 그려야 할 그림이 아니다.
