@@ -1287,7 +1287,10 @@ const RULE_DESTINATIONS = {
   // 촬영 — 샷 값은 표에, 프레이밍은 그림에.
   'camera-information-selection': ['cutplan', 'prompt'],
   'camera-viewpoint-intent': ['cutplan', 'prompt'],
-  'camera-axis-direction': ['cutplan'],
+  // 축·화면 방향은 컷 표의 샷 값만으로 풀리지 않는 일이 많다. 목적지가
+  // `cutplan` 하나뿐이면 그것이 화면에서 걸러진 뒤 남는 길이 없어, 카드에
+  // `메모로 남기기`만 놓인 채 고칠 자리가 사라진다.
+  'camera-axis-direction': ['cutplan', 'prompt'],
   'camera-movement-purpose': ['arrow', 'cutplan'],
 
   // 편집 — 문제가 컷 사이에 있고, 나누기·합치기도 이음새에 있다.

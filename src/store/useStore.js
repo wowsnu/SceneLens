@@ -2881,19 +2881,33 @@ const useStore = create((set, get) => ({
 
       // 패널도 함께 만든다. 컷만 넣으면 그림이 없어 화면에 아무 변화가
       // 없고, 프롬프트도 붙을 자리가 없다 — splitCut과 같은 규칙이다.
-      const next = updateActiveBranchShots(state, (shots) => {
-        const shotIndex = shots.findIndex((shot) => (
+      const shots = state.scenes[state.activeScene]
+        ?.branches[state.scenes[state.activeScene].activeBranch ?? 0]?.shots || []
+      const anchorShot = shots.find((shot) => shot.cutPlanItemId === proposal.afterCutId)
+      const insertedShot = {
+        ...createFlowShot({ index: shots.length, scriptBeat: anchorBeat }),
+        cutPlanItemId: inserted.id,
+      }
+      const next = updateActiveBranchShots(state, (current) => {
+        const shotIndex = current.findIndex((shot) => (
           shot.cutPlanItemId === proposal.afterCutId
         ))
-        const copy = [...shots]
-        copy.splice(shotIndex < 0 ? copy.length : shotIndex + 1, 0, {
-          ...createFlowShot({ index: shots.length, scriptBeat: anchorBeat }),
-          cutPlanItemId: inserted.id,
-        })
+        const copy = [...current]
+        copy.splice(shotIndex < 0 ? copy.length : shotIndex + 1, 0, insertedShot)
         return copy
       })
 
-      return { ...next, screenplay, cutPlan, cutInsertProposal: null }
+      // 이음새는 앞 컷 id로 걸린다. anchor에 적어 둔 결정은 'anchor → 다음
+      // 컷' 사이의 것이었으므로, 그 사이에 컷이 들어오면 새 컷 뒤로 옮겨야
+      // 한다. 옮기지 않으면 감독이 정해 둔 이음새가 anchor와 새 컷 사이에
+      // 붙는다 — addCutPlanItem과 같은 규칙이다.
+      const nextSeams = { ...state.seams }
+      if (anchorShot && nextSeams[seamKeyFor(anchorShot.id)]) {
+        nextSeams[seamKeyFor(insertedShot.id)] = nextSeams[seamKeyFor(anchorShot.id)]
+        delete nextSeams[seamKeyFor(anchorShot.id)]
+      }
+
+      return { ...next, screenplay, cutPlan, seams: nextSeams, cutInsertProposal: null }
     })
   },
 
