@@ -1369,7 +1369,7 @@ export default function StoryboardView() {
     // 앞에서부터 AUTO_DRAFT_LIMIT장까지만 그린다. 스무 컷을 한 번에 그리면
     // 확정을 누른 뒤 십 분 가까이 아무것도 판정할 수 없다 — 초안은 검토를
     // 시작할 만큼만 있으면 되고, 나머지는 감독이 필요할 때 이어 그린다.
-    generatePanelsRef.current?.(blanks.slice(0, AUTO_DRAFT_LIMIT))
+    generatePanelsRef.current?.(blanks.slice(0, AUTO_DRAFT_LIMIT), { autoAccept: true })
   }, [cutStage, flowShots, cutPlan])
 
   // 촬영 점검은 샷이 모두 정해진 뒤에만 한 번 돌린다. 컷 플랜이 막
@@ -1859,10 +1859,6 @@ export default function StoryboardView() {
   const eligibleScopeShots = flowShots
     .map((shot, shotIdx) => ({ shot, shotIdx }))
     .filter(({ shot }) => !getShotVisual(shot))
-  const currentShotIds = new Set(flowShots.map((shot) => shot.id))
-  const currentPanelCandidates = Object.values(panelCandidates)
-    .filter((candidate) => currentShotIds.has(candidate.shotId))
-  const candidateCount = currentPanelCandidates.length
 
   const generateReferenceFromCutPlan = async (kind, subjectId = null) => {
     const cardKey = subjectId || kind
@@ -1888,6 +1884,13 @@ export default function StoryboardView() {
       // 삽입·합치기처럼 앞뒤와 이어져야 하는 경우. 앞뒤 패널 그림을 함께
       // 물려 같은 장소·인물·조명으로 이어지게 한다.
       neighbors = false,
+      // 초안을 후보로 두지 않고 바로 패널의 그림으로 굳힌다.
+      //
+      // 컷 플랜을 확정한 뒤의 첫 초안이 그렇다. 감독은 이미 "이 구성으로
+      // 간다"를 정했고, 그 결과를 열여덟 번 승인하는 것은 판정이 아니라
+      // 클릭이다. 판정이 필요한 것은 제안을 적용해 다시 그린 그림 쪽이고,
+      // 그 경로는 후보로 남아 `이걸로 하기 / 버리고 되돌리기`를 받는다.
+      autoAccept = false,
     } = {},
   ) => {
     const eligibleTargets = includeExisting
@@ -2023,18 +2026,27 @@ export default function StoryboardView() {
         // 앞의 성공한 그림이 계속 기준이 된다.
         previousImage = image
 
-        setPanelCandidates((current) => ({
-          ...current,
-          [shot.id]: {
-            shotId: shot.id,
-            shotIdx,
-            version: (current[shot.id]?.version || 0) + 1,
+        if (autoAccept) {
+          // 후보를 거치지 않고 바로 굳힌다.
+          updateFlowShotById(shot.id, {
             image,
-            // 무엇으로 그렸는지 남긴다. 결과가 어긋나면 프롬프트를 봐야 한다.
-            prompt: prompt.effective,
-          },
-        }))
-        setPanelDraftImage(shot.id, image)
+            source: 'ai',
+            isAIGenerated: true,
+          })
+        } else {
+          setPanelCandidates((current) => ({
+            ...current,
+            [shot.id]: {
+              shotId: shot.id,
+              shotIdx,
+              version: (current[shot.id]?.version || 0) + 1,
+              image,
+              // 무엇으로 그렸는지 남긴다. 결과가 어긋나면 프롬프트를 봐야 한다.
+              prompt: prompt.effective,
+            },
+          }))
+          setPanelDraftImage(shot.id, image)
+        }
       } catch (error) {
         failures.push(error.message)
       } finally {
@@ -2070,20 +2082,6 @@ export default function StoryboardView() {
       isAIGenerated: true,
     })
     dismissPanelCandidate(shotId)
-  }
-
-  const acceptAllPanelCandidates = () => {
-    currentPanelCandidates.forEach((candidate) => {
-      updateFlowShotById(candidate.shotId, {
-        image: candidate.image,
-        source: 'ai',
-        isAIGenerated: true,
-      })
-    })
-    currentPanelCandidates.forEach((candidate) => clearPanelDraftImage(candidate.shotId))
-    setPanelCandidates((current) => Object.fromEntries(
-      Object.entries(current).filter(([shotId]) => !currentShotIds.has(shotId)),
-    ))
   }
 
   const handleDrawOverCandidate = (shot, shotIdx) => {
@@ -3113,20 +3111,14 @@ export default function StoryboardView() {
               >
                 {panelGridView ? '대본과 함께' : '한눈에 보기'}
               </button>
-              {candidateCount > 0 && (
-                <button
-                  type="button"
-                  className="generation-accept-all"
-                  onClick={acceptAllPanelCandidates}
-                >
-                  Accept all drafts · {candidateCount}
-                </button>
-              )}
+              {/* 초안은 바로 굳으므로 여기 남는 후보는 진단에서 다시 그린
+                  것뿐이다. 그 판정은 검토 화면의 `이걸로 하기 / 버리고
+                  되돌리기`가 받으므로 한 번에 승인하는 길은 두지 않는다. */}
               <button
                 type="button"
                 className="generation-run"
                 disabled={eligibleScopeShots.length === 0 || isGenerating}
-                onClick={() => handleGeneratePanels(eligibleScopeShots)}
+                onClick={() => handleGeneratePanels(eligibleScopeShots, { autoAccept: true })}
               >
                 {isGenerating ? `그리는 중… · ${generatingCount}` : (
                   <>
