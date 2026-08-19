@@ -127,18 +127,25 @@ const layerRank = (layer) => {
 // 있다 — AI가 대본을 잘못 읽었을 때 고칠 방법이 없으면 안 된다. 다만
 // 어디서 온 값인지는 구분해 보인다 (DG1 P2: AI가 낸 것은 판정 대상이다).
 // 도면은 SVG로 만들지만 images.edit는 PNG만 받는다. 캔버스로 옮긴다.
+// 도면은 상자와 선뿐이라 크게 보낼 이유가 없다. 매 컷에 함께 올라가므로
+// 18장이면 이 크기가 그대로 대기 시간이 된다 — 배치를 읽는 데는 이 정도로
+// 충분하다.
+const LAYOUT_IMAGE_SIZE = 384
+
 const rasterizeLayout = (svgDataUrl) => new Promise((resolve) => {
   if (!svgDataUrl) return resolve(null)
   const image = new Image()
   image.onload = () => {
     const canvas = document.createElement('canvas')
-    canvas.width = image.width || 768
-    canvas.height = image.height || 768
+    const source = Math.max(image.width || 768, image.height || 768)
+    const scale = Math.min(1, LAYOUT_IMAGE_SIZE / source)
+    canvas.width = Math.round((image.width || 768) * scale)
+    canvas.height = Math.round((image.height || 768) * scale)
     const context = canvas.getContext('2d')
     // 투명 배경은 검게 깔린다. 도면은 흰 종이여야 읽힌다.
     context.fillStyle = '#fff'
     context.fillRect(0, 0, canvas.width, canvas.height)
-    context.drawImage(image, 0, 0)
+    context.drawImage(image, 0, 0, canvas.width, canvas.height)
     resolve(canvas.toDataURL('image/png'))
   }
   // 도면을 못 만들어도 패널은 나와야 한다.
@@ -1689,14 +1696,14 @@ export default function StoryboardView() {
         image: scene.location.image,
       })
     }
-    // 참조가 많을수록 느리고 서로를 흐린다. 앞 컷 그림을 한 장 물리게
-    // 되었으므로 인물·공간 기준은 두 장으로 줄인다 — 총량이 늘면 매 컷의
-    // 생성이 그만큼 느려지고, 18장이면 그 차이가 대기 시간으로 쌓인다.
+    // 이 컷에 나오는 인물은 전부 물린다. 두세 명이 함께 잡히는 컷에서 한
+    // 명을 빼면 그 인물만 기준 없이 그려져, 같은 화면 안에서 어떤 얼굴은
+    // 이어지고 어떤 얼굴은 매번 달라진다.
     //
     // 러프는 인물·공간 기준을 물리지 않는다. 얼굴이 빈 타원이고 공간이 선
     // 몇 개인 그림에 "같은 얼굴로 이어지게" 할 것이 없고, 오히려 그려진
     // 기준을 물리면 그쪽으로 완성도가 끌려 올라간다. 앵커만 물려 구도만 잡는다.
-    const picked = stylePreset === 'rough' ? [] : refs.slice(0, 2)
+    const picked = stylePreset === 'rough' ? [] : [...refs]
     const styleAnchor = PANEL_STYLE_PRESETS.find((preset) => preset.id === stylePreset)
     if (styleAnchor) {
       picked.unshift({ name: styleAnchor.label, kind: 'style', image: styleAnchor.image })

@@ -2109,8 +2109,12 @@ const useStore = create((set, get) => ({
   spaceLayoutPending: false,
   spaceLayoutError: null,
   spaceLayoutNote: '',
-  requestSpaceLayout: async () => {
+  // `auto`는 컷 플랜 뒤에 자동으로 도는 경우다. 감독이 이미 배치를 놓아
+  // 두었으면 다시 뽑지 않는다 — 끌어서 맞춰 둔 자리를 덮으면 한 일이
+  // 사라진다. 버튼으로 부를 때는 다시 뽑는 것이 그 버튼의 뜻이다.
+  requestSpaceLayout: async ({ auto = false } = {}) => {
     const state = get()
+    if (auto && state.spatialElements.length > 0) return
     const scenes = selectScenes(state.screenplay)
     const scene = scenes.find((entry) => entry.id === selectActiveSceneId(state)) || scenes[0]
     if (!scene) return
@@ -2480,6 +2484,13 @@ const useStore = create((set, get) => ({
       // 인물 명단을 위한 기본값이고, 여기서 한 번 더 읽어 시간 변화 초안을
       // 자동으로 채운다 — 사용자가 별도 버튼을 누를 일이 아니다.
       await get().requestSceneStates()
+      // 공간 도면도 여기서 미리 만든다. 감독이 상자를 직접 놓아야 한다면
+      // 대개 비어 있는 채로 남고, 그러면 첫 생성에 배치 기준이 없어 컷마다
+      // 콘솔과 책상이 좌우로 옮겨 다닌다.
+      //
+      // AI가 대본과 공간 기준을 읽어 초안을 놓고, 감독은 2D 배치에서 끌어
+      // 고친다 — 만드는 부담 없이 판정만 남는다 (DG1 P2).
+      await get().requestSpaceLayout({ auto: true })
       await get().requestShotDesign()
     } catch (error) {
       set({
