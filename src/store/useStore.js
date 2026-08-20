@@ -3507,6 +3507,8 @@ const useStore = create((set, get) => ({
   setDrawerTab: (tab) => set({ drawerTab: tab }),
   toggleScript: () => set((state) => ({ isScriptOpen: !state.isScriptOpen })),
   setScriptOpen: (val) => set({ isScriptOpen: val }),
+  // 예시 대본으로 시작한 세션인가. 확정 뒤 자동 생성을 건너뛴다.
+  autoDraftDisabled: false,
   // 대본은 빈 상태에서 시작한다. 사용자가 자기 장면을 쓰는 것이 첫 단계다.
   screenplay: [],
   // 개발·데모용 예시 대본. 입력 화면에서 한 번에 채운다.
@@ -3555,6 +3557,12 @@ const useStore = create((set, get) => ({
       // '컷으로 나누기'를 누르면 override가 풀리고 이미 만들어 둔 표가
       // 그대로 열린다.
       cutPlanStageOverride: 'script',
+      // 예시 대본에는 그림이 이미 붙어 있다. 확정을 누른 뒤 자동으로 나머지를
+      // 그리기 시작하면, 개발·데모 중에 원치 않는 생성이 돈다 — 예시는 흐름을
+      // 훑어보라고 있는 것이지 그림을 뽑으라고 있는 것이 아니다.
+      //
+      // 감독이 직접 `이어 그리기`를 누르면 그때는 그린다.
+      autoDraftDisabled: true,
     }
   }),
   sceneIntention: '',
@@ -3573,7 +3581,10 @@ const useStore = create((set, get) => ({
         activeBeat: Math.max(0, Math.min(state.activeBeat ?? 0, maxBeat)),
       }
     })
-    return { ...next, screenplay: script, narrativeSuggestions: [] }
+    // 감독이 자기 대본을 쓰면 예시 세션이 아니다. 자동 생성을 되살린다.
+    return {
+      ...next, screenplay: script, narrativeSuggestions: [], autoDraftDisabled: false,
+    }
   }),
   // --- 대본 인라인 편집 -------------------------------------------------
   // 전체 텍스트를 다시 붙여넣지 않고 줄 단위로 고친다. beat는 보존한다.

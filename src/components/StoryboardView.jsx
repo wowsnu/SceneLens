@@ -1072,6 +1072,8 @@ export default function StoryboardView() {
   const setMaximizedPanel = useStore((s) => s.setMaximizedPanel)
   const drawingWorkspaceOpen = useStore((s) => s.drawingWorkspaceOpen)
   const openDrawingWorkspace = useStore((s) => s.openDrawingWorkspace)
+  // 예시 대본 세션이면 확정 뒤 자동 생성을 건너뛴다.
+  const autoDraftDisabled = useStore((s) => s.autoDraftDisabled)
   const setSelectedShotIds = useStore((s) => s.setSelectedStoryboardShotIds)
   const setPanelDraftImage = useStore((s) => s.setPanelDraftImage)
   const clearPanelDraftImage = useStore((s) => s.clearPanelDraftImage)
@@ -1358,6 +1360,9 @@ export default function StoryboardView() {
   // 돌지 않는다 — 그때부터는 감독이 무엇을 다시 그릴지 정한다.
   const autoDraftedPlanKey = useRef(null)
   useEffect(() => {
+    // 예시 대본으로 시작한 세션은 그림이 이미 붙어 있다. 확정만으로 생성이
+    // 돌면 개발·데모 중에 원치 않는 호출이 나간다.
+    if (autoDraftDisabled) return
     if (cutStage !== 'panels' || flowShots.length === 0) return
     const planKey = cutPlan[0]?.id
     if (!planKey || autoDraftedPlanKey.current === planKey) return
@@ -1370,7 +1375,7 @@ export default function StoryboardView() {
     // 확정을 누른 뒤 십 분 가까이 아무것도 판정할 수 없다 — 초안은 검토를
     // 시작할 만큼만 있으면 되고, 나머지는 감독이 필요할 때 이어 그린다.
     generatePanelsRef.current?.(blanks.slice(0, AUTO_DRAFT_LIMIT), { autoAccept: true })
-  }, [cutStage, flowShots, cutPlan])
+  }, [cutStage, flowShots, cutPlan, autoDraftDisabled])
 
   // 촬영 점검은 샷이 모두 정해진 뒤에만 한 번 돌린다. 컷 플랜이 막
   // 만들어진 순간에는 아직 크기가 비어 있으므로, 그때 점검하면 근거 없는
