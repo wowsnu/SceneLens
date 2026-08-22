@@ -1885,6 +1885,7 @@ export default function DecisionBoard({ boardView = 'split' }) {
   // 지금 보고 있는 씬의 기준. 씬마다 인물·공간이 다르고,
   // 어느 씬인지는 activeBeat에서 파생된다.
   const sceneState = useStore(selectActiveSceneState)
+  const sceneTimeFact = sceneState.environment?.facts?.find((fact) => fact.label === '시간') || null
   const requestSeamDesign = useStore((s) => s.requestSeamDesign)
   const seamDesignPending = useStore((s) => s.seamDesignPending)
   const seamDesignError = useStore((s) => s.seamDesignError)
@@ -2240,12 +2241,33 @@ export default function DecisionBoard({ boardView = 'split' }) {
   const multiReviewHasResult = ['ready', 'stale'].includes(multiReviewRun.status)
   // 관계는 세 종류다. 합의는 맨 위에 한 번, 나머지는 아래에 나열한다.
   const multiFindings = multiReviewRun.commonFindings || []
-  const multiAgreement = multiFindings.find((item) => item.type === 'agreement')
+  // 합의가 둘 이상이면 find는 하나만 남기고 나머지를 조용히 버린다.
+  const multiAgreements = multiFindings.filter((item) => item.type === 'agreement')
   const multiRelations = multiFindings.filter((item) => item.type !== 'agreement')
   // 관계가 없는 이유가 둘이다. 진단이 아예 없으면 볼 것이 없었던 것이고,
   // 진단은 있는데 관계가 없으면 서로 무관한 것이다.
   const multiHasDiagnosis = Object.values(multiReviewRun.lensResults || {})
     .some((result) => (result.diagnoses || []).length > 0)
+  // 관계가 가리키는 진단을 실제 문장으로 데려온다. 관계 카드가 summary
+  // 한 줄만 보여주면 감독은 어느 판단끼리 맞물린다는 것인지 위쪽 렌즈
+  // 카드에서 직접 찾아야 한다. id는 이미 있으니 화면에서 이어 준다.
+  const multiDiagnosisById = {}
+  Object.entries(multiReviewRun.lensResults || {}).forEach(([backendId, result]) => {
+    (result.diagnoses || []).forEach((diagnosis) => {
+      multiDiagnosisById[diagnosis.id] = { ...diagnosis, lens: backendId }
+    })
+  })
+  // consequence는 원인이 먼저 읽혀야 한다. 그 밖에는 서버가 준 순서를 둔다.
+  const relationDiagnoses = (relation) => {
+    const found = relation.diagnosis_ids
+      .map((id) => multiDiagnosisById[id])
+      .filter(Boolean)
+    if (relation.type !== 'consequence') return found
+    return [
+      ...found.filter((item) => item.lens === relation.source_lens),
+      ...found.filter((item) => item.lens !== relation.source_lens),
+    ]
+  }
   const multiScopeLabel = scopeMode === 'range'
     ? `S${scopeFrom + 1}–S${scopeTo + 1}`
     : `S${scopedShotIndex + 1}`
@@ -4343,7 +4365,7 @@ export default function DecisionBoard({ boardView = 'split' }) {
                         <li key={proposal.id}>
                           <div className="editing-seam-where">
                             <span>{proposal.sceneHeading}</span>
-                            <strong>{proposal.label || '이 컷'} 앞</strong>
+                            <strong>{proposal.label || '이 컷'} 뒤</strong>
                           </div>
                           <div className="editing-seam-values">
                             <em>{joinLabelOf(proposal.join)}</em>
@@ -4518,6 +4540,38 @@ export default function DecisionBoard({ boardView = 'split' }) {
                       {sceneStateEditing ? '보기로 돌아가기' : '기준 고치기'}
                     </button>
                   </div>
+
+                  {/* 기준 고치기와 실제 시간 편집기가 멀리 떨어지지 않게 한다.
+                      시간은 씬의 상태 구간을 만드는 핵심 값이므로 인물·공간
+                      카드보다 먼저 보여 주고, 아래 Shared scene에서는 중복을
+                      제거한다. */}
+                  {sceneTimeFact && (
+                    <section className={`mise-time-quick${sceneStateEditing ? ' is-editing' : ''}`} aria-label="씬 시간 빠른 편집">
+                      <div className="mise-time-quick-heading">
+                        <div>
+                          <span>Scene time</span>
+                          <strong>씬 시간</strong>
+                        </div>
+                        <em>{sceneTimeFact.value || '아직 정하지 않음'}</em>
+                      </div>
+                      <SceneFactChanges
+                        fact={sceneTimeFact}
+                        group="environment"
+                        shots={shots}
+                        onAdd={setChangeDraft}
+                        onRemove={removeFactChange}
+                        disabled={!sceneStateEditing}
+                        draft={draftFor('environment', sceneTimeFact.label)}
+                        onDraftChange={setChangeDraft}
+                        onDraftCancel={() => setChangeDraft(null)}
+                        onDraftSave={saveChangeDraft}
+                      />
+                      {!sceneStateEditing && !(sceneTimeFact.changes || []).length && (
+                        <small>기준 고치기를 누르면 어느 Shot부터 시간이 달라지는지 바로 정할 수 있습니다.</small>
+                      )}
+                    </section>
+                  )}
+
                   <p className="mise-state-description">{sceneState.description}</p>
 
                   {/* 씬 단위 화면이므로 "언제부터 무엇이 달라지는가"를 먼저
@@ -4894,7 +4948,9 @@ export default function DecisionBoard({ boardView = 'split' }) {
                         </div>
                       </div>
                       <dl>
-                        {sceneState.environment.facts.map((fact) => (
+                        {sceneState.environment.facts
+                          .filter((fact) => fact.label !== '시간')
+                          .map((fact) => (
                           <div key={fact.label} className={fact.open ? 'open' : ''}>
                             <dt>{fact.label}</dt>
                             <dd>
@@ -4914,7 +4970,7 @@ export default function DecisionBoard({ boardView = 'split' }) {
                               />
                             </dd>
                           </div>
-                        ))}
+                          ))}
                       </dl>
                     </section>
                   </div>
@@ -5045,15 +5101,31 @@ export default function DecisionBoard({ boardView = 'split' }) {
 
               {/* 세 렌즈가 같게 본 것. 없으면 이 자리를 비운다 —
                   억지로 합의를 만들면 그것도 지어낸 것이다. */}
-              {multiAgreement && (
-                <section className="multi-review-summary">
+              {multiAgreements.map((agreement) => (
+                <section className="multi-review-summary" key={relationKey(agreement)}>
                   <header>
                     <span>공통 판단</span>
-                    <em>{lensMarks(multiAgreement.lenses)}</em>
+                    <em>{lensMarks(agreement.lenses)}</em>
                   </header>
-                  <p>{multiAgreement.summary}</p>
+                  <p>{agreement.summary}</p>
+                  {/* 합의도 근거를 보여야 한다. 같은 문제를 다른 렌즈가
+                      어떤 말로 짚었는지가 곧 '같다'는 주장의 근거다. */}
+                  {(() => {
+                    const linked = relationDiagnoses(agreement)
+                    if (linked.length < 2) return null
+                    return (
+                      <ol className="multi-review-tension-basis">
+                        {linked.map((diagnosis) => (
+                          <li key={diagnosis.id}>
+                            <span>{lensMark(diagnosis.lens)} {lensName(diagnosis.lens)}</span>
+                            <p>{diagnosis.diagnosis}</p>
+                          </li>
+                        ))}
+                      </ol>
+                    )
+                  })()}
                 </section>
-              )}
+              ))}
 
               <div className="multi-review-grid">
                 {MULTI_LENS_ORDER.map(({ backendId, lensId, mark }) => {
@@ -5165,6 +5237,31 @@ export default function DecisionBoard({ boardView = 'split' }) {
                 })}
               </div>
 
+              {/* 어느 렌즈부터 손댈 것인가. 서버가 관계에서 계산해 주는데
+                  그리지 않고 있었다 — 감독은 세 탭 중 어디를 먼저 열지
+                  모른 채 관계만 읽게 된다. */}
+              {multiReviewRun.related && multiReviewRun.order && (
+                <section className="multi-review-order">
+                  <header>
+                    <span>먼저 볼 곳</span>
+                    <em>{lensMark(multiReviewRun.order.first_lens)} {lensName(multiReviewRun.order.first_lens)}</em>
+                  </header>
+                  {multiReviewRun.order.reason && <p>{multiReviewRun.order.reason}</p>}
+                  {multiReviewRun.order.then?.length > 0 && (
+                    <p className="multi-review-order-then">
+                      고친 뒤 다시 볼 곳 · {multiReviewRun.order.then.map(lensName).join(' · ')}
+                    </p>
+                  )}
+                  <button
+                    type="button"
+                    className="multi-review-order-go"
+                    onClick={() => selectReviewMode(frontLensId(multiReviewRun.order.first_lens))}
+                  >
+                    {lensName(multiReviewRun.order.first_lens)}에서 시작하기 →
+                  </button>
+                </section>
+              )}
+
               {/* 렌즈 사이의 관계. consequence는 방향이 있어 어디를 고쳐야
                   하는지까지 말한다 — 영향받은 쪽을 고치면 증상만 사라진다. */}
               {multiRelations.map((relation) => (
@@ -5181,6 +5278,29 @@ export default function DecisionBoard({ boardView = 'split' }) {
                     </em>
                   </header>
                   <p>{relation.summary}</p>
+                  {/* 관계가 어느 판단끼리인지 실제 진단 문장으로 보여준다.
+                      요약 한 줄만 두면 감독이 근거를 검증할 수 없고, 위쪽
+                      렌즈 카드에서 해당 진단을 직접 찾아야 한다. */}
+                  {(() => {
+                    const linked = relationDiagnoses(relation)
+                    if (linked.length < 2) return null
+                    return (
+                      <ol className="multi-review-tension-basis">
+                        {linked.map((diagnosis, index) => (
+                          <li key={diagnosis.id}>
+                            <span>
+                              {relation.type === 'consequence'
+                                ? (index === 0 ? '원인' : '영향')
+                                : lensMark(diagnosis.lens)}
+                              {' '}
+                              {lensName(diagnosis.lens)}
+                            </span>
+                            <p>{diagnosis.diagnosis}</p>
+                          </li>
+                        ))}
+                      </ol>
+                    )
+                  })()}
                   {relation.type === 'consequence' && (
                     <div className="multi-review-tension-where">
                       <strong>고칠 곳은 {lensName(relation.source_lens)}입니다</strong>
@@ -5252,7 +5372,7 @@ export default function DecisionBoard({ boardView = 'split' }) {
               )}
 
               {/* 관계가 없는 것도 정보다. 비워 두면 고장으로 읽힌다. */}
-              {multiReviewRun.related && multiRelations.length === 0 && !multiAgreement && (
+              {multiReviewRun.related && multiRelations.length === 0 && multiAgreements.length === 0 && (
                 <p className="multi-review-empty">
                   세 렌즈가 서로 다른 것을 짚었습니다. 각 판단을 따로 보세요.
                 </p>

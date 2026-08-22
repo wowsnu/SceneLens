@@ -1200,10 +1200,19 @@ async def _relate_lenses(
     data = json.loads(response.choices[0].message.content.strip())
 
     findings = []
-    for relation in data.get("relations", []):
+    raw_relations = data.get("relations", [])
+    for relation in raw_relations:
         # 없는 진단을 가리키는 관계는 버린다 — 모델이 id를 지어낼 때가 있다.
         ids = [rid for rid in relation.get("diagnosis_ids", []) if rid in known_ids]
         if len(ids) < 2:
+            # 버린 것을 남긴다. 조용히 버리면 화면에서 '관계 없음'과
+            # 구분되지 않아, 모델이 못 찾은 것인지 우리가 버린 것인지
+            # 알 수 없다.
+            print(
+                f"[directing-review] relation dropped (unknown diagnosis id): "
+                f"type={relation.get('type')} ids={relation.get('diagnosis_ids')} "
+                f"known={sorted(known_ids)}"
+            )
             continue
         try:
             findings.append(DirectingCommonFinding(
@@ -1214,9 +1223,17 @@ async def _relate_lenses(
                 source_lens=relation.get("source_lens"),
                 affected_lens=relation.get("affected_lens"),
             ))
-        except ValueError:
+        except ValueError as error:
             # 방향이 빠진 consequence 등. 관계 하나 때문에 검토 전체를 버리지 않는다.
+            print(
+                f"[directing-review] relation dropped (invalid): "
+                f"type={relation.get('type')} error={error}"
+            )
             continue
+    if raw_relations and not findings:
+        print(f"[directing-review] all {len(raw_relations)} relation(s) dropped")
+    elif not raw_relations:
+        print("[directing-review] model returned no relations")
 
     order = None
     raw_order = data.get("order")
