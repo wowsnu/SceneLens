@@ -1146,28 +1146,17 @@
   to { left: 100%; }
 }
 
-.multi-review-summary,
 .multi-review-tension {
   padding: 11px 12px;
   border-top: 1px solid rgba(255, 255, 255, 0.07);
 }
 
-.multi-review-summary > header,
 .multi-review-tension > header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 10px;
   margin-bottom: 5px;
-}
-
-.multi-review-summary span {
-  display: block;
-  color: rgba(255, 255, 255, 0.42);
-  font-size: 9.5px;
-  font-weight: 800;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
 }
 
 /* 관계 라벨은 분류명이 아니라 무슨 일이 벌어졌는지를 말하는 문장이다.
@@ -1180,7 +1169,6 @@
   line-height: 1.45;
 }
 
-.multi-review-summary > header em,
 .multi-review-tension > header em {
   flex: 0 0 auto;
   padding: 2px 6px;
@@ -1193,7 +1181,6 @@
   letter-spacing: 0.05em;
 }
 
-.multi-review-summary p,
 .multi-review-tension p {
   margin: 0;
   color: rgba(255, 255, 255, 0.78);
@@ -6227,6 +6214,21 @@ button.active .lens-glass::after {
    정해진다 — 영향받은 쪽을 고치면 증상만 사라진다. */
 .multi-review-tension.is-consequence {
   border-color: rgba(216, 170, 98, 0.32);
+}
+
+/* 합의는 두 렌즈가 같은 결손을 가리킨 것이지 충돌이 아니다. 헤더의
+   붉은색을 그대로 쓰면 문제가 둘인 것처럼 읽힌다. */
+.multi-review-tension.is-agreement {
+  border-color: rgba(147, 197, 253, 0.26);
+}
+
+.multi-review-tension.is-agreement > header span {
+  color: rgba(165, 200, 252, 0.92);
+}
+
+.multi-review-tension.is-agreement .multi-review-tension-where,
+.multi-review-tension.is-agreement .multi-review-tension-where strong {
+  color: rgba(165, 200, 252, 0.92);
 }
 
 .multi-review-tension-where {

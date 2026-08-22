@@ -158,6 +158,16 @@ const verdictOptionsFor = (relation) => {
       { id: 'fix-affected', label: `${lensName(relation.affected_lens)}에서 풀게` },
     ]
   }
+  // 합의는 우선순위를 물을 일이 아니다. 두 렌즈가 같은 결손을 가리키므로
+  // 물을 것은 '한 번에 고칠까, 따로 볼까'다. conflict의 선택지를 물려
+  // 쓰면 같은 말을 하는 둘 중 하나를 고르라고 묻게 된다.
+  if (relation.type === 'agreement') {
+    return [
+      { id: 'fix-once', label: '한 번에 고칠게' },
+      { id: 'separate', label: '따로 볼게' },
+      { id: 'keep', label: '그대로 둘게' },
+    ]
+  }
   return [
     ...(relation.lenses || []).map((lens) => ({
       id: `prefer-${lens}`,
@@ -2239,11 +2249,10 @@ export default function DecisionBoard({ boardView = 'split' }) {
   const multiReviewRun = multiReviewRuns[multiReviewScopeKey] || { status: 'idle' }
   const multiReviewLoading = multiReviewRun.status === 'loading'
   const multiReviewHasResult = ['ready', 'stale'].includes(multiReviewRun.status)
-  // 관계는 세 종류다. 합의는 맨 위에 한 번, 나머지는 아래에 나열한다.
+  // 관계는 세 종류다. 셋 다 같은 카드로 나열한다 — 합의만 요약 상자로
+  // 빼두면 근거도 판정도 붙지 않아, 감독이 그 관계에 답할 수 없다.
   const multiFindings = multiReviewRun.commonFindings || []
-  // 합의가 둘 이상이면 find는 하나만 남기고 나머지를 조용히 버린다.
-  const multiAgreements = multiFindings.filter((item) => item.type === 'agreement')
-  const multiRelations = multiFindings.filter((item) => item.type !== 'agreement')
+  const multiRelations = multiFindings
   // 관계가 없는 이유가 둘이다. 진단이 아예 없으면 볼 것이 없었던 것이고,
   // 진단은 있는데 관계가 없으면 서로 무관한 것이다.
   const multiHasDiagnosis = Object.values(multiReviewRun.lensResults || {})
@@ -5100,34 +5109,6 @@ export default function DecisionBoard({ boardView = 'split' }) {
                 </p>
               )}
 
-              {/* 세 렌즈가 같게 본 것. 없으면 이 자리를 비운다 —
-                  억지로 합의를 만들면 그것도 지어낸 것이다. */}
-              {multiAgreements.map((agreement) => (
-                <section className="multi-review-summary" key={relationKey(agreement)}>
-                  <header>
-                    <span>공통 판단</span>
-                    <em>{lensMarks(agreement.lenses)}</em>
-                  </header>
-                  <p>{agreement.summary}</p>
-                  {/* 합의도 근거를 보여야 한다. 같은 문제를 다른 렌즈가
-                      어떤 말로 짚었는지가 곧 '같다'는 주장의 근거다. */}
-                  {(() => {
-                    const linked = relationDiagnoses(agreement)
-                    if (linked.length < 2) return null
-                    return (
-                      <ol className="multi-review-tension-basis">
-                        {linked.map((diagnosis) => (
-                          <li key={diagnosis.id}>
-                            <span>{lensMark(diagnosis.lens)} {lensName(diagnosis.lens)}</span>
-                            <p>{diagnosis.diagnosis}</p>
-                          </li>
-                        ))}
-                      </ol>
-                    )
-                  })()}
-                </section>
-              ))}
-
               <div className="multi-review-grid">
                 {MULTI_LENS_ORDER.map(({ backendId, lensId, mark }) => {
                   const perspective = PERSPECTIVES.find((item) => item.id === lensId)
@@ -5316,9 +5297,16 @@ export default function DecisionBoard({ boardView = 'split' }) {
                       </button>
                     </div>
                   )}
-                  {/* 충돌은 원인이 한쪽에 있지 않다. 양쪽으로 가는 길을 둔다. */}
+                  {/* 충돌과 합의는 원인이 한쪽에 있지 않다. 양쪽으로 가는
+                      길을 두되, 무엇을 하러 가는지는 다르다 — 충돌은 둘 중
+                      하나를 고르러, 합의는 한 번에 고치러 간다. */}
                   {relation.type !== 'consequence' && relation.lenses?.length > 0 && (
                     <div className="multi-review-tension-where">
+                      <strong>
+                        {relation.type === 'agreement'
+                          ? '한쪽을 고치면 둘 다 풀립니다'
+                          : '어느 쪽을 우선할지 정해야 합니다'}
+                      </strong>
                       {relation.lenses.map((lens) => (
                         <button
                           key={lens}
@@ -5387,7 +5375,7 @@ export default function DecisionBoard({ boardView = 'split' }) {
               )}
 
               {/* 관계가 없는 것도 정보다. 비워 두면 고장으로 읽힌다. */}
-              {multiReviewRun.related && multiRelations.length === 0 && multiAgreements.length === 0
+              {multiReviewRun.related && multiRelations.length === 0
                 && multiReviewRun.droppedRelations === 0 && (
                 <p className="multi-review-empty">
                   세 렌즈가 서로 다른 것을 짚었습니다. 각 판단을 따로 보세요.
