@@ -2657,6 +2657,7 @@ export default function DecisionBoard({ boardView = 'split' }) {
           ...current[scopeKey],
           relating: false,
           commonFindings: response.common_findings || [],
+          droppedRelations: response.dropped_relations || 0,
           order: response.order || null,
           related: true,
         },
@@ -5371,8 +5372,23 @@ export default function DecisionBoard({ boardView = 'split' }) {
                 </div>
               )}
 
+              {/* 버린 관계는 살아남은 것이 있든 없든 밝힌다. 하나라도
+                  떴다고 침묵하면, 감독은 보이는 것이 전부라고 믿는다. */}
+              {multiReviewRun.related && multiReviewRun.droppedRelations > 0 && (
+                <div className="multi-review-empty is-dropped">
+                  <p>
+                    관계 {multiReviewRun.droppedRelations}개를 더 찾았지만 어느 판단에 대한
+                    것인지 짚지 못해 표시하지 못했습니다.
+                  </p>
+                  <button type="button" onClick={runRelateReview} disabled={multiReviewRun.relating}>
+                    {multiReviewRun.relating ? '다시 보는 중…' : '다시 찾기'}
+                  </button>
+                </div>
+              )}
+
               {/* 관계가 없는 것도 정보다. 비워 두면 고장으로 읽힌다. */}
-              {multiReviewRun.related && multiRelations.length === 0 && multiAgreements.length === 0 && (
+              {multiReviewRun.related && multiRelations.length === 0 && multiAgreements.length === 0
+                && multiReviewRun.droppedRelations === 0 && (
                 <p className="multi-review-empty">
                   세 렌즈가 서로 다른 것을 짚었습니다. 각 판단을 따로 보세요.
                 </p>

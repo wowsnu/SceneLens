@@ -711,6 +711,10 @@ class DirectingReviewResponse(BaseModel):
     # 으로 읽는다 — 실제로는 검증에 걸려 결과가 없는 것이다.
     failed_lenses: List[DirectingLens] = Field(default_factory=list)
     common_findings: List[DirectingCommonFinding] = Field(default_factory=list)
+    # 모델이 관계를 냈으나 진단을 짚지 못해 버린 개수. 조용히 버리면
+    # 화면에서 '관계 없음'과 구분되지 않아, 모델이 못 찾은 것인지 우리가
+    # 버린 것인지 감독이 알 수 없다 — failed_lenses와 같은 이유다.
+    dropped_relations: int = 0
     # 다관점에서만 나온다. 관계를 근거로 어느 렌즈부터 볼지 제안한다.
     order: Optional[DirectingOrder] = None
     directing_choices: List[DirectingChoice] = Field(default_factory=list)

@@ -6278,6 +6278,48 @@ button.active .lens-glass::after {
   line-height: 1.5 !important;
 }
 
+/* 찾았는데 버린 경우. '관계 없음'과 같은 회색으로 두면 둘이 구분되지
+   않는다 — 여기서는 다시 시도할 수 있다는 것이 요지다. */
+.multi-review-empty.is-dropped {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  border-style: solid;
+  border-color: rgba(216, 170, 98, 0.3);
+  color: rgba(255, 255, 255, 0.62);
+}
+
+.multi-review-empty.is-dropped p {
+  flex: 1 1 240px;
+  margin: 0;
+  font-size: 11.5px;
+  line-height: 1.55;
+}
+
+.multi-review-empty.is-dropped button {
+  flex: 0 0 auto;
+  padding: 5px 12px;
+  border: 1px solid rgba(216, 170, 98, 0.5);
+  border-radius: 6px;
+  background: rgba(216, 170, 98, 0.14);
+  color: rgba(232, 198, 145, 0.98);
+  font-family: inherit;
+  font-size: 11.5px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.multi-review-empty.is-dropped button:hover:not(:disabled) {
+  background: rgba(216, 170, 98, 0.24);
+}
+
+.multi-review-empty.is-dropped button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
 /* 어느 렌즈부터 볼 것인가. 세 카드보다 먼저 읽혀야 한다. */
 .multi-review-order {
   margin-bottom: 12px;

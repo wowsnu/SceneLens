@@ -1160,8 +1160,8 @@ def _lens_digest(lens_results: dict) -> str:
 async def _relate_lenses(
     lens_results: dict,
     settled: list | None = None,
-) -> tuple[list[DirectingCommonFinding], Optional[DirectingOrder]]:
-    """렌즈 판단들 사이의 관계와, 어느 렌즈부터 볼지.
+) -> tuple[list[DirectingCommonFinding], Optional[DirectingOrder], int]:
+    """렌즈 판단들 사이의 관계와, 어느 렌즈부터 볼지, 버린 관계 수.
 
     진단이 둘 미만이면 관계가 있을 수 없다. 다만 그때도 순서는 쓸모가
     있으므로, 진단이 하나라도 있으면 물어본다.
@@ -1172,7 +1172,13 @@ async def _relate_lenses(
         for diagnosis in result.diagnoses
     }
     if not known_ids:
-        return [], None
+        return [], None, 0
+    # 어느 렌즈의 진단인지. consequence가 id를 하나만 준 경우 나머지
+    # 한쪽을 그 렌즈 안에서 찾는 데 쓴다.
+    ids_by_lens: dict[str, list[str]] = {
+        lens: [diagnosis.id for diagnosis in result.diagnoses]
+        for lens, result in lens_results.items()
+    }
 
     user_content = _lens_digest(lens_results)
     if settled:
@@ -1200,14 +1206,39 @@ async def _relate_lenses(
     data = json.loads(response.choices[0].message.content.strip())
 
     findings = []
+    dropped = 0
     raw_relations = data.get("relations", [])
     for relation in raw_relations:
         # 없는 진단을 가리키는 관계는 버린다 — 모델이 id를 지어낼 때가 있다.
         ids = [rid for rid in relation.get("diagnosis_ids", []) if rid in known_ids]
+        # 모델이 관계는 옳게 보고도 한쪽 id만 적을 때가 있다. 관계는 어느
+        # 렌즈끼리인지 이미 말했으므로, 빠진 쪽을 그 렌즈 안에서 찾는다.
+        # 후보가 하나뿐일 때만 잇는다 — 여럿이면 어느 것인지 우리가 정할
+        # 수 없고, 그것은 지어내는 것이 된다.
+        if len(ids) == 1:
+            named = set(relation.get("lenses") or []) | {
+                relation.get("source_lens"), relation.get("affected_lens")
+            }
+            missing = [
+                lens for lens in named
+                if lens in ids_by_lens and not any(
+                    rid in ids_by_lens[lens] for rid in ids
+                )
+            ]
+            if len(missing) == 1:
+                candidates = ids_by_lens[missing[0]]
+                if len(candidates) == 1:
+                    ids = ids + candidates
+                    print(
+                        f"[directing-review] relation repaired: "
+                        f"{relation.get('type')} gained {candidates[0]} "
+                        f"from {missing[0]}"
+                    )
         if len(ids) < 2:
             # 버린 것을 남긴다. 조용히 버리면 화면에서 '관계 없음'과
             # 구분되지 않아, 모델이 못 찾은 것인지 우리가 버린 것인지
             # 알 수 없다.
+            dropped += 1
             print(
                 f"[directing-review] relation dropped (unknown diagnosis id): "
                 f"type={relation.get('type')} ids={relation.get('diagnosis_ids')} "
@@ -1225,15 +1256,12 @@ async def _relate_lenses(
             ))
         except ValueError as error:
             # 방향이 빠진 consequence 등. 관계 하나 때문에 검토 전체를 버리지 않는다.
+            dropped += 1
             print(
                 f"[directing-review] relation dropped (invalid): "
                 f"type={relation.get('type')} error={error}"
             )
             continue
-    if raw_relations and not findings:
-        print(f"[directing-review] all {len(raw_relations)} relation(s) dropped")
-    elif not raw_relations:
-        print("[directing-review] model returned no relations")
 
     order = None
     raw_order = data.get("order")
@@ -1250,7 +1278,7 @@ async def _relate_lenses(
             )
         except ValueError:
             order = None
-    return findings, order
+    return findings, order, dropped
 
 
 async def review_directing(request: DirectingReviewRequest) -> DirectingReviewResponse:
@@ -1278,10 +1306,11 @@ async def _relate_only(request: DirectingReviewRequest) -> DirectingReviewRespon
     """
     if not request.lens_results:
         raise ValueError("relate mode requires lens_results")
-    findings, order = await _relate_lenses(request.lens_results, request.settled)
+    findings, order, dropped = await _relate_lenses(request.lens_results, request.settled)
     return DirectingReviewResponse(
         lens_results=request.lens_results,
         common_findings=findings,
+        dropped_relations=dropped,
         order=order,
     )
 
