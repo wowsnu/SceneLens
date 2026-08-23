@@ -111,6 +111,21 @@ export default function GridView({
   const [splitPending, setSplitPending] = useState(false)
   const [splitError, setSplitError] = useState(null)
 
+  const resetSeamAction = () => {
+    setPendingEdit(null)
+    setMergeDraft('')
+    setInsertCandidates([])
+    setInsertChoice(null)
+    setInsertError(null)
+    setSplitDraft(null)
+    setSplitError(null)
+  }
+
+  const closeSeamCard = () => {
+    resetSeamAction()
+    setOpenSeamId(null)
+  }
+
   // 미리보기를 열 때 초안을 만든다. 두 컷 사이에 생략해 둔 것이 있으면
   // 그것도 넣는다 — 합치면 그 일이 한 컷 안에서 일어나기 때문이다.
   const openMergePreview = (prevShot, shot, index, proposal = null) => {
@@ -207,6 +222,9 @@ export default function GridView({
     if (seamFocusRequest.action === 'merge' && index >= 0 && shots[index + 1]) {
       openMergePreview(shots[index], shots[index + 1], index + 1, seamFocusRequest.proposal)
     } else if (seamFocusRequest.action === 'split' && index >= 0) {
+      // Split은 이음새 액션이 아니라 한 컷을 나누는 일이다. 진단에서
+      // 들어와도 이음새 카드 대신 해당 컷의 독립 편집 카드를 연다.
+      setOpenSeamId(null)
       const target = shots[index]
       if (target?.cutPlanItemId) {
         setSplitDraft(null)
@@ -239,6 +257,18 @@ export default function GridView({
       }
     }
   }
+
+  const openSeamIndex = shots.findIndex((shot) => shot.id === openSeamId)
+  const openSeamBeforeShot = openSeamIndex >= 0 ? shots[openSeamIndex] : null
+  const openSeamAfterShot = openSeamIndex >= 0 ? shots[openSeamIndex + 1] : null
+  const openSeam = openSeamBeforeShot
+    ? seams[seamKeyFor(openSeamBeforeShot.id)]
+    : null
+  const openSeamMarked = isSeamMarked(openSeam)
+  const hasOpenSeam = Boolean(openSeamBeforeShot && openSeamAfterShot)
+  const splitOnlyShot = pendingEdit?.kind === 'split'
+    ? shots[pendingEdit.index]
+    : null
 
   const rangeFrom = rangeAnchor !== null && activeShot !== null ? Math.min(rangeAnchor, activeShot) : null
   const rangeTo   = rangeAnchor !== null && activeShot !== null ? Math.max(rangeAnchor, activeShot) : null
@@ -376,7 +406,12 @@ export default function GridView({
                       aria-expanded={open}
                       onClick={(e) => {
                         e.stopPropagation()
-                        setOpenSeamId(open ? null : prevShot.id)
+                        if (open) {
+                          closeSeamCard()
+                          return
+                        }
+                        resetSeamAction()
+                        setOpenSeamId(prevShot.id)
                       }}
                     >
                       {marked ? (
@@ -393,100 +428,6 @@ export default function GridView({
                       )}
                     </button>
 
-                    {open && (
-                      <div className="grid-seam-editor" onClick={(e) => e.stopPropagation()}>
-                        <header>
-                          <strong>S{i} → S{i + 1}</strong>
-                          <button
-                            type="button"
-                            onClick={() => { clearSeam(prevShot.id); setOpenSeamId(null) }}
-                          >
-                            지우기
-                          </button>
-                        </header>
-
-                        <label>연결 방식</label>
-                        <div className="grid-seam-chips">
-                          {SEAM_JOINS.map((option) => (
-                            <button
-                              key={option.id}
-                              type="button"
-                              className={(seam?.join || 'cut') === option.id ? 'active' : ''}
-                              title={option.hint}
-                              onClick={() => updateSeam(prevShot.id, { join: option.id })}
-                            >
-                              {option.label}
-                            </button>
-                          ))}
-                        </div>
-
-                        <label>흐른 시간</label>
-                        <div className="grid-seam-chips">
-                          {SEAM_ELAPSED.map((option) => (
-                            <button
-                              key={option.id}
-                              type="button"
-                              className={(seam?.elapsed || 'continuous') === option.id ? 'active' : ''}
-                              title={option.hint}
-                              onClick={() => updateSeam(prevShot.id, { elapsed: option.id })}
-                            >
-                              {option.label}
-                            </button>
-                          ))}
-                        </div>
-
-                        {/* 편집이 왜 이렇게 보는지. 판정하려면 근거가 필요하다. */}
-                        {seam?.reason && (
-                          <p className="grid-seam-reason">{seam.reason}</p>
-                        )}
-
-                        {/* 생략한 것을 적어두지 않으면 나중에 누락과 구분되지 않는다. */}
-                        <label htmlFor={`elision-${prevShot.id}`}>생략된 것</label>
-                        <input
-                          id={`elision-${prevShot.id}`}
-                          value={seam?.elision || ''}
-                          placeholder="예: 하린이 실험대를 가로지르는 동안"
-                          onChange={(e) => updateSeam(prevShot.id, { elision: e.target.value })}
-                        />
-
-                        {/* 이음새에서 할 수 있는 구조 개입 (DG2 P2).
-                            넣기·합치기·순서 바꾸기가 모두 컷 사이의 일이므로
-                            여기 모은다 — 컷 플랜 표로 되돌아갈 이유가 없다. */}
-                        <div className="grid-seam-ops">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setInsertCandidates([])
-                              setInsertChoice(null)
-                              setInsertError(null)
-                              setPendingEdit({
-                                kind: 'insert',
-                                cutId: prevShot.cutPlanItemId,
-                                index: i,
-                              })
-                            }}
-                          >
-                            사이에 컷 넣기
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => openMergePreview(prevShot, shot, i)}
-                          >
-                            두 컷 합치기
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setPendingEdit({
-                              kind: 'swap',
-                              cutId: prevShot.cutPlanItemId,
-                              index: i,
-                            })}
-                          >
-                            앞뒤 순서 바꾸기
-                          </button>
-                        </div>
-                      </div>
-                    )}
                   </div>
                 )
               })()}
@@ -553,6 +494,7 @@ export default function GridView({
                           first: { content: source?.content || '' },
                           second: { content: '' },
                         })
+                        setOpenSeamId(null)
                         setPendingEdit({ kind: 'split', cutId: shot.cutPlanItemId, index: i })
                       }}
                       title="이 컷을 둘로 나눕니다"
@@ -676,10 +618,163 @@ export default function GridView({
         </button>}
       </div>
 
-      {/* 실행 전 영향 미리보기 (DG2 P3). 무엇이 바뀌고 무엇이 사라지는지
-          먼저 보이고, 합쳐질 내용은 그 자리에서 고칠 수 있게 한다 —
-          AI가 이어붙인 문장을 그대로 받게 하지 않는다. */}
-      {pendingEdit && (() => {
+      {(hasOpenSeam || splitOnlyShot) && (
+        <section
+          className="grid-seam-card"
+          aria-label={hasOpenSeam
+            ? `S${openSeamIndex + 1}과 S${openSeamIndex + 2} 이음새 편집`
+            : `S${pendingEdit.index + 1} 나누기`}
+        >
+          {hasOpenSeam ? (
+            <>
+          <header className="grid-seam-card-head">
+            <div>
+              <span>SEAM</span>
+              <strong>S{openSeamIndex + 1} <em>┃</em> S{openSeamIndex + 2}</strong>
+            </div>
+            <div className="grid-seam-card-head-actions">
+              {openSeamMarked && (
+                <button
+                  type="button"
+                  className="grid-seam-reset"
+                  onClick={() => clearSeam(openSeamBeforeShot.id)}
+                >
+                  기본값으로 되돌리기
+                </button>
+              )}
+              <button type="button" className="grid-seam-card-close" onClick={closeSeamCard} aria-label="이음새 편집 닫기">✕</button>
+            </div>
+          </header>
+
+          <div className="grid-seam-pair">
+            {[openSeamBeforeShot, openSeamAfterShot].map((pairShot, offset) => {
+              const pairCut = cutPlan.find((item) => item.id === pairShot.cutPlanItemId)
+              const pairImage = draftImages[pairShot.id] || pairShot.image
+              return (
+                <div className="grid-seam-shot" key={pairShot.id}>
+                  <div className="grid-seam-shot-frame">
+                    {pairImage
+                      ? <img src={pairImage} alt={`S${openSeamIndex + offset + 1}`} />
+                      : <span>S{openSeamIndex + offset + 1}</span>}
+                  </div>
+                  <div>
+                    <strong>S{openSeamIndex + offset + 1}</strong>
+                    <p>{pairCut?.content || pairShot.label || '(비어 있음)'}</p>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+
+          <div className="grid-seam-settings">
+            <div className="grid-seam-setting-row">
+              <span>연결</span>
+              <div className="grid-seam-chips">
+                {SEAM_JOINS.map((option) => (
+                  <button
+                    key={option.id}
+                    type="button"
+                    className={(openSeam?.join || 'cut') === option.id ? 'active' : ''}
+                    title={option.hint}
+                    onClick={() => updateSeam(openSeamBeforeShot.id, { join: option.id })}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="grid-seam-setting-row">
+              <span>시간</span>
+              <div className="grid-seam-chips">
+                {SEAM_ELAPSED.map((option) => (
+                  <button
+                    key={option.id}
+                    type="button"
+                    className={(openSeam?.elapsed || 'continuous') === option.id ? 'active' : ''}
+                    title={option.hint}
+                    onClick={() => updateSeam(openSeamBeforeShot.id, { elapsed: option.id })}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <label className="grid-seam-elision" htmlFor={`elision-${openSeamBeforeShot.id}`}>
+              <span>생략된 것</span>
+              <input
+                id={`elision-${openSeamBeforeShot.id}`}
+                value={openSeam?.elision || ''}
+                placeholder="예: 하린이 실험대를 가로지르는 동안"
+                onChange={(event) => updateSeam(openSeamBeforeShot.id, { elision: event.target.value })}
+              />
+            </label>
+            {openSeam?.reason && <p className="grid-seam-reason">{openSeam.reason}</p>}
+          </div>
+
+          <div className="grid-seam-action-tabs" aria-label="이음새 구조 변경">
+            <span>구조 변경</span>
+            <div>
+              <button
+                type="button"
+                className={pendingEdit?.kind === 'insert' ? 'active' : ''}
+                onClick={() => {
+                  resetSeamAction()
+                  setPendingEdit({
+                    kind: 'insert',
+                    cutId: openSeamBeforeShot.cutPlanItemId,
+                    index: openSeamIndex + 1,
+                  })
+                }}
+              >
+                Insert
+              </button>
+              <button
+                type="button"
+                className={pendingEdit?.kind === 'merge' ? 'active' : ''}
+                onClick={() => {
+                  resetSeamAction()
+                  openMergePreview(openSeamBeforeShot, openSeamAfterShot, openSeamIndex + 1)
+                }}
+              >
+                Merge
+              </button>
+              <button
+                type="button"
+                className={pendingEdit?.kind === 'swap' ? 'active' : ''}
+                onClick={() => {
+                  resetSeamAction()
+                  setPendingEdit({
+                    kind: 'swap',
+                    cutId: openSeamBeforeShot.cutPlanItemId,
+                    index: openSeamIndex + 1,
+                  })
+                }}
+              >
+                Swap
+              </button>
+            </div>
+          </div>
+            </>
+          ) : (
+            <header className="grid-seam-card-head grid-split-card-head">
+              <div>
+                <span>SHOT</span>
+                <strong>S{pendingEdit.index + 1} 나누기</strong>
+              </div>
+              <button
+                type="button"
+                className="grid-seam-card-close"
+                onClick={closeSeamCard}
+                aria-label="컷 나누기 닫기"
+              >
+                ✕
+              </button>
+            </header>
+          )}
+
+          {/* 실행 전 영향 미리보기 (DG2 P3). 무엇이 바뀌고 무엇이 사라지는지
+              같은 카드의 하단에서 확인하고 적용한다. */}
+          {pendingEdit && (() => {
         const cut = cutPlan.find((item) => item.id === pendingEdit.cutId)
         if (!cut) return null
         const cutIndex = cutPlan.findIndex((item) => item.id === pendingEdit.cutId)
@@ -694,7 +789,7 @@ export default function GridView({
         }
 
         return (
-          <div className="grid-edit-preview" role="dialog" aria-label="편집 미리보기">
+          <div className="grid-edit-preview in-seam-card" aria-label="편집 미리보기">
             <header>
               <strong>{TITLES[kind]}</strong>
               <button type="button" onClick={() => { setPendingEdit(null); setSplitDraft(null) }} aria-label="닫기">✕</button>
@@ -919,6 +1014,8 @@ export default function GridView({
           </div>
         )
       })()}
+        </section>
+      )}
     </div>
   )
 }

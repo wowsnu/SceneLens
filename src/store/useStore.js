@@ -3194,8 +3194,24 @@ const useStore = create((set, get) => ({
     })
 
     // 이음새는 앞 패널에 붙는다. 두 패널이 자리를 바꾸면 그 사이의
-    // 이음새는 여전히 '사이'에 있으므로 그대로 두고, 바깥쪽 둘만 따라간다.
-    return { ...next, cutPlan: reorderCutPlan(nextPlan) }
+    // 이음새는 여전히 가운데 자리에 남아야 한다. 키를 그대로 두면 원래
+    // A→B 이음새가 교환 뒤 A→다음 컷에 붙고, B→다음 컷 이음새가 가운데로
+    // 들어온다. 두 패널 뒤의 키를 맞바꿔 각 이음새가 원래의 위치를 지키게 한다.
+    const shots = state.scenes[state.activeScene]
+      ?.branches[state.scenes[state.activeScene].activeBranch ?? 0]?.shots || []
+    const firstShot = shots.find((shot) => shot.cutPlanItemId === first.id)
+    const secondShot = shots.find((shot) => shot.cutPlanItemId === second.id)
+    const nextSeams = { ...state.seams }
+    if (firstShot && secondShot) {
+      const middleSeam = nextSeams[seamKeyFor(firstShot.id)]
+      const afterSeam = nextSeams[seamKeyFor(secondShot.id)]
+      delete nextSeams[seamKeyFor(firstShot.id)]
+      delete nextSeams[seamKeyFor(secondShot.id)]
+      if (middleSeam) nextSeams[seamKeyFor(secondShot.id)] = middleSeam
+      if (afterSeam) nextSeams[seamKeyFor(firstShot.id)] = afterSeam
+    }
+
+    return { ...next, cutPlan: reorderCutPlan(nextPlan), seams: nextSeams }
   })
   },
 

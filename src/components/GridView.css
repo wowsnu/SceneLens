@@ -728,61 +728,6 @@
   font-weight: 700;
 }
 
-.grid-seam-editor {
-  position: absolute;
-  z-index: 20;
-  top: 26px;
-  left: 0;
-  width: 208px;
-  padding: 11px 12px;
-  border: 1px solid rgba(196, 150, 210, 0.32);
-  border-radius: 9px;
-  background: #14101a;
-  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.6);
-}
-
-.grid-seam-editor header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 9px;
-}
-
-.grid-seam-editor header strong {
-  color: rgba(255, 255, 255, 0.88);
-  font-size: 11.5px;
-  font-weight: 750;
-}
-
-.grid-seam-editor header button {
-  padding: 2px 7px;
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  border-radius: 5px;
-  background: transparent;
-  color: rgba(255, 255, 255, 0.45);
-  font-family: inherit;
-  font-size: 10px;
-  cursor: pointer;
-}
-
-.grid-seam-editor header button:hover {
-  border-color: rgba(255, 255, 255, 0.28);
-  color: rgba(255, 255, 255, 0.85);
-}
-
-.grid-seam-editor label {
-  display: block;
-  margin: 9px 0 5px;
-  color: rgba(255, 255, 255, 0.4);
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-}
-
-.grid-seam-editor label:first-of-type {
-  margin-top: 0;
-}
-
 .grid-seam-chips {
   display: flex;
   flex-wrap: wrap;
@@ -814,8 +759,198 @@
   color: rgba(212, 172, 226, 0.98);
 }
 
-.grid-seam-editor input {
+/* 선택한 두 패널과 그 사이의 결정을 한곳에서 다루는 이음새 카드.
+   작은 경계 팝오버와 별도 구조 변경 모달을 합쳐, 무엇을 바꾸는지 계속
+   보이는 상태에서 연결과 구조를 함께 판정한다. */
+.grid-seam-card {
+  position: absolute;
+  z-index: 40;
+  left: 50%;
+  bottom: 18px;
+  transform: translateX(-50%);
+  width: min(720px, calc(100% - 28px));
+  max-height: calc(100% - 36px);
+  overflow-y: auto;
+  padding: 15px 16px;
+  border: 1px solid rgba(196, 150, 210, 0.42);
+  border-radius: 12px;
+  background: #14101a;
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.72);
+}
+
+.grid-seam-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 12px;
+}
+
+.grid-seam-card-head > div:first-child {
+  display: flex;
+  align-items: baseline;
+  gap: 9px;
+}
+
+.grid-seam-card-head span {
+  color: rgba(212, 172, 226, 0.62);
+  font-size: 9.5px;
+  font-weight: 850;
+  letter-spacing: 0.09em;
+}
+
+.grid-seam-card-head strong {
+  color: rgba(255, 255, 255, 0.94);
+  font-size: 14px;
+  font-weight: 780;
+}
+
+.grid-seam-card-head strong em {
+  margin: 0 3px;
+  color: rgba(212, 172, 226, 0.8);
+  font-style: normal;
+}
+
+.grid-seam-card-head-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.grid-seam-card-head-actions button {
+  border: 0;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.42);
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.grid-seam-card-head-actions .grid-seam-reset {
+  padding: 4px 7px;
+  border-radius: 5px;
+  font-size: 10px;
+}
+
+.grid-seam-card-head-actions .grid-seam-reset:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.78);
+}
+
+.grid-seam-card-head-actions .grid-seam-card-close {
+  width: 24px;
+  height: 24px;
+  border-radius: 5px;
+  font-size: 13px;
+}
+
+.grid-seam-card-head-actions .grid-seam-card-close:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.grid-seam-pair {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 24px;
+  position: relative;
+  margin-bottom: 13px;
+}
+
+.grid-seam-pair::after {
+  content: '┃';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: rgba(212, 172, 226, 0.68);
+  font-size: 15px;
+  font-weight: 800;
+}
+
+.grid-seam-shot {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+  padding: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.grid-seam-shot-frame {
+  flex: 0 0 72px;
+  width: 72px;
+  aspect-ratio: 16 / 9;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border-radius: 5px;
+  background: rgba(0, 0, 0, 0.38);
+  color: rgba(255, 255, 255, 0.34);
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.grid-seam-shot-frame img {
   width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.grid-seam-shot > div:last-child {
+  min-width: 0;
+}
+
+.grid-seam-shot strong {
+  display: block;
+  margin-bottom: 2px;
+  color: rgba(255, 255, 255, 0.86);
+  font-size: 10.5px;
+}
+
+.grid-seam-shot p {
+  display: -webkit-box;
+  overflow: hidden;
+  margin: 0;
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 10.5px;
+  line-height: 1.4;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.grid-seam-settings {
+  padding: 10px 11px;
+  border: 1px solid rgba(255, 255, 255, 0.075);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.14);
+}
+
+.grid-seam-setting-row,
+.grid-seam-elision {
+  display: grid;
+  grid-template-columns: 62px minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+}
+
+.grid-seam-setting-row + .grid-seam-setting-row,
+.grid-seam-setting-row + .grid-seam-elision {
+  margin-top: 8px;
+}
+
+.grid-seam-setting-row > span,
+.grid-seam-elision > span {
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 10px;
+  font-weight: 750;
+}
+
+.grid-seam-elision input {
+  width: 100%;
+  min-width: 0;
   padding: 5px 7px;
   border: 1px solid rgba(255, 255, 255, 0.14);
   border-radius: 5px;
@@ -825,9 +960,63 @@
   font-size: 11px;
 }
 
-.grid-seam-editor input:focus {
-  border-color: rgba(196, 150, 210, 0.55);
+.grid-seam-elision input:focus {
+  border-color: rgba(196, 150, 210, 0.58);
   outline: none;
+}
+
+.grid-seam-action-tabs {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 11px;
+}
+
+.grid-seam-action-tabs > span {
+  flex: 0 0 62px;
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 10px;
+  font-weight: 750;
+}
+
+.grid-seam-action-tabs > div {
+  display: flex;
+  gap: 5px;
+}
+
+.grid-seam-action-tabs button {
+  min-width: 72px;
+  padding: 6px 12px;
+  border: 1px solid rgba(196, 150, 210, 0.3);
+  border-radius: 6px;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.58);
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.grid-seam-action-tabs button:hover,
+.grid-seam-action-tabs button.active {
+  border-color: rgba(196, 150, 210, 0.65);
+  background: rgba(196, 150, 210, 0.16);
+  color: rgba(216, 178, 228, 0.98);
+}
+
+.grid-edit-preview.in-seam-card {
+  position: static;
+  width: 100%;
+  max-height: none;
+  margin-top: 12px;
+  padding: 12px 0 0;
+  transform: none;
+  overflow: visible;
+  border: 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
 }
 
 /* compact는 열 간격이 12px이라 가장자리에 걸치면 옆 셀을 덮는다.
@@ -838,21 +1027,11 @@
   transform: translateX(-50%);
 }
 
-.grid-view.compact .grid-seam-editor {
-  left: 50%;
-  transform: translateX(-50%);
-}
-
 /* 2열 그리드에서 홀수 번째 셀은 줄의 왼쪽 끝이다. 그 이음새는 옆 칸이
    아니라 윗줄 마지막 컷과의 사이이므로, 셀 위쪽 가장자리에 얹는다. */
 .grid-view.compact .grid-cell-wrapper:nth-child(odd) .grid-seam {
   top: -9px;
   left: 10px;
-  transform: none;
-}
-
-.grid-view.compact .grid-cell-wrapper:nth-child(odd) .grid-seam-editor {
-  left: 0;
   transform: none;
 }
 
@@ -1130,32 +1309,6 @@
   line-height: 1.5;
 }
 
-/* 이음새에서 하는 구조 개입. 넣기·합치기·순서가 모두 컷 사이의 일이다. */
-.grid-seam-ops {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 5px;
-  margin-top: 8px;
-}
-
-.grid-seam-ops button {
-  flex: 1 1 auto;
-  padding: 5px 8px;
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  border-radius: 5px;
-  background: rgba(255, 255, 255, 0.04);
-  color: rgba(255, 255, 255, 0.72);
-  font-family: inherit;
-  font-size: 10.5px;
-  white-space: nowrap;
-  cursor: pointer;
-}
-
-.grid-seam-ops button:hover {
-  border-color: rgba(255, 255, 255, 0.3);
-  color: rgba(255, 255, 255, 0.95);
-}
-
 /* 넣을 컷의 후보. 빈 컷을 만들어 두면 대개 비어 있는 채로 남는다. */
 .grid-edit-candidates {
   margin-top: 10px;
@@ -1268,4 +1421,50 @@
   color: rgba(252, 211, 153, 0.9);
   font-size: 11.5px;
   line-height: 1.5;
+}
+
+@media (max-width: 680px) {
+  .grid-seam-pair {
+    grid-template-columns: 1fr;
+    gap: 18px;
+  }
+
+  .grid-seam-pair::after {
+    content: '↓';
+  }
+
+  .grid-seam-setting-row,
+  .grid-seam-elision,
+  .grid-seam-action-tabs {
+    display: block;
+  }
+
+  .grid-seam-setting-row > span,
+  .grid-seam-elision > span,
+  .grid-seam-action-tabs > span {
+    display: block;
+    margin-bottom: 5px;
+  }
+
+  .grid-seam-setting-row + .grid-seam-setting-row,
+  .grid-seam-setting-row + .grid-seam-elision {
+    margin-top: 10px;
+  }
+
+  .grid-seam-action-tabs > div {
+    width: 100%;
+  }
+
+  .grid-seam-action-tabs button {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .grid-edit-diff {
+    flex-direction: column;
+  }
+
+  .grid-edit-arrow {
+    transform: rotate(90deg);
+  }
 }
