@@ -1048,6 +1048,9 @@ summary와 order.reason은 각각 짧은 한 문장으로 씁니다. 예를 들�
 - **conflict** — 두 렌즈가 서로 **반대되는** 방향을 요구하는 경우.
   ✓ "촬영은 더 좁혀 표정을 보자 하고, 미장센은 두 사람의 거리가 보여야 한다고 한다"
   둘 다 옳아서 한쪽을 고르면 다른 쪽을 잃습니다. 감독이 무엇을 우선할지 정합니다.
+  **각 진단의 `이 렌즈가 요구하는 것`과 `갈 수 있는 길`을 비교하세요.** 문제
+  서술은 비슷한데 요구가 반대인 경우가 있습니다 — 한쪽은 이어 보이게 하자
+  하고 다른 쪽은 갈라 보이게 하자는 식입니다. 그것이 conflict입니다.
 
 - **agreement** — 두 렌즈가 **같은 문제**를 서로 다른 근거로 짚은 경우.
   ✓ "촬영은 그래프가 작아 안 읽힌다 하고, 미장센은 지운 흔적이 흐려 안 읽힌다 한다
@@ -1056,6 +1059,8 @@ summary와 order.reason은 각각 짧은 한 문장으로 씁니다. 예를 들�
 
 **어느 것인지 고르는 법.** 한쪽이 다른 쪽의 원인이면 consequence, 두 요구가
 양립할 수 없으면 conflict, 두 지적이 같은 결손을 가리키면 agreement입니다.
+**같은 두 진단이 agreement이면서 conflict일 수 있습니다** — 같은 결손을
+짚었는데 해법이 갈리는 경우입니다. 그때는 둘 다 보고하세요.
 consequence가 기본값이 아닙니다 — 방향이 실제로 보일 때만 consequence입니다.
 어느 쪽이 원인인지 말할 수 없다면 conflict나 agreement입니다.
 
@@ -1153,7 +1158,14 @@ CROSS_LENS_SCHEMA = {
 
 
 def _lens_digest(lens_results: dict) -> str:
-    """각 렌즈가 무엇을 판단했는지 압축해 넘긴다. 이미지는 다시 보내지 않는다."""
+    """각 렌즈가 무엇을 판단했는지 압축해 넘긴다. 이미지는 다시 보내지 않는다.
+
+    문제만이 아니라 **수정 방향과 선택지**도 함께 넘긴다. conflict는 두
+    렌즈가 서로 반대되는 방향을 요구하는 관계인데, 문제 서술만 보내면
+    요구가 무엇인지 알 수 없어 그 관계가 원리적으로 발견되지 않는다.
+    같은 문제를 짚었는지(agreement)나 한쪽이 다른 쪽을 만들었는지
+    (consequence)는 문제만으로 판정되지만, 충돌은 해법에서 드러난다.
+    """
     blocks = []
     for lens, result in lens_results.items():
         lines = [f"[{lens}] {result.summary}"]
@@ -1162,7 +1174,17 @@ def _lens_digest(lens_results: dict) -> str:
                 f"  - {diagnosis.id} | 기준: {diagnosis.criterion}"
                 f"\n    진단: {diagnosis.diagnosis}"
                 f"\n    대상: {', '.join(diagnosis.targets)}"
+                f"\n    이 렌즈가 요구하는 것: {diagnosis.suggested_action}"
             )
+            # '그대로 두기'는 어느 진단에나 붙는 기본값이라 방향을 말하지
+            # 않는다. 실제로 무엇을 하자는 것인지만 넘긴다.
+            moves = [
+                f"{alt.label} — {alt.effect}"
+                for alt in diagnosis.alternatives
+                if alt.kind != "keep"
+            ]
+            if moves:
+                lines.append(f"    갈 수 있는 길: {' / '.join(moves)}")
         for assessment in result.level_assessments:
             if assessment.open_question:
                 lines.append(f"  - (미결) {assessment.level}: {assessment.open_question}")
