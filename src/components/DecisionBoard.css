@@ -6250,36 +6250,6 @@ button.active .lens-glass::after {
   line-height: 1.55;
 }
 
-/* 관계가 가리키는 두 진단. 요약 한 줄만 두면 감독은 어느 판단끼리
-   맞물린다는 것인지 위쪽 렌즈 카드에서 직접 찾아야 한다. 실제 진단
-   문장을 그대로 데려와, 관계 주장을 감독이 검증할 수 있게 한다. */
-.multi-review-tension-basis {
-  margin: 9px 0 0;
-  padding: 0 0 0 11px;
-  border-left: 2px solid rgba(255, 255, 255, 0.1);
-  list-style: none;
-}
-
-.multi-review-tension-basis li + li {
-  margin-top: 8px;
-}
-
-.multi-review-tension-basis li > span {
-  display: block;
-  margin-bottom: 2px;
-  color: rgba(255, 255, 255, 0.42);
-  font-size: 9.5px;
-  font-weight: 800;
-  letter-spacing: 0.05em;
-}
-
-.multi-review-tension-basis li > p {
-  margin: 0;
-  color: rgba(255, 255, 255, 0.66) !important;
-  font-size: 11px !important;
-  line-height: 1.5 !important;
-}
-
 /* 찾았는데 버린 경우. '관계 없음'과 같은 회색으로 두면 둘이 구분되지
    않는다 — 여기서는 다시 시도할 수 있다는 것이 요지다. */
 .multi-review-empty.is-dropped {

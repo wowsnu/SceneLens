@@ -2257,26 +2257,6 @@ export default function DecisionBoard({ boardView = 'split' }) {
   // 진단은 있는데 관계가 없으면 서로 무관한 것이다.
   const multiHasDiagnosis = Object.values(multiReviewRun.lensResults || {})
     .some((result) => (result.diagnoses || []).length > 0)
-  // 관계가 가리키는 진단을 실제 문장으로 데려온다. 관계 카드가 summary
-  // 한 줄만 보여주면 감독은 어느 판단끼리 맞물린다는 것인지 위쪽 렌즈
-  // 카드에서 직접 찾아야 한다. id는 이미 있으니 화면에서 이어 준다.
-  const multiDiagnosisById = {}
-  Object.entries(multiReviewRun.lensResults || {}).forEach(([backendId, result]) => {
-    (result.diagnoses || []).forEach((diagnosis) => {
-      multiDiagnosisById[diagnosis.id] = { ...diagnosis, lens: backendId }
-    })
-  })
-  // consequence는 원인이 먼저 읽혀야 한다. 그 밖에는 서버가 준 순서를 둔다.
-  const relationDiagnoses = (relation) => {
-    const found = relation.diagnosis_ids
-      .map((id) => multiDiagnosisById[id])
-      .filter(Boolean)
-    if (relation.type !== 'consequence') return found
-    return [
-      ...found.filter((item) => item.lens === relation.source_lens),
-      ...found.filter((item) => item.lens !== relation.source_lens),
-    ]
-  }
   const multiScopeLabel = scopeMode === 'range'
     ? `S${scopeFrom + 1}–S${scopeTo + 1}`
     : `S${scopedShotIndex + 1}`
@@ -5260,29 +5240,6 @@ export default function DecisionBoard({ boardView = 'split' }) {
                     </em>
                   </header>
                   <p>{relation.summary}</p>
-                  {/* 관계가 어느 판단끼리인지 실제 진단 문장으로 보여준다.
-                      요약 한 줄만 두면 감독이 근거를 검증할 수 없고, 위쪽
-                      렌즈 카드에서 해당 진단을 직접 찾아야 한다. */}
-                  {(() => {
-                    const linked = relationDiagnoses(relation)
-                    if (linked.length < 2) return null
-                    return (
-                      <ol className="multi-review-tension-basis">
-                        {linked.map((diagnosis, index) => (
-                          <li key={diagnosis.id}>
-                            <span>
-                              {relation.type === 'consequence'
-                                ? (index === 0 ? '원인' : '영향')
-                                : lensMark(diagnosis.lens)}
-                              {' '}
-                              {lensName(diagnosis.lens)}
-                            </span>
-                            <p>{diagnosis.diagnosis}</p>
-                          </li>
-                        ))}
-                      </ol>
-                    )
-                  })()}
                   {relation.type === 'consequence' && (
                     <div className="multi-review-tension-where">
                       <strong>고칠 곳은 {lensName(relation.source_lens)}입니다</strong>
