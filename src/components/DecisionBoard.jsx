@@ -5219,10 +5219,10 @@ export default function DecisionBoard({ boardView = 'split' }) {
                 })}
               </div>
 
-              {/* 어느 렌즈부터 손댈 것인가. 서버가 관계에서 계산해 주는데
-                  그리지 않고 있었다 — 감독은 세 탭 중 어디를 먼저 열지
-                  모른 채 관계만 읽게 된다. */}
-              {multiReviewRun.related && multiReviewRun.order && (
+              {/* 어느 렌즈부터 손댈 것인가. 관계가 둘 이상일 때만 둔다 —
+                  하나뿐이면 그 카드의 `고칠 곳은 …입니다`가 같은 말을
+                  이미 하고 있어, 같은 지시가 화면에 두 번 뜬다. */}
+              {multiReviewRun.related && multiReviewRun.order && multiRelations.length > 1 && (
                 <section className="multi-review-order">
                   <header>
                     <span>먼저 볼 곳</span>
