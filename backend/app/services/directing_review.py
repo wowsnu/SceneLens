@@ -1067,7 +1067,11 @@ consequence가 기본값이 아닙니다 — 방향이 실제로 보일 때만 c
 규칙:
 - **없으면 빈 배열입니다.** 렌즈들이 서로 다른 것을 봤다면 관계가 없는 것이 정상입니다.
   억지로 엮지 마세요.
-- diagnosis_ids는 실제로 존재하는 진단 id만 씁니다. 2개 이상이어야 합니다.
+- **diagnosis_ids는 위 목록의 `- ` 뒤에 적힌 진단 id를 그대로 옮겨 적습니다.**
+  `mise-s4-s5-spatial-link`처럼 생긴 문자열입니다. 층위 이름(`shot_relation`,
+  `scene_structure`)이나 렌즈 이름(`camera`)은 진단 id가 아닙니다.
+  **관계가 잇는 두 진단의 id를 각각 하나씩, 2개 이상** 적으세요. 한쪽만
+  적으면 무엇과 무엇의 관계인지 알 수 없어 그 관계는 버려집니다.
 - summary는 두 판단이 **어떻게 맞물리는지** 한 문장으로 씁니다. 두 진단을 나열하지 마세요.
 - 0~3개면 충분합니다.
 
@@ -1139,7 +1143,14 @@ CROSS_LENS_SCHEMA = {
                             "type": "array",
                             "items": {"type": "string", "enum": ["mise", "camera", "editing", "narrative"]},
                         },
-                        "diagnosis_ids": {"type": "array", "items": {"type": "string"}},
+                        # 위 목록에 `- ` 다음에 나온 진단 id를 그대로 옮긴다.
+                        # 층위 이름(shot_relation 등)이나 렌즈 이름이 아니다 —
+                        # 실제로 그렇게 채워 관계가 통째로 버려진 적이 있다.
+                        "diagnosis_ids": {
+                            "type": "array",
+                            "minItems": 2,
+                            "items": {"type": "string"},
+                        },
                         # consequence가 아니면 null.
                         "source_lens": {
                             "type": ["string", "null"],
@@ -1269,6 +1280,16 @@ async def _relate_lenses(
                         f"{relation.get('type')} gained {candidates[0]} "
                         f"from {missing[0]}"
                     )
+            # 렌즈 이름까지 틀렸어도, 진단이 통틀어 둘뿐이면 짝은 자명하다.
+            # 고를 여지가 없으므로 이어도 지어내는 것이 아니다.
+            if len(ids) == 1 and len(known_ids) == 2:
+                other = [rid for rid in known_ids if rid not in ids]
+                ids = ids + other
+                print(
+                    f"[directing-review] relation repaired: "
+                    f"{relation.get('type')} gained {other[0]} "
+                    f"(진단이 둘뿐이라 짝이 자명)"
+                )
         if len(ids) < 2:
             # 버린 것을 남긴다. 조용히 버리면 화면에서 '관계 없음'과
             # 구분되지 않아, 모델이 못 찾은 것인지 우리가 버린 것인지
