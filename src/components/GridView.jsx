@@ -900,9 +900,24 @@ export default function GridView({
                 ) : kind === 'insert' ? (
                   <>
                     <p>{cut.content || '(비어 있음)'}</p>
-                    <p className="grid-edit-new">
-                      {insertChoice?.content || '새 컷 · 아래에서 고르거나 직접 씁니다'}
-                    </p>
+                    {/* 후보를 고르면 이 칸이 채워지고, 감독이 그 문장을
+                        그대로 두거나 고쳐 쓸 수 있다 — 안내 문구와 달리
+                        실제로 직접 쓸 자리가 없었다. */}
+                    <textarea
+                      className="grid-edit-new"
+                      value={insertChoice?.content ?? ''}
+                      rows={3}
+                      placeholder="새 컷 · 아래에서 고르거나 여기에 직접 씁니다"
+                      onChange={(e) => setInsertChoice((current) => ({
+                        ...(current || {}),
+                        content: e.target.value,
+                        // 후보를 고른 뒤 감독이 문장을 손대면 그 시점부터
+                        // 감독이 쓴 것이다 — 골랐다는 사실이 아니라 지금
+                        // 화면에 있는 문장이 누구 것인지가 출처를 정한다.
+                        provenance: 'User',
+                      }))}
+                      aria-label="새 컷 내용"
+                    />
                     <p>{nextCut?.content || '(비어 있음)'}</p>
                   </>
                 ) : kind === 'split' ? (
@@ -970,7 +985,7 @@ export default function GridView({
                           target: pendingEdit.cutId,
                           purpose: candidate.purpose,
                         })
-                        setInsertChoice(chosen ? null : candidate)
+                        setInsertChoice(chosen ? null : { ...candidate, provenance: 'AI' })
                       }}
                     >
                       <strong>{candidate.content}</strong>
@@ -1026,16 +1041,20 @@ export default function GridView({
                   } else if (kind === 'insert') {
                     logScaffold({
                       feature: 'alternative',
-                      // 후보를 받아 넣었으면 accept, 안 받고 빈 컷을 만들었으면
-                      // 제안을 쓰지 않은 것이다.
-                      action: insertChoice ? 'accept' : 'reject',
+                      // 세 갈래다 — 후보 그대로면 accept, 감독이 직접 쓴
+                      // 것이면(후보를 손봤든 처음부터 썼든) modify, 아무것도
+                      // 안 쓰고 빈 컷을 만들었으면 reject다.
+                      action: !insertChoice?.content?.trim()
+                        ? 'reject'
+                        : insertChoice.provenance === 'AI' ? 'accept' : 'modify',
                       target: pendingEdit.cutId,
                       proposed: insertCandidates.length > 0,
                     })
-                    addCutPlanItem(pendingEdit.cutId, cut.beat, insertChoice ? {
+                    addCutPlanItem(pendingEdit.cutId, cut.beat, insertChoice?.content?.trim() ? {
                       content: insertChoice.content,
                       purpose: insertChoice.purpose,
                       characters: insertChoice.characters,
+                      provenance: insertChoice.provenance,
                     } : {})
                   } else {
                     splitCut(pendingEdit.cutId, {

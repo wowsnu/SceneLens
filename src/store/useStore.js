@@ -2680,7 +2680,9 @@ const useStore = create((set, get) => ({
       target: afterItemId,
       action: 'insert',
       source: 'seam',
-      proposed: Boolean(fields.content),
+      // 문장이 있다고 제안을 받은 것은 아니다 — 감독이 직접 썼을 수
+      // 있다. 실제로 AI 후보를 받아 넣었을 때만 proposed다.
+      proposed: fields.provenance === 'AI',
     })
     return set((state) => {
     const next = [...state.cutPlan]
