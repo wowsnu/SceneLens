@@ -422,9 +422,15 @@ export default function GridView({
                           )}
                         </span>
                       ) : (
-                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round">
-                          <path d="M8 5v14M16 5v14" />
-                        </svg>
+                        // 아이콘만 두면 무엇을 여는 버튼인지 알 수 없다.
+                        // 컷 사이를 다루는 자리라는 것이 글자로 보여야
+                        // 초보자가 이 길을 찾는다.
+                        <>
+                          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round">
+                            <path d="M8 5v14M16 5v14" />
+                          </svg>
+                          <span className="grid-seam-hint">이음새</span>
+                        </>
                       )}
                     </button>
 
