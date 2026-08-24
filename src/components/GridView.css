@@ -699,44 +699,64 @@
 
 /* --- 이음새 (DG2 P1) ----------------------------------------------------
    컷과 컷 사이에 무엇이 있는지 기록한다. 컷을 추가하는 gap 버튼과 자리를
-   나눈다 — 컷을 넣는 것과 사이를 기술하는 것은 다른 일이다. */
-/* 이음새는 앞 컷 쪽 변에 붙는다. 줄마다 방향이 바뀌므로 왼쪽·오른쪽이
-   갈리고, 줄 첫 칸은 앞 컷이 바로 위에 있어 위쪽 변이다. */
+   나눈다 — 컷을 넣는 것과 사이를 기술하는 것은 다른 일이다.
+
+   컷을 번갈아 놓아 줄마다 읽는 방향이 뒤집히므로(ㄹ자 배치), 한 컷에서
+   다음 컷으로 가는 흐름이 선으로 끊기지 않고 이어져야 순서가 거꾸로
+   읽히지 않는다. 이음새 알약(.grid-seam)은 그 선 위에 놓인 정거장이다.
+
+   선은 .grid-cell-wrapper 위에 그린다 — .grid-cell-frame은 그림을 담느라
+   overflow: hidden이라, 그 안에 선을 그으면 셀 경계에서 잘린다. wrapper는
+   자르지 않으므로 셀 밖 여백까지 선이 그대로 이어진다. */
+/* .grid-seam 자체(60×28 알약)가 좌표 기준이다. 흐름선은 그 안의 자식
+   이므로 알약과 같은 자리에서 뻗어 나간다 — .grid-cell-wrapper를
+   기준으로 두면 그림 전체 크기에서 %가 계산돼 알약과 어긋난다. */
 .grid-seam {
   position: absolute;
   z-index: 11;
 }
 
-/* 줄이 바뀌는 자리를 잇는 선. 컷을 번갈아 놓으면 줄마다 읽는 방향이
-   뒤집혀, 아래로 어떻게 이어지는지 보이지 않으면 왼쪽부터 읽어 순서를
-   거꾸로 본다. */
-.grid-seam::before {
-  content: '';
+.grid-seam-line {
   position: absolute;
-  border-top: 1.5px dashed rgba(196, 150, 210, 0.34);
+  z-index: -1;
   pointer-events: none;
+  border-color: rgba(196, 150, 210, 0.55);
+  border-style: dashed;
 }
 
-/* 가로로 이웃한 컷에는 선을 긋지 않는다. 두 그림이 이미 나란히 붙어
-   있어 순서가 읽히고, 열 사이 여백은 알약 하나 폭도 안 되어 선을 그어도
-   알약에 덮인다. 흐름이 실제로 끊겨 보이는 곳은 줄이 바뀌는 자리다. */
+/* 가로선: 알약 양옆 여백 끝까지, 셀 경계 너머로도 살짝 더 뻗는다.
+   두 칸이 만나는 지점에서 선이 이어지도록, 각 셀은 자기 앞쪽 절반만
+   책임진다 — 다음 셀이 나머지 절반을 그린다. */
+.grid-seam-line.line-left {
+  top: 50%;
+  right: 100%;
+  width: 28px;
+  border-top-width: 1.5px;
+  border-left-width: 0;
+}
 
-/* 줄이 바뀌는 자리. 앞 컷이 바로 위에 있으므로 세로로 잇는다. */
-.grid-seam.seam-top::before {
-  border-top: 0;
-  border-left: 1.5px dashed rgba(196, 150, 210, 0.5);
+.grid-seam-line.line-right {
+  top: 50%;
+  left: 100%;
+  width: 28px;
+  border-top-width: 1.5px;
+  border-left-width: 0;
+}
+
+/* 세로선: 줄이 바뀌는 자리. 알약 위아래로 두 줄 사이 여백을 채운다. */
+.grid-seam-line.line-top {
   left: 50%;
-  top: -14px;
-  bottom: -14px;
-  z-index: -1;
+  bottom: 100%;
+  height: 20px;
+  border-left-width: 1.5px;
+  border-top-width: 0;
 }
 
 /* 정한 이음새는 선도 함께 진해진다 — 감독이 남긴 결정이 기본값과 같은
    무게로 지나가면 안 된다. */
-.grid-seam.marked::before,
-.grid-seam.open::before {
-  border-top-color: rgba(196, 150, 210, 0.62);
-  border-left-color: rgba(196, 150, 210, 0.62);
+.grid-seam.marked .grid-seam-line,
+.grid-seam.open .grid-seam-line {
+  border-color: rgba(226, 196, 238, 1);
 }
 
 /* 열 사이 여백 한가운데에 세운다. 셀 안쪽에 걸치면 그림을 가리고,

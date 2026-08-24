@@ -24,6 +24,9 @@ export default function GridView({
   compact = false,
   onOpenShot = null,
   decisionScope = null,
+  scopeSelection = null,
+  selectableScopeShotIds = [],
+  onScopeShotSelect = null,
   sequencePreview = null,
   draftImages = {},
 }) {
@@ -241,6 +244,14 @@ export default function GridView({
   const branch = branches[activeBranch]
   if (!branch) return null
   const shots = branch.shots
+  const selectingScope = Boolean(scopeSelection)
+  const selectableScopeShotIdSet = new Set(selectableScopeShotIds)
+  const scopeSelectionFrom = scopeSelection?.anchor == null
+    ? null
+    : Math.min(scopeSelection.anchor, scopeSelection.end ?? scopeSelection.anchor)
+  const scopeSelectionTo = scopeSelection?.anchor == null
+    ? null
+    : Math.max(scopeSelection.anchor, scopeSelection.end ?? scopeSelection.anchor)
 
   // 진단에서 보낸 요청. 이음새를 열고, 나누기·합치기면 그 미리보기까지 연다.
   // 요청은 지우지 않는다 — 처리한 id를 기억하므로 다시 열리지 않는다.
@@ -395,6 +406,10 @@ export default function GridView({
             && decisionScope.shotIds?.includes(shot.id)
           const isDecisionRangeEdge = inDecisionRange
             && (i === decisionScope.from || i === decisionScope.to)
+          const inScopeSelection = scopeSelectionFrom != null
+            && i >= scopeSelectionFrom && i <= scopeSelectionTo
+          const isScopeSelectionAnchor = scopeSelection?.anchor === i
+          const isScopeSelectable = selectableScopeShotIdSet.has(shot.id)
           const activeLensPreview = shotPreview?.shotId === shot.id ? shotPreview : null
           const hasDraftImage = Boolean(draftImages[shot.id]) && !activeLensPreview
           const generationLabel = panelGenerationPending[shot.id]
@@ -420,7 +435,7 @@ export default function GridView({
               style={columns > 1 ? { gridColumn, gridRow: rowIndex + 1 } : undefined}
             >
               {/* Gap fill button — left edge (gap before this cell) */}
-              {!compact && i > 0 && (
+              {!selectingScope && !compact && i > 0 && (
                 <button
                   className="grid-gap-btn before"
                   onClick={(e) => { e.stopPropagation(); openGapFill(activeBranch, i - 1) }}
@@ -435,12 +450,13 @@ export default function GridView({
               {/* 이음새 — 앞 컷과 이 컷 사이 (DG2 P1). 컷을 추가하는 것과
                   사이에 무엇이 있는지 기록하는 것은 다른 일이라 자리를 나눈다.
                   정해진 것이 없으면 hover에서만 나타나 그리드를 어지럽히지 않는다. */}
-              {i > 0 && (() => {
+              {!selectingScope && i > 0 && (() => {
                 const prevShot = shots[i - 1]
                 const seam = seams[seamKeyFor(prevShot.id)]
                 const marked = isSeamMarked(seam)
                 const open = openSeamId === prevShot.id
                 return (
+                  <>
                   <div className={`grid-seam seam-${seamSide}${marked ? ' marked' : ''}${open ? ' open' : ''}`}>
                     <button
                       type="button"
@@ -478,15 +494,31 @@ export default function GridView({
                         </>
                       )}
                     </button>
-
+                    {/* 흐름선. .grid-seam(60×28) 기준 좌표로 그어야
+                        알약과 같은 자리에서 뻗어 나간다 — wrapper 기준으로
+                        두면 그림 전체 폭·높이에서 계산돼 알약과 어긋난
+                        엉뚱한 지점에 그려진다. */}
+                    <div className={`grid-seam-line line-${seamSide}`} />
                   </div>
-                )
-              })()}
+                </>
+              )
+            })()}
 
               <div
-                className={`grid-cell ${isActive ? 'active' : ''} ${inRange ? 'in-range' : ''} ${isAnchor ? 'range-anchor' : ''} ${inDecisionRange ? 'decision-range' : ''} ${isDecisionRangeEdge ? 'decision-range-edge' : ''} ${activeLensPreview ? 'lens-preview' : ''}`}
-                onClick={() => handleCellClick(i)}
+                className={`grid-cell ${isActive ? 'active' : ''} ${inRange ? 'in-range' : ''} ${isAnchor ? 'range-anchor' : ''} ${inDecisionRange ? 'decision-range' : ''} ${isDecisionRangeEdge ? 'decision-range-edge' : ''} ${inScopeSelection ? 'scope-selection' : ''} ${isScopeSelectionAnchor ? 'scope-selection-anchor' : ''} ${selectingScope && isScopeSelectable ? 'scope-selectable' : ''} ${selectingScope && !isScopeSelectable ? 'scope-unavailable' : ''} ${activeLensPreview ? 'lens-preview' : ''}`}
+                role={selectingScope ? 'button' : undefined}
+                tabIndex={selectingScope ? 0 : undefined}
+                aria-label={selectingScope
+                  ? isScopeSelectable
+                    ? `S${i + 1}을 검토 범위에 포함`
+                    : `S${i + 1}은 이미지가 없어 검토 범위에 포함할 수 없음`
+                  : undefined}
+                onClick={() => {
+                  if (selectingScope) onScopeShotSelect?.(i)
+                  else handleCellClick(i)
+                }}
                 onDoubleClick={() => {
+                  if (selectingScope) return
                   setActiveShot(i)
                   if (compact) {
                     onOpenShot?.(i)
@@ -494,8 +526,15 @@ export default function GridView({
                     setFlowView('card')
                   }
                 }}
+                onKeyDown={(event) => {
+                  if (!selectingScope || (event.key !== 'Enter' && event.key !== ' ')) return
+                  event.preventDefault()
+                  onScopeShotSelect?.(i)
+                }}
                 onMouseEnter={() => setHoveredIdx(i)}
-                title={compact ? '더블클릭하여 크게 보기' : undefined}
+                title={selectingScope
+                  ? isScopeSelectable ? '이 컷을 검토 범위에 넣기' : '이미지가 있는 컷만 선택할 수 있습니다'
+                  : compact ? '더블클릭하여 크게 보기' : undefined}
               >
                 <div className="grid-cell-frame">
                   {displayImage ? (
@@ -518,7 +557,7 @@ export default function GridView({
                     </div>
                   )}
 
-                  {isHovered && shots.length > 1 && (
+                  {!selectingScope && isHovered && shots.length > 1 && (
                     <button
                       className="grid-cell-delete"
                       onClick={(e) => {
@@ -532,7 +571,7 @@ export default function GridView({
 
                   {/* 분할은 이음새가 아니라 컷 하나의 일이다. 이음새 편집기에
                       두면 어느 컷을 쪼갤지 모호해진다 (DG2 P1 분할). */}
-                  {isHovered && shot.cutPlanItemId && (
+                  {!selectingScope && isHovered && shot.cutPlanItemId && (
                     <button
                       className="grid-cell-split"
                       onClick={(e) => {
