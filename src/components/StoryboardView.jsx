@@ -26,6 +26,7 @@ import useStore, {
 } from '../store/useStore'
 import './StoryboardView.css'
 import { logEdit, logEvent, logScaffold } from '../store/studyLog'
+import useRequestHistory from '../hooks/useRequestHistory'
 
 // 규칙 id를 그대로 보이면 감독이 읽을 것이 아니다.
 const NARRATIVE_RULE_LABELS = {
@@ -241,7 +242,7 @@ function SceneFactRow({
   }
 
   const changes = fact.changes || []
-  // 씬 안에서 변할 수 있는 항목만. 생김새(성별·나이·체형·외형)는 사람이
+  // 씬 안에서 변할 수 있는 항목만. 생김새(성별·나이·외형)는 사람이
   // 바뀌지 않는 한 그대로다 — 항목마다 버튼을 달면 화면이 복잡해진다.
   const canChange = Boolean(onAddChange)
     && cutOptions.length > 0
@@ -1093,6 +1094,7 @@ export default function StoryboardView() {
   const [panelGridView, setPanelGridView] = useState(true)
   const narrativeCheckPending = useStore((s) => s.narrativeCheckPending)
   const narrativeCheckError = useStore((s) => s.narrativeCheckError)
+  const narrativeCheckStale = useStore((s) => s.narrativeCheckStale)
   const dismissNarrativeSuggestion = useStore((s) => s.dismissNarrativeSuggestion)
   const updateFlowShotById = useStore((s) => s.updateFlowShotById)
   const setPendingCanvasImage = useStore((s) => s.setPendingCanvasImage)
@@ -1207,6 +1209,10 @@ export default function StoryboardView() {
   // 서 있으면 그것부터 채우게 된다. 필요할 때 열어서 쓴다.
   const [sceneNoteOpen, setSceneNoteOpen] = useState(false)
   const [narrativeRequest, setNarrativeRequest] = useState('')
+  const narrativeRequestRecall = useRequestHistory({
+    historyKey: 'narrative',
+    setValue: setNarrativeRequest,
+  })
   // Script에서는 Narrative가 다음 단계를 안내한다. Cut plan에서는 표가 주 작업
   // 공간이므로 Agents rail과 개별 에이전트를 기본으로 접어 둔다. 단계별 상태를
   // 따로 보존해 Script로 돌아왔을 때 사용자가 정한 접힘 상태도 유지한다.
@@ -1256,6 +1262,9 @@ export default function StoryboardView() {
   const [noteEditingShotId, setNoteEditingShotId] = useState(null)
   const [panelCandidates, setPanelCandidates] = useState({})
   const [openReferenceCards, setOpenReferenceCards] = useState({})
+  // 레퍼런스는 기본적으로 AI가 읽은 요약만 보여 준다. 각 항목을 늘 입력칸으로
+  // 열어 두면 사용자는 전부 확인해야 한다고 느낀다. 고칠 때만 편집을 연다.
+  const [editingReferenceCards, setEditingReferenceCards] = useState({})
   const [referenceLightbox, setReferenceLightbox] = useState(null)
   const [panelGenError, setPanelGenError] = useState(null)
 
@@ -1294,9 +1303,6 @@ export default function StoryboardView() {
   // 여러 컷을 함께 읽어야 보이는 문제. 컷 표는 한 행씩만 보여준다.
   // 아직 샷이 정해지지 않은 컷. 촬영이 할 일이 남았는지 보인다.
   const undecidedShots = cutPlan.filter((cut) => !cut.shotSize).length
-  // 아직 정하지 않은 씬 기준. 비워둔 것이 보여야 누락과 구분된다.
-  const undecidedSceneFacts = activeSceneState.characters
-    .reduce((count, character) => count + character.facts.filter((f) => f.open).length, 0)
   const hasActiveSceneState = activeSceneState.characters.length > 0
     || activeSceneState.location.facts.length > 0
     || (activeSceneState.environment?.facts?.length ?? 0) > 0
@@ -1345,12 +1351,12 @@ export default function StoryboardView() {
   // 합치는 것으로는 첫 컷의 id가 바뀌지 않아 다시 부르지 않는다.
   const autoCheckedPlanKey = useRef(null)
   useEffect(() => {
-    if (cutStage !== 'cutplan' || cutPlan.length === 0) return
+    if (cutStage !== 'cutplan' || cutPlan.length === 0 || narrativeCheckPending) return
     const planKey = cutPlan[0].id
     if (autoCheckedPlanKey.current === planKey) return
     autoCheckedPlanKey.current = planKey
     requestNarrativeCheck('cutplan')
-  }, [cutStage, cutPlan, requestNarrativeCheck])
+  }, [cutStage, cutPlan, narrativeCheckPending, requestNarrativeCheck])
 
   // 컷 플랜을 확정하면 초안을 바로 그린다. 확정한 뒤 `Generate`를 한 번 더
   // 눌러야 하면 한 동작이 둘로 나뉜다 — 감독이 정한 것은 "이 구성으로
@@ -1540,6 +1546,35 @@ export default function StoryboardView() {
     }
   }
   const visibleSceneState = withSharedReferences(activeSceneState)
+  // 레퍼런스는 작품 전체에서 한 번만 확인한다. 앞 씬에 이미 나온 인물·공간을
+  // 다음 씬에서도 다시 카드로 보여 주면, 사용자는 같은 항목을 또 확인해야
+  // 한다고 느낀다. 생성에는 visibleSceneState 전체를 그대로 사용하되 화면에는
+  // 이번 씬에서 처음 등장한 대상만 남긴다.
+  const activeSceneIndex = scriptScenes.findIndex((scriptScene) => scriptScene.id === activeSceneId)
+  const priorSceneStates = scriptScenes
+    .slice(0, Math.max(0, activeSceneIndex))
+    .map((scriptScene) => sceneStates[scriptScene.id])
+    .filter(Boolean)
+  const priorCharacterIds = new Set(
+    priorSceneStates.flatMap((sceneState) => sceneState.characters.map((character) => character.id)),
+  )
+  const priorLocationNames = new Set(
+    priorSceneStates
+      .map((sceneState) => referenceIdentity(sceneState.location?.name))
+      .filter(Boolean),
+  )
+  const newReferenceCharacters = visibleSceneState.characters.filter((character) => (
+    !priorCharacterIds.has(character.id)
+  ))
+  const activeLocationIdentity = referenceIdentity(visibleSceneState.location?.name)
+  const newReferenceLocation = !activeLocationIdentity || !priorLocationNames.has(activeLocationIdentity)
+    ? visibleSceneState.location
+    : null
+  // 배지 역시 지금 화면에서 확인할 새 레퍼런스만 센다. 앞 씬에서 남겨 둔
+  // 미정값이 씬마다 다시 할 일처럼 쌓이지 않게 한다.
+  const undecidedSceneFacts = newReferenceCharacters
+    .reduce((count, character) => count + character.facts.filter((fact) => fact.open).length, 0)
+    + (newReferenceLocation?.facts?.filter((fact) => fact.open).length ?? 0)
   // 패널에 실제로 참조로 물리는 기준 그림이 모두 준비됐는지 확인한다.
   // 컷에 등장하지 않는 인물까지 강제하면, 쓰이지 않는 기준 그림 때문에
   // 다음 단계가 막힌다. 반대로 공간은 해당 씬의 모든 컷이 공유하므로 필요하다.
@@ -1669,6 +1704,13 @@ export default function StoryboardView() {
       detail: finding.finding,
       cutIds: finding.cutIds,
     }))
+  // 사용자가 표 전체를 입력 양식처럼 훑지 않아도 되도록, 실제로 다시 볼
+  // 이유가 있는 컷만 표시한다. 에이전트가 짚은 컷과 샷이 비어 있는 컷이다.
+  const reviewCutIds = new Set([
+    ...visibleEditingFindings.flatMap((finding) => finding.cutIds || []),
+    ...cameraFindings.flatMap((finding) => finding.cutIds || []),
+    ...cutPlan.filter((cut) => !cut.shotSize).map((cut) => cut.id),
+  ])
   // 이 컷이 속한 씬의 기준. 없으면 기본값으로 떨어진다.
   // 상태 변화는 컷 id로 기록된다. 값을 읽을 때 순서로 옮길 표.
   const cutOrder = cutOrderOf(cutPlan)
@@ -2118,6 +2160,14 @@ export default function StoryboardView() {
     setPendingFocus({ index: lastIdx + 1, caret: 0 })
   }
 
+  // 맨 앞에 Beat를 넣는다. `+ Beat`는 언제나 그 Beat 다음에 넣으므로
+  // 첫 Beat 앞은 어느 버튼으로도 닿지 않았다 — 씬을 여는 대본 줄보다
+  // 앞선 국면을 나중에 덧붙일 방법이 없었다.
+  const handleAddBeatAtStart = () => {
+    addBeatAfter(-1)
+    setPendingFocus({ index: 0, caret: 0 })
+  }
+
   // 줄을 새로 만들거나 합친 뒤 커서가 따라가게 한다.
   const handleInsertLine = (afterIndex, type, split) => {
     insertScreenplayLine(afterIndex, type, split)
@@ -2229,8 +2279,17 @@ export default function StoryboardView() {
         >
           {narrativeCheckPending
             ? (isScript ? '대본 보는 중…' : '컷 구성 보는 중…')
-            : (isScript ? '대본 구성 점검' : '컷 구성 점검')}
+            : isScript && narrativeCheckStale
+              ? '변경됨 · 다시 점검'
+              : result
+                ? (isScript ? '대본 다시 점검' : '컷 구성 다시 점검')
+                : (isScript ? '대본 구성 점검' : '컷 구성 점검')}
         </button>
+        {isScript && narrativeCheckStale && (
+          <p className="narrative-rail-check-stale">
+            대본이 바뀌어 아래 결과는 이전 버전 기준입니다.
+          </p>
+        )}
         {narrativeCheckError && (
           <p className="narrative-rail-check-error">{narrativeCheckError}</p>
         )}
@@ -2316,6 +2375,36 @@ export default function StoryboardView() {
   // 서너 줄뿐이면 아직 윤곽이 아니다.
   const scriptBeatCount = new Set(scriptLines.map((element) => element.beat ?? 0)).size
   const scriptHasShape = scriptBeatCount >= 2 && scriptLines.length >= 5
+
+  // 대본을 씬·Beat로 정리한 직후에는 Narrative가 먼저 한 번 본다. 타이핑
+  // 중에는 다시 부르지 않는다 — 이후 수정은 stale 표시만 남기고, 감독이
+  // `다시 점검`을 눌렀을 때 새 결과를 받는다.
+  const autoCheckedScriptKey = useRef(null)
+  useEffect(() => {
+    if (cutStage !== 'script'
+      || !scriptHasShape
+      || showWriteScene
+      || structurePending
+      || narrativeCheckPending
+      || narrativeCheckStale) return
+    if (narrativeCheck?.stage === 'script') return
+    const scriptKey = screenplay
+      .map((element) => `${element.type}:${element.beat ?? 0}:${element.text}`)
+      .join('\n')
+    if (!scriptKey || autoCheckedScriptKey.current === scriptKey) return
+    autoCheckedScriptKey.current = scriptKey
+    requestNarrativeCheck('script')
+  }, [
+    cutStage,
+    narrativeCheck,
+    narrativeCheckPending,
+    narrativeCheckStale,
+    requestNarrativeCheck,
+    screenplay,
+    scriptHasShape,
+    showWriteScene,
+    structurePending,
+  ])
 
   // 점검이 짚은 줄을 대본에서 표시한다. 번호만 주면 감독이 세어 찾아야
   // 한다. lineIndexes는 헤딩을 뺀 순번이므로 전체 순번으로 옮긴다.
@@ -2442,8 +2531,10 @@ export default function StoryboardView() {
   }
 
   const handleNarrativeRequest = () => {
-    if (!narrativeRequest.trim()) return
-    requestNarrativeSuggestions({ narrativeRequest })
+    const submittedRequest = narrativeRequest.trim()
+    if (!submittedRequest) return
+    requestNarrativeSuggestions({ narrativeRequest: submittedRequest })
+    narrativeRequestRecall.record(submittedRequest)
     // 요청을 넘겼으면 칸을 비운다. 남아 있으면 다음 요청을 쓸 때 지우는
     // 일부터 해야 하고, 이미 처리된 요청이 아직 대기 중인 것처럼 보인다.
     setNarrativeRequest('')
@@ -2459,6 +2550,7 @@ export default function StoryboardView() {
     setNarrativeRequest(
       `의도 비공개 순차 읽기 ${panelLabel}: ${interpretation}\n화면 근거: ${cues}\n이 읽힘이 생기는 서사 흐름을 검토해줘.`,
     )
+    narrativeRequestRecall.resetNavigation()
     if (narrativeAnswered) clearNarrativeResult()
   }
 
@@ -2781,11 +2873,13 @@ export default function StoryboardView() {
                             </button>
                           </th>
                         </tr>
-                        {!collapsed && group.items.map(({ item, index }) => (
+                        {!collapsed && group.items.map(({ item, index }) => {
+                        const needsReview = reviewCutIds.has(item.id)
+                        return (
                         <Fragment key={item.id}>
                         <tr
                           data-cut-id={item.id}
-                          className={`provenance-row-${item.provenance.toLowerCase()}${selectedCutId === item.id ? ' selected' : ''}`}
+                          className={`provenance-row-${item.provenance.toLowerCase()}${selectedCutId === item.id ? ' selected' : ''}${needsReview ? ' needs-review' : ''}`}
                           onClick={() => {
                             // 진단이 짚어 보내 이미 골라져 있던 컷이면, 누른 것은
                             // 끄려는 것이 아니라 여기서 직접 고치겠다는 뜻이다.
@@ -2801,27 +2895,30 @@ export default function StoryboardView() {
                             <span className="cut-plan-number">
                               {item.beat + 1}-{item.beatOrder}
                             </span>
-                            <span className={`cut-plan-provenance provenance-${item.provenance.toLowerCase()}`}>
-                              {item.provenance}
-                            </span>
+                            {needsReview && <span className="cut-plan-review-mark">확인</span>}
                           </td>
                           <td className="col-time">
+                            <div className="cut-plan-edit-control" onClick={(event) => event.stopPropagation()}>
                             <input
                               type="text"
                               value={item.time}
                               onChange={(event) => updateCutPlanItem(item.id, { time: event.target.value })}
                               aria-label={`Cut ${item.order} time`}
                             />
+                            </div>
                           </td>
                           <td className="col-place">
+                            <div className="cut-plan-edit-control" onClick={(event) => event.stopPropagation()}>
                             <input
                               type="text"
                               value={item.place}
                               onChange={(event) => updateCutPlanItem(item.id, { place: event.target.value })}
                               aria-label={`Cut ${item.order} place`}
                             />
+                            </div>
                           </td>
                           <td className="col-content">
+                            <div className="cut-plan-edit-control" onClick={(event) => event.stopPropagation()}>
                             <input
                               type="text"
                               value={item.content}
@@ -2829,8 +2926,10 @@ export default function StoryboardView() {
                               placeholder="이 컷에서 무엇이 일어나는가"
                               aria-label={`Cut ${item.order} content`}
                             />
+                            </div>
                           </td>
                           <td className="col-purpose">
+                            <div className="cut-plan-edit-control" onClick={(event) => event.stopPropagation()}>
                             <input
                               type="text"
                               value={item.purpose}
@@ -2838,16 +2937,20 @@ export default function StoryboardView() {
                               placeholder="이 컷이 존재하는 이유"
                               aria-label={`Cut ${item.order} purpose`}
                             />
+                            </div>
                           </td>
                           <td className="col-cast">
+                            <div className="cut-plan-edit-control" onClick={(event) => event.stopPropagation()}>
                             <input
                               type="text"
                               value={item.characters}
                               onChange={(event) => updateCutPlanItem(item.id, { characters: event.target.value })}
                               aria-label={`Cut ${item.order} characters`}
                             />
+                            </div>
                           </td>
                           <td className="col-shot">
+                            <div className="cut-plan-edit-control" onClick={(event) => event.stopPropagation()}>
                             <select
                               value={item.shotSize}
                               onChange={(event) => updateCutPlanItem(item.id, { shotSize: event.target.value })}
@@ -2860,9 +2963,10 @@ export default function StoryboardView() {
                                 <option key={size} value={size}>{size}</option>
                               ))}
                             </select>
+                            </div>
                           </td>
                           <td className="col-tools">
-                            <div className="cut-plan-row-tools">
+                            <div className="cut-plan-row-tools" onClick={(event) => event.stopPropagation()}>
                               <button
                                 type="button"
                                 className={expandedPromptCutId === item.id ? 'active' : ''}
@@ -2978,7 +3082,7 @@ export default function StoryboardView() {
                           )
                         })()}
                         </Fragment>
-                        ))}
+                        )})}
                         </>
                         )}
                       </tbody>
@@ -3266,6 +3370,20 @@ export default function StoryboardView() {
                           >
                             + Beat
                           </button>
+                          {/* 첫 Beat에는 위로 합칠 대상이 없다. 그 자리에
+                              맨 앞에 Beat를 넣는 길을 둔다. */}
+                          {i === 0 && (
+                            <button
+                              type="button"
+                              onClick={(event) => {
+                                event.stopPropagation()
+                                handleAddBeatAtStart()
+                              }}
+                              title="이 Beat 앞에 새 Beat 추가"
+                            >
+                              ↑ Beat
+                            </button>
+                          )}
                           {i > 0 && (
                             <button
                               type="button"
@@ -3777,10 +3895,12 @@ export default function StoryboardView() {
                   value={narrativeRequest}
                   onChange={(event) => {
                     setNarrativeRequest(event.target.value)
+                    narrativeRequestRecall.resetNavigation(event.target.value)
                     // 새 요청을 쓰기 시작하면 지난 결과를 지운다. 계속 떠
                     // 있으면 방금 쓴 요청에 대한 답으로 오해된다.
                     if (narrativeAnswered) clearNarrativeResult()
                   }}
+                  onKeyDown={narrativeRequestRecall.onKeyDown}
                   placeholder="예: 이 Beat를 둘로 나누고 대사를 덜 설명적으로 바꿔줘."
                   aria-label={`Narrative request for Beat ${activeBeat + 1}`}
                   rows={3}
@@ -3947,8 +4067,15 @@ export default function StoryboardView() {
                     </p>
                   ) : (
                   <ul className="rail-scene-state">
-                    {visibleSceneState.characters.map((character) => {
+                    {newReferenceCharacters.map((character) => {
                       const referenceOpen = openReferenceCards[character.id] && character.image
+                      const editKey = `${activeSceneId}:${character.id}`
+                      const referenceEditing = Boolean(editingReferenceCards[editKey])
+                      const settledSummary = character.facts
+                        .filter((fact) => fact.value)
+                        .map((fact) => fact.value)
+                        .join(' · ')
+                      const openFactCount = character.facts.filter((fact) => fact.open).length
                       return (
                         <li key={character.id} className={`rail-scene-reference-card${referenceOpen ? ' is-reference-open' : ' is-info-open'}`}>
                           <div className="rail-reference-card-inner">
@@ -4000,8 +4127,27 @@ export default function StoryboardView() {
                                     {staleStyleLabel(character)}
                                   </span>
                                 )}
+                                <button
+                                  type="button"
+                                  className="rail-reference-edit"
+                                  onClick={(event) => {
+                                    event.stopPropagation()
+                                    setEditingReferenceCards((current) => ({
+                                      ...current,
+                                      [editKey]: !current[editKey],
+                                    }))
+                                  }}
+                                >
+                                  {referenceEditing ? '완료' : '수정'}
+                                </button>
                               </div>
-                              {character.facts.map((fact) => (
+                              {!referenceEditing && (
+                                <div className="rail-reference-summary">
+                                  <p>{settledSummary || '대본에서 확인된 외형 기준이 없습니다.'}</p>
+                                  {openFactCount > 0 && <em>{openFactCount}개 미정</em>}
+                                </div>
+                              )}
+                              {referenceEditing && character.facts.map((fact) => (
                                 <SceneFactRow
                                   key={fact.label}
                                   fact={fact}
@@ -4045,9 +4191,16 @@ export default function StoryboardView() {
                       )
                     })}
 
-                    {(() => {
-                      const location = visibleSceneState.location
+                    {newReferenceLocation && (() => {
+                      const location = newReferenceLocation
                       const referenceOpen = openReferenceCards.location && location.image
+                      const editKey = `${activeSceneId}:location`
+                      const referenceEditing = Boolean(editingReferenceCards[editKey])
+                      const settledSummary = location.facts
+                        .filter((fact) => fact.value)
+                        .map((fact) => fact.value)
+                        .join(' · ')
+                      const openFactCount = location.facts.filter((fact) => fact.open).length
                       return (
                         <li className={`rail-scene-reference-card${referenceOpen ? ' is-reference-open' : ' is-info-open'}`}>
                           <div className="rail-reference-card-inner">
@@ -4093,8 +4246,33 @@ export default function StoryboardView() {
                                     {staleStyleLabel(location)}
                                   </span>
                                 )}
+                                <button
+                                  type="button"
+                                  className="rail-reference-edit"
+                                  onClick={(event) => {
+                                    event.stopPropagation()
+                                    setEditingReferenceCards((current) => ({
+                                      ...current,
+                                      [editKey]: !current[editKey],
+                                    }))
+                                  }}
+                                >
+                                  {referenceEditing ? '완료' : '수정'}
+                                </button>
                               </div>
-                              {location.facts.map((fact) => <SceneFactRow key={fact.label} fact={fact} onCommit={(value) => setSceneFact('location', fact.label, value)} />)}
+                              {!referenceEditing && (
+                                <div className="rail-reference-summary">
+                                  <p>{settledSummary || '대본에서 확인된 공간 기준이 없습니다.'}</p>
+                                  {openFactCount > 0 && <em>{openFactCount}개 미정</em>}
+                                </div>
+                              )}
+                              {referenceEditing && location.facts.map((fact) => (
+                                <SceneFactRow
+                                  key={fact.label}
+                                  fact={fact}
+                                  onCommit={(value) => setSceneFact('location', fact.label, value)}
+                                />
+                              ))}
                             </div>
                             {location.image && (
                               <div
