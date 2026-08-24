@@ -687,10 +687,12 @@
   transform: translateX(50%);
 }
 
+/* 줄이 바뀌는 자리. 앞 컷이 바로 위에 있으므로 두 줄 사이 여백
+   한가운데에 세운다. */
 .grid-seam.seam-top {
-  top: -13px;
+  top: -9px;
   left: 50%;
-  transform: translateX(-50%);
+  transform: translate(-50%, -50%);
 }
 
 .grid-seam-btn {
@@ -1060,20 +1062,17 @@
   box-shadow: none;
 }
 
-/* compact는 열 간격이 12px이라 가장자리에 걸치면 옆 셀을 덮는다.
-   틈 한가운데로 옮기고 편집기는 오른쪽으로 편다. */
-.grid-view.compact .grid-seam {
-  top: 50%;
+/* compact는 열 간격이 좁아 가장자리에 걸치면 옆 셀을 덮는다. 틈
+   한가운데로 당긴다. 어느 변에 붙을지는 seam-left/right/top이 정한다 —
+   셀 순번으로 줄 끝을 맞히던 규칙은 지웠다. 컷을 번갈아 놓기 시작하면서
+   홀수 셀이 곧 줄 왼쪽 끝이라는 전제가 깨졌고, 그 규칙이 seam-top의
+   가운데 정렬을 덮어써 이음새가 좌측 상단에 붙어 있었다. */
+.grid-view.compact .grid-seam.seam-left {
   left: -6px;
-  transform: translateX(-50%);
 }
 
-/* 2열 그리드에서 홀수 번째 셀은 줄의 왼쪽 끝이다. 그 이음새는 옆 칸이
-   아니라 윗줄 마지막 컷과의 사이이므로, 셀 위쪽 가장자리에 얹는다. */
-.grid-view.compact .grid-cell-wrapper:nth-child(odd) .grid-seam {
-  top: -9px;
-  left: 10px;
-  transform: none;
+.grid-view.compact .grid-seam.seam-right {
+  right: -6px;
 }
 
 /* 컷 분할 — 삭제 옆에 둔다. 둘 다 이 컷 하나에 대한 일이다. */
