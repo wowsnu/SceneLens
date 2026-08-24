@@ -883,13 +883,19 @@ export const buildCutPrompt = (cut, {
     .join(' / ')
 
   // 사용자가 직접 고쳤으면 그것을 쓴다. 조립분은 되돌리기용으로 함께 넘긴다.
-  const edited = (cut.promptOverride || '').trim()
+  //
+  // 원본을 그대로 쓴다. 프롬프트 칸은 이 값을 value로 되받는 controlled
+  // 입력이라, 여기서 다듬으면 방금 친 글자가 화면에서 지워진다 — 끝에
+  // 친 공백과 줄바꿈이 그렇게 사라졌다. 다듬기는 '편집했는가'를 가릴
+  // 때만 쓴다. 공백만 친 것은 편집이 아니다.
+  const edited = cut.promptOverride || ''
+  const hasEdit = Boolean(edited.trim())
 
   return {
     auto,
     // 실제로 생성에 쓰이는 문장.
-    effective: edited || auto,
-    isEdited: Boolean(edited),
+    effective: hasEdit ? edited : auto,
+    isEdited: hasEdit,
     shared,
     // 컷의 어느 값이 프롬프트의 어느 자리로 갔는지 추적 가능하게 남긴다.
     parts: { opening, action, castLine, emphasis },
@@ -1382,8 +1388,10 @@ export const buildReferencePrompt = (subject, kind, layout = '') => {
     : [subject.name]
   const auto = [...head, ...settled].filter(Boolean).join('. ')
 
-  const edited = (subject.promptOverride || '').trim()
-  return { auto, effective: edited || auto, isEdited: Boolean(edited) }
+  // 컷 프롬프트와 같다 — 원본을 보내고, 다듬은 값으로는 편집 여부만 가린다.
+  const edited = subject.promptOverride || ''
+  const hasEdit = Boolean(edited.trim())
+  return { auto, effective: hasEdit ? edited : auto, isEdited: hasEdit }
 }
 
 // 인물 마커 색. SpatialMap의 PRESET_COLORS와 같은 값이어야 화면이 튀지 않는다.

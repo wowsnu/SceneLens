@@ -1735,9 +1735,22 @@ export default function StoryboardView() {
     const scene = withSharedReferences(sceneStateForCut(cut))
     if (!scene || !cut) return []
     const cast = (cut.characters || '').split(',').map((n) => n.trim()).filter(Boolean)
+    // 이름이 정확히 같은 인물을 먼저 찾는다. 부분 일치만 쓰면 이름이 서로
+    // 포함될 때 화면에 없는 인물까지 딸려 들어간다 — `하린` 컷에 `하린
+    // 엄마`가, `수` 컷에 `수현`과 `철수`가 물린다. 컷에 한 명인데 기준
+    // 그림이 셋이면 모델은 없어야 할 얼굴을 참고한다.
+    //
+    // 정확히 맞는 것이 하나도 없을 때만 부분 일치로 내려간다. 컷의
+    // 등장인물이 `하린과 민호`처럼 서술형으로 적히는 경우가 있어, 그때는
+    // 느슨하게라도 찾아야 기준이 아예 빠지지 않는다.
+    const exact = (character) => cast.some((name) => name === character.name)
+    const loose = (character) => cast.some((name) => (
+      name.includes(character.name) || character.name.includes(name)
+    ))
+    const anyExact = scene.characters.some((character) => character.image && exact(character))
+    const inThisCut = anyExact ? exact : loose
     const refs = scene.characters
-      .filter((character) => character.image
-        && cast.some((name) => name.includes(character.name) || character.name.includes(name)))
+      .filter((character) => character.image && inThisCut(character))
       .map((character) => ({
         name: character.name,
         kind: 'character',
@@ -2000,6 +2013,15 @@ export default function StoryboardView() {
       // 한 장만 다시 그릴 때도 앞뒤가 맞아야 한다.
       const cutAt = cut ? cutPlan.findIndex((item) => item.id === cut.id) : -1
       const previous = cutAt > 0 ? promptOf(cutPlan[cutAt - 1]) : null
+      // 그림도 같은 앞 컷을 따라야 한다. 이 루프에서 방금 그린 것이
+      // 있으면 그것이 가장 새 그림이고, 없으면 — 한 장만 다시 그리는
+      // 경우다 — 이미 보드에 있는 앞 컷 그림을 쓴다. 이것이 없으면
+      // 재생성만 연속성 근거를 잃는다. 러프에서 특히 큰데, 러프는
+      // 인물·공간 기준을 일부러 물리지 않아 앞 컷이 유일한 근거다.
+      const priorShot = cutAt > 0
+        ? flowShots.find((entry) => entry.cutPlanItemId === cutPlan[cutAt - 1].id)
+        : null
+      const priorImage = previousImage || (priorShot ? getShotVisual(priorShot) : null)
 
       try {
         // 프롬프트가 없는 패널은 만들 수 없다. 컷과 이어지지 않은 패널이다.
@@ -2026,7 +2048,7 @@ export default function StoryboardView() {
               // 앞 컷을 또 넣지 않는다. 아래에서 그 관계로 다시 붙는다.
               ...referencesForCut(
                 cut, layout.image, panelStylePreset,
-                neighbors ? null : previousImage,
+                neighbors ? null : priorImage,
               ),
               // 값 하나만 바꿔 다시 그리는 중이면 지금 그림을 함께 물린다.
               // 이 그림이 있어야 "나머지는 그대로"가 지킬 대상을 갖는다 —
