@@ -353,9 +353,13 @@ export async function designShots({ heading, cuts, script = '', sceneIntention =
 // 감독이 직접 나눌 때는 부르지 않는다 — 어디서 끊을지는 연출 판단이다.
 // 편집 렌즈가 "두 사건이 겹쳤다"고 진단한 경우에만, 그 진단이 이미 무엇과
 // 무엇이 겹쳤는지 알고 있으므로 나눈 안을 받는다.
+//
+// 그려진 그림이 있으면 함께 보낸다. 문장에 없는 자세·소품·거리가 그림에는
+// 있을 수 있고, 나눈 두 컷은 그 화면과 어긋나면 안 된다.
 export async function suggestSeamSplit({
   content = '', purpose = '', characters = '',
   beforeContent = '', afterContent = '', script = '', diagnosis = '',
+  cutImage = null, beforeImage = null, afterImage = null,
 }) {
   return fetchWithTimeout(`${API_BASE}/seam-split`, {
     method: 'POST',
@@ -368,6 +372,9 @@ export async function suggestSeamSplit({
       after_content: afterContent,
       script,
       diagnosis,
+      cut_image: cutImage,
+      before_image: beforeImage,
+      after_image: afterImage,
     }),
   }, 60000)
 }
@@ -378,6 +385,7 @@ export async function suggestSeamSplit({
 export async function suggestSeamInsert({
   beforeContent = '', beforePurpose = '', afterContent = '', afterPurpose = '',
   elision = '', script = '', diagnosis = '',
+  beforeImage = null, afterImage = null,
 }) {
   const data = await fetchWithTimeout(`${API_BASE}/seam-insert`, {
     method: 'POST',
@@ -390,9 +398,36 @@ export async function suggestSeamInsert({
       elision,
       script,
       diagnosis,
+      before_image: beforeImage,
+      after_image: afterImage,
     }),
   }, 60000)
   return data.candidates || []
+}
+
+// --- 편집: 두 컷을 하나로 --------------------------------------------------
+// 지금까지는 두 컷의 문장을 공백으로 이어붙이기만 했다. 같은 동작을 다르게
+// 묘사한 두 문장을 그대로 이으면 중복이 남는다 — 합치는 것은 겹치는 부분을
+// 지우고 한 화면을 다시 쓰는 일이다.
+export async function suggestSeamMerge({
+  firstContent = '', firstPurpose = '', secondContent = '', secondPurpose = '',
+  elision = '', script = '',
+  firstImage = null, secondImage = null,
+}) {
+  return fetchWithTimeout(`${API_BASE}/seam-merge`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      first_content: firstContent,
+      first_purpose: firstPurpose,
+      second_content: secondContent,
+      second_purpose: secondPurpose,
+      elision,
+      script,
+      first_image: firstImage,
+      second_image: secondImage,
+    }),
+  }, 60000)
 }
 
 // --- 미장센: 공간 배치 ------------------------------------------------------

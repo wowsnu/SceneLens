@@ -244,18 +244,18 @@ class ViewerReviewPoint(BaseModel):
     panel_orders: List[int]
     issue: str
     audience_effect: str
+    recommended_change: str = ""
     issue_kind: Literal[
-        "story_context",
         "element_visibility",
         "spatial_relation",
         "framing_readability",
         "cut_connection",
         "information_order",
     ]
-    suspected_cause: Literal["narrative", "mise", "camera", "editing"]
+    suspected_cause: Literal["mise", "camera", "editing"]
     # The viewer supplies a symptom and suspected cause. The backend resolves
     # the final route and range so a model cannot send an unsupported route.
-    routes: List[Literal["narrative", "mise", "camera", "editing"]] = []
+    routes: List[Literal["mise", "camera", "editing"]] = []
     scope: Literal["single", "range"] = "single"
     route_reason: str = ""
 
@@ -291,15 +291,14 @@ class ViewerPerspectiveDivergence(BaseModel):
     readings: List[ViewerPerspectiveReading]
     why_it_matters: str
     issue_kind: Literal[
-        "story_context",
         "element_visibility",
         "spatial_relation",
         "framing_readability",
         "cut_connection",
         "information_order",
     ]
-    suspected_cause: Literal["narrative", "mise", "camera", "editing"]
-    routes: List[Literal["narrative", "mise", "camera", "editing"]] = []
+    suspected_cause: Literal["mise", "camera", "editing"]
+    routes: List[Literal["mise", "camera", "editing"]] = []
     scope: Literal["single", "range"] = "single"
     route_reason: str = ""
 
@@ -887,6 +886,11 @@ class SeamInsertRequest(BaseModel):
     script: Optional[str] = ""
     # 진단에서 넘어온 경우, 왜 이 자리에 컷이 필요한지.
     diagnosis: Optional[str] = ""
+    # 앞뒤 컷의 실제 그림. 문장만으로는 화면의 거리·자세·소품이 안 보여,
+    # 새로 넣을 컷이 그 사이 어딘가로 어색하게 튈 수 있다. 그려진 것이
+    # 있는 컷만 보낸다.
+    before_image: Optional[str] = None
+    after_image: Optional[str] = None
 
 class SeamInsertCandidate(BaseModel):
     content: str
@@ -915,6 +919,12 @@ class SeamSplitRequest(BaseModel):
     script: Optional[str] = ""
     # 편집 진단. 무엇과 무엇이 겹쳤다고 보았는지가 나누는 근거다.
     diagnosis: Optional[str] = ""
+    # 나눌 컷과 앞뒤 컷의 실제 그림. 화면에 이미 무엇이 보이는지 알아야
+    # 나눈 두 컷이 그 그림과 어긋나지 않는다 — 문장에 없던 소품이나 자세가
+    # 그림에는 있을 수 있다.
+    cut_image: Optional[str] = None
+    before_image: Optional[str] = None
+    after_image: Optional[str] = None
 
 class SeamSplitPart(BaseModel):
     content: str
@@ -926,6 +936,33 @@ class SeamSplitResponse(BaseModel):
     first: SeamSplitPart
     second: SeamSplitPart
     # 왜 이 자리에서 끊었는가. 감독이 판정할 근거다.
+    reason: str = ""
+
+class SeamMergeRequest(BaseModel):
+    """두 컷을 하나로 합친 안을 제안받는다.
+
+    지금까지 프론트가 두 문장을 공백으로 이어붙이기만 했다 — 두 컷이
+    같은 동작을 다르게 묘사한 경우 그대로 중복이 남는다. 합치는 것은
+    이어붙이는 것이 아니라 겹치는 부분을 가리고 하나의 화면으로 다시
+    쓰는 일이다.
+    """
+
+    first_content: str = ""
+    first_purpose: str = ""
+    second_content: str = ""
+    second_purpose: str = ""
+    elision: Optional[str] = ""
+    script: Optional[str] = ""
+    # 합칠 두 컷의 실제 그림. 두 그림이 이미 같은 인물·소품·구도를 보여
+    # 주고 있다면 문장에서도 그 중복을 지워야 한다.
+    first_image: Optional[str] = None
+    second_image: Optional[str] = None
+
+class SeamMergeResponse(BaseModel):
+    content: str
+    purpose: str = ""
+    characters: str = ""
+    # 무엇을 겹치는 것으로 보고 지웠는지. 감독이 판정할 근거다.
     reason: str = ""
 
 class SpaceLayoutRequest(BaseModel):

@@ -87,7 +87,41 @@ PROMPT = """당신은 편집 담당입니다. 두 컷 사이에 넣을 컷을 �
 것이 아닙니다.
 
 reason은 왜 이것을 넣는지 한 문장으로, **앞뒤 컷에 근거해서** 씁니다.
+
+그림이 첨부되어 있으면 문장보다 그림을 먼저 봅니다. 인물의 위치·자세·
+표정·소품이 두 그림 사이에서 어떻게 달라졌는지가 문장의 차이보다 곧은
+근거입니다. 새로 넣을 컷은 그 두 그림 사이에서 자연스럽게 이어져야
+합니다 — 같은 공간, 같은 인물 외형을 유지하세요.
+
 한국어로 답하세요."""
+
+
+def _image_url(image: str) -> str:
+    return image if image.startswith("data:") else f"data:image/png;base64,{image}"
+
+
+def _usable_image(image: str | None) -> str | None:
+    # shot.image는 세 가지 모양일 수 있다 — 실제 생성한 그림(data: URL),
+    # 컷 재생성이 없는 예시 데이터의 로컬 정적 경로(`/img/...png` 또는
+    # `http://localhost:5173/img/...`), 또는 이미 base64 문자열.
+    #
+    # 로컬 경로·로컬호스트 URL은 이 서버 프로세스에서도, OpenAI 쪽에서도
+    # 파일을 열어 볼 수 없다 — 그대로 보내면 "존재하지 않는 이미지"를
+    # 보내는 것과 같아 invalid_base64로 400이 난다(실제로 재현됨).
+    # 실패로 전체 요청을 죽이지 않고 그 그림만 빼는 편이 낫다.
+    if not image:
+        return None
+    if image.startswith("data:"):
+        return image
+    if image.startswith("http://") or image.startswith("https://"):
+        host = image.split("//", 1)[1].split("/", 1)[0].split(":")[0]
+        if host in ("localhost", "127.0.0.1", "0.0.0.0"):
+            return None
+        return image
+    if image.startswith("/"):
+        return None
+    # 그 밖의 경우 순수 base64 문자열로 본다.
+    return image
 
 
 async def suggest_seam_insert(request: SeamInsertRequest) -> SeamInsertResponse:
@@ -110,12 +144,26 @@ async def suggest_seam_insert(request: SeamInsertRequest) -> SeamInsertResponse:
         # 진단에서 넘어온 경우. 왜 이 자리에 컷이 필요한지가 적혀 있다.
         lines.append(f"\n[편집 진단] {request.diagnosis}")
 
+    before_image = _usable_image(request.before_image)
+    after_image = _usable_image(request.after_image)
+    images = []
+    if before_image:
+        images.append(("앞 컷", before_image))
+    if after_image:
+        images.append(("뒤 컷", after_image))
+
+    content = [{"type": "text", "text": "\n".join(lines)}]
+    for label, image in images:
+        content.append({"type": "text", "text": f"[{label} 그림]"})
+        content.append({"type": "image_url", "image_url": {"url": _image_url(image)}})
+
     client = AsyncOpenAI(api_key=api_key)
     response = await client.chat.completions.create(
-        model="gpt-5.4-nano",
+        # 화면 사이 변화를 읽는 일이라 그림이 있으면 mini로 올린다.
+        model="gpt-5.4-mini" if images else "gpt-5.4-nano",
         messages=[
             {"role": "system", "content": PROMPT},
-            {"role": "user", "content": "\n".join(lines)},
+            {"role": "user", "content": content},
         ],
         response_format={"type": "json_schema", "json_schema": RESPONSE_SCHEMA},
         # gpt-5 계열은 max_tokens를 받지 않는다.

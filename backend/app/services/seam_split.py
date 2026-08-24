@@ -99,7 +99,40 @@ reason은 **왜 이 자리에서 끊었는지** 한 문장으로 씁니다. 감�
 받아들일지 판정할 근거이므로, "두 사건이라서"가 아니라 무엇과 무엇인지
 적으세요.
 
+그림이 첨부되어 있으면 문장이 아니라 **그림을 근거로** 나누세요. 화면에
+실제로 보이는 자세·소품·거리가 문장에 다 적히지 않았을 수 있습니다.
+앞뒤 컷 그림이 있으면 나눈 결과가 그 사이에서 어색하게 튀지 않는지,
+같은 인물·공간이 이어지는지 확인하세요.
+
 한국어로 답하세요."""
+
+
+def _image_url(image: str) -> str:
+    return image if image.startswith("data:") else f"data:image/png;base64,{image}"
+
+
+def _usable_image(image: str | None) -> str | None:
+    # shot.image는 세 가지 모양일 수 있다 — 실제 생성한 그림(data: URL),
+    # 컷 재생성이 없는 예시 데이터의 로컬 정적 경로(`/img/...png` 또는
+    # `http://localhost:5173/img/...`), 또는 이미 base64 문자열.
+    #
+    # 로컬 경로·로컬호스트 URL은 이 서버 프로세스에서도, OpenAI 쪽에서도
+    # 파일을 열어 볼 수 없다 — 그대로 보내면 "존재하지 않는 이미지"를
+    # 보내는 것과 같아 invalid_base64로 400이 난다(실제로 재현됨).
+    # 실패로 전체 요청을 죽이지 않고 그 그림만 빼는 편이 낫다.
+    if not image:
+        return None
+    if image.startswith("data:"):
+        return image
+    if image.startswith("http://") or image.startswith("https://"):
+        host = image.split("//", 1)[1].split("/", 1)[0].split(":")[0]
+        if host in ("localhost", "127.0.0.1", "0.0.0.0"):
+            return None
+        return image
+    if image.startswith("/"):
+        return None
+    # 그 밖의 경우 순수 base64 문자열로 본다.
+    return image
 
 
 async def suggest_seam_split(request: SeamSplitRequest) -> SeamSplitResponse:
@@ -127,12 +160,33 @@ async def suggest_seam_split(request: SeamSplitRequest) -> SeamSplitResponse:
         # 진단이 무엇과 무엇이 겹쳤다고 보았는지가 나누는 근거다.
         lines.append(f"\n[편집 진단] {request.diagnosis}")
 
+    # 그려진 그림이 있으면 함께 보낸다. 문장에는 없는 자세·소품·거리가
+    # 그림에는 있을 수 있고, 나눈 두 컷은 그 화면과 어긋나면 안 된다.
+    cut_image = _usable_image(request.cut_image)
+    before_image = _usable_image(request.before_image)
+    after_image = _usable_image(request.after_image)
+    images = []
+    if cut_image:
+        lines.append("\n나눌 컷의 실제 그림이 첨부되어 있습니다.")
+        images.append(("나눌 컷", cut_image))
+    if before_image:
+        images.append(("앞 컷", before_image))
+    if after_image:
+        images.append(("뒤 컷", after_image))
+
+    content = [{"type": "text", "text": "\n".join(lines)}]
+    for label, image in images:
+        content.append({"type": "text", "text": f"[{label} 그림]"})
+        content.append({"type": "image_url", "image_url": {"url": _image_url(image)}})
+
     client = AsyncOpenAI(api_key=api_key)
     response = await client.chat.completions.create(
-        model="gpt-5.4-nano",
+        # 그림이 있으면 그림을 읽어야 하는 일이라 mini로 올린다. 다른
+        # 렌즈들도 화면 판단에는 nano를 안 쓴다(DEFAULT_LENS_MODELS).
+        model="gpt-5.4-mini" if images else "gpt-5.4-nano",
         messages=[
             {"role": "system", "content": PROMPT},
-            {"role": "user", "content": "\n".join(lines)},
+            {"role": "user", "content": content},
         ],
         response_format={"type": "json_schema", "json_schema": RESPONSE_SCHEMA},
         # gpt-5 계열은 max_tokens를 받지 않는다.
