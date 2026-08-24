@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useLayoutEffect, useRef, useState } from 'react'
 import useStore, {
   SEAM_JOINS,
   SEAM_ELAPSED,
@@ -27,6 +27,35 @@ export default function GridView({
   sequencePreview = null,
   draftImages = {},
 }) {
+  // 컷을 좌→우, 우→좌로 번갈아 놓는다. 격자에서 줄이 바뀌면 다음 컷이
+  // 화면 반대편 끝으로 튀어, 그 이음새가 어느 두 컷 사이인지 읽히지
+  // 않았다. 번갈아 놓으면 줄이 바뀌는 자리에서 다음 컷이 바로 아래 칸이
+  // 되어, 이음새가 실제로 두 컷 사이에 온다 (DG2 P1).
+  //
+  // 열 수는 폭에 따라 달라지므로 상수로 둘 수 없다. 그려진 위치를 읽어
+  // 한 줄에 몇 칸이 들어갔는지 센다.
+  const gridRef = useRef(null)
+  const [columns, setColumns] = useState(0)
+  useLayoutEffect(() => {
+    const grid = gridRef.current
+    if (!grid) return undefined
+    const measure = () => {
+      const cells = [...grid.querySelectorAll('.grid-cell-wrapper')]
+      if (cells.length === 0) return
+      const firstTop = Math.round(cells[0].getBoundingClientRect().top)
+      let count = 0
+      for (const cell of cells) {
+        if (Math.round(cell.getBoundingClientRect().top) > firstTop + 4) break
+        count += 1
+      }
+      setColumns((prev) => (prev === count ? prev : count))
+    }
+    measure()
+    const observer = new ResizeObserver(measure)
+    observer.observe(grid)
+    return () => observer.disconnect()
+  })
+
   const scene = useStore((s) => s.scenes[s.activeScene])
   const branches = scene?.branches || []
   const activeBranch = scene?.activeBranch ?? 0
@@ -353,6 +382,7 @@ export default function GridView({
       </div>}
 
       <div
+        ref={gridRef}
         className="grid-view-grid"
         onMouseLeave={() => setHoveredIdx(null)}
       >
@@ -372,8 +402,23 @@ export default function GridView({
           const displayCir = activeLensPreview?.cir ?? shot.cir
 
           const gapKey = `${activeBranch}-${i}`
+          // 줄마다 방향이 바뀐다. 홀수 줄은 오른쪽에서 왼쪽으로 놓아,
+          // 줄이 바뀌는 자리에서 다음 컷이 바로 아래 칸에 오게 한다.
+          const rowIndex = columns > 0 ? Math.floor(i / columns) : 0
+          const colInRow = columns > 0 ? i % columns : 0
+          const reversedRow = columns > 1 && rowIndex % 2 === 1
+          const gridColumn = reversedRow ? columns - colInRow : colInRow + 1
+          // 이음새는 앞 컷 쪽 변에 붙는다. 줄 첫 칸이면 앞 컷이 바로 위에
+          // 있으므로 위쪽 변이다.
+          const seamSide = colInRow === 0 ? 'top' : (reversedRow ? 'right' : 'left')
           const shotEl = (
-            <div key={shot.id} className={`grid-cell-wrapper ${isActive ? 'selected' : ''}`}>
+            <div
+              key={shot.id}
+              className={`grid-cell-wrapper ${isActive ? 'selected' : ''}`}
+              // 열만 지정하면 grid가 같은 줄에 놓지 않고 다음 줄로
+              // 내려보낸다. 줄도 함께 못박아야 의도한 자리에 앉는다.
+              style={columns > 1 ? { gridColumn, gridRow: rowIndex + 1 } : undefined}
+            >
               {/* Gap fill button — left edge (gap before this cell) */}
               {!compact && i > 0 && (
                 <button
@@ -396,7 +441,7 @@ export default function GridView({
                 const marked = isSeamMarked(seam)
                 const open = openSeamId === prevShot.id
                 return (
-                  <div className={`grid-seam${marked ? ' marked' : ''}${open ? ' open' : ''}`}>
+                  <div className={`grid-seam seam-${seamSide}${marked ? ' marked' : ''}${open ? ' open' : ''}`}>
                     <button
                       type="button"
                       className="grid-seam-btn"
