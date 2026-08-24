@@ -1231,6 +1231,7 @@
 
 .cut-plan-table tbody tr {
   border-bottom: 1px solid rgba(255, 255, 255, 0.055);
+  cursor: pointer;
 }
 
 .cut-plan-table tbody tr:hover {
@@ -1242,14 +1243,10 @@
   vertical-align: middle;
 }
 
-/* 출처는 행 왼쪽 선으로만 표시해 표를 어지럽히지 않는다.
-   아직 확인하지 않은 컷(AI)이 눈에 띄어야 한다. */
+/* 출처는 데이터에만 남기고 표에는 배지로 반복하지 않는다. 사용자가 볼 것은
+   AI인지 아닌지가 아니라 실제로 다시 확인할 예외다. */
 .cut-plan-table tbody tr td:first-child {
   box-shadow: inset 2px 0 0 rgba(255, 255, 255, 0.14);
-}
-
-.cut-plan-table tbody tr.provenance-row-ai td:first-child {
-  box-shadow: inset 2px 0 0 rgba(126, 168, 214, 0.75);
 }
 
 .cut-plan-table tbody tr.provenance-row-user td:first-child {
@@ -1313,6 +1310,10 @@
   color: #fff;
 }
 
+.cut-plan-edit-control {
+  width: 100%;
+}
+
 /* 긴 텍스트가 표를 밀어내지 않게 한다. */
 .cut-plan-table th,
 .cut-plan-table td {
@@ -1326,25 +1327,20 @@
   color: #fff;
 }
 
-.cut-plan-provenance {
+.cut-plan-review-mark {
   display: inline-block;
-  margin-top: 3px;
-  padding: 2px 6px;
+  margin: 3px 0 0 4px;
+  padding: 2px 5px;
   border-radius: 4px;
-  font-size: 10.5px;
+  background: rgba(230, 189, 130, 0.14);
+  color: #e6bd82;
+  font-size: 10px;
   font-weight: 800;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+  letter-spacing: 0.02em;
 }
 
-.cut-plan-provenance.provenance-ai {
-  background: rgba(126, 168, 214, 0.14);
-  color: rgba(158, 194, 232, 0.9);
-}
-
-.cut-plan-provenance.provenance-user {
-  background: rgba(216, 170, 98, 0.14);
-  color: #e1bd85;
+.cut-plan-table tbody tr.needs-review td {
+  background: rgba(230, 189, 130, 0.018);
 }
 
 /* 행 조작은 평소 숨기고 hover에서만 드러낸다. */
@@ -1512,15 +1508,6 @@
   color: rgba(216, 140, 98, 0.9);
   font-size: 11.5px;
   line-height: 1.45;
-}
-
-.cut-plan-provenance {
-  padding: 2px 6px;
-  border-radius: 4px;
-  font-size: 9.5px;
-  font-weight: 800;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
 }
 
 /* 프롬프트: 컷에서 조립된 부분과 사용자가 덧붙인 부분을 나눠 보인다.
@@ -3456,6 +3443,49 @@
 
 .rail-scene-head .rail-reference-regenerate:disabled { opacity: .45; cursor: default; }
 
+.rail-scene-head .rail-reference-edit {
+  padding: 3px 6px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 4px;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.52);
+  font-size: 9px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.rail-scene-head .rail-reference-edit:hover {
+  border-color: rgba(126, 168, 214, 0.42);
+  color: rgba(202, 224, 246, 0.9);
+}
+
+.rail-reference-summary {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  margin-top: 7px;
+}
+
+.rail-reference-summary p {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  color: rgba(255, 255, 255, 0.62);
+  font-size: 10px;
+  line-height: 1.45;
+}
+
+.rail-reference-summary em {
+  flex: 0 0 auto;
+  padding: 2px 5px;
+  border-radius: 4px;
+  background: rgba(226, 186, 120, 0.1);
+  color: rgba(238, 206, 152, 0.86);
+  font-size: 9px;
+  font-style: normal;
+  white-space: nowrap;
+}
+
 /* 지금 표현 스타일과 다른 밀도로 만든 기준. 조용히 다시 그리지 않고
    갈렸다는 것만 알린다 — 처분은 옆의 `다시 생성`에서 감독이 한다.
    경고색이 아니라 주의색이다. 잘못된 것이 아니라 확인할 것이다. */
@@ -3645,6 +3675,15 @@
   background: rgba(216, 170, 98, 0.03);
 }
 
+.rail-coverage > li.is-changed {
+  border-color: rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.rail-coverage > li.is-changed .rail-coverage-open {
+  opacity: 0.68;
+}
+
 /* 카드 본문 = 그 컷으로 가는 버튼. 생김새는 버튼이 아니라 카드다 —
    눌리는 것은 hover와 커서로만 알린다. */
 .rail-coverage-open {
@@ -3746,6 +3785,17 @@
   font-size: 10px;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
+}
+
+.rail-coverage-changed {
+  display: inline-block;
+  margin: 0 0 5px 5px;
+  padding: 2px 7px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.62);
+  font-size: 10px;
+  font-weight: 750;
 }
 
 .rail-layer-tag.layer-attribute {
@@ -4600,7 +4650,8 @@
 }
 
 .narrative-rail-check-empty,
-.narrative-rail-check-error {
+.narrative-rail-check-error,
+.narrative-rail-check-stale {
   margin: 9px 0 0;
   font-size: 12px;
   line-height: 1.5;
@@ -4612,6 +4663,10 @@
 
 .narrative-rail-check-error {
   color: rgba(232, 168, 168, 0.9);
+}
+
+.narrative-rail-check-stale {
+  color: #e6bd82;
 }
 
 .narrative-rail-check-list {

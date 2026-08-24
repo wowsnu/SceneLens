@@ -4,9 +4,8 @@ from dataclasses import dataclass
 from typing import Literal
 
 
-ViewerRoute = Literal["narrative", "mise", "camera", "editing"]
+ViewerRoute = Literal["mise", "camera", "editing"]
 ViewerIssueKind = Literal[
-    "story_context",
     "element_visibility",
     "spatial_relation",
     "framing_readability",
@@ -26,11 +25,6 @@ class ViewerRoutingRule:
 # creative decision is a defect. That later judgement belongs to the existing
 # intent-aware directing diagnostics.
 VIEWER_ROUTING_RULES: dict[ViewerIssueKind, ViewerRoutingRule] = {
-    "story_context": ViewerRoutingRule(
-        default_route="narrative",
-        allowed_causes=("narrative",),
-        reason="인물 관계·목표·인과를 읽기 어려운 문제는 서사 흐름에서 먼저 확인합니다.",
-    ),
     "element_visibility": ViewerRoutingRule(
         default_route="camera",
         allowed_causes=("mise", "camera"),

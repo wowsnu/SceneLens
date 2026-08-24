@@ -6,7 +6,7 @@ import { GapFillPicker } from './GapFillPanel'
 import useStore from '../store/useStore'
 import './SceneOverview.css'
 
-function SplitShotFocus({ shotIndex, shotPreview, draftImages, draftVersions, onClose, onNavigate }) {
+function SplitShotFocus({ shotIndex, shotPreview, draftImages, draftVersions, onClose, onNavigate, minimal = false }) {
   const scene = useStore((s) => s.scenes[s.activeScene])
   const setActiveShot = useStore((s) => s.setFlowActiveShot)
   const screenplay = useStore((s) => s.screenplay)
@@ -46,14 +46,14 @@ function SplitShotFocus({ shotIndex, shotPreview, draftImages, draftVersions, on
   }
 
   return (
-    <section className="split-shot-focus" aria-label={`S${shotIndex + 1} 확대 보기`}>
-      <header>
+    <section className={`split-shot-focus${minimal ? ' minimal' : ''}`} aria-label={`S${shotIndex + 1} 확대 보기`}>
+      {!minimal && <header>
         <div>
           <span>S{shotIndex + 1}</span>
           <strong>{shot.label}</strong>
         </div>
         <button type="button" onClick={onClose} aria-label="확대 보기 닫기">✕</button>
-      </header>
+      </header>}
 
       <div className="split-shot-focus-frame">
         {image ? (
@@ -75,6 +75,7 @@ function SplitShotFocus({ shotIndex, shotPreview, draftImages, draftVersions, on
         )}
       </div>
 
+      {!minimal && <>
       {scriptText && (
         <section className="split-shot-script" aria-label={`S${shotIndex + 1} 대본`}>
           <span>대본</span>
@@ -108,6 +109,7 @@ function SplitShotFocus({ shotIndex, shotPreview, draftImages, draftVersions, on
           다음 Shot →
         </button>
       </footer>
+      </>}
     </section>
   )
 }
@@ -121,9 +123,14 @@ export default function SceneOverview({
   viewerFocusShotIndex = null,
   lensFocusShotIndex = null,
   onClearLensFocus = null,
+  scopeSelection = null,
+  selectableScopeShotIds = [],
+  onScopeShotSelect = null,
 }) {
   const [focusedShotIndex, setFocusedShotIndex] = useState(null)
-  const visibleFocusedShotIndex = viewerFocusShotIndex ?? lensFocusShotIndex ?? focusedShotIndex
+  const visibleFocusedShotIndex = scopeSelection
+    ? null
+    : viewerFocusShotIndex ?? lensFocusShotIndex ?? focusedShotIndex
   const flowView = useStore((s) => s.flowView)
   const setFlowView = useStore((s) => s.setFlowView)
   const scenes = useStore((s) => s.scenes)
@@ -139,7 +146,7 @@ export default function SceneOverview({
   const panelDraftVersions = useStore((s) => s.panelDraftVersions)
 
   return (
-    <div className={`scene-overview ${compact ? 'compact' : ''}`}>
+    <div className={`scene-overview ${compact ? 'compact' : ''}${viewerReadingSlot ? ' has-viewer-reading' : ''}`}>
       {!compact && <div className="scene-bar">
         <div className="scene-mode-toggle">
           <button
@@ -243,6 +250,7 @@ export default function SceneOverview({
               if (viewerFocusShotIndex === null) onClearLensFocus?.()
             }}
             onNavigate={setFocusedShotIndex}
+            minimal={viewerFocusShotIndex !== null}
           />
         ) : compact ? (
           <GridView
@@ -250,6 +258,9 @@ export default function SceneOverview({
             compact
             onOpenShot={setFocusedShotIndex}
             decisionScope={decisionScope}
+            scopeSelection={scopeSelection}
+            selectableScopeShotIds={selectableScopeShotIds}
+            onScopeShotSelect={onScopeShotSelect}
             sequencePreview={sequencePreview}
             draftImages={panelDraftImages}
           />
@@ -261,6 +272,9 @@ export default function SceneOverview({
               <GridView
                 shotPreview={shotPreview}
                 decisionScope={decisionScope}
+                scopeSelection={scopeSelection}
+                selectableScopeShotIds={selectableScopeShotIds}
+                onScopeShotSelect={onScopeShotSelect}
                 sequencePreview={sequencePreview}
                 draftImages={panelDraftImages}
               />

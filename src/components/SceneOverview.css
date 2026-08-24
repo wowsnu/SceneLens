@@ -222,6 +222,21 @@
   background: rgba(15, 23, 42, .42);
 }
 
+/* 읽힘 검토에서는 그림은 참조만 하고, 아래의 읽기·조건 카드가 실제 작업
+   공간이 된다. 이미지가 남는 높이를 모두 먹거나 자체 스크롤을 만들지 않는다. */
+.scene-overview.compact.has-viewer-reading .scene-overview-body {
+  flex: 0 0 auto;
+  height: min(45vh, 350px);
+  min-height: 230px;
+  overflow: hidden;
+}
+
+.scene-overview.has-viewer-reading .scene-overview-viewer-slot {
+  flex: 1 1 auto;
+  max-height: none;
+  min-height: 0;
+}
+
 .split-shot-focus {
   width: 100%;
   height: 100%;
@@ -231,6 +246,26 @@
   gap: 14px;
   padding: 14px;
   overflow-y: auto;
+}
+
+.split-shot-focus.minimal {
+  height: 100%;
+  padding: 8px;
+  overflow: hidden;
+}
+
+.split-shot-focus.minimal .split-shot-focus-frame {
+  width: auto;
+  height: 100%;
+  max-width: 100%;
+  margin: 0 auto;
+  aspect-ratio: auto;
+}
+
+.split-shot-focus.minimal .split-shot-focus-frame img {
+  width: auto;
+  max-width: 100%;
+  object-fit: contain;
 }
 
 .split-shot-focus > header {

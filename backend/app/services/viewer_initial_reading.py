@@ -101,6 +101,7 @@ RESPONSE_SCHEMA = {
                                 "panel_orders",
                                 "issue",
                                 "audience_effect",
+                                "recommended_change",
                                 "issue_kind",
                                 "suspected_cause",
                             ],
@@ -108,10 +109,10 @@ RESPONSE_SCHEMA = {
                                 "panel_orders": {"type": "array", "items": {"type": "integer"}},
                                 "issue": {"type": "string"},
                                 "audience_effect": {"type": "string"},
+                                "recommended_change": {"type": "string"},
                                 "issue_kind": {
                                     "type": "string",
                                     "enum": [
-                                        "story_context",
                                         "element_visibility",
                                         "spatial_relation",
                                         "framing_readability",
@@ -121,7 +122,7 @@ RESPONSE_SCHEMA = {
                                 },
                                 "suspected_cause": {
                                     "type": "string",
-                                    "enum": ["narrative", "mise", "camera", "editing"],
+                                    "enum": ["mise", "camera", "editing"],
                                 },
                             },
                         },
@@ -135,30 +136,35 @@ RESPONSE_SCHEMA = {
 
 READING_CONDITIONS = {
     "first_viewer": {
-        "label": "처음 보는 관객",
+        "label": "화면만으로 읽기",
         "instruction": (
-            "You have no prior information and little assumed film-literacy. "
-            "Prioritize whether you can follow who is present, what is changing, "
-            "and what may happen next from visible evidence."
+            "Make a basic viewing trace. Prioritize whether visible evidence establishes who is "
+            "present, what is happening, what changes, and what may happen next. In each field, "
+            "lead with that plain understanding. Do not foreground framing, repetition, or shot "
+            "rhythm unless it prevents this basic understanding."
         ),
     },
     "film_literate": {
-        "label": "영화에 익숙한 관객",
+        "label": "연출 방식에 주목",
         "instruction": (
-            "You are familiar with cinematic framing, repetition, omission, shot relations, "
-            "and visual rhythm. Follow the expectations and emphasis these choices create. "
+            "Make a directing-focused viewing trace. Prioritize visible framing, scale, angle, "
+            "blocking, repetition, omission, contrast, shot relations, and visual rhythm. In "
+            "each immediate_reading and current_hypothesis, explain the expectation or emphasis "
+            "created by the most relevant visible choice, rather than retelling the plot. "
             "Treat ambiguity as potentially meaningful, but only when the panel sequence "
             "supplies visible support for it."
         ),
     },
     # Keep the existing key so saved Viewer results remain selectable in the UI.
     "context_close": {
-        "label": "이야기 흐름을 중요하게 보는 관객",
+        "label": "컷 연결에 주목",
         "instruction": (
-            "Follow how events, causal links, and the viewer's information change from one "
-            "cut to the next. Prioritize whether each panel visibly follows from or updates "
-            "the previous panel. Adjacency alone is not evidence of causality; when an event "
-            "or information bridge is missing, keep the connection open instead of inventing it."
+            "Make a cut-to-cut viewing trace. From panel two onward, prioritize what the next "
+            "cut carries forward, changes, withholds, or newly reveals: position, gaze, object, "
+            "action, time, place, and information. In each immediate_reading and "
+            "current_hypothesis, lead with that connection to the previous panel instead of "
+            "describing the panel alone. Adjacency alone is not evidence of causality; when an "
+            "event or information bridge is missing, keep the connection open instead of inventing it."
         ),
     },
 }
@@ -207,13 +213,13 @@ COMPARISON_SCHEMA = {
                                 "issue_kind": {
                                     "type": "string",
                                     "enum": [
-                                        "story_context", "element_visibility", "spatial_relation",
+                                        "element_visibility", "spatial_relation",
                                         "framing_readability", "cut_connection", "information_order",
                                     ],
                                 },
                                 "suspected_cause": {
                                     "type": "string",
-                                    "enum": ["narrative", "mise", "camera", "editing"],
+                                    "enum": ["mise", "camera", "editing"],
                                 },
                             },
                         },
@@ -244,6 +250,7 @@ The response is shown directly to a creator. Use everyday Korean for an adult co
 Your reading condition is: {condition['label']}.
 {condition['instruction']}
 This condition is not a real demographic claim or a real person's voice. It only sets what you attend to while reading.
+The three conditions must produce meaningfully different reading traces when the panels provide a basis: basic on-screen understanding, the emphasis made by screen construction, or the connection created between cuts. Do not force a difference where the pixels do not support one.
 
 Return exactly one cumulative Initial Reading. It is one plausible reading, never a claim about real audience groups.
 
@@ -258,9 +265,9 @@ Follow the viewer's changing thought in strict panel order instead of writing in
 After the steps, summarize the final hypothesis and emotional arc. Pick the one panel that most changed the reading as the turning point. The turning_point_reason must explain how that panel changed what had been understood from earlier panels; it must not cite a later panel or reverse chronology.
 Add an interpretive branch only when the visible sequence supports a genuinely different reading. Do not force one for every panel; zero to two branches is enough. State where it began, what both readings are, which became stronger or whether it remains unresolved, and the visible basis.
 Unresolved questions must contain only matters the supplied pixels leave open.
-Add a review_point only when comprehension or emotional flow may actually suffer. A missed minor detail is not automatically a problem. Each review point names the affected panel numbers, the possible audience effect, an issue_kind, and one suspected_cause. Zero review points is valid.
-Use issue_kind exactly as follows: story_context for identity, relationship, goal, or causal meaning that the visible sequence cannot establish; element_visibility for a needed person, object, or action that is hard to identify; spatial_relation for blocking, position, gesture, prop placement, or spatial relation; framing_readability for scale, crop, viewpoint, focus, or visual emphasis; cut_connection for an unclear relation across two or more panels; information_order for information revealed too early, too late, or in a confusing order.
-Use suspected_cause for the most direct source: narrative, mise, camera, or editing. It is only a hypothesis and will be checked by a routing rule; do not choose more than one.
+Add a review_point only when comprehension or emotional flow may actually suffer and it can be inspected through mise, camera, or editing. A missed minor detail is not automatically a problem. If identity, relationship, goal, or causal meaning is unavailable from the panels, leave it as an open_question instead of making it a review point. Each review point names the affected panel numbers, the possible effect, one recommended_change, an issue_kind, and one suspected_cause. recommended_change must be one short, concrete Korean instruction that tells the creator what to change in the named panels. For editing, say what should be shown earlier, moved earlier, or made continuous; never give abstract labels such as "improve pacing." Zero review points is valid.
+Use issue_kind exactly as follows: element_visibility for a needed person, object, or action that is hard to identify; spatial_relation for blocking, position, gesture, prop placement, or spatial relation; framing_readability for scale, crop, viewpoint, focus, or visual emphasis; cut_connection for an unclear relation across two or more panels; information_order for information revealed too early, too late, or in a confusing order.
+Use suspected_cause for the most direct source: mise, camera, or editing. It is only a hypothesis and will be checked by a routing rule; do not choose more than one.
 
 Look at each panel before writing about it. Work through it in this order: who or what is in frame and where they stand relative to each other; which way each face and body is turned and where the eyes look; what the hands are doing and what they hold or touch; how much of the subject the frame includes and from what height; what the space and light tell you. Ground every cue you cite in one of these. If something is drawn too roughly to identify, say it is unclear rather than guessing a specific object or expression — a rough storyboard leaves much undrawn, and treating a blank face as an emotion is the most common mistake.
 
@@ -356,9 +363,9 @@ async def _compare_readings(
     prompt = """Compare independent, intention-blind storyboard reading records written by different reading conditions. Write Korean in short, everyday sentences for a creator. Do not use academic, critic-like, or demographic language. Say what was seen and how it led to a different reading, rather than naming an abstract analytical concept.
 Do not invent a real audience consensus, demographic fact, screenplay fact, or creator intention. Do not declare a difference a flaw just because the readings differ.
 
-Return one short common_reading only if the records actually share a flow. Then return zero to three divergences only where the conditions reach meaningfully different interpretations at a panel or adjacent panel range. Each readings item must use the matching condition_id and its differing reading in plain language. shared_cues must quote only short visible-cue phrases already present in the records. why_it_matters explains what decision the creator may need to consider, not what they should choose.
+Return one short common_reading only if the records actually share a flow. Then return zero to three divergences only where the conditions reach meaningfully different interpretations at a panel or adjacent panel range. Divergence ranges must not overlap: one panel or cut connection gets at most one divergence. Order them from the most consequential difference to the least. Each readings item must use the matching condition_id and its differing reading in plain language. shared_cues must quote only short visible-cue phrases already present in the records. why_it_matters explains what decision the creator may need to consider, not what they should choose.
 
-Use issue_kind and suspected_cause only to classify where to inspect the difference: story_context for identity/goal/causal meaning; element_visibility for hard-to-identify visible elements; spatial_relation for blocking/props/position; framing_readability for framing or emphasis; cut_connection for an unclear relation across panels; information_order for confusing reveal order. Do not create a divergence when the records merely use different wording.
+Only create a divergence when it can be inspected through mise, camera, or editing. Do not create one merely because identity, goal, or causal meaning remains unavailable from the panels; leave that uncertainty in the reading records. Use issue_kind and suspected_cause only to classify where to inspect the difference: element_visibility for hard-to-identify visible elements; spatial_relation for blocking/props/position; framing_readability for framing or emphasis; cut_connection for an unclear relation across panels; information_order for confusing reveal order. Do not create a divergence when the records merely use different wording.
 
 Here are the independent records:\n""" + json.dumps(records, ensure_ascii=False)
     response = await client.chat.completions.create(

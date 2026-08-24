@@ -23,6 +23,7 @@ import useStore, {
   PANEL_STYLE_PRESETS,
   selectSceneStates,
   selectLayoutForCut,
+  cutFindingFingerprint,
 } from '../store/useStore'
 import './StoryboardView.css'
 import { logEdit, logEvent, logScaffold } from '../store/studyLog'
@@ -411,14 +412,15 @@ function DiagnosisList({
         const layer = PROBLEM_LAYERS[finding.layer]
         // 샷 크기로 풀리는 진단만 촬영에 물을 수 있다. 컷을 나누거나
         // 합쳐야 하는 것은 층위가 다르다.
-        const canFix = Boolean(onRequestFix) && SHOT_FIXABLE.has(finding.type)
-        const canInsert = Boolean(onRequestInsert) && CUT_INSERTABLE.has(finding.type)
-        const canApplyEdit = Boolean(onApplyEdit) && ['split', 'merge', 'delete'].includes(finding.operation)
+        const changed = Boolean(finding.changed)
+        const canFix = !changed && Boolean(onRequestFix) && SHOT_FIXABLE.has(finding.type)
+        const canInsert = !changed && Boolean(onRequestInsert) && CUT_INSERTABLE.has(finding.type)
+        const canApplyEdit = !changed && Boolean(onApplyEdit) && ['split', 'merge', 'delete'].includes(finding.operation)
         const proposal = fixProposal?.findingId === finding.id ? fixProposal : null
         const insertion = insertProposal?.findingId === finding.id ? insertProposal : null
         const cutLabel = cutLabelOf?.(finding)
         return (
-          <li key={finding.id}>
+          <li key={finding.id} className={changed ? 'is-changed' : ''}>
             {/* 카드 전체가 그 컷으로 가는 길이다. `표에서 보기` 버튼을
                 따로 두면 지적을 읽고 나서 누를 것을 한 번 더 찾아야 한다 —
                 지적은 언제나 어느 컷의 이야기이므로 데려다주는 것이 기본
@@ -437,6 +439,7 @@ function DiagnosisList({
                   카드만 읽고는 알 수 없고, 지적이 여럿이면 어느 것이 어느
                   컷인지 목록에서 구분되지 않는다. */}
               {cutLabel && <span className="rail-coverage-cut">{cutLabel}</span>}
+              {changed && <span className="rail-coverage-changed">수정됨 · 재점검 필요</span>}
               <strong>{finding.title}</strong>
               <p>{finding.suggestedAction || finding.detail}</p>
             </button>
@@ -1236,6 +1239,9 @@ export default function StoryboardView() {
     ...current,
     [cutStage]: nextAgent,
   }))
+  // 컷 플랜마다 문제 있는 에이전트 하나만 먼저 연다. 사용자가 닫거나 다른
+  // 에이전트를 고른 뒤 다시 빼앗지 않도록 플랜 단위로 한 번만 실행한다.
+  const autoOpenedCutPlanAgentKey = useRef(null)
   // 줄 종류·삭제 버튼은 Beat 단위로 켠다. 평소엔 대본만 보이게 한다.
   const [editingBeat, setEditingBeat] = useState(null)
   // Enter나 화살표로 옮겨갈 줄. { index, caret } 형태.
@@ -1691,6 +1697,8 @@ export default function StoryboardView() {
         detail: finding.finding,
         suggestedAction: finding.suggestedAction,
         cutIds: finding.cutIds,
+        changed: Boolean(finding.checkedFingerprint)
+          && finding.checkedFingerprint !== cutFindingFingerprint(cutPlan, finding.cutIds),
       })),
   ]
   const visibleEditingFindings = editingFindings.filter((finding) => !appliedEditingFindingIds.has(finding.id))
@@ -1703,6 +1711,8 @@ export default function StoryboardView() {
       title: NARRATIVE_RULE_LABELS[finding.ruleId] || '촬영',
       detail: finding.finding,
       cutIds: finding.cutIds,
+      changed: Boolean(finding.checkedFingerprint)
+        && finding.checkedFingerprint !== cutFindingFingerprint(cutPlan, finding.cutIds),
     }))
   // 사용자가 표 전체를 입력 양식처럼 훑지 않아도 되도록, 실제로 다시 볼
   // 이유가 있는 컷만 표시한다. 에이전트가 짚은 컷과 샷이 비어 있는 컷이다.
@@ -2476,7 +2486,7 @@ export default function StoryboardView() {
   }
 
   // 컷 지적은 그 컷 자리로 보낸다. 어느 컷인지 모르면 고칠 수 없다.
-  const goToFindingCut = (finding) => {
+  const goToFindingCut = (finding, logInteraction = true) => {
     const cutId = finding.cutIds?.[0]
     if (!cutId) return
     const cut = cutPlan.find((item) => item.id === cutId)
@@ -2497,7 +2507,9 @@ export default function StoryboardView() {
     // 펼쳐 둔 프롬프트가 있으면 닫는다. 그 자리에 긴 칸이 열려 있으면
     // 짚어준 컷이 화면 밖으로 밀린다.
     setExpandedPromptCutId(null)
-    logScaffold({ feature: 'diagnosis', action: 'accept', target: cutId, lens: 'editing' })
+    if (logInteraction) {
+      logScaffold({ feature: 'diagnosis', action: 'accept', target: cutId, lens: 'editing' })
+    }
     // 접힌 것을 펴는 re-render가 끝나야 행이 DOM에 생긴다. 고정 지연으로
     // 기다리면 느린 프레임에서 빈손으로 돌아오므로, 나타날 때까지 몇 번
     // 다시 본다.
@@ -2518,6 +2530,67 @@ export default function StoryboardView() {
     }
     window.setTimeout(reveal, 60)
   }
+
+  // 자동 점검이 접힌 배지에서 끝나면 사용자는 다시 눌러 결과를 찾아야 한다.
+  // 그래서 첫 예외가 생기는 순간 담당 에이전트를 열고 그 컷으로 보낸다.
+  // 이후 선택은 사용자에게 맡기며 같은 플랜에서는 다시 자동 전환하지 않는다.
+  useEffect(() => {
+    if (cutStage !== 'cutplan' || cutPlan.length === 0) return
+    const planKey = cutPlan[0].id
+    if (autoOpenedCutPlanAgentKey.current === planKey) return
+
+    // 사용자가 점검 중 먼저 에이전트를 열었다면 그 선택을 존중한다.
+    if (openAgent) {
+      autoOpenedCutPlanAgentKey.current = planKey
+      return
+    }
+
+    if (visibleEditingFindings.length > 0) {
+      autoOpenedCutPlanAgentKey.current = planKey
+      setOpenAgent('editing')
+      goToFindingCut(visibleEditingFindings[0], false)
+      return
+    }
+
+    // 규칙·AI 컷 구성 점검이 끝나기 전에 카메라 미정만 보고 열면, 잠시 뒤
+    // 도착한 더 중요한 편집 예외를 가린다. 컷 구성 점검이 정리된 뒤 고른다.
+    const cutPlanCheckSettled = autoCheckedPlanKey.current === planKey
+      && !narrativeCheckPending
+      && (narrativeCheck?.stage === 'cutplan' || Boolean(narrativeCheckError))
+    if (!cutPlanCheckSettled) return
+
+    if (cameraFindings.length > 0) {
+      autoOpenedCutPlanAgentKey.current = planKey
+      setOpenAgent('camera')
+      goToFindingCut(cameraFindings[0], false)
+      return
+    }
+
+    if (undecidedShots > 0) {
+      const firstUndecided = cutPlan.find((cut) => !cut.shotSize)
+      autoOpenedCutPlanAgentKey.current = planKey
+      setOpenAgent('camera')
+      if (firstUndecided) goToFindingCut({ cutIds: [firstUndecided.id] }, false)
+      return
+    }
+
+    if (undecidedSceneFacts > 0 || missingReferenceRequirements.length > 0) {
+      autoOpenedCutPlanAgentKey.current = planKey
+      setOpenAgent('mise')
+    }
+  }, [
+    cameraFindings,
+    cutPlan,
+    cutStage,
+    missingReferenceRequirements.length,
+    narrativeCheck,
+    narrativeCheckError,
+    narrativeCheckPending,
+    openAgent,
+    undecidedSceneFacts,
+    undecidedShots,
+    visibleEditingFindings,
+  ])
 
   const requestSuggestionForFinding = (finding, stage = 'cutplan') => {
     // 문제가 있는 Beat여야 제안이 엉뚱한 줄에 붙지 않는다. 지금 보고
@@ -3117,12 +3190,12 @@ export default function StoryboardView() {
                 <button type="button" onClick={() => addCutPlanItem(null, activeBeat)}>
                   + Add cut
                 </button>
-                {/* 아직 확인하지 않은 컷이 몇 개인지. 전부 확인했으면 굳이
-                    말하지 않는다. */}
+                {/* AI 출처 전체를 미확인으로 세면 사용자가 표 18행을 전부
+                    검사해야 한다고 느낀다. 실제 예외만 센다. */}
                 <span>
                   {cutPlan.length} cuts
-                  {cutPlan.some((item) => item.provenance === 'AI') && (
-                    <> · 미확인 {cutPlan.filter((item) => item.provenance === 'AI').length}</>
+                  {reviewCutIds.size > 0 && (
+                    <> · 확인할 것 {reviewCutIds.size}</>
                   )}
                 </span>
               </footer>

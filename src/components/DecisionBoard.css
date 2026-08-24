@@ -92,6 +92,72 @@
   position: relative;
 }
 
+.scope-change-button,
+.scope-selection-toolbar > button {
+  min-height: 28px;
+  padding: 0 10px;
+  border: 1px solid rgba(245, 158, 11, 0.28);
+  border-radius: 6px;
+  background: rgba(245, 158, 11, 0.07);
+  color: rgba(253, 230, 138, 0.82);
+  font: inherit;
+  font-size: 9.5px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.scope-change-button:hover,
+.scope-selection-toolbar > button:hover:not(:disabled) {
+  border-color: rgba(245, 158, 11, 0.52);
+  color: #fff7d6;
+}
+
+.scope-change-button:disabled,
+.scope-selection-toolbar > button:disabled {
+  cursor: not-allowed;
+  opacity: 0.36;
+}
+
+.scope-selection-toolbar {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.scope-selection-toolbar > div {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+  margin-right: 4px;
+  text-align: right;
+}
+
+.scope-selection-toolbar > div strong {
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 9.5px;
+}
+
+.scope-selection-toolbar > div span {
+  overflow: hidden;
+  max-width: 340px;
+  color: rgba(255, 255, 255, 0.38);
+  font-size: 8.5px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.scope-selection-toolbar > button:not(.primary) {
+  border-color: rgba(255, 255, 255, 0.1);
+  background: transparent;
+  color: rgba(255, 255, 255, 0.48);
+}
+
+.scope-selection-toolbar > button.primary {
+  background: rgba(245, 158, 11, 0.14);
+}
+
 .scope-mode-toggle {
   flex-shrink: 0;
   display: flex;
@@ -924,6 +990,39 @@
   background: rgba(255, 255, 255, 0.11);
 }
 
+.decision-review-detail-nav {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 8px 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+  background: rgba(255, 255, 255, 0.018);
+}
+
+.decision-review-detail-nav button {
+  min-height: 28px;
+  padding: 0 9px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.48);
+  font: inherit;
+  font-size: 10.5px;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.decision-review-detail-nav button.back {
+  margin-right: auto;
+  color: rgba(216, 170, 98, 0.82);
+}
+
+.decision-review-detail-nav button.active {
+  border-color: rgba(255, 255, 255, 0.13);
+  background: rgba(255, 255, 255, 0.05);
+  color: rgba(255, 255, 255, 0.9);
+}
+
 .primary-lens-control[hidden],
 .option-lanes[hidden] {
   display: none;
@@ -1192,6 +1291,506 @@
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   border-top: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.multi-review-relation-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 14px 12px 7px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.multi-review-relation-heading strong {
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 10.5px;
+}
+
+.multi-review-relation-heading span {
+  color: rgba(196, 181, 253, 0.58);
+  font-size: 9px;
+}
+
+/* 메인 연출 검토는 렌즈 보고서가 아니라 결정할 문제 하나만 보여 준다. */
+.directing-checklist {
+  margin: 12px;
+  overflow: hidden;
+  border: 1px solid rgba(216, 170, 98, 0.2);
+  border-radius: 9px;
+  background: rgba(8, 8, 10, 0.42);
+}
+
+.directing-checklist > header {
+  display: grid;
+  gap: 4px;
+  padding: 11px 12px 9px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.065);
+}
+
+.directing-checklist > header > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.directing-checklist > header span {
+  color: #f0cb91;
+  font-size: 11px;
+  font-weight: 850;
+}
+
+.directing-checklist > header strong {
+  color: rgba(255, 255, 255, 0.46);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+}
+
+.directing-checklist > header p {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.37);
+  font-size: 10px;
+  line-height: 1.4;
+}
+
+.directing-check-queue {
+  display: flex;
+  gap: 5px;
+  padding: 8px 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.055);
+}
+
+.directing-check-queue button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 26px;
+  padding: 0 8px 0 5px;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 999px;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.42);
+  font: inherit;
+  font-size: 9px;
+  cursor: pointer;
+}
+
+.directing-check-queue button > span {
+  display: grid;
+  width: 16px;
+  height: 16px;
+  place-items: center;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.06);
+  font-size: 8px;
+  font-weight: 850;
+}
+
+.directing-check-queue button.active {
+  border-color: rgba(216, 170, 98, 0.36);
+  background: rgba(216, 170, 98, 0.08);
+  color: #e8c691;
+}
+
+.directing-check-queue button.done {
+  opacity: 0.45;
+}
+
+.directing-check-card {
+  padding: 14px 14px 12px;
+  box-shadow: inset 3px 0 var(--issue-color);
+}
+
+.directing-check-source {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.directing-check-source > span {
+  display: grid;
+  width: 22px;
+  height: 22px;
+  place-items: center;
+  border: 1px solid color-mix(in srgb, var(--issue-color), transparent 52%);
+  border-radius: 6px;
+  color: color-mix(in srgb, var(--issue-color), white 24%);
+  font-size: 9px;
+  font-weight: 900;
+}
+
+.directing-check-source > strong {
+  color: rgba(255, 255, 255, 0.68);
+  font-size: 10px;
+}
+
+.directing-check-source > em {
+  margin-left: auto;
+  color: rgba(255, 255, 255, 0.34);
+  font-size: 9px;
+  font-style: normal;
+}
+
+.directing-check-card h3 {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  margin: 11px 0 0;
+  color: rgba(255, 255, 255, 0.93);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.directing-check-card > p {
+  margin: 5px 0 0;
+  color: rgba(255, 255, 255, 0.58);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.directing-check-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 13px;
+}
+
+.directing-check-actions button {
+  min-height: 30px;
+  padding: 0 10px;
+  border: 1px solid rgba(255, 255, 255, 0.13);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.025);
+  color: rgba(255, 255, 255, 0.64);
+  font: inherit;
+  font-size: 10px;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.directing-check-actions button:hover,
+.directing-check-actions button.active {
+  border-color: rgba(216, 170, 98, 0.4);
+  color: #f0cb91;
+}
+
+.directing-check-actions button.primary {
+  margin-left: auto;
+  border-color: rgba(216, 170, 98, 0.45);
+  background: rgba(216, 170, 98, 0.12);
+  color: #f0cb91;
+}
+
+.directing-check-proposal {
+  display: grid;
+  gap: 7px;
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.directing-check-proposal > .directing-check-proposal-lead {
+  margin: 0 0 2px;
+  color: rgba(255, 255, 255, 0.64);
+  font-size: 10.5px;
+  line-height: 1.45;
+}
+
+.directing-check-proposal > div {
+  display: grid;
+  grid-template-columns: 38px minmax(90px, auto) minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: baseline;
+}
+
+.directing-check-proposal span {
+  color: rgba(255, 255, 255, 0.33);
+  font-size: 9px;
+  font-weight: 800;
+}
+
+.directing-check-proposal strong {
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 10.5px;
+}
+
+.directing-check-proposal p {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.48);
+  font-size: 10px;
+  line-height: 1.45;
+}
+
+.directing-check-proposal-change { display: block; margin-top: 3px; color: #bae6fd; font-size: 9.5px; font-weight: 750; }
+
+.directing-check-proposal-pick { display: inline-flex; align-items: center; gap: 4px; color: rgba(224, 242, 254, 0.9); font-size: 10px; font-weight: 800; white-space: nowrap; cursor: pointer; }
+.directing-check-proposal-pick input { accent-color: #38bdf8; margin: 0; }
+.directing-check-proposal-pick:has(input:disabled) { opacity: 0.45; cursor: default; }
+
+.directing-check-proposal-apply {
+  min-height: 28px;
+  padding: 0 8px;
+  border: 1px solid rgba(125, 211, 252, 0.42);
+  border-radius: 6px;
+  background: rgba(14, 116, 144, 0.17);
+  color: #e0f2fe;
+  font: inherit;
+  font-size: 10px;
+  font-weight: 800;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.directing-check-proposal-apply:disabled { opacity: 0.48; cursor: default; }
+
+.directing-check-proposal-batch { grid-column: 2 / -1; display: flex !important; align-items: center !important; justify-content: space-between; gap: 8px; margin-top: 3px; padding-top: 8px; border-top: 1px solid rgba(125, 211, 252, 0.16); }
+.directing-check-proposal-batch > span { color: rgba(186, 230, 253, 0.78); font-size: 10px; }
+.directing-check-proposal-batch > button { min-height: 29px; padding: 0 9px; border: 1px solid rgba(125, 211, 252, 0.42); border-radius: 6px; background: rgba(14, 116, 144, 0.17); color: #e0f2fe; font: inherit; font-size: 10px; font-weight: 800; cursor: pointer; }
+.directing-check-proposal-batch > button:disabled { opacity: 0.45; cursor: default; }
+
+.directing-check-revision {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+  padding: 10px;
+  border: 1px solid rgba(125, 211, 252, 0.3);
+  border-radius: 8px;
+  background: rgba(14, 116, 144, 0.1);
+}
+
+.directing-check-revision > img { width: 100%; max-height: 230px; border-radius: 6px; object-fit: contain; background: rgba(2, 6, 23, 0.48); }
+.directing-check-revision > div:not(.directing-check-revision-actions) { display: grid; gap: 2px; }
+.directing-check-revision strong { color: #e0f2fe; font-size: 12px; }
+.directing-check-revision span { color: rgba(226, 232, 240, 0.78); font-size: 10.5px; line-height: 1.45; }
+.directing-check-revision-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+.directing-check-revision-actions button { min-height: 30px; padding: 0 9px; border: 1px solid rgba(148, 163, 184, 0.22); border-radius: 6px; background: rgba(15, 23, 42, 0.36); color: rgba(241, 245, 249, 0.9); font: inherit; font-size: 10px; font-weight: 800; cursor: pointer; }
+.directing-check-revision-actions button.primary { border-color: rgba(125, 211, 252, 0.5); background: rgba(14, 116, 144, 0.28); color: #e0f2fe; }
+
+.directing-check-prompt { display: grid; gap: 8px; margin-top: 12px; padding: 10px; border: 1px solid rgba(167, 139, 250, 0.25); border-radius: 8px; background: rgba(76, 29, 149, 0.1); }
+.directing-check-prompt > header { display: grid; gap: 2px; }
+.directing-check-prompt strong { color: #ddd6fe; font-size: 12px; }
+.directing-check-prompt header span,
+.directing-check-prompt > p { margin: 0; color: rgba(226, 232, 240, 0.72); font-size: 10.5px; line-height: 1.45; }
+.directing-check-prompt > p { color: #c4b5fd; }
+.directing-check-prompt textarea { min-height: 92px; resize: vertical; border: 1px solid rgba(167, 139, 250, 0.26); border-radius: 6px; padding: 8px; background: rgba(2, 6, 23, 0.35); color: rgba(241, 245, 249, 0.92); font: inherit; font-size: 11px; line-height: 1.45; }
+.directing-check-prompt > div { display: flex; justify-content: flex-end; gap: 6px; }
+.directing-check-prompt button { min-height: 30px; padding: 0 9px; border: 1px solid rgba(148, 163, 184, 0.22); border-radius: 6px; background: rgba(15, 23, 42, 0.36); color: rgba(241, 245, 249, 0.9); font: inherit; font-size: 10px; font-weight: 800; cursor: pointer; }
+.directing-check-prompt button.primary { border-color: rgba(196, 181, 253, 0.52); background: rgba(109, 40, 217, 0.22); color: #ede9fe; }
+.directing-check-prompt button:disabled { opacity: 0.45; cursor: default; }
+
+.directing-check-complete {
+  padding: 18px 14px;
+  text-align: center;
+}
+
+.directing-check-complete strong {
+  color: rgba(255, 255, 255, 0.82);
+  font-size: 13px;
+}
+
+.directing-check-complete p {
+  margin: 5px 0 0;
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 10.5px;
+}
+
+.directing-intent-check,
+.directing-intent-complete {
+  margin: 10px 0 0;
+  padding: 12px;
+  border: 1px solid rgba(216, 170, 98, 0.23);
+  border-radius: 8px;
+  background: rgba(216, 170, 98, 0.055);
+}
+
+.directing-intent-check > header,
+.directing-intent-complete {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.directing-intent-check > header span {
+  color: rgba(216, 170, 98, 0.86);
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.directing-intent-check > header strong {
+  color: rgba(255, 255, 255, 0.48);
+  font-size: 10px;
+}
+
+.directing-intent-check > p {
+  margin: 8px 0;
+  color: rgba(255, 255, 255, 0.77);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.directing-intent-check textarea {
+  box-sizing: border-box;
+  width: 100%;
+  resize: vertical;
+  min-height: 48px;
+  padding: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 5px;
+  background: rgba(0, 0, 0, 0.24);
+  color: rgba(255, 255, 255, 0.8);
+  font: inherit;
+  font-size: 10.5px;
+}
+
+.directing-intent-check > div {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.directing-intent-check button,
+.directing-intent-complete button {
+  min-height: 27px;
+  padding: 0 9px;
+  border: 1px solid rgba(255, 255, 255, 0.13);
+  border-radius: 5px;
+  background: rgba(255, 255, 255, 0.045);
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 10px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.directing-intent-check button.primary,
+.directing-intent-complete button.primary {
+  border-color: rgba(216, 170, 98, 0.55);
+  background: rgba(216, 170, 98, 0.16);
+  color: #f4d9a7;
+}
+
+.directing-intent-check button:disabled,
+.directing-intent-complete button:disabled {
+  cursor: default;
+  opacity: 0.42;
+}
+
+.directing-intent-complete > div { min-width: 0; }
+.directing-intent-complete strong { color: rgba(255, 255, 255, 0.76); font-size: 11px; }
+.directing-intent-complete p { margin: 4px 0 0; color: rgba(255, 255, 255, 0.42); font-size: 10px; line-height: 1.4; }
+
+.multi-review-full-analysis {
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+  background: rgba(0, 0, 0, 0.1);
+}
+
+.multi-review-full-analysis > summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 11px 13px;
+  cursor: pointer;
+  list-style: none;
+}
+
+.multi-review-full-analysis > summary::-webkit-details-marker { display: none; }
+.multi-review-full-analysis > summary div { display: grid; gap: 2px; }
+.multi-review-full-analysis > summary strong { color: rgba(255, 255, 255, 0.72); font-size: 11px; }
+.multi-review-full-analysis > summary span { color: rgba(255, 255, 255, 0.34); font-size: 9.5px; }
+.multi-review-full-analysis > summary em { color: rgba(216, 170, 98, 0.7); font-size: 9px; font-style: normal; font-weight: 800; }
+
+.multi-review-detail-links {
+  margin: 10px 12px 12px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.multi-review-detail-links > header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.multi-review-detail-links strong {
+  color: rgba(255, 255, 255, 0.62);
+  font-size: 9.5px;
+}
+
+.multi-review-detail-links span {
+  color: rgba(255, 255, 255, 0.32);
+  font-size: 9px;
+}
+
+.multi-review-detail-links > div {
+  display: flex;
+  gap: 5px;
+  margin-top: 7px;
+}
+
+.multi-review-detail-links button {
+  flex: 1;
+  min-height: 28px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 5px;
+  background: rgba(255, 255, 255, 0.035);
+  color: rgba(255, 255, 255, 0.68);
+  font-size: 10px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.multi-review-detail-links button:hover {
+  border-color: rgba(216, 170, 98, 0.46);
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.multi-review-compact-section {
+  margin: 0 12px 8px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.075);
+  border-radius: 7px;
+}
+
+.multi-review-compact-section > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 7px 9px;
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.multi-review-compact-section > header strong {
+  color: rgba(255, 255, 255, 0.62);
+  font-size: 9.5px;
+}
+
+.multi-review-compact-section > header em {
+  color: rgba(255, 255, 255, 0.32);
+  font-size: 9px;
+  font-style: normal;
+}
+
+.multi-review-compact-section ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.multi-review-compact-section li {
+  padding: 8px 9px;
+  color: rgba(255, 255, 255, 0.64);
+  font-size: 10px;
+  line-height: 1.45;
+}
+
+.multi-review-compact-section li + li {
+  border-top: 1px solid rgba(255, 255, 255, 0.055);
 }
 
 .multi-review-card {
@@ -2153,12 +2752,14 @@ button.active .lens-glass::after {
 }
 
 .directing-diagnosis-card > strong {
+  order: -2;
   color: rgba(255, 251, 235, 0.96);
   font-size: 14.5px;
   line-height: 1.55;
 }
 
 .directing-diagnosis-targets {
+  order: -3;
   display: flex;
   flex-wrap: wrap;
   gap: 5px;
@@ -2200,6 +2801,7 @@ button.active .lens-glass::after {
 }
 
 .directing-suggested-action {
+  order: -1;
   padding: 11px;
   border-left: 3px solid color-mix(in srgb, var(--lens-color), white 8%);
   background: color-mix(in srgb, var(--lens-color), transparent 92%);
@@ -2222,12 +2824,45 @@ button.active .lens-glass::after {
 }
 
 .directing-diagnosis-actions {
+  order: 1;
   display: flex;
   flex-wrap: wrap;
   justify-content: flex-end;
   gap: 7px;
   padding-top: 2px;
 }
+
+/* 필요한 판단은 위에서 끝난다. 선택지·근거는 같은 정보를 다시 쌓지 않고
+   감독이 필요할 때만 여는 두 번째 층으로 둔다. */
+.directing-alternatives-disclosure,
+.directing-rationale-disclosure {
+  order: 2;
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.directing-alternatives-disclosure > summary,
+.directing-rationale-disclosure > summary {
+  padding: 9px 0 2px;
+  color: rgba(226, 232, 240, 0.55);
+  font-size: 11px;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.directing-rationale-disclosure { order: 3; }
+.directing-rationale-disclosure > div {
+  display: grid;
+  gap: 9px;
+  padding: 8px 0 2px;
+}
+
+.directing-rationale-disclosure .directing-evidence > span {
+  color: rgba(226, 232, 240, 0.44);
+  font-size: 10px;
+  font-weight: 750;
+}
+
+.directing-diagnosis-card > .directing-prompt-editor { order: 4; }
 
 .directing-diagnosis-actions button {
   min-height: 34px;
@@ -4920,12 +5555,12 @@ button.active .lens-glass::after {
 }
 
 .viewer-reflection-placeholder {
-  flex: 1;
-  min-height: 260px;
+  flex: 0 0 auto;
+  min-height: 176px;
   display: flex;
   flex-direction: column;
   justify-content: center;
-  padding: 24px;
+  padding: 22px;
   border: 1px dashed rgba(148, 163, 184, 0.2);
   border-radius: 10px;
   background: rgba(255, 255, 255, 0.018);
@@ -4950,6 +5585,48 @@ button.active .lens-glass::after {
   color: rgba(203, 213, 225, 0.58);
   font-size: 12px;
   line-height: 1.55;
+}
+
+.viewer-reflection-placeholder > p.viewer-first-run-note {
+  max-width: 430px;
+  margin: 5px 0 0;
+  color: rgba(203, 213, 225, 0.52);
+  font-size: 10.5px;
+  line-height: 1.5;
+  text-align: left;
+}
+
+.viewer-initial-reading-choices {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: 13px;
+}
+
+.viewer-initial-reading-choices > span {
+  margin-right: 2px;
+  color: rgba(203, 213, 225, .52);
+  font-size: 10px;
+  font-weight: 750;
+}
+
+.viewer-initial-reading-choices button {
+  min-height: 27px;
+  padding: 0 8px;
+  border: 1px solid rgba(165, 180, 252, .24);
+  border-radius: 999px;
+  background: rgba(15, 23, 42, .28);
+  color: rgba(226, 232, 240, .66);
+  font-size: 10px;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.viewer-initial-reading-choices button.selected {
+  border-color: rgba(167, 139, 250, .6);
+  background: rgba(109, 40, 217, .15);
+  color: #ede9fe;
 }
 
 .viewer-reading-conditions {
@@ -5053,6 +5730,30 @@ button.active .lens-glass::after {
 .viewer-run-button:disabled,
 .viewer-rerun-button:disabled { cursor: not-allowed; opacity: .55; }
 
+.viewer-more-perspectives {
+  overflow: hidden;
+  border: 1px solid rgba(167, 139, 250, 0.16);
+  border-radius: 9px;
+  background: rgba(76, 29, 149, 0.05);
+}
+
+.viewer-more-perspectives > summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 11px;
+  cursor: pointer;
+  list-style: none;
+}
+
+.viewer-more-perspectives > summary::-webkit-details-marker { display: none; }
+.viewer-more-perspectives > summary div { display: grid; gap: 2px; }
+.viewer-more-perspectives > summary strong { color: #ddd6fe; font-size: 11px; }
+.viewer-more-perspectives > summary span { color: rgba(196, 181, 253, 0.54); font-size: 9.5px; }
+.viewer-more-perspectives > summary em { color: rgba(196, 181, 253, 0.72); font-size: 9px; font-style: normal; font-weight: 800; }
+.viewer-more-perspectives .viewer-reading-conditions { border: 0; border-top: 1px solid rgba(167, 139, 250, 0.12); border-radius: 0; }
+
 .viewer-report { display: grid; gap: 10px; }
 
 .viewer-reading-flow {
@@ -5065,7 +5766,7 @@ button.active .lens-glass::after {
 }
 
 .viewer-reading-tabs { display: flex; flex-wrap: wrap; gap: 6px; }
-.viewer-reading-tabs button { padding: 6px 9px; border: 1px solid rgba(148, 163, 184, .2); border-radius: 999px; background: rgba(15, 23, 42, .42); color: rgba(203, 213, 225, .72); font-size: 10px; font-weight: 750; cursor: pointer; }
+.viewer-reading-tabs button { padding: 7px 10px; border: 1px solid rgba(148, 163, 184, .2); border-radius: 999px; background: rgba(15, 23, 42, .42); color: rgba(203, 213, 225, .72); font-size: 12px; font-weight: 750; cursor: pointer; }
 .viewer-reading-tabs button:hover { border-color: rgba(167, 139, 250, .48); color: rgba(241, 245, 249, .9); }
 .viewer-reading-tabs button.active { border-color: rgba(167, 139, 250, .66); background: rgba(109, 40, 217, .16); color: #ede9fe; }
 
@@ -5088,7 +5789,7 @@ button.active .lens-glass::after {
   justify-content: space-between;
   gap: 10px;
   color: rgba(165, 180, 252, .9);
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 800;
 }
 
@@ -5116,9 +5817,7 @@ button.active .lens-glass::after {
 .viewer-reading-card h3 { margin: 4px 0 0; color: #f1f5f9; font-size: 15px; }
 .viewer-reading-card header > p { margin: 6px 0 0; color: rgba(203, 213, 225, .76); font-size: 12px; line-height: 1.5; }
 
-/* 새눈이는 남긴다 — 이 말이 '시스템의 판정'이 아니라 '한 관객의 읽기'임을
-   얼굴이 말해 준다(관객 의견이 판결이 되지 않게 하는 장치). 다만 본문이
-   커진 만큼 자리를 줄여 글에 폭을 넘긴다. */
+/* 왼쪽 카드는 가상 인물이 아니라 현재 선택된 읽기 조건을 나타낸다. */
 .viewer-guide-card {
   display: grid;
   grid-template-columns: 48px minmax(0, 1fr);
@@ -5133,37 +5832,23 @@ button.active .lens-glass::after {
 /* scale은 레이아웃 박스를 줄이지 않는다. 50px 얼굴이 48px 칸을 넘지 않게
    여기서 잘라 준다 — 넘치면 말풍선 쪽으로 밀고 들어온다. */
 .viewer-guide-character { display: grid; justify-items: center; gap: 3px; overflow: hidden; }
-.viewer-guide-character > strong { color: #c4b5fd; font-size: 10.5px; }
+.viewer-guide-character > strong { color: #c4b5fd; font-size: 12px; }
 .viewer-guide-face {
-  position: relative;
-  width: 50px;
-  height: 50px;
-  border: 2px solid rgba(76, 29, 149, .72);
-  border-radius: 44% 48% 46% 50%;
-  background: #fef3c7;
-  box-shadow: inset 0 -6px 0 rgba(245, 158, 11, .1), 0 4px 12px rgba(0, 0, 0, .2);
-  /* 눈·입이 px 좌표로 붙어 있어 width를 줄이면 얼굴이 어긋난다.
-     통째로 축소해 비율을 지킨다. */
-  transform: rotate(-2deg) scale(.86);
-  transform-origin: top center;
+  display: grid;
+  width: 36px;
+  height: 36px;
+  place-items: center;
+  border: 1px solid rgba(167, 139, 250, .52);
+  border-radius: 9px;
+  background: rgba(109, 40, 217, .13);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, .18);
 }
-.viewer-guide-face::before {
-  content: '';
-  position: absolute;
-  left: 7px;
-  top: -5px;
-  width: 35px;
-  height: 13px;
-  border-radius: 70% 45% 50% 20%;
-  background: #6d28d9;
-  transform: rotate(-5deg);
-}
-.viewer-guide-face .eye { position: absolute; top: 21px; width: 5px; height: 7px; border-radius: 50%; background: #312e81; }
-.viewer-guide-face .eye-left { left: 13px; }
-.viewer-guide-face .eye-right { right: 13px; }
-.viewer-guide-mouth { position: absolute; left: 21px; top: 35px; width: 9px; height: 5px; border-bottom: 2px solid #7c2d12; border-radius: 50%; }
-.viewer-guide-character.phase-middle .viewer-guide-face .eye-right { height: 3px; top: 23px; border-radius: 999px; }
-.viewer-guide-character.phase-end .viewer-guide-mouth { width: 7px; height: 7px; border: 2px solid #7c2d12; border-top: 0; border-radius: 0 0 8px 8px; }
+.viewer-guide-face::before { display: none; }
+.viewer-guide-condition-mark { color: #ddd6fe; font-size: 19px; font-weight: 850; }
+.viewer-guide-character.condition-film_literate .viewer-guide-face { border-color: rgba(125, 211, 252, .52); background: rgba(14, 116, 144, .12); }
+.viewer-guide-character.condition-film_literate .viewer-guide-condition-mark { color: #bae6fd; }
+.viewer-guide-character.condition-context_close .viewer-guide-face { border-color: rgba(110, 231, 183, .5); background: rgba(5, 150, 105, .11); }
+.viewer-guide-character.condition-context_close .viewer-guide-condition-mark { color: #a7f3d0; }
 
 .viewer-guide-bubble {
   position: relative;
@@ -5183,22 +5868,38 @@ button.active .lens-glass::after {
    작다. 본문을 14~15px로 올리고 나머지를 그 아래로 줄 세운다.
 
    대비도 함께 올린다 — 글씨만 키우고 .72 알파로 두면 여전히 안 읽힌다. */
-.viewer-guide-bubble > span { color: #a5b4fc; font-size: 11.5px; font-weight: 850; letter-spacing: .02em; }
+.viewer-guide-bubble > span { color: #a5b4fc; font-size: 13px; font-weight: 850; letter-spacing: .02em; }
 .viewer-guide-bubble h3 { margin: 0; color: rgba(248, 250, 252, .98); font-size: 17px; line-height: 1.55; font-weight: 700; letter-spacing: -.01em; }
 .viewer-guide-feeling { display: flex; gap: 7px; margin: 0; color: rgba(253, 230, 138, .92); font-size: 13.5px; line-height: 1.55; }
-.viewer-guide-feeling strong { flex: 0 0 auto; color: rgba(253, 224, 71, .95); font-size: 11px; }
+.viewer-guide-feeling strong { flex: 0 0 auto; color: rgba(253, 224, 71, .95); font-size: 12px; }
 .viewer-current-hypothesis { padding: 9px 11px; border-radius: 7px; background: rgba(99, 102, 241, .1); }
 .viewer-current-hypothesis > strong { color: #c4b5fd; font-size: 11px; }
 .viewer-current-hypothesis > p { margin: 5px 0 0; color: rgba(241, 245, 249, .95); font-size: 14px; line-height: 1.55; }
 .viewer-open-question { display: grid; grid-template-columns: auto 1fr; gap: 7px; margin: 0; color: rgba(203, 213, 225, .9); font-size: 13.5px; line-height: 1.55; }
-.viewer-open-question strong { color: rgba(147, 197, 253, .95); font-size: 11px; }
+.viewer-open-question strong { color: rgba(147, 197, 253, .95); font-size: 12px; }
 .viewer-guide-bubble details { border-top: 1px solid rgba(148, 163, 184, .12); padding-top: 8px; }
-.viewer-guide-bubble summary { color: rgba(196, 181, 253, .9); font-size: 12px; font-weight: 800; cursor: pointer; }
-.viewer-guide-bubble details p { margin: 7px 0 0; color: rgba(203, 213, 225, .88); font-size: 13.5px; line-height: 1.6; }
+.viewer-guide-bubble summary { color: rgba(196, 181, 253, .9); font-size: 14px; font-weight: 800; cursor: pointer; }
+.viewer-guide-bubble details p { margin: 7px 0 0; color: rgba(203, 213, 225, .88); font-size: 15px; line-height: 1.6; }
 .viewer-inline-review { margin-top: 3px; padding: 10px 11px; border: 1px solid rgba(251, 191, 36, .18); border-radius: 7px; background: rgba(245, 158, 11, .07); }
-.viewer-inline-review > span { color: #fde68a; font-size: 11px; font-weight: 850; }
+.viewer-inline-review > span { color: #fde68a; font-size: 12px; font-weight: 850; }
 .viewer-inline-review > p { margin: 5px 0 0; color: rgba(254, 243, 199, .95); font-size: 14px; line-height: 1.55; }
-.viewer-inline-review > small { display: block; margin-top: 6px; color: rgba(203, 213, 225, .78); font-size: 12px; line-height: 1.5; }
+.viewer-inline-review > small { display: block; margin-top: 6px; color: rgba(203, 213, 225, .78); font-size: 13px; line-height: 1.5; }
+
+.viewer-inline-difference {
+  display: grid;
+  gap: 6px;
+  padding: 10px 11px;
+  border: 1px solid rgba(125, 211, 252, .2);
+  border-radius: 7px;
+  background: rgba(14, 116, 144, .08);
+}
+.viewer-inline-difference > summary { color: #bae6fd; font-size: 13px; font-weight: 850; cursor: pointer; }
+.viewer-inline-difference p { display: grid; gap: 3px; margin: 0; color: rgba(226, 232, 240, .84); font-size: 14px; line-height: 1.55; }
+.viewer-inline-difference strong { color: rgba(186, 230, 253, .92); font-size: 12px; }
+
+.viewer-inline-condition-picker { border-top: 1px solid rgba(167, 139, 250, .16); padding-top: 9px; }
+.viewer-inline-condition-picker > summary { color: #c4b5fd; font-size: 11px; font-weight: 800; cursor: pointer; }
+.viewer-inline-condition-picker .viewer-reading-conditions { margin-top: 8px; }
 
 .viewer-branches,
 .viewer-review-points { display: grid; gap: 7px; padding: 11px; border: 1px solid rgba(148, 163, 184, .12); border-radius: 9px; background: rgba(15, 23, 42, .3); }
@@ -5256,6 +5957,9 @@ button.active .lens-glass::after {
 .viewer-decision-actions button { padding: 5px 7px; border: 1px solid rgba(148, 163, 184, .18); border-radius: 5px; background: rgba(255, 255, 255, .025); color: rgba(226, 232, 240, .75); font-size: 9.5px; font-weight: 750; cursor: pointer; }
 .viewer-decision-actions button:hover { border-color: rgba(134, 239, 172, .45); color: rgba(240, 253, 244, .95); }
 .viewer-decision-actions button.active { border-color: rgba(74, 222, 128, .52); background: rgba(22, 163, 74, .14); color: #dcfce7; }
+.viewer-decision-evidence { border-top: 1px solid rgba(255, 255, 255, .08); padding-top: 7px; }
+.viewer-decision-evidence > summary { color: rgba(196, 181, 253, .82); font-size: 10px; font-weight: 800; cursor: pointer; }
+.viewer-decision-evidence .viewer-decision-layers { margin-top: 7px; }
 .viewer-decision-note { display: grid; gap: 4px; }
 .viewer-decision-note > span { color: rgba(187, 247, 208, .78); font-size: 9px; font-weight: 800; }
 .viewer-decision-note textarea { min-height: 48px; resize: vertical; border: 1px solid rgba(148, 163, 184, .16); border-radius: 6px; padding: 7px; background: rgba(2, 6, 23, .34); color: rgba(241, 245, 249, .88); font: inherit; font-size: 10px; line-height: 1.4; }
@@ -5265,6 +5969,47 @@ button.active .lens-glass::after {
 .viewer-decision-routes.is-active { opacity: 1; }
 .viewer-decision-routes button { padding: 6px 9px; border: 1px solid rgba(251, 191, 36, .22); border-radius: 5px; background: rgba(245, 158, 11, .08); color: #fde68a; font-size: 11px; font-weight: 800; cursor: pointer; }
 .viewer-decision-routes button:hover { border-color: rgba(251, 191, 36, .46); background: rgba(245, 158, 11, .14); }
+
+.viewer-fix-layer { display: grid; gap: 9px; padding: 12px; border: 1px solid rgba(251, 191, 36, .22); border-radius: 10px; background: linear-gradient(135deg, rgba(120, 53, 15, .15), rgba(15, 23, 42, .32)); }
+.viewer-fix-layer > header { display: grid; gap: 3px; }
+.viewer-fix-layer > header span { color: #fde68a; font-size: 11px; font-weight: 850; }
+.viewer-fix-layer > header p { margin: 0; color: rgba(226, 232, 240, .72); font-size: 11px; line-height: 1.45; }
+.viewer-fix-card { display: grid; gap: 10px; padding: 11px; border: 1px solid rgba(251, 191, 36, .2); border-radius: 8px; background: rgba(15, 23, 42, .36); }
+.viewer-fix-card > header { display: flex; justify-content: space-between; gap: 8px; }
+.viewer-fix-card > header > div { display: grid; gap: 3px; }
+.viewer-fix-card > header span { color: rgba(253, 230, 138, .85); font-size: 10px; font-weight: 800; }
+.viewer-fix-card > header strong { color: rgba(254, 243, 199, .96); font-size: 13px; line-height: 1.45; }
+.viewer-fix-card > header em { align-self: start; padding: 4px 6px; border-radius: 999px; background: rgba(251, 191, 36, .13); color: #fde68a; font-size: 9px; font-style: normal; font-weight: 850; white-space: nowrap; }
+.viewer-fix-card > header em.defer { background: rgba(148, 163, 184, .12); color: #cbd5e1; }
+.viewer-fix-recommendation { display: grid; gap: 3px; margin: -2px 0 0; padding: 8px 9px; border-left: 2px solid rgba(251, 191, 36, .62); background: rgba(120, 53, 15, .12); color: rgba(254, 243, 199, .9); font-size: 12px; line-height: 1.5; }
+.viewer-fix-recommendation strong { color: #fde68a; font-size: 10px; }
+.viewer-fix-prompt { display: grid; gap: 6px; }
+.viewer-fix-prompt label,
+.viewer-fix-camera > span,
+.viewer-fix-editing > div > span { color: rgba(196, 181, 253, .9); font-size: 11px; font-weight: 800; }
+.viewer-fix-prompt textarea { min-height: 54px; resize: vertical; border: 1px solid rgba(148, 163, 184, .22); border-radius: 6px; padding: 7px 8px; background: rgba(2, 6, 23, .34); color: rgba(241, 245, 249, .92); font: inherit; font-size: 12px; line-height: 1.45; }
+.viewer-fix-prompt button,
+.viewer-fix-camera button,
+.viewer-fix-editing button { min-height: 31px; padding: 0 9px; border: 1px solid rgba(125, 211, 252, .3); border-radius: 6px; background: rgba(14, 116, 144, .13); color: #e0f2fe; font-size: 11px; font-weight: 800; cursor: pointer; }
+.viewer-fix-prompt button { justify-self: start; }
+.viewer-fix-prompt button:disabled { opacity: .42; cursor: default; }
+.viewer-fix-camera { display: grid; gap: 7px; }
+.viewer-fix-camera > div,
+.viewer-fix-editing > div { display: flex; flex-wrap: wrap; gap: 5px; align-items: center; }
+.viewer-fix-camera small { color: rgba(203, 213, 225, .68); font-size: 10px; }
+.viewer-fix-editing { display: grid; gap: 7px; }
+.viewer-fix-editing button.active { border-color: rgba(253, 230, 138, .72); background: rgba(245, 158, 11, .18); color: #fef3c7; }
+.viewer-fix-order { padding-top: 2px; border-top: 1px solid rgba(148, 163, 184, .12); }
+.viewer-fix-preview { display: grid; gap: 8px; padding: 9px; border: 1px solid rgba(125, 211, 252, .3); border-radius: 7px; background: rgba(14, 116, 144, .1); }
+.viewer-fix-preview > img { width: 100%; max-height: 190px; border-radius: 5px; object-fit: contain; background: rgba(2, 6, 23, .45); }
+.viewer-fix-preview > div:not(.viewer-fix-preview-actions) { display: grid; gap: 2px; }
+.viewer-fix-preview strong { color: #e0f2fe; font-size: 12px; }
+.viewer-fix-preview span { color: rgba(226, 232, 240, .78); font-size: 11px; line-height: 1.45; }
+.viewer-fix-preview-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+.viewer-fix-preview-actions button { min-height: 31px; padding: 0 9px; border: 1px solid rgba(148, 163, 184, .25); border-radius: 6px; background: rgba(15, 23, 42, .35); color: rgba(241, 245, 249, .9); font-size: 11px; font-weight: 800; cursor: pointer; }
+.viewer-fix-preview-actions button.primary { border-color: rgba(125, 211, 252, .5); background: rgba(14, 116, 144, .28); color: #e0f2fe; }
+.viewer-fix-defer { justify-self: start; border: 0; padding: 0; background: transparent; color: rgba(203, 213, 225, .66); font: inherit; font-size: 10px; cursor: pointer; }
+.viewer-fix-defer:hover { color: #e2e8f0; }
 
 .viewer-reading-steps { display: grid; gap: 8px; margin: 12px 0; padding: 0; list-style: none; }
 .viewer-reading-steps li button { width: 100%; display: grid; grid-template-columns: 27px 1fr; gap: 8px; border: 0; padding: 5px; border-radius: 5px; background: transparent; color: inherit; text-align: left; cursor: pointer; }
@@ -5282,9 +6027,9 @@ button.active .lens-glass::after {
 .viewer-possible-interpretations { border-left: 2px solid rgba(165, 180, 252, .7); }
 .viewer-possible-interpretations ul { display: grid; gap: 4px; margin: 5px 0 0; padding-left: 16px; color: rgba(241, 245, 249, .9); font-size: 12px; line-height: 1.45; }
 .viewer-divergence { margin: 10px 0 0; color: #fde68a; font-size: 11px; }
-.viewer-routes { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 10px; }
-.viewer-routes button { padding: 4px 7px; border: 1px solid rgba(96, 165, 250, .2); border-radius: 999px; background: rgba(96, 165, 250, .1); color: #bfdbfe; font-size: 10px; cursor: pointer; }
-.viewer-routes button:hover { border-color: rgba(147, 197, 253, .52); color: #eff6ff; }
+.viewer-routes { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 11px; }
+.viewer-routes button { min-height: 32px; padding: 0 11px; border: 1px solid rgba(125, 211, 252, .48); border-radius: 7px; background: rgba(14, 116, 144, .18); color: #e0f2fe; font-size: 12px; font-weight: 800; cursor: pointer; }
+.viewer-routes button:hover { border-color: rgba(186, 230, 253, .82); background: rgba(14, 116, 144, .3); color: #fff; }
 
 .viewer-placeholder-rows {
   display: grid;
