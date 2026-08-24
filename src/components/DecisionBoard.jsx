@@ -1336,6 +1336,11 @@ const DESTINATION_LABELS = {
   arrow: '카메라 화살표',
 }
 
+// 컷 값이 아니라 구조를 바꿔야 하는 목적지. 선택지에 바꿀 샷 값이 없을 때
+// 프롬프트보다 먼저 본다 — 컷 사이나 컷의 존재가 문제인데 패널 문장을
+// 고치면 원인은 그대로 남는다.
+const STRUCTURAL_ROUTES = ['seam', 'merge', 'split', 'insert', 'delete', 'layout', 'narrative', 'script']
+
 // 규칙을 못 찾으면 층위로 정한다 — 한 컷의 속성은 그림, 나머지는 컷 구성.
 const destinationsFor = (diagnosis) => (
   RULE_DESTINATIONS[diagnosis?.rule_id]
@@ -3339,10 +3344,22 @@ export default function DecisionBoard({ boardView = 'split' }) {
       changes.cameraMove = patch.move
       changeLines.push(`camera move: ${targetCut.cameraMove || '고정'} → ${patch.move}`)
     }
-    // 샷 값으로 바뀌는 것이 없는 선택지. 고른 방향을 반영한 문장을 받아
-    // 편집기에 띄운다 — 제안해 놓고 감독이 직접 쓰게 두면 제안이 읽을거리로
-    // 끝난다.
+    // 샷 값으로 바뀌는 것이 없는 선택지. 어디로 보낼지는 그 진단이 이미
+    // 말하고 있다 — 컷 사이의 문제는 이음새로, 컷의 존재는 합치기·나누기로
+    // 간다. 여기서 무조건 프롬프트를 열면 편집 선택지가 전부 패널 문장
+    // 고치기로 흘러간다. 편집은 `patch`를 비우도록 백엔드가 강제하므로
+    // (샷 크기로 편집 문제를 고칠 수는 없다) 이 갈래로 오는 것이 정상이고,
+    // 그래서 프롬프트가 기본값이면 편집 렌즈만 갈 곳을 잃는다 (DG2).
     if (Object.keys(changes).length === 0) {
+      const route = destinationsFor(diagnosis)
+        .find((destination) => STRUCTURAL_ROUTES.includes(destination))
+      if (route) {
+        routeDiagnosisTool(route, diagnosis, alternative)
+        return
+      }
+      // 갈 구조가 없으면 그림이 답할 차례다. 고른 방향을 반영한 문장을 받아
+      // 편집기에 띄운다 — 제안해 놓고 감독이 직접 쓰게 두면 제안이
+      // 읽을거리로 끝난다.
       requestPromptRewrite(diagnosis, alternative)
       return
     }
