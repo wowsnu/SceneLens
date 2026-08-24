@@ -1098,6 +1098,30 @@ const screenplayFingerprint = (screenplay = []) => screenplay
   .map((element) => `${element.type}:${element.text}`)
   .join('\n')
 
+// 진단이 가리킨 컷만 비교한다. 다른 컷을 고쳤다고 이 카드까지 지난 결과로
+// 만들면 여러 진단 중 하나만 손봐도 전부 다시 점검해야 하는 것처럼 보인다.
+// 프롬프트 덮어쓰기는 이미지 문구 편집이지 컷 구성 진단의 입력이 아니므로 뺀다.
+export const cutFindingFingerprint = (cutPlan = [], cutIds = []) => cutIds
+  .map((cutId) => {
+    const cut = cutPlan.find((item) => item.id === cutId)
+    if (!cut) return `${cutId}:deleted`
+    return JSON.stringify({
+      id: cut.id,
+      order: cut.order,
+      beat: cut.beat,
+      beatOrder: cut.beatOrder,
+      time: cut.time,
+      place: cut.place,
+      content: cut.content,
+      purpose: cut.purpose,
+      characters: cut.characters,
+      shotSize: cut.shotSize,
+      angle: cut.angle,
+      cameraMove: cut.cameraMove,
+    })
+  })
+  .join('|')
+
 // 씬이 달라도 이름이 같으면 같은 사람이다. 레퍼런스 그림을 공유할 때
 // 쓰는 것과 같은 규칙을 쓴다(StoryboardView의 referenceIdentity).
 export const characterIdentity = (name = '') => (
@@ -1233,8 +1257,7 @@ const DEMO_CAST = [
     facts: [
       // 생김새는 고정, `상태`만 씬 안에서 변한다 (scene_state.py의 두 갈래).
       { label: '성별·나이', value: '여성, 20대 중반' },
-      { label: '외형 기준', value: '후드를 입고 머리를 묶은 상태' },
-      { label: '체형', value: '마른 체형' },
+      { label: '외형 기준', value: '묶은 머리, 후드, 마른 체형' },
       { label: '상태', value: '구부정한 자세' },
     ],
   },
@@ -3175,54 +3198,6 @@ const useStore = create((set, get) => ({
   })
   },
 
-  // 이음새에서의 순서 바꾸기 (DG2 P2 reorder). moveCutPlanItem은 컷 표만
-  // 다시 세우고 패널과 이음새는 그대로 두는데, 그림이 이미 있는 단계에서는
-  // 그러면 컷과 그림이 어긋난다. 여기서는 셋을 함께 옮긴다.
-  swapCutsAtSeam: (firstCutId) => {
-    logEdit({ lens: 'editing', level: 'seam', target: firstCutId, action: 'reorder', source: 'seam' })
-    return set((state) => {
-    const index = state.cutPlan.findIndex((item) => item.id === firstCutId)
-    if (index < 0 || index >= state.cutPlan.length - 1) return {}
-
-    const first = state.cutPlan[index]
-    const second = state.cutPlan[index + 1]
-    const nextPlan = [...state.cutPlan]
-    nextPlan[index] = second
-    nextPlan[index + 1] = first
-
-    // 패널도 같이 옮긴다. 컷만 바꾸면 S3의 그림이 S4의 내용에 붙는다.
-    const next = updateActiveBranchShots(state, (shots) => {
-      const a = shots.findIndex((shot) => shot.cutPlanItemId === first.id)
-      const b = shots.findIndex((shot) => shot.cutPlanItemId === second.id)
-      if (a < 0 || b < 0) return shots
-      const moved = [...shots]
-      moved[a] = shots[b]
-      moved[b] = shots[a]
-      return moved
-    })
-
-    // 이음새는 앞 패널에 붙는다. 두 패널이 자리를 바꾸면 그 사이의
-    // 이음새는 여전히 가운데 자리에 남아야 한다. 키를 그대로 두면 원래
-    // A→B 이음새가 교환 뒤 A→다음 컷에 붙고, B→다음 컷 이음새가 가운데로
-    // 들어온다. 두 패널 뒤의 키를 맞바꿔 각 이음새가 원래의 위치를 지키게 한다.
-    const shots = state.scenes[state.activeScene]
-      ?.branches[state.scenes[state.activeScene].activeBranch ?? 0]?.shots || []
-    const firstShot = shots.find((shot) => shot.cutPlanItemId === first.id)
-    const secondShot = shots.find((shot) => shot.cutPlanItemId === second.id)
-    const nextSeams = { ...state.seams }
-    if (firstShot && secondShot) {
-      const middleSeam = nextSeams[seamKeyFor(firstShot.id)]
-      const afterSeam = nextSeams[seamKeyFor(secondShot.id)]
-      delete nextSeams[seamKeyFor(firstShot.id)]
-      delete nextSeams[seamKeyFor(secondShot.id)]
-      if (middleSeam) nextSeams[seamKeyFor(secondShot.id)] = middleSeam
-      if (afterSeam) nextSeams[seamKeyFor(firstShot.id)] = afterSeam
-    }
-
-    return { ...next, cutPlan: reorderCutPlan(nextPlan), seams: nextSeams }
-  })
-  },
-
   moveCutPlanItem: (itemId, direction) => set((state) => {
     const index = state.cutPlan.findIndex((item) => item.id === itemId)
     const target = index + direction
@@ -3567,6 +3542,8 @@ const useStore = create((set, get) => ({
       ...next,
       screenplay: script,
       narrativeSuggestions: [],
+      narrativeCheck: null,
+      narrativeCheckStale: false,
       activeBeat: 0,
       cast: DEMO_CAST,
       sceneStates,
@@ -3607,7 +3584,12 @@ const useStore = create((set, get) => ({
     })
     // 감독이 자기 대본을 쓰면 예시 세션이 아니다. 자동 생성을 되살린다.
     return {
-      ...next, screenplay: script, narrativeSuggestions: [], autoDraftDisabled: false,
+      ...next,
+      screenplay: script,
+      narrativeSuggestions: [],
+      narrativeCheck: null,
+      narrativeCheckStale: false,
+      autoDraftDisabled: false,
     }
   }),
   // --- 대본 인라인 편집 -------------------------------------------------
@@ -3618,11 +3600,13 @@ const useStore = create((set, get) => ({
     screenplay: state.screenplay.map((element, i) => (
       i === index ? { ...element, text } : element
     )),
+    narrativeCheckStale: true,
   })),
   setScreenplayLineType: (index, type) => set((state) => ({
     screenplay: state.screenplay.map((element, i) => (
       i === index ? { ...element, type } : element
     )),
+    narrativeCheckStale: true,
   })),
   // 새 줄은 앞줄의 beat를 물려받아 beat 구조가 깨지지 않게 한다.
   // split이 주어지면 커서 기준으로 현재 줄을 잘라 뒷부분을 새 줄로 넘긴다.
@@ -3637,7 +3621,7 @@ const useStore = create((set, get) => ({
       text: split ? split.after : '',
       beat: anchor?.beat ?? 0,
     })
-    return { screenplay: next }
+    return { screenplay: next, narrativeCheckStale: true }
   }),
   // mergeIntoPrevious면 앞 줄 끝에 현재 줄을 이어 붙이고 현재 줄을 지운다.
   removeScreenplayLine: (index, options = {}) => set((state) => {
@@ -3648,10 +3632,13 @@ const useStore = create((set, get) => ({
       const current = state.screenplay[index]
       const next = state.screenplay.filter((_, i) => i !== index)
       next[index - 1] = { ...previous, text: previous.text + current.text }
-      return { screenplay: next }
+      return { screenplay: next, narrativeCheckStale: true }
     }
     if (state.screenplay.length <= 1) return {}
-    return { screenplay: state.screenplay.filter((_, i) => i !== index) }
+    return {
+      screenplay: state.screenplay.filter((_, i) => i !== index),
+      narrativeCheckStale: true,
+    }
   }),
   scriptEditorRequestKey: 0,
   requestScriptEditor: () => set((state) => ({ scriptEditorRequestKey: state.scriptEditorRequestKey + 1 })),
@@ -3678,7 +3665,12 @@ const useStore = create((set, get) => ({
   narrativeCheck: null,
   narrativeCheckPending: false,
   narrativeCheckError: null,
-  clearNarrativeCheck: () => set({ narrativeCheck: null, narrativeCheckError: null }),
+  narrativeCheckStale: false,
+  clearNarrativeCheck: () => set({
+    narrativeCheck: null,
+    narrativeCheckError: null,
+    narrativeCheckStale: false,
+  }),
   // stage가 'script'면 대본을, 아니면 컷 플랜을 본다. 규칙은 같다.
   requestNarrativeCheck: async (stage = 'cutplan') => {
     const state = get()
@@ -3689,7 +3681,13 @@ const useStore = create((set, get) => ({
       .map((element) => element.text)
     const usingCuts = stage !== 'script'
     if (usingCuts ? state.cutPlan.length === 0 : lines.length === 0) return
-    set({ narrativeCheckPending: true, narrativeCheckError: null, narrativeCheck: null })
+    const checkedScriptKey = usingCuts ? null : screenplayFingerprint(state.screenplay)
+    set({
+      narrativeCheckPending: true,
+      narrativeCheckError: null,
+      narrativeCheck: null,
+      narrativeCheckStale: false,
+    })
     try {
       const { checkNarrative } = await import('../services/api.js')
       // 대본은 서사가, 컷 플랜은 편집이 본다. 렌즈를 섞으면 8.7의
@@ -3706,7 +3704,21 @@ const useStore = create((set, get) => ({
         sceneIntention: state.sceneIntention || '',
         script: usingCuts ? state.screenplay.map((element) => element.text).join('\n') : '',
       })
-      set({ narrativeCheck: { ...result, stage }, narrativeCheckPending: false })
+      const checkedResult = usingCuts
+        ? {
+            ...result,
+            findings: (result.findings || []).map((finding) => ({
+              ...finding,
+              checkedFingerprint: cutFindingFingerprint(state.cutPlan, finding.cutIds),
+            })),
+          }
+        : result
+      set((current) => ({
+        narrativeCheck: { ...checkedResult, stage },
+        narrativeCheckPending: false,
+        narrativeCheckStale: !usingCuts
+          && screenplayFingerprint(current.screenplay) !== checkedScriptKey,
+      }))
     } catch (error) {
       // 점검은 실패해도 작업이 멈추면 안 된다. mock으로 채우지도 않는다 —
       // 서사가 짚지 않은 것을 짚은 것처럼 보이면 판단이 오염된다.
@@ -3729,7 +3741,16 @@ const useStore = create((set, get) => ({
         script: state.screenplay.map((element) => element.text).join('\n'),
         lens: 'camera',
       })
-      set({ cameraCheck: result, cameraCheckPending: false })
+      set({
+        cameraCheck: {
+          ...result,
+          findings: (result.findings || []).map((finding) => ({
+            ...finding,
+            checkedFingerprint: cutFindingFingerprint(state.cutPlan, finding.cutIds),
+          })),
+        },
+        cameraCheckPending: false,
+      })
     } catch (error) {
       set({ cameraCheckPending: false, cameraCheckError: error.message })
     }
@@ -3871,6 +3892,8 @@ const useStore = create((set, get) => ({
       screenplay: draft.screenplay,
       structureDraft: null,
       narrativeSuggestions: [],
+      narrativeCheck: null,
+      narrativeCheckStale: false,
       activeBeat: 0,
     }
   }),
@@ -3939,6 +3962,7 @@ const useStore = create((set, get) => ({
       ...next,
       screenplay: newScreenplay,
       narrativeSuggestions: [],
+      narrativeCheckStale: true,
     }
   }),
 
@@ -3984,6 +4008,7 @@ const useStore = create((set, get) => ({
       ...next,
       screenplay: newScreenplay,
       narrativeSuggestions: [],
+      narrativeCheckStale: true,
     }
   }),
 
@@ -4032,6 +4057,7 @@ const useStore = create((set, get) => ({
       ...next,
       screenplay: newScreenplay,
       narrativeSuggestions: [],
+      narrativeCheckStale: true,
     }
   }),
 
