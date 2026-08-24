@@ -988,8 +988,11 @@ export default function GridView({
                         setInsertChoice(chosen ? null : { ...candidate, provenance: 'AI' })
                       }}
                     >
+                      {/* 인물 이름은 뺀다 — content(문장) 안에 이미
+                          있어서 태그 줄에 다시 적으면 같은 정보가 두 번
+                          보인다. 텍스트를 줄이는 게 우선이다. */}
                       <strong>{candidate.content}</strong>
-                      <em>{candidate.purpose}{candidate.characters ? ` · ${candidate.characters}` : ''}</em>
+                      <em>{candidate.purpose}</em>
                       <span>{candidate.reason}</span>
                     </button>
                   )
