@@ -22,6 +22,7 @@ function App() {
   const setCenterTab = useStore((s) => s.setCenterTab)
   const drawingWorkspaceOpen = useStore((s) => s.drawingWorkspaceOpen)
   const closeDrawingWorkspace = useStore((s) => s.closeDrawingWorkspace)
+  const leaveReview = useStore((s) => s.leaveReview)
   const clearStoryboardShotSelection = useStore((s) => s.clearStoryboardShotSelection)
   const activeBeat = useStore((s) => s.activeBeat)
   const zenMode = useStore((s) => s.zenMode)
@@ -254,17 +255,20 @@ function App() {
               <div className="decision-header-controls">
                 {/* 검토하러 왔으면 돌아갈 길이 있어야 한다. 왼쪽 패널이
                     접혀 있으면 스토리보드가 화면에서 아예 사라진다.
-                    검토 화면의 '직접 그리기'는 drawingWorkspaceOpen만
-                    켜고 나가는데(DecisionBoard.jsx), 여기서 그걸 닫지
-                    않으면 Storyboard로 돌아가도 그 상태가 남아 Agents
-                    rail이 계속 숨는다 — isExpanded 조건이
-                    drawingWorkspaceOpen을 함께 본다. */}
+
+                    검토 화면의 진단 라우팅은 화면을 옮기려고 임시 상태를
+                    남긴다 — '직접 그리기'는 drawingWorkspaceOpen을 켜고,
+                    서사/대본 진단은 cutPlanStageOverride를 'script'로
+                    세운다(DecisionBoard.jsx). 여기서 정리하지 않으면
+                    스토리보드로 돌아가도 그 상태가 남아, Agents rail이
+                    숨거나 컷을 확정해 둔 감독이 대본 단계로 떨어진다. */}
                 {!leftPanelVisible && (
                   <button
                     type="button"
                     className="panel-control-btn"
                     onClick={() => {
                       if (drawingWorkspaceOpen) closeDrawingWorkspace()
+                      leaveReview()
                       setLeftPanelVisible(true)
                       setMaximizedPanel('left')
                     }}

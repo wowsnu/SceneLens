@@ -3216,6 +3216,20 @@ const useStore = create((set, get) => ({
   // 단계 이동으로 잠시 대본을 보고 있는 상태. 컷 자체와는 무관하다.
   cutPlanStageOverride: null,
   clearCutPlanStageOverride: () => set({ cutPlanStageOverride: null }),
+  // 검토를 끝내고 스토리보드로 돌아갈 때 부른다. 검토 화면의 진단 라우팅은
+  // 화면을 옮기려고 임시 상태를 남긴다 — 서사/대본 진단은 backToScript()로
+  // `cutPlanStageOverride: 'script'`를 세우고, 그림 진단은 그리기 작업대를
+  // 연다. 둘 다 되돌리는 지점이 없어서, 그대로 두면 컷을 이미 확정해 둔
+  // 감독이 스토리보드로 돌아왔을 때 대본 단계로 떨어진다 (Panels 탭이
+  // `컷 확정 후 열림`으로 잠긴 채로).
+  //
+  // 확정하지 않은 컷 플랜에는 손대지 않는다. 그때 대본을 보고 있는 것은
+  // 감독이 스스로 고른 단계일 수 있다.
+  leaveReview: () => set((state) => (
+    state.cutPlanAccepted && state.cutPlanStageOverride
+      ? { cutPlanStageOverride: null }
+      : {}
+  )),
   // 확정 = 컷 구성을 패널에 반영한다. 여기서 비로소 줄콘티가 패널의 근거가 된다.
   // 단, 패널로 바로 넘어가지 않고 선언 게이트를 먼저 거친다 (DG1 P3).
   // 게이트에는 초안 생성을 바꾸는 선언만 올라온다. 나머지는 패널로 넘어가
