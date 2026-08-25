@@ -16,6 +16,11 @@ import useStore, {
 } from '../store/useStore'
 import SceneOverview from './SceneOverview'
 import SpatialMap from './SpatialMap'
+import LensTracks from './LensTracks'
+import StoryboardStripLane from './StoryboardStripLane'
+import IssueInspector from './IssueInspector'
+import RevisionWorkspace from './RevisionWorkspace'
+import { editingActionFor } from './seamAction'
 import { requestDirectingReview, requestViewerReflection } from '../services/api'
 import './DecisionBoard.css'
 import { logEvent, logScaffold, normalizeLevel, storyboardVersion } from '../store/studyLog'
@@ -80,6 +85,75 @@ const DIAGNOSTIC_LEVEL_LABELS = {
   shot_relation: '컷 사이',
   scene_structure: '장면 전체',
 }
+
+const EMPTY_ISSUES = []
+
+// 마커에 붙는 이름. 트랙은 "어디에 무엇이 걸렸는가"를 보는 자리라
+// 이름은 짧아야 한다 — 진단 문장을 그대로 쓰면 잘려서 읽히지도 않으면서
+// 자리만 차지하고, 옆 컷의 마커까지 밀어낸다. 무엇이 걸렸는지는 이름이
+// 말하고, 왜 그런지는 Lens Workbench가 말한다 (문서 1장).
+//
+// 규칙 id가 곧 현상이므로 이름은 규칙에서 나온다. 12개 고정 규칙은
+// `docs/DIRECTING_RULES.md`가 정의한 것이고, 여기 이름은 그 판단 기준을
+// 감독이 부르는 말로 옮긴 것이다.
+const DIRECTING_RULE_NAMES = {
+  // 미장센 — 화면에 무엇이 어떻게 놓였는가.
+  'mise-functional-elements': '빠진 요소',
+  'mise-relational-blocking': '인물 배치',
+  'mise-spatial-continuity': '공간 연결',
+  'mise-visual-hierarchy': '시선 유도',
+  // 촬영 — 프레이밍과 카메라가 무엇을 고르는가.
+  'camera-information-selection': '샷 크기',
+  'camera-viewpoint-intent': '앵글 의도',
+  'camera-axis-direction': '촬영축',
+  'camera-movement-purpose': '카메라 이동',
+  // 편집 — 컷의 선택과 순서.
+  'editing-shot-function': '컷의 기능',
+  'editing-cut-continuity': '컷 연결',
+  'editing-information-order': '정보 순서',
+  'editing-visual-rhythm': '시각 리듬',
+}
+
+// 규칙 이름이 없으면 진단 문장의 첫 구절만 취한다. 문장 전체보다는
+// 낫지만 이름은 아니므로, 새 규칙이 생기면 위 표에 올리는 것이 맞다.
+const shortIssueTitle = (diagnosis) => {
+  const named = DIRECTING_RULE_NAMES[diagnosis?.rule_id]
+  if (named) return named
+  const text = (diagnosis?.diagnosis || diagnosis?.suggested_action || '').trim()
+  if (!text) return '검토할 것'
+  const clause = text.split(/[.。·,\n]/, 1)[0].trim()
+  return clause.length > 14 ? `${clause.slice(0, 13)}…` : clause
+}
+
+// 서버가 아직 Issue 묶기를 돌려주지 않는 개발 서버를 만나도, 렌즈가 낸
+// 진단 자체는 트랙에서 사라지면 안 된다. 이 fallback은 관계를 추론하지
+// 않고 진단 하나를 Issue 하나로만 보여 준다. 서버 Issue가 있으면 절대
+// 섞지 않는다 — 관계로 묶인 Issue를 클라이언트가 다시 쪼개면 안 되기 때문.
+const fallbackIssuesFromLensResults = (lensResults = {}) => (
+  Object.entries(lensResults).flatMap(([lens, result]) => (
+    (result?.diagnoses || []).map((diagnosis) => {
+      const panels = [...new Set((diagnosis.targets || [])
+        .map((target) => target.match(/^S\d+/)?.[0])
+        .filter(Boolean))]
+      const [first, second] = panels
+      const isSeam = diagnosis.level === 'shot_relation' && panels.length >= 2
+      const isScene = diagnosis.level === 'scene_structure' && panels.length >= 2
+      return {
+        id: `fallback:${lens}:${diagnosis.id}`,
+        anchor: isSeam ? `${first}→${second}` : isScene ? `${first}–${panels.at(-1)}` : panels.join('·'),
+        anchor_kind: isSeam ? 'seam' : isScene ? 'scene' : 'shot',
+        title: shortIssueTitle(diagnosis),
+        // 마커에 붙는 이름은 짧게 자르지만, 진단 문장 자체는 버리지
+        // 않는다. 마우스를 올리면 브라우저 툴팁이 이것을 보여 준다.
+        detail: (diagnosis.diagnosis || diagnosis.suggested_action || '').trim(),
+        diagnosis_ids: [diagnosis.id],
+        lenses: [lens],
+        origin_lens: lens,
+        relation_types: [],
+      }
+    })
+  ))
+)
 
 const VIEWER_READING_CONDITIONS = [
   {
@@ -1374,14 +1448,6 @@ const destinationsFor = (diagnosis) => (
 // 편집 대안은 이미지 프롬프트를 바꾸는 선택지가 아니다. 모델이 준 문장에
 // 따라 해당 패널 또는 이음새의 구조 도구를 열어, 무엇이 변하는지 보면서
 // 확정하게 한다.
-const editingActionFor = (alternative) => {
-  const text = `${alternative?.label || ''} ${alternative?.effect || ''}`.toLowerCase()
-  if (/(삭제|제거|빼기|delete|remove|omit|drop)/.test(text)) return { id: 'delete', label: '이 패널 삭제' }
-  if (/(분할|나누기|쪼개|split|divide|break)/.test(text)) return { id: 'split', label: '이음새에서 분할' }
-  if (/(삽입|추가|넣기|insert|add|reaction shot|bridge shot|insert shot)/.test(text)) return { id: 'insert', label: '이음새에 삽입' }
-  if (/(병합|합치|merge|combine|condense)/.test(text)) return { id: 'merge', label: '앞 컷과 병합' }
-  return { id: 'seam', label: '이음새에서 조정' }
-}
 
 
 function DirectingReviewResult({
@@ -1887,7 +1953,7 @@ function DirectingReviewResult({
 const joinLabelOf = (id) => SEAM_JOINS.find((entry) => entry.id === id)?.label || id
 const elapsedLabelOf = (id) => SEAM_ELAPSED.find((entry) => entry.id === id)?.label || id
 
-export default function DecisionBoard({ boardView = 'split' }) {
+export default function DecisionBoard({ boardView = 'split', onBackToStoryboard = null }) {
   const [selectedOptionId, setSelectedOptionId] = useState(null)
   const [reviewOpen, setReviewOpen] = useState(false)
   const [reviewMode, setReviewMode] = useState('multi')
@@ -1895,6 +1961,20 @@ export default function DecisionBoard({ boardView = 'split' }) {
   const [directingIssueDecisions, setDirectingIssueDecisions] = useState({})
   const [activeDirectingIssueId, setActiveDirectingIssueId] = useState(null)
   const [expandedDirectingIssueId, setExpandedDirectingIssueId] = useState(null)
+  // 검토 화면은 렌즈 하나를 고르는 탭이 아니라, 같은 위치를 여러 렌즈로
+  // 겹쳐 보는 자리다. 선택한 Issue가 곧 현재 focus다.
+  const [activeTrackLenses, setActiveTrackLenses] = useState(() => new Set(['mise', 'camera', 'editing']))
+  const [selectedIssueId, setSelectedIssueId] = useState(null)
+  const [revisionWorkspace, setRevisionWorkspace] = useState(null)
+  // 스트립에서 지금 보고 있는 컷. 검토 대상(singleScopeShotId)과 다른
+  // 것이다 — 스트립을 훑는 것은 "어디를 보는가"이지 "무엇을 검토하는가"가
+  // 아니다 (LENS_TRACKS_UI.md 1장의 역할 분리). 검토 대상은 범위가 잠가
+  // 두므로, 여기서 컷을 옮겨도 검토 대상은 흔들리지 않는다.
+  const [browsingShotIndex, setBrowsingShotIndex] = useState(null)
+  // Issue에 추가로 확인한 렌즈의 상태. 원래 다관점 분석 결과를 덮어쓰지
+  // 않아야, "아직 안 봄"과 "봤지만 문제 없음"을 구분할 수 있다.
+  const [issueLensChecks, setIssueLensChecks] = useState({})
+  const reviewSequenceScrollRef = useRef(null)
   const [directingCheckPickedAlternativeKeys, setDirectingCheckPickedAlternativeKeys] = useState(() => new Set())
   const [directingQuestionDecisions, setDirectingQuestionDecisions] = useState({})
   const [directingQuestionDrafts, setDirectingQuestionDrafts] = useState({})
@@ -1948,6 +2028,7 @@ export default function DecisionBoard({ boardView = 'split' }) {
   const acceptSeamProposal = useStore((s) => s.acceptSeamProposal)
   const rejectSeamProposal = useStore((s) => s.rejectSeamProposal)
   const updateSceneCharacter = useStore((s) => s.updateSceneCharacter)
+  const updateSceneStateAt = useStore((s) => s.updateSceneStateAt)
   const addFactChange = useStore((s) => s.addFactChange)
   const setSpatialElements = useStore((s) => s.setSpatialElements)
   const spatialElements = useStore((s) => s.spatialElements)
@@ -2057,6 +2138,10 @@ export default function DecisionBoard({ boardView = 'split' }) {
   // 늘어난 것으로 읽힌다. 기준은 대개 AI가 채운 값이 맞으므로, 고칠 것이
   // 생겼을 때만 편집으로 들어간다 (발견과 처분의 분리).
   const [sceneStateEditing, setSceneStateEditing] = useState(false)
+  // 장면 기준의 편집은 별도 화면으로 보내지 않는다. 단, 인물 수가 많아질 때
+  // 처음부터 전부 펼치면 기준 확인 자체가 길어지므로 세 명까지만 먼저 보인다.
+  const [sceneBasisEditing, setSceneBasisEditing] = useState(false)
+  const [sceneBasisCharactersExpanded, setSceneBasisCharactersExpanded] = useState(false)
   const [locationReferenceOpen, setLocationReferenceOpen] = useState(false)
   const [spatialEditorOpen, setSpatialEditorOpen] = useState(false)
   const [activeSpatialStageId, setActiveSpatialStageId] = useState(null)
@@ -2265,6 +2350,9 @@ export default function DecisionBoard({ boardView = 'split' }) {
   const scopeSelectionCanConfirm = scopeSelectionFrom != null
     && !scopeSelection?.error
     && (reviewMode !== 'viewer' || scopeSelectionTo > scopeSelectionFrom)
+  const reviewStripHighlight = scopeSelectionFrom != null
+    ? { from: scopeSelectionFrom, to: scopeSelectionTo }
+    : { from: scopeFrom, to: scopeTo }
 
   // 기본은 현재 보고 있는 한 컷이다. 이미지가 있는 연속 구간을 임의로
   // 범위 선택하지 않는다. 다관점으로 전체 흐름을 읽고 싶을 때만 사용자가
@@ -2318,6 +2406,49 @@ export default function DecisionBoard({ boardView = 'split' }) {
   // 빼두면 근거도 판정도 붙지 않아, 감독이 그 관계에 답할 수 없다.
   const multiFindings = multiReviewRun.commonFindings || []
   const multiRelations = multiFindings
+  const reportedTrackIssues = multiReviewRun.issues || EMPTY_ISSUES
+  const trackIssues = useMemo(() => (
+    reportedTrackIssues.length > 0
+      ? reportedTrackIssues
+      : fallbackIssuesFromLensResults(multiReviewRun.lensResults)
+  ), [multiReviewRun.lensResults, reportedTrackIssues])
+  const diagnosesById = useMemo(() => {
+    const byId = new Map()
+    Object.entries(multiReviewRun.lensResults || {}).forEach(([lens, result]) => {
+      result?.diagnoses?.forEach((diagnosis) => byId.set(diagnosis.id, { lens, diagnosis }))
+    })
+    return byId
+  }, [multiReviewRun.lensResults])
+  const selectedTrackIssue = trackIssues.find((issue) => issue.id === selectedIssueId) || null
+  const issueLensCheckKey = useCallback((issueId, lens) => (
+    `${multiReviewScopeKey}:${multiReviewRun.requestId || 'idle'}:${issueId}:${lens}`
+  ), [multiReviewRun.requestId, multiReviewScopeKey])
+  const selectedIssueLensChecks = selectedTrackIssue
+    ? Object.fromEntries(['mise', 'camera', 'editing'].flatMap((lens) => {
+      const check = issueLensChecks[issueLensCheckKey(selectedTrackIssue.id, lens)]
+      return check ? [[lens, check]] : []
+    }))
+    : {}
+  const trackIssuesWithAddedLenses = useMemo(() => (
+    trackIssues.map((issue) => {
+      const addedLenses = ['mise', 'camera', 'editing'].filter((lens) => (
+        issueLensChecks[issueLensCheckKey(issue.id, lens)]?.diagnosis
+      ))
+      return addedLenses.length === 0
+        ? issue
+        : { ...issue, lenses: [...new Set([...(issue.lenses || []), ...addedLenses])] }
+    })
+  ), [issueLensCheckKey, issueLensChecks, trackIssues])
+  const selectedTrackShotIndex = useMemo(() => {
+    const match = selectedTrackIssue?.anchor?.match(/S(\d+)/)
+    return match ? Number(match[1]) - 1 : null
+  }, [selectedTrackIssue])
+  // 범위나 재분석 결과가 바뀌면 예전 Issue id를 새 결과에 억지로 붙이지
+  // 않는다. 같은 `issue-1`이라도 전혀 다른 위치일 수 있다.
+  useEffect(() => {
+    setSelectedIssueId(null)
+    setBrowsingShotIndex(null)
+  }, [multiReviewScopeKey, multiReviewRun.requestId])
   // 메인 연출 검토에서는 렌즈별 보고서가 아니라 실제로 결정할 진단만 한데
   // 모은다. 질문·이론·네 층위 판정은 전체 분석에 그대로 남긴다.
   const directingIssues = MULTI_LENS_ORDER.flatMap(({ backendId, lensId, mark }) => {
@@ -2400,9 +2531,6 @@ export default function DecisionBoard({ boardView = 'split' }) {
   const multiReviewDetailLenses = MULTI_LENS_ORDER.filter(({ backendId }) => (
     Boolean(multiReviewRun.lensResults?.[backendId])
   ))
-  const multiScopeLabel = scopeMode === 'range'
-    ? `S${scopeFrom + 1}–S${scopeTo + 1}`
-    : `S${scopedShotIndex + 1}`
   const cameraPreviewOption = allOptions.find((option) => option.id === cameraPreview?.optionId)
   const cameraPreviewShot = shots.find((shot) => shot.id === cameraPreview?.shotId)
   const cameraPreviewShotIndex = shots.findIndex((shot) => shot.id === cameraPreview?.shotId)
@@ -2907,6 +3035,35 @@ export default function DecisionBoard({ boardView = 'split' }) {
     closeCharacterDetails()
   }
 
+  // 장면 기준 요약에서도 값은 곧바로 실제 생성 기준에 쓴다. 여기서 임시
+  // 초안을 따로 만들면, 저장을 잊었을 때 요약과 패널 생성 기준이 갈린다.
+  const updateSceneBasisFact = (group, label, value) => {
+    updateSceneStateAt(activeSceneId, (current) => ({
+      ...current,
+      [group]: {
+        ...current[group],
+        facts: (current[group]?.facts || []).map((fact) => (
+          fact.label === label ? { ...fact, value } : fact
+        )),
+      },
+    }))
+  }
+
+  const updateSceneBasisName = (group, value) => {
+    updateSceneStateAt(activeSceneId, (current) => ({
+      ...current,
+      [group]: { ...current[group], name: value },
+    }))
+  }
+
+  const updateSceneBasisCharacter = (character, patch) => {
+    updateSceneCharacter(character.id, {
+      ...character,
+      ...patch,
+      facts: (patch.facts || character.facts).map((fact) => ({ ...fact })),
+    })
+  }
+
   const spatialLayoutForStage = useCallback((stageId) => {
     const stageIndex = spatialStages.findIndex((stage) => stage.id === stageId)
     // 새 단계는 직전 단계의 배치를 출발점으로 쓴다. 그래서 "변화"가
@@ -3171,6 +3328,7 @@ export default function DecisionBoard({ boardView = 'split' }) {
     setReviewMode(mode)
     setReviewOpen(false)
     setScopeSelection(null)
+    if (mode !== 'scene') setSceneBasisEditing(false)
 
     if (mode === 'multi') setFullAnalysisOpen(false)
 
@@ -3179,9 +3337,88 @@ export default function DecisionBoard({ boardView = 'split' }) {
       return
     }
 
+    if (mode === 'scene') {
+      setFullAnalysisOpen(false)
+      setMiseWorkspace('scene')
+      return
+    }
+
     if (mode !== 'multi') {
       setFullAnalysisOpen(true)
       choosePrimaryLens(mode)
+    }
+  }
+
+  const moveReviewSequence = (direction) => {
+    // 세 컷씩 옮긴다. 한 컷만 움직이면 긴 시퀀스에서 목적지를 찾기 어렵고,
+    // 화면 한 장씩이면 지금 보는 위치를 잃는다.
+    const offset = direction * 396
+    reviewSequenceScrollRef.current?.scrollBy({ left: offset, behavior: 'smooth' })
+  }
+
+  const selectTrackIssue = (issueId) => {
+    setSelectedIssueId(issueId)
+    // Issue를 고르면 그 자리가 보여야 한다. 훑던 위치가 남아 있으면
+    // 고른 Issue가 아니라 엉뚱한 컷이 선택된 채로 남는다.
+    setBrowsingShotIndex(null)
+    const issue = trackIssues.find((entry) => entry.id === issueId)
+    const match = issue?.anchor?.match(/S(\d+)/)
+    if (match) setFlowActiveShot(Number(match[1]) - 1)
+  }
+
+  const reviseTrackIssue = (entry, issue) => {
+    if (!entry) return
+    setRevisionWorkspace({
+      issue,
+      diagnosis: { ...entry.diagnosis, lens: entry.lens },
+    })
+  }
+
+  const checkSelectedIssueLens = async (lens) => {
+    const issue = selectedTrackIssue
+    if (!issue || issue.lenses?.includes(lens)) return
+    const key = issueLensCheckKey(issue.id, lens)
+    if (issueLensChecks[key]?.status === 'loading') return
+    setIssueLensChecks((current) => ({ ...current, [key]: { status: 'loading' } }))
+
+    const panelIds = [...new Set(issue.diagnosis_ids.flatMap((diagnosisId) => (
+      diagnosesById.get(diagnosisId)?.diagnosis.targets || []
+    )).map((target) => target.split('.', 1)[0]))]
+    const fallbackPanelIds = issue.anchor?.match(/S\d+/g) || []
+    const focusPanelIds = panelIds.length > 0 ? panelIds : fallbackPanelIds
+    const criterion = issue.diagnosis_ids
+      .map((diagnosisId) => diagnosesById.get(diagnosisId)?.diagnosis.criterion)
+      .find(Boolean) || ''
+
+    try {
+      const response = await requestDirectingReview({
+        mode: lens,
+        panels: await buildReviewPanels(selectedShotEntriesOf()),
+        intent: multiReviewIntent,
+        focus: {
+          id: issue.id,
+          anchor: issue.anchor,
+          anchor_kind: issue.anchor_kind || '',
+          title: issue.title,
+          criterion,
+          panel_ids: focusPanelIds,
+        },
+      })
+      const result = response.lens_results?.[lens]
+      if (!result) throw new Error('이 렌즈의 확인 결과를 받지 못했습니다.')
+      setIssueLensChecks((current) => ({
+        ...current,
+        [key]: {
+          status: 'ready',
+          diagnosis: result.diagnoses?.[0] || null,
+          question: response.questions?.[0] || null,
+        },
+      }))
+    } catch (error) {
+      setIssueLensChecks((current) => ({
+        ...current,
+        [key]: { status: 'error', error: error.message || '확인하지 못했습니다.' },
+      }))
     }
   }
 
@@ -3451,6 +3688,24 @@ export default function DecisionBoard({ boardView = 'split' }) {
     const targetShot = shots[panelTarget ? Number(panelTarget.slice(1)) - 1 : scopedShotIndex]
     return cutPlan.find((cut) => cut.id === targetShot?.cutPlanItemId) || null
   }
+
+  // Revision Workspace가 보여 줄 것들. 어느 컷을 고치는지, 그 컷의 새
+  // 그림이 도는 중인지, 나온 초안은 무엇인지.
+  //
+  // `cutForDiagnosis`를 쓰므로 그 뒤에 와야 한다.
+  const revisionTargetShot = revisionWorkspace
+    ? shots.find((shot) => (
+        shot.cutPlanItemId === cutForDiagnosis(revisionWorkspace.diagnosis)?.id
+      )) || null
+    : null
+  const revisionIsPending = Boolean(
+    revisionTargetShot && panelRevisionPending?.shotId === revisionTargetShot.id,
+  )
+  // 초안은 판정 전에만 보인다. 판정이 끝난 그림은 그 컷의 그림이므로
+  // `currentImage` 쪽에서 읽는다.
+  const revisionDraftImage = revisionIsPending
+    ? panelDraftImages[revisionTargetShot?.id] || ''
+    : ''
 
   const beginPanelRegeneration = (statusKey, cutId, before = null) => {
     const shotIndex = shots.findIndex((shot) => shot.cutPlanItemId === cutId)
@@ -4104,7 +4359,6 @@ export default function DecisionBoard({ boardView = 'split' }) {
 
       {!viewerReport ? (
         <section className="viewer-reflection-placeholder">
-          <span>의도 비공개 · 첫 읽기</span>
           <strong>대본 의도 없이 화면만 읽어봅니다.</strong>
           {renderInitialReadingChoices()}
           {viewerError && <p className="viewer-error">{viewerError}</p>}
@@ -4166,6 +4420,181 @@ export default function DecisionBoard({ boardView = 'split' }) {
     </div>
   ) : null
 
+  // 컷을 판단하는 화면과, 그 컷들이 공유하는 기준을 보는 화면은 목적이 다르다.
+  // 장면 기준은 값을 그 자리에서 고친다. 기준을 보다가 다시 다른 렌즈로
+  // 보내면 맥락이 끊기고, 어느 쪽의 값이 생성에 쓰이는지도 헷갈린다.
+  const sceneBasisPane = (
+    <section className="scene-basis-pane" aria-label="장면 기준">
+      <header className="scene-basis-heading">
+        <div>
+          <span>장면 기준</span>
+          <h2>{sceneState.title || '이 씬의 기준'}</h2>
+          {sceneState.description && <p>{sceneState.description}</p>}
+        </div>
+        <button
+          type="button"
+          className={sceneBasisEditing ? 'is-editing' : ''}
+          aria-pressed={sceneBasisEditing}
+          onClick={() => setSceneBasisEditing((current) => !current)}
+        >
+          {sceneBasisEditing ? '수정 마치기' : '기준 고치기'}
+        </button>
+      </header>
+
+      <div className="scene-basis-grid">
+        <section className="scene-basis-section" aria-label="인물 기준">
+          <header>
+            <span>인물</span>
+            <em>{sceneState.characters.length}</em>
+          </header>
+          <div className="scene-basis-characters">
+            {(sceneBasisCharactersExpanded ? sceneState.characters : sceneState.characters.slice(0, 3)).map((character) => (
+              <article key={character.id} className="scene-basis-character">
+                {character.image ? (
+                  <img src={character.image} alt={`${character.name} 레퍼런스`} />
+                ) : (
+                  <span className="scene-basis-image-placeholder" aria-hidden="true">인물</span>
+                )}
+                <div>
+                  {sceneBasisEditing ? (
+                    <>
+                      <input
+                        className="scene-basis-name-input"
+                        value={character.name}
+                        aria-label={`${character.name} 이름`}
+                        onChange={(event) => updateSceneBasisCharacter(character, { name: event.target.value })}
+                      />
+                      <input
+                        className="scene-basis-summary-input"
+                        value={character.summary || ''}
+                        aria-label={`${character.name} 역할`}
+                        placeholder="역할·외형"
+                        onChange={(event) => updateSceneBasisCharacter(character, { summary: event.target.value })}
+                      />
+                    </>
+                  ) : (
+                    <>
+                      <strong>{character.name}</strong>
+                      {character.summary && <p>{character.summary}</p>}
+                    </>
+                  )}
+                  <dl>
+                    {character.facts.map((fact) => (
+                      <div key={fact.label} className={fact.open ? 'open' : ''}>
+                        <dt>{fact.label}</dt>
+                        {sceneBasisEditing ? (
+                          <dd><input
+                            value={fact.value}
+                            aria-label={`${character.name} ${fact.label}`}
+                            onChange={(event) => updateSceneBasisCharacter(character, {
+                              facts: character.facts.map((entry) => (
+                                entry.label === fact.label ? { ...entry, value: event.target.value } : entry
+                              )),
+                            })}
+                          /></dd>
+                        ) : <dd>{fact.value || '확인 필요'}</dd>}
+                      </div>
+                    ))}
+                  </dl>
+                  {sceneBasisEditing && (
+                    <button
+                      type="button"
+                      className="scene-basis-reference-action"
+                      onClick={() => generateCharacterReference(character.id)}
+                      disabled={isReferenceImagePending('character', character.id)}
+                    >
+                      {isReferenceImagePending('character', character.id)
+                        ? '레퍼런스 만드는 중…'
+                        : character.image ? '레퍼런스 다시 만들기' : '레퍼런스 만들기'}
+                    </button>
+                  )}
+                </div>
+              </article>
+            ))}
+          </div>
+          {sceneState.characters.length > 3 && (
+            <button
+              type="button"
+              className="scene-basis-more-characters"
+              onClick={() => setSceneBasisCharactersExpanded((current) => !current)}
+            >
+              {sceneBasisCharactersExpanded
+                ? '인물 접기'
+                : `인물 ${sceneState.characters.length - 3}명 더 보기`}
+            </button>
+          )}
+        </section>
+
+        <section className="scene-basis-section" aria-label="공간 기준">
+          <header><span>공간</span></header>
+          <article className="scene-basis-location">
+            {sceneState.location.image ? (
+              <img src={sceneState.location.image} alt={`${sceneState.location.name} 레퍼런스`} />
+            ) : (
+              <span className="scene-basis-image-placeholder" aria-hidden="true">공간</span>
+            )}
+            <div>
+              {sceneBasisEditing ? (
+                <input
+                  className="scene-basis-name-input"
+                  value={sceneState.location.name || ''}
+                  aria-label="공간 이름"
+                  placeholder="공간 이름"
+                  onChange={(event) => updateSceneBasisName('location', event.target.value)}
+                />
+              ) : <strong>{sceneState.location.name || '공간 미정'}</strong>}
+              <dl>
+                {sceneState.location.facts.map((fact) => (
+                  <div key={fact.label} className={fact.open ? 'open' : ''}>
+                    <dt>{fact.label}</dt>
+                    {sceneBasisEditing ? (
+                      <dd><input
+                        value={fact.value}
+                        aria-label={`공간 ${fact.label}`}
+                        onChange={(event) => updateSceneBasisFact('location', fact.label, event.target.value)}
+                      /></dd>
+                    ) : <dd>{fact.value || '확인 필요'}</dd>}
+                  </div>
+                ))}
+              </dl>
+              {sceneBasisEditing && (
+                <button
+                  type="button"
+                  className="scene-basis-reference-action"
+                  onClick={() => requestReferenceImage('location')}
+                  disabled={isReferenceImagePending('location')}
+                >
+                  {isReferenceImagePending('location')
+                    ? '레퍼런스 만드는 중…'
+                    : sceneState.location.image ? '레퍼런스 다시 만들기' : '레퍼런스 만들기'}
+                </button>
+              )}
+            </div>
+          </article>
+        </section>
+
+        <section className="scene-basis-section scene-basis-environment" aria-label="장면 공통 기준">
+          <header><span>장면 공통</span></header>
+          <dl>
+            {sceneState.environment.facts.map((fact) => (
+              <div key={fact.label} className={fact.open ? 'open' : ''}>
+                <dt>{fact.label}</dt>
+                {sceneBasisEditing ? (
+                  <dd><input
+                    value={fact.value}
+                    aria-label={`장면 공통 ${fact.label}`}
+                    onChange={(event) => updateSceneBasisFact('environment', fact.label, event.target.value)}
+                  /></dd>
+                ) : <dd>{fact.value || '확인 필요'}</dd>}
+              </div>
+            ))}
+          </dl>
+        </section>
+      </div>
+      <p className="scene-basis-note">여기 값과 레퍼런스가 이후 패널 생성의 공통 기준으로 쓰입니다.</p>
+    </section>
+  )
+
   const selectedOptionReview = (
     <div className="selected-review-panel">
       <article className="selected-option-review">
@@ -4222,9 +4651,8 @@ export default function DecisionBoard({ boardView = 'split' }) {
     </div>
   )
 
-  return (
-    <div className="decision-board">
-      <section className="scope-panel" aria-label="Scope selection">
+  const scopePanel = (
+    <section className="scope-panel" aria-label="Scope selection">
         <div className="scope-panel-row">
           <div className="scope-panel-copy">
             <span>{reviewMode === 'viewer' ? '읽힘 검토 범위' : '검토 대상'}</span>
@@ -4254,7 +4682,7 @@ export default function DecisionBoard({ boardView = 'split' }) {
                   <span>
                     {scopeSelection.error
                       || (scopeSelection.anchor == null
-                        ? '왼쪽 스토리보드에서 첫 컷을 누르세요.'
+                        ? '아래 스토리보드에서 첫 컷을 누르세요.'
                         : scopeSelection.end == null
                           ? reviewMode === 'viewer'
                             ? '끝 컷을 하나 더 선택하세요.'
@@ -4273,28 +4701,52 @@ export default function DecisionBoard({ boardView = 'split' }) {
                 </button>
               </div>
             ) : (
-              <button
-                type="button"
-                className="scope-change-button"
-                onClick={beginScopeSelection}
-                disabled={
-                  scopeSelectableShotIds.length === 0
-                  || (reviewMode === 'staging' && miseWorkspace === 'shot')
-                }
-                title={
-                  reviewMode === 'staging' && miseWorkspace === 'shot'
-                    ? 'Shot Staging은 한 컷씩 검토합니다.'
-                    : undefined
-                }
-              >
-                범위 바꾸기
-              </button>
+              <>
+                <button
+                  type="button"
+                  className="scope-change-button"
+                  onClick={beginScopeSelection}
+                  disabled={
+                    scopeSelectableShotIds.length === 0
+                    || (reviewMode === 'staging' && miseWorkspace === 'shot')
+                  }
+                  title={
+                    reviewMode === 'staging' && miseWorkspace === 'shot'
+                      ? 'Shot Staging은 한 컷씩 검토합니다.'
+                      : undefined
+                  }
+                >
+                  범위 바꾸기
+                </button>
+                {reviewMode === 'multi' && (
+                  <button
+                    type="button"
+                    className="scope-run-review"
+                    onClick={runMultiReview}
+                    disabled={multiReviewLoading || multiReviewIntentDirty}
+                    title={multiReviewIntentDirty ? '변경한 의도를 먼저 적용해주세요.' : undefined}
+                  >
+                    {multiReviewIntentDirty
+                      ? '의도 먼저 적용'
+                      : multiReviewLoading
+                        ? '분석 중…'
+                        : (multiReviewRun.status === 'stale' || multiReviewOutdated)
+                          ? '변경 반영'
+                          : multiReviewHasResult ? '다시 분석' : '분석하기'}
+                  </button>
+                )}
+              </>
             )}
           </div>
         </div>
-      </section>
+    </section>
+  )
 
-      <div className={`decision-board-main view-${boardView}`}>
+  return (
+    <div className="decision-board">
+      {reviewMode !== 'multi' && scopePanel}
+
+      <div className={`decision-board-main view-${boardView} ${reviewMode === 'multi' ? 'review-surface' : ''}`}>
         <section className="decision-board-storyboard" aria-label="Storyboard scope">
           <SceneOverview
             shotPreview={storyboardShotPreview}
@@ -4317,9 +4769,9 @@ export default function DecisionBoard({ boardView = 'split' }) {
             <div>
               <button
                 type="button"
-                className={reviewMode !== 'viewer' ? 'active' : ''}
+                className={reviewMode !== 'viewer' && reviewMode !== 'scene' ? 'active' : ''}
                 onClick={() => selectReviewMode('multi')}
-                aria-pressed={reviewMode !== 'viewer'}
+                aria-pressed={reviewMode !== 'viewer' && reviewMode !== 'scene'}
               >
                 연출 검토
               </button>
@@ -4332,10 +4784,27 @@ export default function DecisionBoard({ boardView = 'split' }) {
               >
                 읽힘 검토
               </button>
+              <button
+                type="button"
+                className={reviewMode === 'scene' ? 'active scene' : 'scene'}
+                onClick={() => selectReviewMode('scene')}
+                aria-pressed={reviewMode === 'scene'}
+              >
+                장면 기준
+              </button>
             </div>
+            {onBackToStoryboard && (
+              <button
+                type="button"
+                className="decision-back-to-storyboard"
+                onClick={onBackToStoryboard}
+              >
+                ← 스토리보드
+              </button>
+            )}
           </nav>
 
-          {reviewMode !== 'viewer' && reviewMode !== 'multi' && (
+          {reviewMode !== 'viewer' && reviewMode !== 'multi' && reviewMode !== 'scene' && (
             <nav className="decision-review-detail-nav" aria-label="전체 연출 분석">
               <button type="button" className="back" onClick={() => selectReviewMode('multi')}>
                 ← 확인할 것
@@ -4354,7 +4823,7 @@ export default function DecisionBoard({ boardView = 'split' }) {
             </nav>
           )}
 
-          {reviewMode === 'viewer' ? viewerReflectionPane : (
+          {reviewMode === 'scene' ? sceneBasisPane : reviewMode === 'viewer' ? viewerReflectionPane : (
             <>
               {reviewMode !== 'multi' && reviewOpen && selectedOptionReview}
 
@@ -5495,7 +5964,33 @@ export default function DecisionBoard({ boardView = 'split' }) {
                 </p>
               )}
 
-              {trackIssues.length > 0 && (
+              {revisionWorkspace ? (
+                <RevisionWorkspace
+                  issue={revisionWorkspace.issue}
+                  diagnosis={revisionWorkspace.diagnosis}
+                  currentImage={revisionTargetShot?.image || panelDraftImages[revisionTargetShot?.id] || ''}
+                  promptDraft={promptDrafts[revisionWorkspace.diagnosis.id] ?? null}
+                  promptNote={promptRewriteNotes[revisionWorkspace.diagnosis.id] || ''}
+                  rewriting={promptRewriting === revisionWorkspace.diagnosis.id}
+                  generating={promptGenerationStatus[revisionWorkspace.diagnosis.id] === 'generating'}
+                  revisionPending={revisionIsPending}
+                  revisionImage={revisionDraftImage}
+                  onBack={() => setRevisionWorkspace(null)}
+                  onKeep={() => setRevisionWorkspace(null)}
+                  onChoose={(alternative) => {
+                    if (revisionWorkspace.diagnosis.lens === 'editing') {
+                      routeDiagnosisTool(editingActionFor(alternative).id, revisionWorkspace.diagnosis, alternative)
+                    } else {
+                      applyAlternative(revisionWorkspace.diagnosis, alternative)
+                    }
+                  }}
+                  onPromptChange={(text) => openPromptEditor(revisionWorkspace.diagnosis, text)}
+                  onClosePrompt={() => openPromptEditor(revisionWorkspace.diagnosis, null)}
+                  onSavePrompt={() => savePromptDraft(revisionWorkspace.diagnosis)}
+                  onAccept={() => { acceptPanelRevision(); setRevisionWorkspace(null) }}
+                  onReject={rejectPanelRevision}
+                />
+              ) : trackIssues.length > 0 && (
                 <IssueInspector
                   issue={selectedTrackIssue}
                   issues={trackIssuesWithAddedLenses}
@@ -5728,6 +6223,7 @@ export default function DecisionBoard({ boardView = 'split' }) {
                   </div>
                 )}
               </section>
+              )}
 
               {!currentDirectingIssue && currentDirectingQuestion && (() => {
                 const questionKey = directingQuestionDecisionKey(currentDirectingQuestion.id)

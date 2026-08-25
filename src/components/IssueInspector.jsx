@@ -219,8 +219,13 @@ export default function IssueInspector({
       )}
 
       <footer>
-        <button type="button" className="primary" onClick={() => onRevise?.(origin)} disabled={!origin}>
-          이 문제 수정하기
+        <button type="button" className="primary" onClick={() => onRevise?.(
+          activeEntry?.diagnosis || (activeEntry?.check?.diagnosis
+            ? { lens: activeLens, diagnosis: activeEntry.check.diagnosis }
+            : origin),
+          issue,
+        )} disabled={!origin}>
+          {activeLens ? `${LENSES.find((lens) => lens.id === activeLens)?.label || ''}에서 수정하기` : '이 문제 수정하기'}
         </button>
       </footer>
     </section>

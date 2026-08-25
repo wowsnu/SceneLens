@@ -1,0 +1,61 @@
+.revision-workspace { margin: 0 12px 12px; border: 1px solid rgba(216,170,98,.32); border-radius: 9px; background: rgba(8,8,10,.58); overflow: hidden; }
+.revision-workspace > header { padding: 13px 14px; border-bottom: 1px solid var(--border); }
+.revision-workspace > header > button { padding: 0; border: 0; background: transparent; color: var(--text-muted); font: inherit; font-size: 11px; cursor: pointer; }
+.revision-workspace > header > span, .revision-workspace section > span { display: block; margin-top: 8px; color: #e9c58d; font-size: 10px; font-weight: 800; }
+.revision-workspace h3 { margin: 5px 0 0; color: var(--text-primary); font-size: 15px; line-height: 1.4; }
+.revision-workspace-current, .revision-workspace-options, .revision-workspace-prompt, .revision-workspace-preview { padding: 12px 14px; border-bottom: 1px solid var(--border); }
+.revision-workspace-current > span, .revision-workspace-options > span, .revision-workspace-prompt > span { margin-top: 0; }
+.revision-workspace p { margin: 6px 0 0; color: var(--text-secondary); font-size: 12px; line-height: 1.5; }
+.revision-workspace-options article { margin-top: 9px; padding: 10px; border: 1px solid var(--border-light); border-radius: 6px; }
+.revision-workspace-options strong { color: var(--text-primary); font-size: 12px; }
+.revision-workspace button { font: inherit; font-size: 11px; cursor: pointer; }
+.revision-workspace-options article button, .revision-workspace-prompt .primary, .revision-workspace-preview .primary { margin-top: 9px; padding: 5px 8px; border: 1px solid rgba(216,170,98,.5); border-radius: 5px; background: rgba(216,170,98,.13); color: #f0cb91; font-weight: 800; }
+.revision-workspace-prompt textarea { box-sizing: border-box; width: 100%; margin-top: 9px; padding: 8px; border: 1px solid var(--border-light); border-radius: 5px; background: var(--bg-panel); color: var(--text-primary); font: inherit; font-size: 12px; line-height: 1.5; resize: vertical; }
+.revision-workspace-prompt > div, .revision-workspace-preview > div:last-child { display: flex; gap: 6px; margin-top: 8px; }
+.revision-workspace-prompt > div button:not(.primary), .revision-workspace-preview button:not(.primary), .revision-workspace footer button { padding: 5px 8px; border: 1px solid var(--border-light); border-radius: 5px; background: transparent; color: var(--text-secondary); }
+.revision-workspace-preview { display: grid; gap: 8px; }
+.revision-workspace-preview img { width: 100%; max-height: 220px; object-fit: contain; border-radius: 5px; background: var(--bg-panel); }
+.revision-workspace-preview strong, .revision-workspace-preview span { display: block; color: var(--text-primary); font-size: 12px; }
+.revision-workspace-preview span { margin-top: 3px; color: var(--text-muted); font-size: 11px; }
+.revision-workspace footer { display: flex; justify-content: flex-end; padding: 9px 12px; }
+
+.revision-shot-compare { display: grid; grid-template-columns: minmax(0,1fr) auto minmax(0,1fr); align-items: center; gap: 8px; margin: 0; padding: 12px 14px; border-bottom: 1px solid var(--border); }
+.revision-shot-compare figure { min-width: 0; margin: 0; }
+.revision-shot-compare figure > span { display: block; margin-bottom: 5px; color: var(--text-muted); font-size: 10px; font-weight: 750; }
+.revision-shot-compare img, .revision-shot-compare i { display: block; box-sizing: border-box; width: 100%; min-height: 128px; max-height: 200px; object-fit: contain; border: 1px solid var(--border-light); border-radius: 5px; background: var(--bg-panel); }
+.revision-shot-compare i { display: grid; place-items: center; padding: 12px; color: var(--text-muted); font-size: 11px; font-style: normal; text-align: center; }
+.revision-shot-compare > b { color: #e9c58d; }
+
+.revision-seam-canvas { display: grid; grid-template-columns: minmax(0,1fr) 118px minmax(0,1fr); align-items: center; gap: 7px; padding: 14px; border-bottom: 1px solid var(--border); }
+.revision-seam-panel { display: grid; min-height: 104px; place-content: center; border: 1px solid var(--border-light); border-radius: 6px; background: var(--bg-panel); text-align: center; }
+.revision-seam-panel span { color: var(--text-primary); font-size: 16px; font-weight: 850; }
+.revision-seam-panel small, .revision-seam-operation small { margin-top: 4px; color: var(--text-muted); font-size: 10px; }
+.revision-seam-operation { display: grid; min-height: 76px; place-content: center; padding: 8px; border: 1px dashed rgba(216,170,98,.42); border-radius: 6px; color: #e9c58d; text-align: center; }
+.revision-seam-operation strong { font-size: 11px; }
+.revision-seam-canvas.operation-insert .revision-seam-operation { background: rgba(216,170,98,.1); }
+/* 병합은 두 컷이 하나로 묶이는 것이다. 양옆을 지우면 무엇을 합치는지
+   보이지 않으므로, 남겨 두고 하나로 감싼 모양만 만든다. */
+.revision-seam-canvas.operation-merge { gap: 0; }
+.revision-seam-canvas.operation-merge .revision-seam-panel {
+  border-color: rgba(216, 170, 98, .5);
+  background: rgba(216, 170, 98, .08);
+}
+.revision-seam-canvas.operation-merge .revision-seam-panel:first-child {
+  border-right: 0;
+  border-radius: 6px 0 0 6px;
+}
+.revision-seam-canvas.operation-merge .revision-seam-panel:last-child {
+  border-left: 0;
+  border-radius: 0 6px 6px 0;
+}
+.revision-seam-canvas.operation-merge .revision-seam-operation {
+  border-radius: 0;
+  border-left: 0;
+  border-right: 0;
+  background: rgba(216, 170, 98, .08);
+}
+
+/* 삭제는 대상이 빠지고 양옆이 바로 붙는다. */
+.revision-seam-canvas.operation-delete .revision-seam-operation { border-style: solid; }
+.revision-workspace-options article button.selected { border-color: #e9c58d; background: rgba(216,170,98,.22); }
+.revision-seam-open { width: 100%; margin-top: 9px; padding: 7px 8px; border: 1px solid rgba(216,170,98,.55); border-radius: 5px; background: rgba(216,170,98,.14); color: #f0cb91; font-weight: 800; }
