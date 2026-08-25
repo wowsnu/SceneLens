@@ -5941,7 +5941,22 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
                   본 뒤에 패널이 바뀌었으면 그 사실을 밝힌다. */}
               {multiReviewOutdated && (
                 <p className="multi-review-outdated">
-                  이 분석 뒤에 패널이 바뀌었습니다. 지난 결과입니다.
+                  <span>이 분석 뒤에 패널이 바뀌었습니다. 지난 결과입니다.</span>
+                  {/* 사실만 알리고 끝내면 감독이 옛 판단을 그대로 읽는다.
+                      특히 컷을 넣거나 뺀 뒤에는 이음새가 전부 달라지므로
+                      다시 봐야 한다 — 그 행동을 여기에 둔다. 구조 변경은
+                      이음새 도구로 넘어가 Workspace가 닫히기 때문에,
+                      Reappraise가 이어지는 자리는 여기뿐이다. */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedIssueId(null)
+                      runMultiReview()
+                    }}
+                    disabled={multiReviewLoading}
+                  >
+                    {multiReviewLoading ? '다시 보는 중…' : '바뀐 화면으로 다시 보기'}
+                  </button>
                 </p>
               )}
 

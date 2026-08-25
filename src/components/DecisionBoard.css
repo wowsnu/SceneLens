@@ -118,6 +118,32 @@
   opacity: 0.36;
 }
 
+/* 분석 시작은 Issue가 생기기 전에도 항상 보이는 검토 대상 줄에 둔다.
+   스트립 아래의 빈 트랙만 보고 "무엇을 눌러야 하지"가 되지 않게 한다. */
+.scope-run-review {
+  min-height: 28px;
+  padding: 0 11px;
+  border: 1px solid rgba(216, 170, 98, 0.52);
+  border-radius: 6px;
+  background: rgba(216, 170, 98, 0.16);
+  color: #f3cf99;
+  font: inherit;
+  font-size: 10px;
+  font-weight: 850;
+  cursor: pointer;
+}
+
+.scope-run-review:hover:not(:disabled) {
+  border-color: rgba(216, 170, 98, 0.78);
+  background: rgba(216, 170, 98, 0.24);
+  color: #fff4df;
+}
+
+.scope-run-review:disabled {
+  cursor: not-allowed;
+  opacity: 0.48;
+}
+
 .scope-selection-toolbar {
   width: 100%;
   display: flex;
@@ -392,6 +418,16 @@
 
 .decision-board-main.view-storyboard .decision-board-options,
 .decision-board-main.view-lenses .decision-board-storyboard {
+  display: none;
+}
+
+/* 연출 검토는 좌우로 나눈 기존 작업대가 아니라, sequence를 가로로 읽는
+   검토 면이다. 기존 Storyboard/GridView는 수정할 때 그대로 쓴다. */
+.decision-board-main.review-surface {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.decision-board-main.review-surface .decision-board-storyboard {
   display: none;
 }
 
@@ -976,9 +1012,32 @@
   background: #a5b4fc;
 }
 
+.decision-review-nav button.scene.active::after {
+  background: #6ee7b7;
+}
+
 .decision-review-nav button:disabled {
   cursor: not-allowed;
   opacity: 0.35;
+}
+
+/* 상단 패널 chrome 대신 검토 방식 줄의 끝에만 돌아가는 길을 둔다. */
+.decision-review-nav .decision-back-to-storyboard {
+  align-self: center;
+  min-height: 27px;
+  margin-left: auto;
+  padding: 0 9px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 6px;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 10px;
+}
+
+.decision-review-nav .decision-back-to-storyboard::after { display: none; }
+
+.decision-review-nav .decision-back-to-storyboard:hover {
+  border-color: rgba(216, 170, 98, 0.46);
+  color: #f3cf99;
 }
 
 .decision-review-divider {
@@ -1028,10 +1087,311 @@
   display: none;
 }
 
-/* 실제 응답을 붙이기 전의 다관점 리뷰 화면. 세 관점의 짧은 판단을 먼저
-   비교하고, 통합 판단과 관점 충돌은 별도 층으로 분리한다. */
+/* 장면 기준은 컷별 검토와 분리한다. 새 단계나 별도 레일을 만들지 않고 같은
+   상단 전환 안에서 보여 주므로, 확인할 항목의 높이와 순서를 밀어내지 않는다. */
+.scene-basis-pane {
+  display: grid;
+  gap: 12px;
+  margin: 12px;
+  padding: 14px;
+  border: 1px solid rgba(110, 231, 183, 0.2);
+  border-radius: 10px;
+  background:
+    linear-gradient(145deg, rgba(16, 185, 129, 0.08), rgba(15, 23, 42, 0.12) 44%),
+    rgba(5, 12, 10, 0.46);
+}
+
+.scene-basis-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.scene-basis-heading > div {
+  min-width: 0;
+}
+
+.scene-basis-heading span,
+.scene-basis-section > header > span {
+  color: #9af0ca;
+  font-size: 10px;
+  font-weight: 850;
+  letter-spacing: 0.06em;
+}
+
+.scene-basis-heading h2 {
+  margin: 3px 0 0;
+  color: rgba(255, 255, 255, 0.93);
+  font-size: 17px;
+  line-height: 1.3;
+}
+
+.scene-basis-heading p {
+  max-width: 620px;
+  margin: 5px 0 0;
+  color: rgba(226, 232, 240, 0.58);
+  font-size: 11.5px;
+  line-height: 1.5;
+}
+
+.scene-basis-heading button {
+  flex: 0 0 auto;
+  min-height: 31px;
+  padding: 0 10px;
+  border: 1px solid rgba(110, 231, 183, 0.35);
+  border-radius: 6px;
+  background: rgba(16, 185, 129, 0.1);
+  color: #b7f7d9;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.scene-basis-heading button:hover {
+  border-color: rgba(110, 231, 183, 0.62);
+  background: rgba(16, 185, 129, 0.17);
+}
+
+.scene-basis-heading button.is-editing {
+  border-color: rgba(110, 231, 183, 0.68);
+  background: rgba(16, 185, 129, 0.22);
+  color: #e1fff0;
+}
+
+.scene-basis-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.scene-basis-section {
+  min-width: 0;
+  padding: 11px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.026);
+}
+
+.scene-basis-section > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 18px;
+  margin-bottom: 9px;
+}
+
+.scene-basis-section > header > em {
+  display: grid;
+  min-width: 18px;
+  height: 18px;
+  place-items: center;
+  border-radius: 999px;
+  background: rgba(110, 231, 183, 0.11);
+  color: rgba(196, 255, 224, 0.88);
+  font-size: 9.5px;
+  font-style: normal;
+  font-weight: 850;
+}
+
+.scene-basis-characters {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(195px, 1fr));
+  gap: 8px;
+}
+
+.scene-basis-character,
+.scene-basis-location {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  min-width: 0;
+}
+
+.scene-basis-character {
+  padding: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 7px;
+  background: rgba(0, 0, 0, 0.12);
+}
+
+.scene-basis-character > img,
+.scene-basis-location > img,
+.scene-basis-image-placeholder {
+  flex: 0 0 48px;
+  width: 48px;
+  height: 58px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  object-fit: cover;
+  background: rgba(15, 23, 42, 0.68);
+}
+
+.scene-basis-image-placeholder {
+  display: grid;
+  place-items: center;
+  color: rgba(167, 243, 208, 0.45);
+  font-size: 9px;
+  font-weight: 800;
+}
+
+.scene-basis-location > img,
+.scene-basis-location > .scene-basis-image-placeholder {
+  width: 64px;
+  flex-basis: 64px;
+}
+
+.scene-basis-character > div,
+.scene-basis-location > div {
+  min-width: 0;
+}
+
+.scene-basis-character strong,
+.scene-basis-location strong {
+  display: block;
+  color: rgba(255, 255, 255, 0.88);
+  font-size: 12px;
+}
+
+.scene-basis-name-input,
+.scene-basis-summary-input,
+.scene-basis-pane dd input {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  border: 1px solid rgba(110, 231, 183, 0.26);
+  border-radius: 5px;
+  outline: none;
+  background: rgba(2, 16, 10, 0.68);
+  color: rgba(248, 250, 252, 0.92);
+  font: inherit;
+}
+
+.scene-basis-name-input {
+  height: 27px;
+  padding: 0 7px;
+  font-size: 11.5px;
+  font-weight: 800;
+}
+
+.scene-basis-summary-input {
+  height: 24px;
+  margin-top: 4px;
+  padding: 0 7px;
+  color: rgba(226, 232, 240, 0.72);
+  font-size: 10px;
+}
+
+.scene-basis-pane dd input {
+  height: 23px;
+  padding: 0 6px;
+  font-size: 10px;
+}
+
+.scene-basis-name-input:focus,
+.scene-basis-summary-input:focus,
+.scene-basis-pane dd input:focus {
+  border-color: rgba(110, 231, 183, 0.72);
+}
+
+.scene-basis-character p {
+  margin: 2px 0 5px;
+  color: rgba(226, 232, 240, 0.46);
+  font-size: 10px;
+  line-height: 1.35;
+}
+
+.scene-basis-pane dl {
+  display: grid;
+  gap: 3px;
+  margin: 5px 0 0;
+}
+
+.scene-basis-pane dl > div {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  min-width: 0;
+}
+
+.scene-basis-pane dt {
+  flex: 0 0 auto;
+  color: rgba(226, 232, 240, 0.42);
+  font-size: 9.5px;
+  white-space: nowrap;
+}
+
+.scene-basis-pane dd {
+  min-width: 0;
+  margin: 0;
+  color: rgba(248, 250, 252, 0.76);
+  font-size: 10.5px;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.scene-basis-pane dd:has(input) {
+  flex: 1 1 auto;
+}
+
+.scene-basis-pane dl > div.open dd {
+  color: #fde68a;
+}
+
+.scene-basis-environment {
+  grid-column: 1 / -1;
+}
+
+.scene-basis-environment > dl {
+  grid-template-columns: repeat(auto-fit, minmax(155px, 1fr));
+  gap: 7px 12px;
+  margin-top: 0;
+}
+
+.scene-basis-note {
+  margin: 0;
+  color: rgba(167, 243, 208, 0.56);
+  font-size: 10px;
+  line-height: 1.4;
+}
+
+.scene-basis-reference-action,
+.scene-basis-more-characters {
+  margin-top: 8px;
+  min-height: 26px;
+  padding: 0 8px;
+  border: 1px solid rgba(110, 231, 183, 0.25);
+  border-radius: 5px;
+  background: rgba(16, 185, 129, 0.07);
+  color: rgba(183, 247, 217, 0.82);
+  font: inherit;
+  font-size: 9.5px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.scene-basis-reference-action:hover:not(:disabled),
+.scene-basis-more-characters:hover {
+  border-color: rgba(110, 231, 183, 0.52);
+  background: rgba(16, 185, 129, 0.13);
+}
+
+.scene-basis-reference-action:disabled {
+  cursor: default;
+  opacity: 0.52;
+}
+
+.scene-basis-more-characters {
+  display: block;
+  margin: 9px auto 0;
+}
+
+/* 다관점 검토는 검토 방식 다음에 곧바로 시퀀스를 보여 준다. 대상 선택은
+   시퀀스를 훑은 뒤의 보조 조작으로 내려, 상단을 여러 패널로 나누지 않는다. */
 .multi-review-preview {
   flex: 0 0 auto;
+  min-width: 0;
   display: grid;
   gap: 0;
   margin: 12px;
@@ -1041,21 +1401,73 @@
   overflow: hidden;
 }
 
-.multi-review-preview-heading {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 14px;
-  padding: 14px;
-  background: linear-gradient(135deg, rgba(139, 92, 246, 0.09), rgba(59, 130, 246, 0.035));
+.lens-review-sequence {
+  min-width: 0;
+  overflow: hidden;
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+  background: rgba(0, 0, 0, 0.12);
 }
 
-.multi-review-preview-heading h2 {
-  margin: 0;
-  color: rgba(255, 255, 255, 0.9);
-  font-size: 15px;
-  line-height: 1.35;
+.multi-review-preview > .scope-panel {
+  margin: 0 12px;
+  padding-top: 7px;
 }
+
+.lens-review-sequence-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 27px;
+  padding: 5px 12px 0;
+}
+
+.lens-review-sequence-controls > span {
+  color: rgba(226, 232, 240, 0.38);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+}
+
+.lens-review-sequence-controls > div { display: flex; gap: 4px; }
+
+.lens-review-sequence-controls button {
+  width: 24px;
+  height: 22px;
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, 0.11);
+  border-radius: 5px;
+  background: rgba(255, 255, 255, 0.025);
+  color: rgba(226, 232, 240, 0.68);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.lens-review-sequence-controls button:hover {
+  border-color: rgba(216, 170, 98, 0.5);
+  color: #f3cf99;
+}
+
+/* 스트립과 세 렌즈가 같은 축을 보는 하나의 스크롤면이다. 각 줄을 따로
+   동기화하면 두 스크롤바와 미세한 어긋남이 생겨, 여기서는 부모만 움직인다. */
+.lens-review-shared-scroll {
+  width: 100%;
+  min-width: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 6px 12px 8px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.26) transparent;
+}
+
+.lens-review-shared-scroll::-webkit-scrollbar { height: 7px; }
+.lens-review-shared-scroll::-webkit-scrollbar-track { background: transparent; }
+.lens-review-shared-scroll::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.22);
+}
+.lens-review-shared-scroll::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.35); }
 
 .multi-review-run-button {
   flex: 0 0 auto;
@@ -7172,6 +7584,10 @@ button.active .lens-glass::after {
 
 /* 본 뒤에 패널이 바뀌었다. 옛 분석이 최신인 것처럼 남으면 안 된다. */
 .multi-review-outdated {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
   margin: 0 0 10px;
   padding: 8px 12px;
   border: 1px solid rgba(232, 168, 168, 0.28);
@@ -7180,6 +7596,27 @@ button.active .lens-glass::after {
   color: rgba(236, 180, 180, 0.92);
   font-size: 11.5px;
 }
+
+/* 사실만 알리고 끝내지 않는다. 바뀐 화면으로 다시 보는 행동이
+   같은 자리에 있어야 옛 판단을 그대로 읽지 않는다. */
+.multi-review-outdated button {
+  margin-left: auto;
+  padding: 4px 10px;
+  border: 1px solid rgba(232, 168, 168, 0.45);
+  border-radius: 5px;
+  background: rgba(232, 168, 168, 0.12);
+  color: rgba(244, 200, 200, 0.96);
+  font: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.multi-review-outdated button:hover:not(:disabled) {
+  background: rgba(232, 168, 168, 0.2);
+}
+
+.multi-review-outdated button:disabled { opacity: 0.55; cursor: default; }
 
 /* 고칠 곳과 그리로 가는 길. 판정 버튼과 줄을 나눠 둔다 —
    판정은 기록이고 이동은 선택이다. */
