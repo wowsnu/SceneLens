@@ -1073,6 +1073,13 @@ consequence가 기본값이 아닙니다 — 방향이 실제로 보일 때만 c
   **관계가 잇는 두 진단의 id를 각각 하나씩, 2개 이상** 적으세요. 한쪽만
   적으면 무엇과 무엇의 관계인지 알 수 없어 그 관계는 버려집니다.
 - summary는 두 판단이 **어떻게 맞물리는지** 한 문장으로 씁니다. 두 진단을 나열하지 마세요.
+- **title은 이 묶음의 이름입니다.** 문장이 아니라 이름입니다 — 감독이 목록에서
+  무엇을 여는 것인지 보고 고릅니다. 화면에 걸린 **현상**의 이름으로 쓰세요.
+  ✓ `공간 전환`, `정보 제시 시점`, `샷 크기 전환`, `시선 방향`
+  ✗ `S2와 S3의 공간이 이어지지 않는다` (문장), `충돌` (관계 종류일 뿐),
+    `촬영과 미장센` (렌즈 이름일 뿐)
+  **4~12자.** 같은 자리에 관계가 둘 이상이면 이름으로 구별되어야 하므로,
+  서로 다른 현상에는 서로 다른 이름을 붙이세요.
 - 0~3개면 충분합니다.
 
 **order — 어느 렌즈부터 손댈 것인가.**
@@ -1130,7 +1137,7 @@ CROSS_LENS_SCHEMA = {
                     "type": "object",
                     "additionalProperties": False,
                     "required": [
-                        "type", "summary", "lenses", "diagnosis_ids",
+                        "type", "title", "summary", "lenses", "diagnosis_ids",
                         "source_lens", "affected_lens",
                     ],
                     "properties": {
@@ -1138,6 +1145,10 @@ CROSS_LENS_SCHEMA = {
                             "type": "string",
                             "enum": ["agreement", "conflict", "consequence"],
                         },
+                        # 이 묶음의 이름. 화면에서 Issue 제목이 된다 —
+                        # 감독이 목록에서 무엇을 여는지 보고 고른다.
+                        # 요약(summary)은 문장이고 이것은 이름이다.
+                        "title": {"type": "string"},
                         "summary": {"type": "string"},
                         "lenses": {
                             "type": "array",
@@ -1203,6 +1214,73 @@ def _lens_digest(lens_results: dict) -> str:
     return "\n\n".join(blocks)
 
 
+def _panel_ids(diagnosis) -> list[str]:
+    """진단이 가리키는 패널 id. `"S2.position"` → `"S2"`.
+
+    프론트가 이미 같은 방식으로 판다 (`DecisionBoard.jsx`의 `split('.', 1)[0]`).
+    한쪽만 바꾸면 트랙의 마커와 카드의 표시가 어긋나므로 규칙을 맞춘다.
+    """
+    seen = []
+    for target in diagnosis.targets:
+        panel = target.split(".", 1)[0].strip()
+        if panel and panel not in seen:
+            seen.append(panel)
+    return seen
+
+
+def _anchor_for(diagnoses: list) -> tuple[str, str]:
+    """Issue가 걸리는 자리와 그 종류를 진단들에서 계산한다.
+
+    모델에게 묻지 않는다 — 자리는 이미 `targets`에 있고, 물으면 지어낼
+    여지만 생긴다. 트랙에서 마커를 컷 위에 둘지 컷 사이에 둘지가
+    여기서 갈린다 (`LENS_TRACKS_UI.md` 3장).
+
+    `level`을 먼저 본다. 같은 두 컷을 가리켜도 `shot_relation`은 그 사이의
+    이음새 문제이고 `attribute`는 각 컷의 문제라, 패널 수만으로는 갈리지
+    않는다.
+    """
+    if not diagnoses:
+        return "", ""
+
+    levels = {d.level for d in diagnoses}
+    panels: list[str] = []
+    for d in diagnoses:
+        for panel in _panel_ids(d):
+            if panel not in panels:
+                panels.append(panel)
+
+    if "scene_structure" in levels:
+        # 범위 전체에 걸린 것. 양 끝으로 범위를 적는다.
+        if len(panels) >= 2:
+            return f"{panels[0]}–{panels[-1]}", "scene"
+        return (panels[0] if panels else ""), "scene"
+
+    if "shot_relation" in levels and len(panels) >= 2:
+        # 이음새. 인접한 두 컷 사이를 가리킨다.
+        return f"{panels[0]}→{panels[1]}", "seam"
+
+    if len(panels) == 1:
+        return panels[0], "shot"
+
+    # 여러 컷의 같은 속성을 함께 짚은 경우. 이음새가 아니라 컷들이므로
+    # shot으로 두되 자리는 모두 적는다.
+    return "·".join(panels), "shot"
+
+
+def _origin_lens_for(relation: dict, diagnoses_by_lens: dict) -> Optional[str]:
+    """이 현상을 처음 짚은 렌즈. Inspector에서 `●`로 표시된다.
+
+    consequence는 방향이 있으므로 원인 쪽이 origin이다. 나머지는 방향이
+    없어 "누가 먼저"가 데이터에 없다 — 그때는 렌즈 목록의 첫 번째를 쓰되,
+    이것이 시간 순서가 아니라 표시 순서임을 화면 문구가 넘겨짚지 않게
+    한다 (`origin`이 아니라 `independently surfaced`로 적는다).
+    """
+    if relation.get("type") == "consequence" and relation.get("source_lens"):
+        return relation["source_lens"]
+    lenses = [lens for lens in (relation.get("lenses") or []) if lens in diagnoses_by_lens]
+    return lenses[0] if lenses else None
+
+
 async def _relate_lenses(
     lens_results: dict,
     settled: list | None = None,
@@ -1224,6 +1302,12 @@ async def _relate_lenses(
     ids_by_lens: dict[str, list[str]] = {
         lens: [diagnosis.id for diagnosis in result.diagnoses]
         for lens, result in lens_results.items()
+    }
+    # 관계가 가리키는 진단을 되찾아 자리를 계산하는 데 쓴다.
+    diagnosis_by_id = {
+        diagnosis.id: diagnosis
+        for result in lens_results.values()
+        for diagnosis in result.diagnoses
     }
 
     user_content = _lens_digest(lens_results)
@@ -1301,14 +1385,21 @@ async def _relate_lenses(
                 f"known={sorted(known_ids)}"
             )
             continue
+        # 자리와 origin은 서버가 채운다. 모델은 관계만 본다.
+        picked = [diagnosis_by_id[rid] for rid in ids if rid in diagnosis_by_id]
+        anchor, anchor_kind = _anchor_for(picked)
         try:
             findings.append(DirectingCommonFinding(
                 type=relation["type"],
+                title=(relation.get("title") or "").strip(),
                 summary=relation["summary"],
                 lenses=relation["lenses"],
                 diagnosis_ids=ids,
                 source_lens=relation.get("source_lens"),
                 affected_lens=relation.get("affected_lens"),
+                anchor=anchor,
+                anchor_kind=anchor_kind,
+                origin_lens=_origin_lens_for(relation, ids_by_lens),
             ))
         except ValueError as error:
             # 방향이 빠진 consequence 등. 관계 하나 때문에 검토 전체를 버리지 않는다.

@@ -643,9 +643,23 @@ class DirectingCommonFinding(BaseModel):
     """
 
     type: Literal["agreement", "conflict", "consequence"]
+    # 이 묶음의 이름. 화면에서 Issue 제목이 된다 (`LENS_TRACKS_UI.md` 4장 B).
+    # summary가 "어떻게 맞물리는가"라면 title은 "무엇에 관한 것인가"다 —
+    # 같은 자리에 관계가 둘 이상일 때 감독은 이 이름으로 구별해 고른다.
+    title: str = ""
     summary: str
     lenses: List[DirectingLens] = Field(min_length=2)
     diagnosis_ids: List[str] = Field(min_length=2)
+    # --- 아래 셋은 서버가 채운다. 모델에게 묻지 않는다 ---------------
+    # 이 Issue가 걸리는 자리. 진단들의 targets에서 계산한다.
+    # 트랙에서 마커가 놓이는 가로 위치이자, Inspector의 `Where`다.
+    anchor: str = ""
+    # shot(컷 위) / seam(컷 사이) / scene(범위 전체).
+    # 마커를 컷 중앙에 둘지 사이에 둘지가 여기서 갈린다.
+    anchor_kind: Literal["shot", "seam", "scene", ""] = ""
+    # 이 현상을 처음 짚은 렌즈. Inspector에서 `●`(origin)로 표시된다.
+    # consequence면 원인 쪽, 아니면 진단 id 순서상 첫 렌즈다.
+    origin_lens: Optional[DirectingLens] = None
     # consequence일 때: 어느 렌즈의 결정이 원인이고 어느 쪽이 그 영향을 받는가.
     # 방향이 있어야 어디를 고쳐야 하는지가 정해진다.
     source_lens: Optional[DirectingLens] = None
