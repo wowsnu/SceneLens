@@ -164,7 +164,9 @@ export default function StoryboardStripLane({
                 /* 선택된 것만 탭을 받는다. 나머지는 화살표로 온다. */
                 tabIndex={index === tabbableIndex ? 0 : -1}
                 onClick={() => onSelectShot?.(index)}
-                title={shot?.content || `S${index + 1}`}
+                /* 컷 번호는 아래에 이미 적혀 있다. 툴팁까지 `S1`이면
+                   같은 말이 두 번 뜬다 — 내용이 있을 때만 띄운다. */
+                title={shot?.content || undefined}
               >
                 <span className="strip-cell-frame">
                   {shot?.image
