@@ -55,6 +55,13 @@ export default function EvidenceStage({
     return shots.find((shot) => String(shot?.id) === panelId) || null
   }
 
+  // 이 진단이 그림에서 가리키는 자리가 하나라도 있는가. 없으면 그림만
+  // 나오는데, 그것이 "표시가 없는 근거"인지 "덜 받은 데이터"인지
+  // 감독은 구분할 수 없다 — 조용히 비워 두지 않는다.
+  const hasAnyRegion = panelIds.some(
+    (panelId) => overlaysFor(diagnosis, panelId).length > 0
+  )
+
   return (
     <div className={`evidence-stage lens-${lensId || 'none'}`}>
       <div className="evidence-stage-frames">
@@ -84,6 +91,17 @@ export default function EvidenceStage({
         })}
       </div>
 
+      {/* 표시가 없을 때. 두 경우가 있고 감독에게는 구분되지 않는다 —
+          모델이 자리를 짚지 못했거나, 이 결과가 표시를 만들기 전에 받은
+          오래된 것이거나. 뒤쪽이면 다시 분석해야 나온다.
+          근거 문장은 어느 쪽이든 렌즈 카드에 남아 있다 (text first). */}
+      {diagnosis && !hasAnyRegion && (
+        <p className="evidence-stage-note">
+          {(diagnosis.visual_evidence || []).length > 0
+            ? '이 관점은 그림에서 가리킬 자리를 짚지 않았습니다. 아래 근거를 읽어 주세요.'
+            : '이 결과에는 그림 표시가 없습니다. 다시 분석하면 표시가 함께 나옵니다.'}
+        </p>
+      )}
     </div>
   )
 }

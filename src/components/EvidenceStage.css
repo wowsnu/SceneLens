@@ -216,3 +216,11 @@
 .evidence-line span:last-child {
   min-width: 0;
 }
+
+/* 표시가 없을 때. 그림만 덩그러니 두면 감독이 "덜 받았나" 싶어
+   기다리게 된다 — 짚지 않았다고 말해 준다. */
+.evidence-stage-note {
+  margin: 0;
+  font-size: 10px;
+  color: var(--text-muted);
+}
