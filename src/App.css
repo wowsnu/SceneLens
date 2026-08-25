@@ -78,30 +78,21 @@
               opacity 0.35s ease;
 }
 
+/* 접혔을 때 폭 0으로 완전히 숨긴다. 재생성 요청을 받기 위해
+   StoryboardView는 계속 마운트해 둔다(border까지 지워야 얇은 선도
+   남지 않는다) — visibility는 언마운트가 아니어서 생성 effect는
+   계속 돈다. 검토 화면에서 대본으로 돌아가는 길은 오른쪽 상단의
+   `← 스토리보드` 버튼이 대신한다. */
 .left-panel.collapsed {
-  flex: 0 0 40px;
-  max-width: 40px;
+  flex: 0 0 0;
+  max-width: 0;
+  border-right: none;
 }
 
-/* 재생성 요청을 받기 위해 접힌 상태에서도 StoryboardView는 마운트한다.
-   다만 40px 폭에서 그 내부 레이아웃이 그려지면 대본이 찌그러져 보이므로
-   내용만 숨긴다. visibility는 언마운트가 아니어서 생성 effect는 계속 돈다. */
-.left-panel.collapsed .panel-content {
+.left-panel.collapsed .panel-content,
+.left-panel.collapsed .panel-header {
   visibility: hidden;
   pointer-events: none;
-}
-
-.left-panel.collapsed .panel-header {
-  justify-content: center;
-  padding: 0 4px;
-}
-
-.left-panel.collapsed .panel-control-btn {
-  width: 30px;
-  min-width: 30px;
-  margin-left: 0 !important;
-  padding: 0;
-  justify-content: center;
 }
 
 .left-panel.maximized {
