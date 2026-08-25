@@ -1535,24 +1535,35 @@ def _build_issues(
 
     for did in diagnosis_by_id:
         find(did)
-    # 자리가 같은 진단끼리만 잇는다.
+    # 진단을 묶는 조건은 좁게 잡는다.
     #
-    # 관계는 "이 판단들이 서로 얽혀 있다"는 뜻이지 "같은 자리에 있다"는
-    # 뜻이 아니다. 미장센이 S4를, 촬영이 S3를, 편집이 S2를 짚었는데 그
-    # 셋이 한 관계로 묶이면 앵커가 `S4·S3·S2`가 되어 트랙의 한 마커로
-    # 그릴 수 없다 — 실제로 그런 화면이 나왔다.
+    # 함부로 묶으면 서로 다른 문제가 한 카드에 섞여, 감독이 무엇을
+    # 판정하는지 알 수 없게 된다. 관계 자체는 `common_findings`에 그대로
+    # 남으므로 묶지 않아도 감독은 읽을 수 있다 — 여기서 정하는 것은
+    # "트랙의 한 마커로 그릴 만큼 같은 것인가"뿐이다.
     #
-    # 관계 자체는 `common_findings`에 그대로 남으므로 감독은 여전히
-    # 읽을 수 있다. 여기서는 **한 자리에 그릴 수 있는 것**만 묶는다
-    # (`LENS_TRACKS_UI.md` 3장 — 여러 렌즈가 같은 지점을 짚은 것이
-    # 수직 정렬로 보인다는 전제).
+    # 세 조건을 모두 넘겨야 잇는다:
+    #
+    # 1. **agreement만.** `같은 문제를 서로 다른 근거로 짚었다`는 뜻이라
+    #    하나로 묶는 것이 옳다. `consequence`(하나가 다른 하나를 만들었다)와
+    #    `conflict`(요구가 반대다)는 **서로 다른 문제**가 얽힌 것이므로
+    #    각각 판정해야 한다 — 원인과 결과를 한 카드에 넣으면 어느 쪽을
+    #    고치는 것인지 흐려진다.
+    # 2. **자리가 같아야 한다.** 가리키는 컷이 완전히 같을 때만. 일부만
+    #    겹치면(S2 대 S2·S3) 한쪽은 컷의 문제, 다른 쪽은 이음새의 문제라
+    #    개입 지점이 다르다.
+    # 3. **층위가 같아야 한다.** attribute와 shot_relation은 같은 컷을
+    #    가리켜도 고치는 자리가 다르다.
     for finding in findings:
+        if finding.type != "agreement":
+            continue
         ids = [i for i in finding.diagnosis_ids if i in diagnosis_by_id]
         for left, right in zip(ids, ids[1:]):
-            left_panels = set(_panel_ids(diagnosis_by_id[left][1]))
-            right_panels = set(_panel_ids(diagnosis_by_id[right][1]))
-            # 가리키는 컷이 하나도 겹치지 않으면 다른 자리의 문제다.
-            if left_panels and right_panels and not (left_panels & right_panels):
+            left_diagnosis = diagnosis_by_id[left][1]
+            right_diagnosis = diagnosis_by_id[right][1]
+            if left_diagnosis.level != right_diagnosis.level:
+                continue
+            if set(_panel_ids(left_diagnosis)) != set(_panel_ids(right_diagnosis)):
                 continue
             union(left, right)
 

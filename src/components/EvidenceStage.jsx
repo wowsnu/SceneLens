@@ -32,7 +32,12 @@ const panelIndexOf = (panelId, shots) => {
 
 // Issue가 무엇을 가리키는지에 따라, 같은 스토리보드를 최소 단위로 다시
 // 놓는다. 렌즈는 이 배치를 바꾸지 않고 표시와 읽기만 바꾼다.
-const framesFor = (issue, anchorPanels, shots) => {
+//
+// 앞뒤 컷은 **검토 범위 안에서만** 가져온다. 범위가 S1–S4인데 S4가
+// 대상이면 S5를 끌어오게 되는데, 그 컷은 감독이 지금 보고 있는 것도
+// 아니고 아직 안 그려졌을 수도 있다 — 빈 자리가 근거인 것처럼 보인다.
+// 한쪽 끝이면 반대쪽만 붙인다.
+const framesFor = (issue, anchorPanels, shots, range) => {
   if (issue?.anchor_kind !== 'shot' || anchorPanels.length !== 1) {
     return anchorPanels.map((id) => ({ id, role: 'focus' }))
   }
@@ -40,10 +45,16 @@ const framesFor = (issue, anchorPanels, shots) => {
   const targetIndex = panelIndexOf(anchorPanels[0], shots)
   if (targetIndex < 0) return [{ id: anchorPanels[0], role: 'focus' }]
 
+  // 범위를 안 받았으면 전체를 범위로 본다.
+  const from = Number.isInteger(range?.from) ? Math.max(0, range.from) : 0
+  const to = Number.isInteger(range?.to)
+    ? Math.min(range.to, shots.length - 1)
+    : shots.length - 1
+
   return [
-    targetIndex > 0 && { id: `S${targetIndex}`, role: 'context' },
+    targetIndex > from && { id: `S${targetIndex}`, role: 'context' },
     { id: anchorPanels[0], role: 'focus' },
-    targetIndex < shots.length - 1 && { id: `S${targetIndex + 2}`, role: 'context' },
+    targetIndex < to && { id: `S${targetIndex + 2}`, role: 'context' },
   ].filter(Boolean)
 }
 
@@ -71,10 +82,12 @@ export default function EvidenceStage({
   diagnosis,
   shots = [],
   lensId,
+  // 지금 검토 중인 범위. 앞뒤 컷을 이 안에서만 가져온다.
+  range = null,
 }) {
   const anchorPanels = panelsOf(issue?.anchor)
   if (anchorPanels.length === 0) return null
-  const frames = framesFor(issue, anchorPanels, shots)
+  const frames = framesFor(issue, anchorPanels, shots, range)
 
   // 앵커의 `S2`는 스토리보드 순번이다. 컷 목록에서 그 자리를 찾는다.
   const shotFor = (panelId) => {

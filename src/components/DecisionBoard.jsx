@@ -88,43 +88,6 @@ const DIAGNOSTIC_LEVEL_LABELS = {
 
 const EMPTY_ISSUES = []
 
-// 마커에 붙는 이름. 트랙은 "어디에 무엇이 걸렸는가"를 보는 자리라
-// 이름은 짧아야 한다 — 진단 문장을 그대로 쓰면 잘려서 읽히지도 않으면서
-// 자리만 차지하고, 옆 컷의 마커까지 밀어낸다. 무엇이 걸렸는지는 이름이
-// 말하고, 왜 그런지는 Lens Workbench가 말한다 (문서 1장).
-//
-// 규칙 id가 곧 현상이므로 이름은 규칙에서 나온다. 12개 고정 규칙은
-// `docs/DIRECTING_RULES.md`가 정의한 것이고, 여기 이름은 그 판단 기준을
-// 감독이 부르는 말로 옮긴 것이다.
-const DIRECTING_RULE_NAMES = {
-  // 미장센 — 화면에 무엇이 어떻게 놓였는가.
-  'mise-functional-elements': '빠진 요소',
-  'mise-relational-blocking': '인물 배치',
-  'mise-spatial-continuity': '공간 연결',
-  'mise-visual-hierarchy': '시선 유도',
-  // 촬영 — 프레이밍과 카메라가 무엇을 고르는가.
-  'camera-information-selection': '샷 크기',
-  'camera-viewpoint-intent': '앵글 의도',
-  'camera-axis-direction': '촬영축',
-  'camera-movement-purpose': '카메라 이동',
-  // 편집 — 컷의 선택과 순서.
-  'editing-shot-function': '컷의 기능',
-  'editing-cut-continuity': '컷 연결',
-  'editing-information-order': '정보 순서',
-  'editing-visual-rhythm': '시각 리듬',
-}
-
-// 규칙 이름이 없으면 진단 문장의 첫 구절만 취한다. 문장 전체보다는
-// 낫지만 이름은 아니므로, 새 규칙이 생기면 위 표에 올리는 것이 맞다.
-const shortIssueTitle = (diagnosis) => {
-  const named = DIRECTING_RULE_NAMES[diagnosis?.rule_id]
-  if (named) return named
-  const text = (diagnosis?.diagnosis || diagnosis?.suggested_action || '').trim()
-  if (!text) return '검토할 것'
-  const clause = text.split(/[.。·,\n]/, 1)[0].trim()
-  return clause.length > 14 ? `${clause.slice(0, 13)}…` : clause
-}
-
 // 서버가 아직 Issue 묶기를 돌려주지 않는 개발 서버를 만나도, 렌즈가 낸
 // 진단 자체는 트랙에서 사라지면 안 된다. 이 fallback은 관계를 추론하지
 // 않고 진단 하나를 Issue 하나로만 보여 준다. 서버 Issue가 있으면 절대
@@ -142,9 +105,10 @@ const fallbackIssuesFromLensResults = (lensResults = {}) => (
         id: `fallback:${lens}:${diagnosis.id}`,
         anchor: isSeam ? `${first}→${second}` : isScene ? `${first}–${panels.at(-1)}` : panels.join('·'),
         anchor_kind: isSeam ? 'seam' : isScene ? 'scene' : 'shot',
-        title: shortIssueTitle(diagnosis),
-        // 마커에 붙는 이름은 짧게 자르지만, 진단 문장 자체는 버리지
-        // 않는다. 마우스를 올리면 브라우저 툴팁이 이것을 보여 준다.
+        // 이름은 진단이 스스로 붙인다. 여기서 다시 만들면 같은 진단이
+        // 서버 경로와 다른 이름으로 보인다.
+        title: diagnosis.title || diagnosis.rule_id || '검토할 것',
+        // 마커 이름은 짧다. 진단 문장은 버리지 않고 툴팁으로 남긴다.
         detail: (diagnosis.diagnosis || diagnosis.suggested_action || '').trim(),
         diagnosis_ids: [diagnosis.id],
         lenses: [lens],
@@ -6020,6 +5984,10 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
                   diagnosesById={diagnosesById}
                   lensChecks={selectedIssueLensChecks}
                   shots={shots}
+                  /* 범위를 정해 검토 중이면 앞뒤 컷도 그 안에서만
+                     가져온다. 한 컷만 보는 중이면 범위가 곧 그 컷이라
+                     좁히면 앞뒤가 아예 사라지므로 전체에서 가져온다. */
+                  range={scopeMode === 'range' ? { from: scopeFrom, to: scopeTo } : null}
                   relating={Boolean(multiReviewRun.relating)}
                   onCheckLens={checkSelectedIssueLens}
                   onSelectIssue={selectTrackIssue}

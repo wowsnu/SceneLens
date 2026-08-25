@@ -27,6 +27,7 @@ export default function IssueInspector({
   diagnosesById,
   lensChecks = {},
   shots = [],
+  range = null,
   relating = false,
   onCheckLens,
   onSelectIssue,
@@ -98,6 +99,7 @@ export default function IssueInspector({
         diagnosis={activeDiagnosis}
         shots={shots}
         lensId={activeLens}
+        range={range}
       />
 
       <div className="issue-perspectives">
