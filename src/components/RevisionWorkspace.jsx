@@ -4,6 +4,27 @@ import { revisionImpact } from './revisionImpact'
 import './RevisionWorkspace.css'
 
 const LENS_NAMES = { mise: '미장센', camera: '촬영', editing: '편집' }
+
+// 실행 버튼이 무엇을 하는지 그대로 적는다. 컷이 지워지는 일과 그림을
+// 다시 그리는 일은 되돌리는 비용이 다르므로 같은 말로 부르지 않는다.
+const RUN_LABELS = {
+  insert: '이 자리에 컷 넣기',
+  split: '이 컷 나누기',
+  merge: '두 컷 합치기',
+  delete: '이 컷 빼기',
+  seam: '이 수정안으로 그려 보기',
+}
+// 이 수정안이 컷 표의 어느 값을 바꾸는가. 실제로 달라지는 것만 남긴다 —
+// 지금과 같은 값을 `→`로 적으면 바뀌는 것처럼 보인다.
+const fieldChangesOf = (alternative, cut) => {
+  const patch = alternative?.patch || {}
+  return [
+    patch.shot_size && ['샷 크기', cut?.shotSize, patch.shot_size],
+    patch.angle && ['앵글', cut?.angle, patch.angle],
+    patch.move && ['카메라', cut?.cameraMove, patch.move],
+  ].filter(Boolean).filter(([, from, to]) => from !== to)
+}
+
 const panelsOf = (anchor) => (anchor || '').match(/S\d+/g) || []
 
 // 판정은 DecisionBoard와 같은 것을 쓴다. 두 벌로 두면 캔버스가 보여 주는
@@ -14,7 +35,8 @@ const seamAction = (alternative) => (
 )
 
 export default function RevisionWorkspace({
-  issue, issues = [], shotCount = 0, diagnosis, onBack, onChoose, onKeep,
+  issue, issues = [], shotCount = 0, diagnosis, cut = null,
+  onBack, onChoose, onKeep,
   promptDraft, promptNote, rewriting, generating, onPromptChange, onClosePrompt, onSavePrompt,
   revisionPending, revisionImage, onAccept, onReject,
   applied = false, onReappraise,
@@ -65,17 +87,56 @@ export default function RevisionWorkspace({
         </section>
       )}
 
+      {/* 이 판단의 근거. 무엇을 기준으로 봤고 화면에서 무엇을 확인했는지
+          — 감독이 수정안을 고르기 전에 그 판단부터 판정할 수 있어야 한다
+          (design_goal.md DG1 P2). 기본은 접어 둔다: 여기는 고치는
+          자리이지 다시 읽는 자리가 아니다. */}
+      {(diagnosis.criterion || diagnosis.evidence?.length > 0 || diagnosis.theory_basis) && (
+        <details className="revision-basis">
+          <summary>이 판단의 근거</summary>
+          {diagnosis.criterion && (
+            <p className="revision-basis-criterion">{diagnosis.criterion}</p>
+          )}
+          {diagnosis.evidence?.length > 0 && (
+            <ul>
+              {diagnosis.evidence.map((line) => <li key={line}>{line}</li>)}
+            </ul>
+          )}
+          {diagnosis.theory_basis && (
+            <p className="revision-basis-theory">
+              {diagnosis.theory_basis}
+              {diagnosis.theory_source && <cite>{diagnosis.theory_source}</cite>}
+            </p>
+          )}
+        </details>
+      )}
+
       <section className="revision-workspace-options">
         <span>수정안</span>
         {changes.length ? changes.map((alternative) => (
           <article key={alternative.label}>
             <strong>{alternative.label}</strong>
             <p>{alternative.effect}</p>
-            <button type="button" className={selected === alternative ? 'selected' : ''} onClick={() => {
-              setSelected(alternative)
-              if (!isSeam) onChoose(alternative)
-            }} disabled={revisionPending || rewriting || generating}>
-              {isSeam ? '이 이음새에 놓기' : '이 수정안 보기'}
+            {/* 컷 값이 바뀌는 수정안이면 `기존 → 바뀜`을 그대로 적는다.
+                문장만으로는 무엇이 달라지는지 알 수 없다 (기존 Decision
+                Card가 하던 방식). */}
+            {fieldChangesOf(alternative, cut).map(([label, from, to]) => (
+              <span className="revision-field-change" key={label}>
+                {label} {from || '미정'} → {to}
+              </span>
+            ))}
+            {/* 고르는 것과 실행하는 것을 나눈다. 누르자마자 그림이
+                생성되거나 컷이 지워지면 감독은 무엇이 일어날지 모른 채
+                결과를 마주한다 — 무엇이 달라지는지 보고 나서 누른다
+                (기존 Decision Card가 하던 방식이다). */}
+            <button
+              type="button"
+              className={selected === alternative ? 'selected' : ''}
+              onClick={() => setSelected(selected === alternative ? null : alternative)}
+              aria-pressed={selected === alternative}
+              disabled={revisionPending || rewriting || generating}
+            >
+              {selected === alternative ? '고름' : '이 수정안 보기'}
             </button>
           </article>
         )) : <p>바로 적용할 수정안은 없습니다. 직접 수정 방향을 정해 주세요.</p>}
@@ -106,9 +167,17 @@ export default function RevisionWorkspace({
           </div>
         )}
 
-        {isSeam && selected && (
-          <button type="button" className="revision-seam-open" onClick={() => onChoose(selected)} disabled={revisionPending}>
-            {seamAction(selected) === 'seam' ? '이음새에서 조정하기' : '이 구조로 수정하기'}
+        {/* 실행은 여기 하나뿐이다. 위에서 고르고 영향을 확인한 뒤에
+            누른다. 무엇을 하는 버튼인지 이름에 적는다 — `확인`처럼
+            뭉뚱그리면 컷이 지워지는 것도 같은 말이 된다. */}
+        {selected && (
+          <button
+            type="button"
+            className="revision-run"
+            onClick={() => onChoose(selected)}
+            disabled={revisionPending || rewriting || generating}
+          >
+            {RUN_LABELS[seamAction(selected)] || '이 수정안으로 그려 보기'}
           </button>
         )}
       </section>

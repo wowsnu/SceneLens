@@ -80,3 +80,21 @@
 .revision-applied > div { display: flex; gap: 6px; margin-top: 6px; }
 .revision-applied .primary { padding: 6px 10px; border: 1px solid rgba(216,170,98,.55); border-radius: 5px; background: rgba(216,170,98,.16); color: #f0cb91; font-weight: 800; }
 .revision-applied button:not(.primary) { padding: 6px 10px; border: 1px solid var(--border-light); border-radius: 5px; background: transparent; color: var(--text-secondary); }
+
+/* 이 판단의 근거. 접어 두되 열면 기준·화면 근거·이론 출처가 나온다 —
+   수정안을 고르기 전에 그 판단부터 판정할 수 있어야 한다(DG1 P2). */
+.revision-basis { padding: 10px 14px; border-bottom: 1px solid var(--border); }
+.revision-basis > summary { color: var(--text-muted); font-size: 11px; cursor: pointer; }
+.revision-basis > summary::marker { color: var(--text-muted); }
+.revision-basis-criterion { margin: 8px 0 0; color: #e9c58d; font-size: 11px; }
+.revision-basis ul { margin: 8px 0 0; padding-left: 16px; display: grid; gap: 3px; }
+.revision-basis li { color: var(--text-secondary); font-size: 11px; line-height: 1.5; }
+.revision-basis-theory { margin: 8px 0 0; color: var(--text-muted); font-size: 10px; line-height: 1.5; }
+.revision-basis-theory cite { display: block; margin-top: 2px; font-style: normal; opacity: .8; }
+
+/* 컷 값이 바뀌는 수정안. 문장만으로는 무엇이 달라지는지 알 수 없다. */
+.revision-field-change { display: block; margin-top: 5px; color: #e9c58d; font-size: 10px; font-variant-numeric: tabular-nums; }
+
+/* 실행 버튼. 고르고 영향을 확인한 뒤 누르는 자리다. */
+.revision-run { width: 100%; margin-top: 10px; padding: 8px; border: 1px solid rgba(216,170,98,.55); border-radius: 5px; background: rgba(216,170,98,.16); color: #f0cb91; font-weight: 800; }
+.revision-run:disabled { opacity: .5; cursor: default; }

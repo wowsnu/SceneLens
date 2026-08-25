@@ -5951,6 +5951,7 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
                   /* 이 수정이 다른 검토에 닿는지 보려면 전체가 필요하다. */
                   issues={trackIssues}
                   shotCount={shots.length}
+                  cut={cutForDiagnosis(revisionWorkspace.diagnosis)}
                   diagnosis={revisionWorkspace.diagnosis}
                   currentImage={revisionTargetShot?.image || panelDraftImages[revisionTargetShot?.id] || ''}
                   promptDraft={promptDrafts[revisionWorkspace.diagnosis.id] ?? null}
@@ -5969,10 +5970,16 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
                     // 조정하자고 할 수도 있다.
                     const action = editingActionFor(alternative).id
                     if (action === 'seam') {
+                      // 그림을 다시 그린다. 결과를 여기서 판정하므로
+                      // Workspace를 열어 둔다.
                       applyAlternative(revisionWorkspace.diagnosis, alternative)
-                    } else {
-                      routeDiagnosisTool(action, revisionWorkspace.diagnosis, alternative)
+                      return
                     }
+                    // 구조를 바꾸는 것은 이음새 도구가 받는다. 그 화면으로
+                    // 넘어가므로 여기 남겨 두면 두 창이 같은 것을 두고
+                    // 서로 다른 상태를 보인다.
+                    routeDiagnosisTool(action, revisionWorkspace.diagnosis, alternative)
+                    setRevisionWorkspace(null)
                   }}
                   onPromptChange={(text) => openPromptEditor(revisionWorkspace.diagnosis, text)}
                   onClosePrompt={() => openPromptEditor(revisionWorkspace.diagnosis, null)}
