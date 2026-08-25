@@ -20,6 +20,33 @@ const panelsOf = (anchor) => (
     .slice(0, 2)
 )
 
+// 두 컷이 이어지는 관계인가. 이음새(`→`)와 범위(`–`)만 그렇다.
+// `·`는 나란하지 않은 별개의 컷들을 묶은 것이다.
+const isSequential = (anchor) => /[→–]/.test(anchor || '')
+
+const panelIndexOf = (panelId, shots) => {
+  const match = /^S(\d+)$/.exec(panelId)
+  if (match) return Number(match[1]) - 1
+  return shots.findIndex((shot) => String(shot?.id) === panelId)
+}
+
+// Issue가 무엇을 가리키는지에 따라, 같은 스토리보드를 최소 단위로 다시
+// 놓는다. 렌즈는 이 배치를 바꾸지 않고 표시와 읽기만 바꾼다.
+const framesFor = (issue, anchorPanels, shots) => {
+  if (issue?.anchor_kind !== 'shot' || anchorPanels.length !== 1) {
+    return anchorPanels.map((id) => ({ id, role: 'focus' }))
+  }
+
+  const targetIndex = panelIndexOf(anchorPanels[0], shots)
+  if (targetIndex < 0) return [{ id: anchorPanels[0], role: 'focus' }]
+
+  return [
+    targetIndex > 0 && { id: `S${targetIndex}`, role: 'context' },
+    { id: anchorPanels[0], role: 'focus' },
+    targetIndex < shots.length - 1 && { id: `S${targetIndex + 2}`, role: 'context' },
+  ].filter(Boolean)
+}
+
 function Overlay({ region }) {
   // 좌표는 정규화되어 있으므로 퍼센트로 그대로 옮긴다. 그림이 어떤
   // 크기로 보이든 같은 자리에 온다.
@@ -45,8 +72,9 @@ export default function EvidenceStage({
   shots = [],
   lensId,
 }) {
-  const panelIds = panelsOf(issue?.anchor)
-  if (panelIds.length === 0) return null
+  const anchorPanels = panelsOf(issue?.anchor)
+  if (anchorPanels.length === 0) return null
+  const frames = framesFor(issue, anchorPanels, shots)
 
   // 앵커의 `S2`는 스토리보드 순번이다. 컷 목록에서 그 자리를 찾는다.
   const shotFor = (panelId) => {
@@ -58,20 +86,27 @@ export default function EvidenceStage({
   // 이 진단이 그림에서 가리키는 자리가 하나라도 있는가. 없으면 그림만
   // 나오는데, 그것이 "표시가 없는 근거"인지 "덜 받은 데이터"인지
   // 감독은 구분할 수 없다 — 조용히 비워 두지 않는다.
-  const hasAnyRegion = panelIds.some(
+  const hasAnyRegion = anchorPanels.some(
     (panelId) => overlaysFor(diagnosis, panelId).length > 0
   )
 
   return (
-    <div className={`evidence-stage lens-${lensId || 'none'}`}>
-      <div className="evidence-stage-frames">
-        {panelIds.map((panelId, index) => {
+    <div className={`evidence-stage evidence-stage-${issue?.anchor_kind || 'shot'} lens-${lensId || 'none'}`}>
+      <div className="evidence-stage-frames" aria-label={`${issue?.anchor || ''} 주변 스토리보드`}>
+        {frames.map(({ id: panelId, role }, index) => {
           const shot = shotFor(panelId)
           const regions = overlaysFor(diagnosis, panelId)
+          const isSeam = issue?.anchor_kind === 'seam' && index === 1
           return (
-            <div key={panelId} className="evidence-frame-slot">
+            <div key={panelId} className={`evidence-frame-slot evidence-frame-${role}`}>
               {index > 0 && (
-                <span className="evidence-arrow" aria-hidden="true">→</span>
+                <span className={`evidence-arrow ${isSeam ? 'evidence-seam-arrow' : ''}`} aria-hidden="true">
+                  {isSeam && <small>이음새</small>}
+                  {/* 이어지는 두 컷일 때만 화살표다. `·`로 묶인 앵커는
+                      나란하지 않은 별개의 컷들이라, 화살표를 그리면
+                      있지도 않은 순서를 말하게 된다. */}
+                  {isSequential(issue?.anchor) ? '→' : '·'}
+                </span>
               )}
               <figure className="evidence-frame">
                 <span className="evidence-frame-image">

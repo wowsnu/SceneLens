@@ -124,7 +124,9 @@ targets 규칙:
 - targets에는 선택 범위에 제공된 컷 ID 또는 `S3.camera_angle` 같은 요소 경로만 적으세요.
   `S3-인물 정면`, `Panel 3`처럼 설명을 붙이거나 ID를 바꾸지 마세요.
 - attribute는 해당 컷 ID 또는 요소 경로를 적으세요.
-- shot_relation은 반드시 서로 다른 컷 ID를 2개 이상 적으세요.
+- shot_relation은 선택 범위에서 **서로 이웃한 정확히 두 컷**만 targets에 적으세요.
+  반드시 이야기 순서대로 앞 컷, 뒤 컷 순서로 적으세요. 인접하지 않은 여러 컷의
+  관계나 범위 전체의 문제는 scene_structure를 사용하세요.
 - scene_structure도 반드시 서로 다른 컷 ID를 2개 이상 적고, 한 컷 내부의 시각적
   우선순위나 프레이밍 문제에는 절대 사용하지 마세요. 그런 문제는 attribute입니다.
 - 각 diagnosis와 question의 id는 응답 안에서 고유해야 합니다. 컷 ID만 쓰지 말고
@@ -160,6 +162,17 @@ theory_basis는 `책 이름 — 쉬운 설명 한 문장` 형식으로 씁니다
 - summary는 가장 중요한 판단만 한 문장으로 쓰세요.
 - diagnoses는 `change`로 판정한 층위에만 0~4개입니다. 같은 원인에서 나온 문제를 여러
   층위로 반복하지 말고, 직접 수정할 수 있는 가장 낮은 층위 하나를 선택하세요.
+- 각 diagnosis의 **title은 이 진단 하나를 부르는 이름**입니다. 감독은 트랙 위에
+  놓인 마커들을 이 이름으로 구별합니다.
+  · **문장이 아니라 이름입니다.** 화면에 걸린 **현상**을 가리키세요.
+  · **4~9자.** 길면 트랙에서 잘려 읽히지 않습니다.
+  · **규칙 이름을 그대로 쓰지 마세요.** 같은 규칙으로 여러 컷을 짚으면 이름이
+    전부 같아져 어느 마커가 무엇인지 구별할 수 없습니다. 규칙이 아니라
+    **이 컷에서 실제로 본 것**의 이름이어야 합니다.
+    ✓ `창밖 정보 없음`, `그래프 안 읽힘`, `두 인물 겹침`, `노트가 작음`
+    ✗ `정보 선택`(규칙 이름), `필요한 요소`(규칙 이름),
+      `프레이밍이 정보를 담지 못함`(문장)
+  · 같은 렌즈가 여러 진단을 낼 때 **서로 다른 이름**이어야 합니다.
 - 각 diagnosis의 evidence는 화면에서 확인되는 근거 1~2개, suggested_action은 한 문장입니다.
 - 각 diagnosis의 **visual_evidence는 그 근거를 그림 위에서 가리키는 것**입니다.
   감독이 문장을 읽고 화면을 다시 찾을 필요 없이, 화면에서 바로 확인하게 합니다.
@@ -408,6 +421,9 @@ LENS_RESPONSE_SCHEMA = {
                         "rule_id",
                         "level",
                         "targets",
+                        # 트랙 마커에 붙는 이름. 규칙 이름으로는 같은 규칙에
+                        # 걸린 진단이 전부 같은 이름이 되어 구별되지 않는다.
+                        "title",
                         "diagnosis",
                         "evidence",
                         # strict 모드는 모든 속성이 required여야 한다.
@@ -427,6 +443,7 @@ LENS_RESPONSE_SCHEMA = {
                             "minItems": 1,
                             "items": {"type": "string"},
                         },
+                        "title": {"type": "string"},
                         "diagnosis": {"type": "string"},
                         "evidence": {
                             "type": "array",
@@ -815,6 +832,62 @@ def _validate_target_paths(
         )
 
 
+def _validate_seam_targets(
+    request: DirectingReviewRequest,
+    result: DirectingLensResult,
+    questions: list[DirectingQuestion],
+) -> None:
+    """shot_relation이 실제 한 이음새를 가리키도록 보장한다.
+
+    다중 컷 범위라고 해서 아무 두 컷이나 `S2→S5` 이음새로 표현하면 안 된다.
+    이음새는 스토리보드에서 서로 붙어 있는 두 패널 사이의 자리이므로, 모델이
+    반환한 targets도 요청에 들어온 순서의 인접한 한 쌍이어야 한다.
+    """
+    panel_ids = {panel.id for panel in request.panels}
+    panel_order = {panel.id: index for index, panel in enumerate(request.panels)}
+
+    for item in [*result.diagnoses, *questions]:
+        if item.level != "shot_relation":
+            continue
+        targets: list[str] = []
+        for target in item.targets:
+            panel_id = _target_panel_id(target, panel_ids)
+            if panel_id is not None and panel_id not in targets:
+                targets.append(panel_id)
+
+        if len(targets) != 2:
+            raise ValueError(
+                "shot_relation must target exactly two adjacent panels in sequence order"
+            )
+        first, second = targets
+        if panel_order[second] != panel_order[first] + 1:
+            raise ValueError(
+                "shot_relation targets must be adjacent panels in forward sequence order"
+            )
+
+
+def _validate_issue_focus(
+    request: DirectingReviewRequest,
+    result: DirectingLensResult,
+    questions: list[DirectingQuestion],
+) -> None:
+    """추가 렌즈가 선택한 Issue 밖의 새 문제를 들고 오지 않게 한다."""
+    focus = request.focus
+    if not focus:
+        return
+    if len(result.diagnoses) > 1:
+        raise ValueError("a focused lens check may return at most one diagnosis")
+    allowed = set(focus.panel_ids)
+    for item in [*result.diagnoses, *questions]:
+        target_panels = {
+            panel_id
+            for target in item.targets
+            if (panel_id := _target_panel_id(target, allowed)) is not None
+        }
+        if not target_panels or not target_panels.issubset(allowed):
+            raise ValueError("a focused lens check must target only the selected issue panels")
+
+
 def _validate_theory_sources(
     lens: DirectingLens,
     result: DirectingLensResult,
@@ -984,6 +1057,20 @@ async def analyze_lens(
             "화면이 그 답과 어긋나면 change로 두고 진단과 선택지를 내세요. "
             "이미 답한 것을 open_question으로 다시 묻지 마세요."
         )
+    focus_packet = ""
+    if request.focus:
+        focus = request.focus
+        focus_packet = (
+            "[이번에 다른 렌즈로 확인할 Issue]\n"
+            f"위치: {focus.anchor} ({focus.anchor_kind or 'shot'})\n"
+            f"이름: {focus.title}\n"
+            f"판단 기준: {focus.criterion or '입력되지 않음'}\n"
+            f"확인할 패널: {', '.join(focus.panel_ids)}\n"
+            "이 요청은 새 문제를 찾는 검토가 아닙니다. 위 위치와 기준만 이 렌즈의 "
+            "화면 근거로 독립적으로 확인하세요. 문제가 보이면 diagnoses에는 정확히 하나만 "
+            "넣고 targets는 확인할 패널 안에서만 쓰세요. 문제가 보이지 않으면 diagnoses를 "
+            "빈 배열로 두세요. 다른 위치의 문제를 추가하지 마세요."
+        )
     ordered_scope = " → ".join(
         f"{order}:{panel.id}"
         for order, panel in enumerate(request.panels, start=1)
@@ -1012,6 +1099,7 @@ async def analyze_lens(
             # 2. 이번 건의 입력 — 이것을 보고 판단한다
             f"[감독의 의도]\n{intent or '입력되지 않음'}",
             answer_packet,
+            focus_packet,
             f"[선택 범위의 확정된 순서]\n{ordered_scope}",
             f"[같은 순서로 정리한 사건 목록]\n{sequence_packet}",
 
@@ -1088,7 +1176,8 @@ async def analyze_lens(
                         "[응답 검증 실패 — 이전 응답을 고쳐 전체 JSON을 다시 작성하세요]\n"
                         f"{validation_note}\n"
                         f"[이전 응답]\n{previous_output}\n"
-                        "특히 shot_relation과 scene_structure는 서로 다른 패널을 2개 이상 "
+                        "특히 shot_relation은 선택 범위에서 앞→뒤 순서로 붙어 있는 정확히 두 "
+                        "패널만 targets에 포함해야 합니다. scene_structure는 서로 다른 패널을 2개 이상 "
                         "targets에 포함해야 합니다. 한 패널 내부 문제라면 level을 attribute로 "
                         f"고치세요. 모든 id는 `{lens}-`로 시작해야 합니다. targets는 선택된 "
                         "컷 ID 또는 점(.)으로 이어지는 요소 경로만 사용하세요."
@@ -1125,6 +1214,8 @@ async def analyze_lens(
             if any(not question.id.startswith(f"{lens}-") for question in questions):
                 raise ValueError(f"all question ids must start with {lens}-")
             _validate_target_paths(request, result, questions)
+            _validate_seam_targets(request, result, questions)
+            _validate_issue_focus(request, result, questions)
             _validate_theory_sources(lens, result, theory_packet)
             _validate_referenced_panels(request, result, questions)
             _validate_remedy_scope(lens, result)
@@ -1377,8 +1468,14 @@ def _anchor_for(diagnoses: list) -> tuple[str, str]:
         return panels[0], "shot"
 
     # 여러 컷의 같은 속성을 함께 짚은 경우. 이음새가 아니라 컷들이므로
-    # shot으로 두되 자리는 모두 적는다.
-    return "·".join(panels), "shot"
+    # shot으로 두되 자리는 **순서대로** 적는다.
+    #
+    # 정렬하지 않으면 같은 세 컷인데 진단이 도착한 순서에 따라
+    # `S4·S3·S2`가 되기도 하고 `S2·S3·S4`가 되기도 한다 — 실제로 그랬다.
+    def _order(panel: str) -> tuple:
+        return (0, int(panel[1:])) if panel[1:].isdigit() else (1, 0)
+
+    return "·".join(sorted(panels, key=_order)), "shot"
 
 
 def _origin_lens_for(relation: dict, diagnoses_by_lens: dict) -> Optional[str]:
@@ -1438,9 +1535,25 @@ def _build_issues(
 
     for did in diagnosis_by_id:
         find(did)
+    # 자리가 같은 진단끼리만 잇는다.
+    #
+    # 관계는 "이 판단들이 서로 얽혀 있다"는 뜻이지 "같은 자리에 있다"는
+    # 뜻이 아니다. 미장센이 S4를, 촬영이 S3를, 편집이 S2를 짚었는데 그
+    # 셋이 한 관계로 묶이면 앵커가 `S4·S3·S2`가 되어 트랙의 한 마커로
+    # 그릴 수 없다 — 실제로 그런 화면이 나왔다.
+    #
+    # 관계 자체는 `common_findings`에 그대로 남으므로 감독은 여전히
+    # 읽을 수 있다. 여기서는 **한 자리에 그릴 수 있는 것**만 묶는다
+    # (`LENS_TRACKS_UI.md` 3장 — 여러 렌즈가 같은 지점을 짚은 것이
+    # 수직 정렬로 보인다는 전제).
     for finding in findings:
         ids = [i for i in finding.diagnosis_ids if i in diagnosis_by_id]
         for left, right in zip(ids, ids[1:]):
+            left_panels = set(_panel_ids(diagnosis_by_id[left][1]))
+            right_panels = set(_panel_ids(diagnosis_by_id[right][1]))
+            # 가리키는 컷이 하나도 겹치지 않으면 다른 자리의 문제다.
+            if left_panels and right_panels and not (left_panels & right_panels):
+                continue
             union(left, right)
 
     # 묶인 진단들과, 그 묶음에 기여한 관계들을 모은다.
@@ -1478,7 +1591,9 @@ def _build_issues(
             origin = lenses[0]
 
         # title: origin 렌즈가 낀 관계의 이름을 우선한다 — 가장 근본에
-        # 가까운 쪽이다. 관계가 없으면 진단의 규칙에서 이름을 만든다.
+        # 가까운 쪽이다. 관계가 없으면 진단이 스스로 붙인 이름을 쓴다.
+        # 규칙 이름은 마지막이다 — 같은 규칙에 걸린 진단이 전부 같은
+        # 이름이 되어 트랙에서 마커를 구별할 수 없기 때문이다.
         title = ""
         for finding in related:
             if finding.title and origin in finding.lenses:
@@ -1486,6 +1601,19 @@ def _build_issues(
                 break
         if not title:
             title = next((f.title for f in related if f.title), "")
+        if not title:
+            # 이 묶음에서 origin 렌즈의 진단이 붙인 이름을 먼저 본다.
+            title = next(
+                (
+                    d.title.strip()
+                    for i, d in zip(ids, picked)
+                    if d.title and d.title.strip()
+                    and diagnosis_by_id[i][0] == origin
+                ),
+                "",
+            )
+        if not title:
+            title = next((d.title.strip() for d in picked if d.title and d.title.strip()), "")
         if not title:
             title = _title_from_rule(picked[0])
 
