@@ -4,14 +4,26 @@
    깨지므로, 폭을 바꿀 때는 반드시 양쪽을 같이 본다. */
 
 .strip-lane-scroll {
+  width: 100%;
+  min-width: 0;
   overflow-x: auto;
   overflow-y: hidden;
   padding: 8px 12px 0;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.26) transparent;
 }
+
+.strip-lane-scroll::-webkit-scrollbar { height: 7px; }
+.strip-lane-scroll::-webkit-scrollbar-track { background: transparent; }
+.strip-lane-scroll::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.22);
+}
+.strip-lane-scroll::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.35); }
 
 .strip-lane {
   --track-cell: 132px;
-  --track-label-w: 26px;
+  --track-label-w: 72px;
 
   display: grid;
   grid-template-columns: var(--track-label-w) repeat(var(--track-count), var(--track-cell));
@@ -80,15 +92,30 @@
   border-color: var(--text-muted);
 }
 
-.strip-cell.selected .strip-cell-frame {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 3px var(--accent-glow);
+/* 선택 표시는 셀 전체에 한 번만 준다.
+   사진 테두리와 버튼 포커스 링을 따로 주면, 키보드로 옮길 때 같은 색
+   테두리가 두 겹으로 겹쳐 무엇이 선택된 것인지 오히려 흐려진다.
+   키보드에서 선택과 포커스는 늘 같은 컷이므로 나눌 이유가 없다. */
+.strip-cell.selected {
+  background: color-mix(in srgb, var(--accent), transparent 92%);
+  box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--accent), transparent 40%);
+  border-radius: var(--radius);
 }
 
+.strip-cell.selected .strip-cell-id {
+  color: var(--accent);
+}
+
+/* 포커스는 선택과 같은 자리에 온다. 마우스로 고른 뒤에는 링이 뜨지
+   않으므로(:focus-visible) 선택 표시만 남는다. */
 .strip-cell-btn:focus-visible {
+  outline: none;
+}
+
+.strip-cell:has(.strip-cell-btn:focus-visible) {
   outline: 2px solid var(--accent);
-  outline-offset: 2px;
-  border-radius: var(--radius-sm);
+  outline-offset: 1px;
+  border-radius: var(--radius);
 }
 
 .strip-cell-id {
