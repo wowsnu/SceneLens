@@ -141,12 +141,30 @@
   color: inherit;
   text-align: left;
   cursor: pointer;
+  border-radius: var(--radius-sm);
+  transition: background 0.12s;
+}
+
+/* 누를 수 있다는 것이 보여야 한다. 카드가 그냥 글 상자처럼 보이면
+   렌즈를 바꾸는 방법을 찾지 못한다. */
+.issue-perspective-pick:hover {
+  background: rgba(255, 255, 255, 0.04);
 }
 
 .issue-perspective-pick:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
-  border-radius: var(--radius-sm);
+}
+
+/* 지금 그림에 표시 중인 렌즈. 카드와 그림을 잇는 표시다. */
+.issue-perspective-showing {
+  margin-left: auto;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--lens), transparent 78%);
+  color: color-mix(in srgb, var(--lens), white 25%);
+  font-size: 9px;
+  white-space: nowrap;
 }
 
 /* 지금 그림에 표시를 얹고 있는 렌즈. 세 카드 중 어느 것을 보고 있는지

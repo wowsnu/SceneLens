@@ -1,4 +1,4 @@
-import { evidenceLineFor, overlaysFor } from './evidenceSummary'
+import { overlaysFor } from './evidenceSummary'
 import './EvidenceStage.css'
 
 /**
@@ -55,8 +55,6 @@ export default function EvidenceStage({
     return shots.find((shot) => String(shot?.id) === panelId) || null
   }
 
-  const line = evidenceLineFor(diagnosis)
-
   return (
     <div className={`evidence-stage lens-${lensId || 'none'}`}>
       <div className="evidence-stage-frames">
@@ -69,8 +67,10 @@ export default function EvidenceStage({
                 <span className="evidence-arrow" aria-hidden="true">→</span>
               )}
               <figure className="evidence-frame">
-                <span className="evidence-frame-id">{panelId}</span>
                 <span className="evidence-frame-image">
+                  {/* id도 그림 안에 둔다. 밖에 두면 그림이 좁아졌을 때
+                      엉뚱한 자리에 뜬다 — 이 상자가 곧 그림이다. */}
+                  <span className="evidence-frame-id">{panelId}</span>
                   {shot?.image
                     ? <img src={shot.image} alt="" loading="lazy" />
                     : <span className="evidence-frame-empty" aria-hidden="true" />}
@@ -84,14 +84,6 @@ export default function EvidenceStage({
         })}
       </div>
 
-      {/* 근거 한 줄. 표시가 없거나 틀려도 이것은 남는다 (text first). */}
-      {line && (
-        <p className="evidence-line">
-          <span className="evidence-line-tag">근거</span>
-          {line.label && <strong>{line.label}</strong>}
-          <span>{line.detail}</span>
-        </p>
-      )}
     </div>
   )
 }

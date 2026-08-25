@@ -37,12 +37,16 @@
   flex: 1;
   min-width: 0;
   margin: 0;
+  /* 그림이 높이 상한에 걸려 좁아지면 가운데로 모은다. 상자는 그림
+     안에 있으므로 이 정렬에 함께 따라간다. */
+  text-align: center;
 }
 
 .evidence-frame-id {
   position: absolute;
-  top: 6px;
-  left: 6px;
+  z-index: 2;
+  top: 4px;
+  left: 4px;
   z-index: 2;
   padding: 1px 6px;
   border-radius: 3px;
@@ -58,21 +62,36 @@
    프레임을 16:9로 두고 cover로 채우면 그림이 잘려 상자가 엉뚱한 자리에
    온다 — 실제 패널은 3:2와 1:1이라 1:1은 좌우 44%가 날아간다.
    그림이 자기 비율대로 놓이고, 상자는 그 그림에 얹힌다. */
+/* 상자의 좌표계 기준.
+   **이 상자는 그림과 정확히 같은 크기여야 한다.** 좌표는 원본 그림
+   기준으로 나오므로, 컨테이너가 그림보다 크면(레터박스) 상자가 그
+   여백만큼 밀린다. 그래서 크기를 고정하지 않고 그림이 정하게 둔다 —
+   `inline-block`이라 상자가 그림에 딱 맞는다.
+
+   높이만 묶는다. 안 그러면 그림이 컨테이너 너비만큼 커져 화면을 다
+   차지한다 — 여기는 근거를 확인하는 자리이지 감상하는 자리가 아니고,
+   아래 렌즈 카드가 함께 보여야 한다. */
 .evidence-frame-image {
   position: relative;
-  display: block;
+  display: inline-block;
+  vertical-align: top;
   border-radius: var(--radius-sm);
   border: 1px solid var(--border-light);
   background: var(--bg-panel);
   overflow: hidden;
-  /* 그림이 없을 때만 쓰이는 최소 높이. 있으면 그림이 정한다. */
-  min-height: 60px;
+  max-width: 100%;
 }
 
 .evidence-frame-image img {
-  width: 100%;
-  height: auto;
   display: block;
+  /* 높이 상한에 맞춰 줄이되 비율은 그대로. width를 auto로 두어야
+     그림과 상자가 같은 크기로 남는다. */
+  width: auto;
+  height: auto;
+  max-width: 100%;
+  /* 3:2 그림이면 360×240이 된다. 이보다 작으면 상자 표시가 안 보이고,
+     크면 아래 렌즈 카드가 화면 밖으로 밀린다. */
+  max-height: 240px;
 }
 
 .evidence-frame-empty {

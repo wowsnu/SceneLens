@@ -97,7 +97,9 @@ export default function IssueInspector({
           if (!diagnosis) {
             return (
               <section key={lens.id} className={`issue-perspective lens-${lens.id} ${lens.id === activeLens ? 'active' : ''} ${checked && checkDiagnosis ? 'checked-response' : checked ? 'checked-clear' : 'unchecked'}`}>
-                <header><span>{checked && checkDiagnosis ? '◐' : '○'}</span><strong>{lens.label}</strong></header>
+                {!(checked && checkDiagnosis) && (
+                  <header><span>{checked ? '◐' : '○'}</span><strong>{lens.label}</strong></header>
+                )}
                 {checking ? (
                   <p>이 위치를 확인하는 중입니다.</p>
                 ) : check?.status === 'error' ? (
@@ -111,7 +113,15 @@ export default function IssueInspector({
                     className="issue-perspective-pick"
                     onClick={() => setActiveLens(lens.id)}
                     aria-pressed={lens.id === activeLens}
+                    title={lens.id === activeLens ? '지금 그림에 표시 중' : `${lens.label} 관점으로 보기`}
                   >
+                    <header>
+                      <span>◐</span>
+                      <strong>{lens.label}</strong>
+                      {lens.id === activeLens && (
+                        <span className="issue-perspective-showing">그림에 표시 중</span>
+                      )}
+                    </header>
                     <p>{checkDiagnosis.diagnosis}</p>
                     {evidenceLineFor(checkDiagnosis) && (
                       <p className="issue-perspective-evidence">
@@ -147,11 +157,15 @@ export default function IssueInspector({
                 className="issue-perspective-pick"
                 onClick={() => setActiveLens(lens.id)}
                 aria-pressed={isActive}
+                title={isActive ? '지금 그림에 표시 중' : `${lens.label} 관점으로 보기`}
               >
                 <header>
                   <span>{isOrigin ? '●' : '◐'}</span>
                   <strong>{lens.label}</strong>
                   {isOrigin && <em>처음 발견</em>}
+                  {/* 지금 그림에 표시 중인 렌즈. 셋 중 어느 것을 보고
+                      있는지 카드에서도 알아야 그림과 이어진다. */}
+                  {isActive && <span className="issue-perspective-showing">그림에 표시 중</span>}
                 </header>
                 <p>{visibleDiagnosis.diagnosis}</p>
                 {line && (
