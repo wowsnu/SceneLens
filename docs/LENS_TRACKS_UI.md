@@ -55,7 +55,7 @@
 │                              Issue 03                              │
 │                                                                    │
 ├────────────────────────────────────────────────────────────────────┤
-│ ③ ISSUE INSPECTOR                                                  │
+│ ③ LENS WORKBENCH                                                   │
 │                                                                    │
 │ S2 → S3 · SEAM                         Spatial Transition          │
 │                                                                    │
@@ -81,7 +81,7 @@ Viewer는 이 화면에 넣지 않고 별도 모드로 전환한다 (7장).
 |---|---|---|
 | ① Storyboard | 어디를 보고 있는가? | Shot / Seam |
 | ② Lens Tracks | 어떤 관점에서 무엇이 걸렸는가? | Lens Concern |
-| ③ Issue Inspector | 이 문제를 여러 관점에서 어떻게 이해할까? | Issue |
+| ③ Lens Workbench | 이 문제를 여러 관점으로 돌려보면? | Issue |
 | ④ Revision Workspace | 실제 어디를 어떻게 바꿀까? | Intervention target |
 | ⑤ Viewer Reading | 결과가 다른 사람에게 어떻게 읽힐까? | Interpretation |
 
@@ -211,74 +211,96 @@ S2 → S3
 
 ---
 
-## 4. ③ Issue Inspector — 한 문제를 여러 관점에서
+## 4. ③ Lens Workbench — 한 문제를 여러 관점으로 돌려본다
 
 마커를 선택하면 열린다.
 
+이름을 `Issue Inspector`에서 바꿨다. 카드 세 장을 **읽는** 자리가 아니라,
+같은 그림을 렌즈로 **돌려보는** 자리이기 때문이다.
+
 ```
-┌──────────────────────────────────────────────────────────┐
-│ S2 → S3 · SEAM                                           │
-│                                                          │
-│ Spatial Transition                                       │
-│ 두 shot 사이 공간 변화가 충분히 이해될 수 있는가?        │
-│                                                          │
-├──────────────────────────────────────────────────────────┤
-│ MISE                  CAMERA                 EDITING     │
-│                                                          │
-│ Character position    Tighter framing        Movement    │
-│ changes between       removes spatial        becomes     │
-│ shots.                context.               ambiguous.  │
-│                                                          │
-│ [Evidence ↓]          [Evidence ↓]           [Evidence ↓]│
-├──────────────────────────────────────────────────────────┤
-│ + Check another lens                         Revise →    │
-└──────────────────────────────────────────────────────────┘
+┌────────────────────────────────────────────────────────────────┐
+│ S2 → S3 · SEAM                                    [+ Add Lens] │
+│ 공간 전환                                                       │
+│ 두 컷 사이 공간 변화가 충분히 이해될 수 있는가?                 │
+├────────────────────────────────────────────────────────────────┤
+│                                                                │
+│         S2                              S3                     │
+│   ┌─────────────┐                 ┌─────────────┐             │
+│   │      ┌───┐  │       →         │  ┌───┐      │             │
+│   │      │ ● │  │                 │  │ ● │      │             │
+│   └──────┴───┴──┘                 └──┴───┴──────┘             │
+│    인물이 화면 왼쪽에               인물이 오른쪽에 나타난다      │
+│                                                                │
+├────────────────────────────────────────────────────────────────┤
+│ 이 렌즈의 읽기 (미장센)          근거 종류: 화면 위치 변화       │
+│ 인물 위치가 중간 동작 없이 왼쪽에서 오른쪽으로 바뀝니다.        │
+├────────────────────────────────────────────────────────────────┤
+│ 관점 바꾸기   ◉──────○──────○                                 │
+│              미장센   촬영   편집                               │
+└────────────────────────────────────────────────────────────────┘
 ```
 
-### 정보 계층 (이 순서를 지킨다)
+### 핵심: 그림은 그대로 있고, 표시가 바뀐다
 
-| | 무엇 | 데이터 |
+아래에 카드를 세 장 늘어놓지 않는다. **같은 두 이미지가 계속 가운데
+있고**, 렌즈를 옮기면 그 위에서 무엇을 주목할지가 바뀐다.
+
+```
+미장센        S2 [인물 ●····················→ ● 인물] S3
+              화면 위치가 왼쪽에서 오른쪽으로
+
+촬영          S2 [창·벽 ▣ 보임]        S3 [▣ 사라짐]
+              공간을 알려주던 단서가 없어진다
+
+편집          S2 ──────── ✕ ──────── S3
+              컷을 넘어 움직임을 따라갈 수 없다
+```
+
+AI가 말로 설명하는 대신 **화면을 가리킨다.** 이것이 Decision Card를
+"의견"이 아니라 inspectable한 것으로 만드는 방식이고
+(`design_goal.md` DG1), 챗 UI가 필요 없어지는 이유다.
+
+### Evidence 세 단계
+
+거창하게 만들지 않는다. 세 종류면 충분하다.
+
+| | 무엇 | 화면에서 |
 |---|---|---|
-| A | **Where** — `S2 → S3`, SEAM | `targets`, `level` |
-| B | **What** — Spatial Transition | Issue 제목 (6장) |
-| C | **Criterion** — 판단 기준 질문 | `criterion` |
-| D | **Lens perspectives** — 각 렌즈의 관찰 | `diagnosis` |
-| E | **Evidence** — 렌즈별 근거 | `evidence` |
-| F | **Action** — Revise this issue → | `alternatives` |
+| **attribute** | 값의 변화 | `Medium → Close-up` 같은 대조 표시 |
+| **region** | 그림의 한 자리 | 상자·화살표를 그 위에 그린다 |
+| **relation** | 두 컷 사이 | 두 그림을 잇는 선, 끊김 표시 |
 
-처음부터 다 펼치지 않는다. **progressive disclosure** — D까지 보이고
-E는 접어 둔다.
+**relation이 이 연구에서 특히 중요하다.** 주장 자체가 개별 패널을 넘어
+shot relation과 sequence에서 연출 문제가 작동한다는 것이기 때문이다
+(`PAPER_SECTION_4.md` 4.4).
+
+### 같은 Issue, 렌즈마다 다른 근거
+
+이것이 "하나의 문제를 여러 관점으로 본다"가 화면에서 드러나는 방식이다.
+
+```
+Issue: S2→S3 공간 전환이 이해하기 어렵다
+
+미장센   인물 A   S2: 화면 왼쪽 → S3: 화면 오른쪽
+촬영     샷 크기  S2: Wide → S3: Close-up, 배경 단서 사라짐
+편집     두 컷 사이  움직임을 보여주는 컷이 없음
+```
+
+Issue는 하나인데 각 렌즈가 스토리보드에서 **서로 다른 것을 집어낸다.**
 
 ### 렌즈를 겹쳐 보기
 
 Editing만 발견한 상태:
 
 ```
-Spatial Transition
+공간 전환
 
-● Editing
-  Movement is difficult to follow.
-  independently surfaced
+● 편집        컷을 넘어 움직임을 따라가기 어렵다
+○ 촬영        이 Issue로는 아직 안 봄
+○ 미장센      이 Issue로는 아직 안 봄
 
-○ Cinematography
-  Not checked for this issue
-
-○ Mise-en-scène
-  Not checked for this issue
-
-      [ + Add Lens ]
-```
-
-Camera를 추가하면:
-
-```
-● Editing
-  Origin
-
-◐ Cinematography
-  Cross-lens response
-
-○ Mise-en-scène
+              [ + Add Lens ]
 ```
 
 세 상태를 구분한다:
@@ -290,10 +312,61 @@ Camera를 추가하면:
 | `○` | 아직 안 봤다 (not checked) |
 
 **`○`(안 봄)과 "보고 문제없음"을 같게 표시하지 않는다.** 섞으면 감독이
-침묵을 승인으로 읽는다 (`design_goal.md` DG1 P2 — 조용히 빠진 것은 없어야
-한다).
+침묵을 승인으로 읽는다 (`design_goal.md` DG1 P2).
 
----
+### 여러 렌즈를 켜면 관계가 보인다
+
+둘을 켜면:
+
+```
+미장센   인물 위치가 바뀐다
+           │ 이것 때문에
+           ▼
+촬영     그 변화를 이해할 단서가 프레이밍에서 빠진다
+```
+
+셋을 켜면 사슬이 된다:
+
+```
+미장센 → 촬영 → 편집
+인물 위치 변화 → 공간 정보 감소 → 움직임이 모호해짐
+```
+
+충돌이면 사슬이 아니라 맞섬으로 그린다:
+
+```
+촬영    "좁게 잡아야 감정이 산다"
+          ↕ 서로 반대
+편집    "좁히면 전환을 이해할 정보가 사라진다"
+```
+
+관계 종류(consequence/conflict/agreement)와 방향은 이미 데이터에 있다
+(`common_findings`의 `source_lens`/`affected_lens`). **카드 설명이 아니라
+배치로 만든다.**
+
+### 검증함 (2026-08-25)
+
+이 장이 요구하는 것이 실제로 되는지 확인했다.
+
+**모델이 좌표를 반환한다.** 정규화 bounding box(x/y/w/h, 0~1)를 물으면
+답한다. `lab_wide_establishing.png`에서 인물을 `x=0.53 w=0.33`(중심 0.69,
+오른쪽)으로 짚었고 실제 그림과 맞았다.
+
+**렌즈마다 다른 곳을 짚는다.** 같은 두 이미지(S2/S3)를 세 렌즈로 물었더니
+S2에서 각각 다른 자리를 골랐다.
+
+| 렌즈 | S2에서 짚은 것 | 면적 |
+|---|---|---|
+| 미장센 | 인물 (오른쪽) | 17% |
+| 촬영 | 창문·실내 경계 | 19% |
+| 편집 | 노트북 화면 | 6% |
+
+시안의 전제가 성립한다.
+
+**주의할 것: 상자가 너무 커지면 아무것도 가리키지 않는다.** 촬영이 S3에서
+"배경이 사라졌다"를 표현하려고 화면의 96%를 감쌌다. 클로즈업에서도 72%가
+나왔다. 프롬프트에 면적 상한을 두고, "없어진 것"은 상자가 아니라 **앞 컷의
+있던 자리를 짚는 방식**으로 표현하게 해야 한다 — 없는 것을 감쌀 수는 없다.
 
 ## 5. ④ Revision Workspace — 여기부터 DG2
 
@@ -377,6 +450,41 @@ class DirectingIssue(BaseModel):
 가능하면 `_relate_lenses`가 이미 하는 일(진단들을 묶는 것)에 `title`과
 `anchor`를 덧붙이는 방향으로 간다. 새 LLM 호출을 추가하지 않는다.
 
+### 두 번째로 바뀌는 곳: evidence를 구조화한다
+
+지금 `evidence`는 `List[str]` — 자유 문장이다. 4장의 Workbench는 그림 위에
+상자와 화살표를 그려야 하므로, **무엇이 어디에** 있는지가 데이터에
+있어야 한다.
+
+```python
+class DirectingEvidence(BaseModel):
+    # 어떤 종류의 근거인가 (4장의 세 단계).
+    kind: Literal["attribute", "region", "relation"]
+    # 사람이 읽는 한 문장. 지금 evidence[i]가 하던 일.
+    reading: str
+    # kind="region"일 때. 그림에서 가리킬 자리.
+    regions: List["DirectingEvidenceRegion"] = []
+    # kind="attribute"일 때. `샷 크기: Wide → Close-up`.
+    attribute: Optional[str] = None
+    before: Optional[str] = None
+    after: Optional[str] = None
+
+
+class DirectingEvidenceRegion(BaseModel):
+    panel: str                 # "S2"
+    label: str                 # "인물"
+    # 정규화 좌표. 좌상단 원점, 0~1.
+    x: float; y: float; w: float; h: float
+```
+
+**기존 `evidence: List[str]`를 지우지 않는다.** 구조화가 실패하거나 모델이
+좌표를 못 주는 경우에도 문장은 남아야 한다 — 근거가 통째로 사라지면
+감독은 무엇을 보고 판정하는지 알 수 없다. `reading`이 그 문장을 잇는다.
+
+면적 상한을 프롬프트에 둔다. 화면 대부분을 감싼 상자는 아무것도 가리키지
+않는 것과 같다(실측에서 96%가 나왔다). 그리고 **"없어진 것"은 상자로
+표현할 수 없으므로**, 앞 컷에서 그것이 있던 자리를 짚게 한다.
+
 ---
 
 ## 7. ⑤ Viewer는 별도 모드
@@ -413,7 +521,7 @@ interpretation variation을 드러내는 **reflective probe**다.
 ## 8. 전체 흐름
 
 ```
-   STORYBOARD  →  LENS TRACKS  →  ISSUE INSPECTOR  →  REVISION  →  STORYBOARD
+   STORYBOARD  →  LENS TRACKS  →  LENS WORKBENCH  →  REVISION  →  STORYBOARD
                                                                        ↓
                                                                 VIEWER READING
 ```
@@ -424,7 +532,7 @@ interpretation variation을 드러내는 **reflective probe**다.
 
 | 논문 | 화면 |
 |---|---|
-| Inspect | ② Lens Tracks + ③ Issue Inspector |
+| Inspect | ② Lens Tracks + ③ Lens Workbench |
 | Intervene | ④ Revision Workspace |
 | Reappraise | ⑤ Viewer Reading |
 
@@ -503,7 +611,11 @@ Focus는 별도 상태로 두지 않는다 — `selectedIssueId`가 있으면 �
 |---|---|---|
 | 1 | Issue 묶기 (백엔드) | ②③이 전부 Issue 단위로 돈다 |
 | 2 | ② Lens Tracks | 개편의 중심. ①은 거의 그대로 |
-| 3 | ③ Issue Inspector | 트랙에서 선택된 것을 받는다 |
-| 4 | `+ Add Lens` | ③ 안에 들어간다. API는 이미 있다 |
-| 5 | ④ Revision Workspace | 기존 도구를 target 기준으로 재배치 |
-| 6 | ⑤ Viewer 분리 | 기존 화면을 별도 모드로 |
+| 3 | evidence 구조화 (백엔드) | ③의 표시가 전부 여기서 나온다 |
+| 4 | ③ Lens Workbench | 그림 두 장 + 렌즈 전환 + 표시 |
+| 5 | `+ Add Lens` | ③ 안에 들어간다. API는 이미 있다 |
+| 6 | ④ Revision Workspace | 기존 도구를 target 기준으로 재배치 |
+| 7 | ⑤ Viewer 분리 | 기존 화면을 별도 모드로 |
+
+3을 4보다 먼저 한다. 화면부터 만들면 표시할 좌표가 없어 결국 카드 세
+장으로 돌아간다 — 그건 이 개편이 피하려던 것이다.

@@ -302,7 +302,7 @@
 }
 
 /* 이름은 평소에 숨긴다. 트랙은 "어디에 무엇이 걸렸는가"를 보는 자리이지
-   읽는 자리가 아니다 — 읽는 것은 Inspector가 한다 (문서 1장의 역할 분리).
+   읽는 자리가 아니다 — 읽는 것은 Lens Workbench가 한다 (문서 1장).
    가리키거나 고르면 이름이 나온다. */
 .lens-marker:hover .lens-marker-label,
 .lens-marker.selected .lens-marker-label,

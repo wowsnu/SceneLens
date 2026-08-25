@@ -9,7 +9,7 @@ import './StoryboardStripLane.css'
  * 훑는 자리이고 여기는 sequence를 따라 읽는 자리다.
  *
  * 여기는 **navigation만** 한다. 진단 문장·렌즈 이름·근거는 올리지 않는다
- * (문서 2장). 그것들은 Inspector가 읽는다.
+ * (문서 2장). 그것들은 Lens Workbench가 읽는다.
  */
 export default function StoryboardStripLane({
   shots = [],
