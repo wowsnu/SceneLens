@@ -5948,6 +5948,9 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
               {revisionWorkspace ? (
                 <RevisionWorkspace
                   issue={revisionWorkspace.issue}
+                  /* 이 수정이 다른 검토에 닿는지 보려면 전체가 필요하다. */
+                  issues={trackIssues}
+                  shotCount={shots.length}
                   diagnosis={revisionWorkspace.diagnosis}
                   currentImage={revisionTargetShot?.image || panelDraftImages[revisionTargetShot?.id] || ''}
                   promptDraft={promptDrafts[revisionWorkspace.diagnosis.id] ?? null}
@@ -5974,7 +5977,22 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
                   onPromptChange={(text) => openPromptEditor(revisionWorkspace.diagnosis, text)}
                   onClosePrompt={() => openPromptEditor(revisionWorkspace.diagnosis, null)}
                   onSavePrompt={() => savePromptDraft(revisionWorkspace.diagnosis)}
-                  onAccept={() => { acceptPanelRevision(); setRevisionWorkspace(null) }}
+                  applied={Boolean(revisionWorkspace.applied)}
+                  onAccept={() => {
+                    acceptPanelRevision()
+                    // 닫지 않는다. 고친 화면을 다른 렌즈가 어떻게 읽는지
+                    // 다시 보는 것까지가 한 흐름이다 (Reappraise).
+                    setRevisionWorkspace((current) => (
+                      current ? { ...current, applied: true } : current
+                    ))
+                  }}
+                  onReappraise={() => {
+                    setRevisionWorkspace(null)
+                    setSelectedIssueId(null)
+                    // 바뀐 화면으로 다시 돌린다. 옛 판단이 남아 있으면
+                    // 이미 해결된 문제를 다시 읽게 된다.
+                    runMultiReview()
+                  }}
                   onReject={rejectPanelRevision}
                 />
               ) : trackIssues.length > 0 && (

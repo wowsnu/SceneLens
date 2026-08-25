@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { editingActionFor } from './seamAction'
+import { revisionImpact } from './revisionImpact'
 import './RevisionWorkspace.css'
 
 const LENS_NAMES = { mise: '미장센', camera: '촬영', editing: '편집' }
@@ -13,9 +14,10 @@ const seamAction = (alternative) => (
 )
 
 export default function RevisionWorkspace({
-  issue, diagnosis, onBack, onChoose, onKeep,
+  issue, issues = [], shotCount = 0, diagnosis, onBack, onChoose, onKeep,
   promptDraft, promptNote, rewriting, generating, onPromptChange, onClosePrompt, onSavePrompt,
   revisionPending, revisionImage, onAccept, onReject,
+  applied = false, onReappraise,
   currentImage = '',
 }) {
   const [selected, setSelected] = useState(null)
@@ -29,6 +31,10 @@ export default function RevisionWorkspace({
     && changes.some((item) => editingActionFor(item).id !== 'seam')
   const [beforePanel, afterPanel] = panelsOf(issue?.anchor)
   const operation = selected ? seamAction(selected) : null
+  // 고른 수정안이 무엇을 바꾸는가. 적용 전에 보여 준다 — 컷을 넣으면
+  // 뒤 번호가 밀리고, 그 자리에 다른 렌즈가 짚어 둔 검토가 있을 수도
+  // 있다. 되돌리는 것보다 미리 아는 편이 싸다.
+  const impact = revisionImpact(selected, issue, issues, shotCount)
   if (!diagnosis) return null
   return (
     <section className="revision-workspace" aria-label="수정 작업 공간">
@@ -73,6 +79,33 @@ export default function RevisionWorkspace({
             </button>
           </article>
         )) : <p>바로 적용할 수정안은 없습니다. 직접 수정 방향을 정해 주세요.</p>}
+        {impact && (
+          <div className="revision-impact" aria-live="polite">
+            <span>이 수정이 바꾸는 것</span>
+            {impact.lines.length > 0 && (
+              <ul>
+                {impact.lines.map((line) => (
+                  <li key={`${line.label}-${line.detail}`}>
+                    <b>{line.label}</b>
+                    <span>{line.detail}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+            {/* 판정하지 않는다. 다시 봐야 한다고 말할 뿐, 지우거나
+                자동으로 다시 돌리지 않는다 (design_goal.md DG1 P2). */}
+            {impact.warnings.map((warning) => (
+              <p key={warning.text} className="revision-impact-warn">
+                <b>{warning.text}</b>
+                <span>
+                  {warning.items.join(', ')}
+                  {warning.more > 0 && ` 외 ${warning.more}개`}
+                </span>
+              </p>
+            ))}
+          </div>
+        )}
+
         {isSeam && selected && (
           <button type="button" className="revision-seam-open" onClick={() => onChoose(selected)} disabled={revisionPending}>
             {seamAction(selected) === 'seam' ? '이음새에서 조정하기' : '이 구조로 수정하기'}
@@ -95,7 +128,26 @@ export default function RevisionWorkspace({
         </section>
       )}
 
-      <footer><button type="button" onClick={onKeep}>현재 유지</button></footer>
+      {/* 적용 뒤. 여기서 끝내지 않는다 — 고친 화면을 다른 렌즈가 어떻게
+          읽는지 다시 보는 것이 Reappraise다(LENS_TRACKS_UI.md 8장).
+          바꾼 그림에 대한 옛 판단이 그대로 남아 있으면, 감독은 이미
+          해결된 문제를 다시 읽게 된다. */}
+      {applied && (
+        <section className="revision-applied" aria-live="polite">
+          <strong>적용했습니다.</strong>
+          <p>고친 화면을 다시 보면 다른 관점의 판단도 함께 갱신됩니다.</p>
+          <div>
+            <button type="button" className="primary" onClick={onReappraise}>
+              다시 보기
+            </button>
+            <button type="button" onClick={onKeep}>나중에</button>
+          </div>
+        </section>
+      )}
+
+      {!applied && (
+        <footer><button type="button" onClick={onKeep}>현재 유지</button></footer>
+      )}
     </section>
   )
 }

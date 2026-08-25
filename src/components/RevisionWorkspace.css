@@ -59,3 +59,24 @@
 .revision-seam-canvas.operation-delete .revision-seam-operation { border-style: solid; }
 .revision-workspace-options article button.selected { border-color: #e9c58d; background: rgba(216,170,98,.22); }
 .revision-seam-open { width: 100%; margin-top: 9px; padding: 7px 8px; border: 1px solid rgba(216,170,98,.55); border-radius: 5px; background: rgba(216,170,98,.14); color: #f0cb91; font-weight: 800; }
+
+/* 이 수정이 바꾸는 것. 적용 전에 보여 주는 자리다 — 되돌리는 것보다
+   미리 아는 편이 싸다. 판정은 하지 않는다(DG1 P2). */
+.revision-impact { margin-top: 10px; padding: 9px 10px; border: 1px solid var(--border-light); border-radius: 6px; background: rgba(255,255,255,.02); }
+.revision-impact > span { display: block; margin-bottom: 6px; color: var(--text-muted); font-size: 9px; font-weight: 750; letter-spacing: .06em; }
+.revision-impact ul { display: grid; gap: 4px; margin: 0; padding: 0; list-style: none; }
+.revision-impact li { display: flex; gap: 8px; font-size: 11px; }
+.revision-impact li b { flex: none; min-width: 56px; color: var(--text-muted); font-weight: 600; }
+.revision-impact li span { color: var(--text-secondary); font-variant-numeric: tabular-nums; }
+.revision-impact-warn { display: grid; gap: 2px; margin: 8px 0 0; padding-top: 8px; border-top: 1px solid var(--border); }
+.revision-impact-warn b { color: #e9c58d; font-size: 11px; font-weight: 700; }
+.revision-impact-warn span { color: var(--text-muted); font-size: 10px; }
+
+/* 적용 뒤. 여기서 끝내지 않고 다시 보게 한다 — Inspect → Intervene →
+   Reappraise가 화면의 순서로 이어져야 한다. */
+.revision-applied { display: grid; gap: 4px; padding: 12px 14px; border-top: 1px solid var(--border); background: rgba(216,170,98,.06); }
+.revision-applied strong { color: #e9c58d; font-size: 12px; }
+.revision-applied p { margin: 0; color: var(--text-secondary); font-size: 11px; }
+.revision-applied > div { display: flex; gap: 6px; margin-top: 6px; }
+.revision-applied .primary { padding: 6px 10px; border: 1px solid rgba(216,170,98,.55); border-radius: 5px; background: rgba(216,170,98,.16); color: #f0cb91; font-weight: 800; }
+.revision-applied button:not(.primary) { padding: 6px 10px; border: 1px solid var(--border-light); border-radius: 5px; background: transparent; color: var(--text-secondary); }
