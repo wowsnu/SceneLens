@@ -1,0 +1,316 @@
+/* Lens Tracks — 세 렌즈가 스토리보드와 가로축을 공유하는 트랙.
+   LENS_TRACKS_UI.md 3장.
+
+   정렬의 핵심: 컷 하나의 폭(--track-cell)을 여기서만 정하고, 스트립과
+   트랙이 같은 값을 쓴다. 마커의 가로 위치는 컷 인덱스(--pos)로 계산되어
+   컷 아래에 정확히 온다. 값이 두 곳에 생기면 정렬이 조용히 깨진다. */
+
+.lens-tracks {
+  /* 렌즈 색은 기존 것을 그대로 쓴다. 사용자가 이미 익힌 색이다
+     (DecisionBoard.jsx의 CREATIVE_LENSES.accent). */
+  --lens-mise: #10b981;
+  --lens-camera: #3b82f6;
+  --lens-editing: #ef4444;
+
+  /* 컷 하나의 폭. 한 화면에 5~6컷이 보이는 크기다. */
+  --track-cell: 132px;
+  --track-label-w: 26px;
+
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 0 12px;
+  border-top: 1px solid var(--border);
+}
+
+/* --- 머리: 렌즈 켜고 끄기 ------------------------------------------- */
+
+.lens-tracks-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 12px;
+}
+
+.lens-tracks-title {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.lens-tracks-toggles {
+  display: flex;
+  gap: 6px;
+}
+
+.lens-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  border: 1px solid var(--border-light);
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-family: inherit;
+  cursor: pointer;
+  transition: color 0.12s, border-color 0.12s, background 0.12s;
+}
+
+.lens-toggle-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.35;
+  transition: opacity 0.12s;
+}
+
+.lens-toggle.on {
+  color: var(--lens);
+  border-color: color-mix(in srgb, var(--lens), transparent 55%);
+  background: color-mix(in srgb, var(--lens), transparent 90%);
+}
+
+.lens-toggle.on .lens-toggle-dot { opacity: 1; }
+
+.lens-toggle:hover { border-color: color-mix(in srgb, var(--lens), transparent 35%); }
+
+.lens-toggle:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.lens-toggle-count {
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  opacity: 0.7;
+}
+
+/* 렌즈별 색. 토글과 트랙이 같은 변수를 쓴다. */
+.lens-mise { --lens: var(--lens-mise); }
+.lens-camera { --lens: var(--lens-camera); }
+.lens-editing { --lens: var(--lens-editing); }
+
+/* --- 몸통: 눈금 + 트랙 ---------------------------------------------- */
+
+.lens-tracks-scroll {
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 0 12px;
+}
+
+.lens-tracks-body {
+  position: relative;
+  /* 라벨 열 + 컷 수만큼의 폭. 스트립도 같은 계산을 쓴다. */
+  min-width: calc(var(--track-label-w) + var(--track-count) * var(--track-cell));
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.lens-tracks-ruler {
+  display: grid;
+  grid-template-columns: var(--track-label-w) repeat(var(--track-count), var(--track-cell));
+  align-items: center;
+  height: 16px;
+}
+
+/* 첫 열은 렌즈 기호 자리라 비워 둔다. grid가 알아서 2열부터 채운다 —
+   :first-child에 grid-column을 강제하면 그 규칙이 다음 칸에 밀려
+   눈금이 어긋난다(실제로 그랬다). */
+.lens-tracks-ruler::before {
+  content: '';
+}
+
+.lens-tracks-tick {
+  text-align: center;
+  font-size: 9px;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+}
+
+/* --- 여러 렌즈가 함께 짚은 자리를 잇는 세로선 ------------------------ */
+
+.lens-tracks-stacks {
+  position: absolute;
+  left: var(--track-label-w);
+  right: 0;
+  top: 16px;
+  bottom: 0;
+  pointer-events: none;
+}
+
+.lens-tracks-stackline {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  /* 마커와 같은 계산 — 컷 가운데에서 시작해 인덱스만큼 이동한다. */
+  left: calc((var(--pos) + 0.5) * var(--track-cell));
+  background: linear-gradient(
+    180deg,
+    transparent,
+    color-mix(in srgb, var(--text-secondary), transparent 72%) 20%,
+    color-mix(in srgb, var(--text-secondary), transparent 72%) 80%,
+    transparent
+  );
+}
+
+.lens-tracks-stackline.selected {
+  background: linear-gradient(
+    180deg,
+    transparent,
+    color-mix(in srgb, var(--accent), transparent 45%) 20%,
+    color-mix(in srgb, var(--accent), transparent 45%) 80%,
+    transparent
+  );
+}
+
+/* --- 트랙 한 줄 ------------------------------------------------------ */
+
+.lens-track {
+  display: grid;
+  grid-template-columns: var(--track-label-w) 1fr;
+  align-items: center;
+  height: 26px;
+  transition: opacity 0.15s;
+}
+
+.lens-track.muted { opacity: 0.25; }
+
+.lens-track-label {
+  font-size: 9px;
+  font-weight: 700;
+  color: var(--lens);
+  text-align: center;
+  opacity: 0.75;
+}
+
+.lens-track-line {
+  position: relative;
+  height: 100%;
+}
+
+/* 트랙의 바탕선. 렌즈 색을 아주 옅게 깔아 어느 행인지 알게 한다. */
+.lens-track-line::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 1px;
+  background: color-mix(in srgb, var(--lens), transparent 88%);
+}
+
+/* --- 마커 ------------------------------------------------------------ */
+
+.lens-marker {
+  position: absolute;
+  top: 50%;
+  /* 컷 가운데 기준. seam이면 --pos가 정수+0.5라 두 컷 사이에 온다. */
+  left: calc((var(--pos) + 0.5) * var(--track-cell));
+  transform: translate(-50%, -50%);
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  max-width: calc(var(--track-cell) * 1.6);
+  padding: 2px 7px 2px 5px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--lens);
+  font-family: inherit;
+  font-size: 10px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.12s, border-color 0.12s;
+}
+
+.lens-marker-dot {
+  flex: none;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--lens);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--lens), transparent 86%);
+}
+
+/* seam은 컷 사이에 있다. 마름모로 두어 컷 위의 동그라미와 구별된다 —
+   위치만이 아니라 형태로도 "사이의 문제"임이 읽힌다. */
+.lens-marker.seam .lens-marker-dot {
+  border-radius: 2px;
+  transform: rotate(45deg);
+  width: 8px;
+  height: 8px;
+}
+
+/* scene은 범위 전체다. 넓게 걸린 것이므로 가로로 늘린다. */
+.lens-marker.scene .lens-marker-dot {
+  border-radius: 999px;
+  width: 14px;
+  height: 6px;
+}
+
+.lens-marker-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  opacity: 0;
+  max-width: 0;
+  transition: opacity 0.12s, max-width 0.12s;
+}
+
+/* 이름은 평소에 숨긴다. 트랙은 "어디에 무엇이 걸렸는가"를 보는 자리이지
+   읽는 자리가 아니다 — 읽는 것은 Inspector가 한다 (문서 1장의 역할 분리).
+   가리키거나 고르면 이름이 나온다. */
+.lens-marker:hover .lens-marker-label,
+.lens-marker.selected .lens-marker-label,
+.lens-marker:focus-visible .lens-marker-label {
+  opacity: 1;
+  max-width: calc(var(--track-cell) * 1.3);
+}
+
+.lens-marker:hover,
+.lens-marker:focus-visible {
+  background: color-mix(in srgb, var(--lens), transparent 88%);
+  border-color: color-mix(in srgb, var(--lens), transparent 62%);
+}
+
+.lens-marker.selected {
+  background: color-mix(in srgb, var(--lens), transparent 82%);
+  border-color: color-mix(in srgb, var(--lens), transparent 45%);
+}
+
+.lens-marker:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* 여러 렌즈가 걸린 Issue는 테두리를 둘러 스택임을 알린다. */
+.lens-marker.stacked .lens-marker-dot {
+  box-shadow:
+    0 0 0 2px var(--bg-panel),
+    0 0 0 3.5px color-mix(in srgb, var(--lens), transparent 40%);
+}
+
+/* --- 상태 ------------------------------------------------------------ */
+
+.lens-tracks-status {
+  margin: 0;
+  padding: 0 12px;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lens-toggle,
+  .lens-track,
+  .lens-marker,
+  .lens-marker-label {
+    transition: none;
+  }
+}

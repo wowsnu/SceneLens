@@ -2715,6 +2715,9 @@ export default function DecisionBoard({ boardView = 'split' }) {
             fingerprint: scopeFingerprint,
             lensResults: response.lens_results || {},
             commonFindings: response.common_findings || [],
+            // 트랙과 Inspector가 쓰는 단위. 관계를 찾기 전에도 진단
+            // 하나당 하나씩 들어 있어 트랙이 바로 그려진다.
+            issues: response.issues || [],
             order: response.order || null,
             questions: response.questions || [],
           },
@@ -2793,6 +2796,8 @@ export default function DecisionBoard({ boardView = 'split' }) {
             ...current[scopeKey],
             relating: false,
             commonFindings: response.common_findings || [],
+            // 관계가 붙으면 겹치는 Issue들이 하나로 합쳐져 돌아온다.
+            issues: response.issues || current[scopeKey].issues || [],
             droppedRelations: response.dropped_relations || 0,
             order: response.order || null,
             related: true,
