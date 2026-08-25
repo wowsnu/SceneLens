@@ -253,12 +253,18 @@ function App() {
             ) : (
               <div className="decision-header-controls">
                 {/* 검토하러 왔으면 돌아갈 길이 있어야 한다. 왼쪽 패널이
-                    접혀 있으면 스토리보드가 화면에서 아예 사라진다. */}
+                    접혀 있으면 스토리보드가 화면에서 아예 사라진다.
+                    검토 화면의 '직접 그리기'는 drawingWorkspaceOpen만
+                    켜고 나가는데(DecisionBoard.jsx), 여기서 그걸 닫지
+                    않으면 Storyboard로 돌아가도 그 상태가 남아 Agents
+                    rail이 계속 숨는다 — isExpanded 조건이
+                    drawingWorkspaceOpen을 함께 본다. */}
                 {!leftPanelVisible && (
                   <button
                     type="button"
                     className="panel-control-btn"
                     onClick={() => {
+                      if (drawingWorkspaceOpen) closeDrawingWorkspace()
                       setLeftPanelVisible(true)
                       setMaximizedPanel('left')
                     }}
