@@ -1,9 +1,21 @@
 /* Lens Tracks — 세 렌즈가 스토리보드와 가로축을 공유하는 트랙.
    LENS_TRACKS_UI.md 3장.
 
-   정렬의 핵심: 컷 하나의 폭(--track-cell)을 여기서만 정하고, 스트립과
-   트랙이 같은 값을 쓴다. 마커의 가로 위치는 컷 인덱스(--pos)로 계산되어
-   컷 아래에 정확히 온다. 값이 두 곳에 생기면 정렬이 조용히 깨진다. */
+   정렬의 핵심: 컷 하나의 폭(--track-cell)을 이 파일에서만 정의하고
+   스트립은 조상에서 상속받는다. 마커의 가로 위치는 컷 인덱스(--pos)로
+   계산되어 컷 아래에 정확히 온다. 값이 두 곳에 생기면 정렬이 조용히
+   깨지므로 다시 나누지 말 것. */
+
+/* 컷 하나의 폭과 라벨 열 폭. **여기가 유일한 정의 자리다.**
+   스트립과 트랙이 이 값으로 같은 그리드를 그려야 마커가 컷 아래에 온다.
+   두 파일에 따로 적어 두면 한쪽만 고쳤을 때 정렬이 조용히 어긋난다
+   (실제로 그런 상태였다). 두 컴포넌트를 함께 감싸는 조상에 얹어
+   스트립이 상속받게 한다. */
+.lens-review-sequence,
+.lens-tracks {
+  --track-cell: 168px;
+  --track-label-w: 72px;
+}
 
 .lens-tracks {
   /* 렌즈 색은 기존 것을 그대로 쓴다. 사용자가 이미 익힌 색이다
@@ -11,10 +23,6 @@
   --lens-mise: #10b981;
   --lens-camera: #3b82f6;
   --lens-editing: #ef4444;
-
-  /* 컷 하나의 폭. 한 화면에 5~6컷이 보이는 크기다. */
-  --track-cell: 132px;
-  --track-label-w: 26px;
 
   display: flex;
   flex-direction: column;
@@ -98,10 +106,22 @@
 /* --- 몸통: 눈금 + 트랙 ---------------------------------------------- */
 
 .lens-tracks-scroll {
+  width: 100%;
+  min-width: 0;
   overflow-x: auto;
   overflow-y: hidden;
   padding: 0 12px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.26) transparent;
 }
+
+.lens-tracks-scroll::-webkit-scrollbar { height: 7px; }
+.lens-tracks-scroll::-webkit-scrollbar-track { background: transparent; }
+.lens-tracks-scroll::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.22);
+}
+.lens-tracks-scroll::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.35); }
 
 .lens-tracks-body {
   position: relative;
@@ -140,7 +160,7 @@
   position: absolute;
   left: var(--track-label-w);
   right: 0;
-  top: 16px;
+  top: 0;
   bottom: 0;
   pointer-events: none;
 }
@@ -177,18 +197,35 @@
   display: grid;
   grid-template-columns: var(--track-label-w) 1fr;
   align-items: center;
-  height: 26px;
+  height: 28px;
   transition: opacity 0.15s;
 }
 
 .lens-track.muted { opacity: 0.25; }
 
 .lens-track-label {
-  font-size: 9px;
-  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  height: 100%;
+  padding: 0 10px 0 0;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 650;
   color: var(--lens);
-  text-align: center;
+  text-align: right;
   opacity: 0.75;
+  cursor: pointer;
+}
+
+.lens-track-label:hover { opacity: 1; }
+
+.lens-track-label:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+  border-radius: var(--radius-sm);
 }
 
 .lens-track-line {

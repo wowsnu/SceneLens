@@ -1,14 +1,13 @@
 /* 검토 화면의 스토리보드 스트립.
-   트랙(LensTracks.css)과 --track-cell / --track-label-w를 공유해 컷과
-   마커가 세로로 정확히 정렬된다. 두 파일의 값이 갈리면 정렬이 조용히
-   깨지므로, 폭을 바꿀 때는 반드시 양쪽을 같이 본다. */
+   컷 폭(--track-cell)은 LensTracks.css가 조상에 정의한 것을 상속받는다 —
+   그래야 컷과 마커가 세로로 정확히 정렬된다. 폭을 바꾸려면 그쪽을 고친다. */
 
 .strip-lane-scroll {
   width: 100%;
   min-width: 0;
   overflow-x: auto;
   overflow-y: hidden;
-  padding: 8px 12px 0;
+  padding: 12px 12px 4px;
   scrollbar-width: thin;
   scrollbar-color: rgba(255, 255, 255, 0.26) transparent;
 }
@@ -21,24 +20,33 @@
 }
 .strip-lane-scroll::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.35); }
 
+/* --track-cell / --track-label-w는 여기서 정의하지 않는다.
+   LensTracks.css가 조상(.lens-review-sequence)에 얹어 둔 값을 상속받아,
+   스트립과 트랙이 반드시 같은 그리드를 쓰게 한다. */
 .strip-lane {
-  --track-cell: 132px;
-  --track-label-w: 72px;
-
   display: grid;
-  grid-template-columns: var(--track-label-w) repeat(var(--track-count), var(--track-cell));
+  /* 조상이 값을 주지 않는 경우(독립 사용)만 var()의 폴백이 쓰인다.
+     `.strip-lane`에 직접 정의하면 상속을 이겨서, 없애려던 이중 정의로
+     돌아간다 — 폴백은 반드시 var()의 두 번째 인자로 둔다. */
+  grid-template-columns:
+    var(--track-label-w, 72px)
+    repeat(var(--track-count), var(--track-cell, 168px));
   align-items: end;
-  min-width: calc(var(--track-label-w) + var(--track-count) * var(--track-cell));
+  min-width: calc(
+    var(--track-label-w, 72px) + var(--track-count) * var(--track-cell, 168px)
+  );
 }
 
 .strip-lane-gutter {
-  /* 트랙의 렌즈 기호 열과 같은 폭. 컷의 시작점을 맞춘다. */
-  width: var(--track-label-w);
+  /* 트랙의 렌즈 이름 열과 같은 폭. 컷의 시작점을 맞춘다. */
+  width: var(--track-label-w, 72px);
 }
 
 .strip-cell {
   position: relative;
-  padding: 0 6px;
+  /* 선택 표시가 사진에 딱 붙지 않게 여백을 준다. 여백이 없으면 셀 배경이
+     좌우 몇 px로만 보여서 "사진에 테두리가 생긴 것"으로 읽힌다. */
+  padding: 6px 8px 4px;
   transition: opacity 0.15s;
 }
 
@@ -49,7 +57,7 @@
 .strip-cell-btn {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 6px;
   width: 100%;
   padding: 0;
   border: none;
@@ -97,13 +105,21 @@
    테두리가 두 겹으로 겹쳐 무엇이 선택된 것인지 오히려 흐려진다.
    키보드에서 선택과 포커스는 늘 같은 컷이므로 나눌 이유가 없다. */
 .strip-cell.selected {
-  background: color-mix(in srgb, var(--accent), transparent 92%);
-  box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--accent), transparent 40%);
+  background: color-mix(in srgb, var(--accent), transparent 86%);
+  box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--accent), transparent 30%);
   border-radius: var(--radius);
+}
+
+/* 선택된 셀 안에서는 사진 테두리를 죽인다. 밝은 회색 테두리가 그대로
+   남으면 그것이 더 강해 보여서, 셀 전체가 아니라 "사진만 켜진" 것으로
+   읽힌다 — 표시는 한 곳에서만 나야 한다. */
+.strip-cell.selected .strip-cell-frame {
+  border-color: color-mix(in srgb, var(--accent), transparent 55%);
 }
 
 .strip-cell.selected .strip-cell-id {
   color: var(--accent);
+  font-weight: 600;
 }
 
 /* 포커스는 선택과 같은 자리에 온다. 마우스로 고른 뒤에는 링이 뜨지
@@ -119,7 +135,7 @@
 }
 
 .strip-cell-id {
-  font-size: 9px;
+  font-size: 10px;
   font-variant-numeric: tabular-nums;
   letter-spacing: 0.04em;
   color: var(--text-muted);
