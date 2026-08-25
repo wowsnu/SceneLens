@@ -161,6 +161,26 @@ theory_basis는 `책 이름 — 쉬운 설명 한 문장` 형식으로 씁니다
 - diagnoses는 `change`로 판정한 층위에만 0~4개입니다. 같은 원인에서 나온 문제를 여러
   층위로 반복하지 말고, 직접 수정할 수 있는 가장 낮은 층위 하나를 선택하세요.
 - 각 diagnosis의 evidence는 화면에서 확인되는 근거 1~2개, suggested_action은 한 문장입니다.
+- 각 diagnosis의 **visual_evidence는 그 근거를 그림 위에서 가리키는 것**입니다.
+  감독이 문장을 읽고 화면을 다시 찾을 필요 없이, 화면에서 바로 확인하게 합니다.
+  · **kind**: `region`은 그림의 한 자리, `relation`은 두 컷의 두 자리를 잇는 것,
+    `attribute`는 값의 변화(샷 크기·앵글 등 화면에 상자로 칠 수 없는 것)입니다.
+  · **regions**: 가리킬 상자. panel은 위 목록의 패널 id 그대로.
+    x·y는 상자의 **좌상단**, w·h는 크기, 전부 **0~1로 정규화**합니다
+    (화면 왼쪽 끝 x=0, 오른쪽 끝 x=1, 위 y=0, 아래 y=1).
+  · **상자는 가리키는 대상만 감쌉니다.** 화면의 절반을 넘기지 마세요 —
+    대부분을 덮은 상자는 아무것도 가리키지 않는 것과 같습니다.
+    인물 한 명이 화면을 꽉 채운 클로즈업이라면 얼굴처럼 **판단의 근거가 되는
+    부분만** 짚습니다.
+  · **"없어진 것"은 상자로 칠 수 없습니다.** 없는 것을 감쌀 수는 없습니다.
+    앞 컷에서 **그것이 있던 자리**를 짚고, reading에 뒤 컷에서 사라졌다고
+    쓰세요. 예: 배경 단서가 사라진 문제라면 앞 컷의 창문을 상자로 짚습니다.
+  · **relation은 두 컷을 잇습니다.** regions에 앞 컷 자리와 뒤 컷 자리를 각각
+    하나씩, 서로 대응되는 것으로 넣습니다(같은 인물, 같은 소품).
+  · reading은 그 자리가 왜 근거인지 한 문장. attribute일 때는 attribute·before·
+    after를 채우고 regions는 빈 배열로 둡니다. 나머지 경우 그 셋은 빈 문자열입니다.
+  · **그림에서 확실히 보이는 것만 짚으세요.** 어디인지 자신 없으면
+    visual_evidence를 빈 배열로 두면 됩니다 — 위 evidence 문장은 그대로 남습니다.
 - 각 diagnosis의 alternatives는 **갈 수 있는 길 2~3개**입니다. 판단 기준에 어떻게
   답하느냐에 따라 갈리는 것을 씁니다.
   · **첫 번째는 언제나 kind="keep"입니다.** 지금 상태를 유지하는 길이며, 유지도
@@ -384,6 +404,9 @@ LENS_RESPONSE_SCHEMA = {
                         "targets",
                         "diagnosis",
                         "evidence",
+                        # strict 모드는 모든 속성이 required여야 한다.
+                        # 표시할 것이 없으면 빈 배열로 답한다.
+                        "visual_evidence",
                         "theory_basis",
                         "theory_source",
                         "suggested_action",
@@ -404,6 +427,48 @@ LENS_RESPONSE_SCHEMA = {
                             "minItems": 1,
                             "maxItems": 2,
                             "items": {"type": "string"},
+                        },
+                        # 그림 위에 그릴 근거. 위 evidence 문장과 짝이다 —
+                        # 이쪽이 비어도 문장은 남는다.
+                        "visual_evidence": {
+                            "type": "array",
+                            "maxItems": 2,
+                            "items": {
+                                "type": "object",
+                                "additionalProperties": False,
+                                "required": [
+                                    "kind", "reading", "regions",
+                                    "attribute", "before", "after",
+                                ],
+                                "properties": {
+                                    "kind": {
+                                        "type": "string",
+                                        "enum": ["attribute", "region", "relation"],
+                                    },
+                                    "reading": {"type": "string"},
+                                    "regions": {
+                                        "type": "array",
+                                        "maxItems": 2,
+                                        "items": {
+                                            "type": "object",
+                                            "additionalProperties": False,
+                                            "required": ["panel", "label", "x", "y", "w", "h"],
+                                            "properties": {
+                                                "panel": {"type": "string"},
+                                                "label": {"type": "string"},
+                                                "x": {"type": "number"},
+                                                "y": {"type": "number"},
+                                                "w": {"type": "number"},
+                                                "h": {"type": "number"},
+                                            },
+                                        },
+                                    },
+                                    # attribute일 때만 채운다. 아니면 빈 문자열.
+                                    "attribute": {"type": "string"},
+                                    "before": {"type": "string"},
+                                    "after": {"type": "string"},
+                                },
+                            },
                         },
                         "theory_basis": {"type": ["string", "null"]},
                         "theory_source": {"type": ["string", "null"]},
@@ -642,6 +707,28 @@ def _normalize_target(target: str, panel_ids: set[str]) -> str:
     return matches[0] if len(matches) == 1 else target
 
 
+def _clean_visual_evidence(items, panel_ids: set[str]) -> list:
+    """그릴 수 없는 표시를 버린다. 문장(evidence)은 건드리지 않는다.
+
+    - 없는 패널을 가리키는 자리는 그림에 올릴 수 없다.
+    - 화면의 절반을 넘는 상자는 아무것도 가리키지 않는 것과 같다.
+      프롬프트로 일러도 모델이 "사라진 배경"을 표현하려고 화면 전체를
+      감쌀 때가 있다(실측에서 96%가 나왔다). 그때는 그 자리만 버리고
+      reading은 남긴다 — 근거를 통째로 잃지 않는다.
+    """
+    cleaned = []
+    for item in items or []:
+        regions = [
+            region for region in item.get("regions", [])
+            if region.get("panel") in panel_ids
+            and region.get("w", 0) * region.get("h", 0) <= 0.5
+        ]
+        if not item.get("reading"):
+            continue
+        cleaned.append({**item, "regions": regions})
+    return cleaned
+
+
 def _criterion_of(lens: DirectingLens | None, rule_id: str | None) -> dict:
     """규칙의 판단 기준. 규칙을 못 찾으면 빈 값으로 두고 진단은 살린다."""
     if not lens or not rule_id:
@@ -667,6 +754,9 @@ def _normalize_output_targets(
             # 판단 기준은 규칙에서 가져온다. 모델이 쓰게 하면 같은 문제에
             # 매번 다른 잣대가 붙는다.
             **_criterion_of(lens, diagnosis.get("rule_id")),
+            "visual_evidence": _clean_visual_evidence(
+                diagnosis.get("visual_evidence"), panel_ids
+            ),
         }
         for diagnosis in data.get("diagnoses", [])
     ]

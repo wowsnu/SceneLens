@@ -536,6 +536,63 @@ class DirectingAlternative(BaseModel):
     patch: Optional[DirectingAlternativePatch] = None
 
 
+class DirectingEvidenceRegion(BaseModel):
+    """그림에서 가리킬 자리. 화면은 이 값으로 상자를 그린다.
+
+    좌표는 **정규화**한다(0~1, 좌상단 원점). 패널 그림의 실제 픽셀 크기는
+    화면마다 다르고 스트립·Workbench에서 서로 다른 크기로 보이므로,
+    픽셀로 받으면 어디에도 맞지 않는다.
+    """
+
+    panel: str = Field(min_length=1)
+    # 무엇을 가리키는가. "인물", "창문", "노트북 화면".
+    label: str = Field(min_length=1, max_length=24)
+    x: float = Field(ge=0, le=1)
+    y: float = Field(ge=0, le=1)
+    w: float = Field(gt=0, le=1)
+    h: float = Field(gt=0, le=1)
+
+    @model_validator(mode="after")
+    def clamp_to_frame(self):
+        # 상자가 화면을 넘어가면 잘라 둔다. 모델이 가장자리 대상을 짚을 때
+        # 종종 1을 넘긴다 — 버리는 것보다 맞춰 두는 편이 낫다.
+        self.w = min(self.w, 1 - self.x)
+        self.h = min(self.h, 1 - self.y)
+        return self
+
+
+class DirectingEvidence(BaseModel):
+    """근거 하나. 화면이 이것으로 표시를 그린다 (`LENS_TRACKS_UI.md` 4장).
+
+    지금까지 evidence는 문장이었다. 문장만으로는 "이 그림의 어디"를 가리킬
+    수 없어, 감독이 근거를 화면에서 직접 확인하지 못한다. 무엇이 어디에
+    있는지를 데이터로 받아 그림 위에 그린다.
+    """
+
+    # attribute: 값의 변화(샷 크기 Wide → Close-up).
+    # region: 그림의 한 자리를 상자로 가리킨다.
+    # relation: 두 컷 사이의 관계. 두 자리를 잇는다.
+    kind: Literal["attribute", "region", "relation"] = "region"
+    # 사람이 읽는 한 문장. 구조화 이전의 evidence[i]가 하던 일이다.
+    reading: str = Field(min_length=1)
+    regions: List[DirectingEvidenceRegion] = Field(default_factory=list, max_length=2)
+    # kind="attribute"일 때. 무엇이 무엇에서 무엇으로 바뀌었는가.
+    attribute: str = ""
+    before: str = ""
+    after: str = ""
+
+    @model_validator(mode="after")
+    def require_shape_for_kind(self):
+        # region/relation인데 자리가 없으면 그릴 것이 없다. 문장은 살아
+        # 있으므로 kind만 낮춰 attribute로 둔다 — 근거를 버리지 않는다.
+        if self.kind in ("region", "relation") and not self.regions:
+            self.kind = "attribute"
+        # relation은 두 자리를 잇는 것이다. 하나뿐이면 region이다.
+        if self.kind == "relation" and len(self.regions) < 2:
+            self.kind = "region"
+        return self
+
+
 class DirectingDiagnosis(BaseModel):
     id: str
     rule_id: str
@@ -546,6 +603,12 @@ class DirectingDiagnosis(BaseModel):
     # 채운다 — 기준이 매번 달라지면 같은 문제에 다른 잣대가 적용된다.
     criterion: str = ""
     evidence: List[str] = Field(min_length=1, max_length=2)
+    # 그림 위에 그릴 수 있는 형태의 근거. 위 evidence 문장을 대체하지
+    # 않는다 — 모델이 좌표를 못 주거나 검증에 걸려도 근거가 사라지면
+    # 감독은 무엇을 보고 판정할지 알 수 없다 (`LENS_TRACKS_UI.md` 6장).
+    visual_evidence: List["DirectingEvidence"] = Field(
+        default_factory=list, max_length=2
+    )
     theory_basis: Optional[str] = None
     theory_source: Optional[str] = None
     suggested_action: str
