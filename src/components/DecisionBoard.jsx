@@ -1898,13 +1898,7 @@ export default function DecisionBoard({ boardView = 'split' }) {
   const [directingCheckPickedAlternativeKeys, setDirectingCheckPickedAlternativeKeys] = useState(() => new Set())
   const [directingQuestionDecisions, setDirectingQuestionDecisions] = useState({})
   const [directingQuestionDrafts, setDirectingQuestionDrafts] = useState({})
-  // 자동 연출 검토는 Decision Board에 들어온 뒤 딱 한 번이다. 범위별로
-  // 다시 허용하면, 관객 검토가 범위를 조용히 넓힌 뒤(예: S1 → S1-S4)
-  // 연출 검토로 돌아왔을 때 그 새 범위를 '아직 안 본 범위'로 여겨 또
-  // 자동으로 돈다 — 감독은 그저 탭을 오갔을 뿐인데 다시 분석이 시작된다.
-  const autoMultiReviewFired = useRef(false)
   const autoRelateReviewKey = useRef(null)
-  const runMultiReviewRef = useRef(null)
   const runRelateReviewRef = useRef(null)
   const [multiReviewIntents, setMultiReviewIntents] = useState({})
   const [multiReviewIntentDrafts, setMultiReviewIntentDrafts] = useState({})
@@ -2759,40 +2753,12 @@ export default function DecisionBoard({ boardView = 'split' }) {
     }
   }
 
-  runMultiReviewRef.current = runMultiReview
-
-  // Decision Board에 실제로 들어온 뒤 첫 연출 검토는 시스템이 시작한다.
-  // Storyboard를 편집하는 동안 뒤에서 호출하지 않고, 세션에 한 번만 연다.
-  // 범위별로 다시 허용하면 관객 검토가 범위를 넓힌 뒤 연출 검토로
-  // 돌아왔을 때 그 범위를 '아직 안 본 범위'로 보고 또 자동 실행된다.
-  // 이후 변경 반영과 재분석은 사용자가 명시적으로 누른다.
-  useEffect(() => {
-    if (leftPanelVisible || reviewMode !== 'multi' || multiReviewLoading) return
-    if (multiReviewRun.status !== 'idle') return
-    if (autoMultiReviewFired.current) return
-    const entries = scopeMode === 'range'
-      ? shots.slice(scopeFrom, scopeTo + 1).map((shot, index) => ({
-          shot,
-          index: scopeFrom + index,
-        }))
-      : currentShot ? [{ shot: currentShot, index: scopedShotIndex }] : []
-    if (entries.length === 0 || entries.some(({ shot }) => !shot.image)) return
-    autoMultiReviewFired.current = true
-    runMultiReviewRef.current?.()
-  }, [
-    currentShot,
-    leftPanelVisible,
-    multiReviewLoading,
-    multiReviewRun.status,
-    multiReviewScopeKey,
-    reviewMode,
-    scopeFrom,
-    scopeFingerprint,
-    scopeMode,
-    scopeTo,
-    scopedShotIndex,
-    shots,
-  ])
+  // 자동 분석은 하지 않는다. Decision Board 진입 직후의 범위는 감독이
+  // 고른 것이 아니라 마지막으로 보던 패널 하나(activeShot)이거나, 관객
+  // 검토가 넓혀 둔 범위다 — 둘 다 감독이 "이걸 검토하겠다"고 정한 범위가
+  // 아니다. 임의의 범위를 임의의 시점에 분석해 버리면 그 결과가 무엇을
+  // 검토한 것인지 감독이 다시 확인해야 한다. 범위를 보고 `분석하기`를
+  // 누르는 것 자체가 검토 대상을 정하는 행위다 (design_goal.md DG1 P2).
 
   // 관계는 따로 부른다. 렌즈 셋만 50초, 관계까지 하면 70초라 결과를
   // 보기까지 너무 오래 기다린다.
