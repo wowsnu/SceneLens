@@ -98,3 +98,8 @@
 /* 실행 버튼. 고르고 영향을 확인한 뒤 누르는 자리다. */
 .revision-run { width: 100%; margin-top: 10px; padding: 8px; border: 1px solid rgba(216,170,98,.55); border-radius: 5px; background: rgba(216,170,98,.16); color: #f0cb91; font-weight: 800; }
 .revision-run:disabled { opacity: .5; cursor: default; }
+
+/* 판정 세 가지. 기존 Decision Card와 같은 자리·같은 뜻이다. */
+.revision-verdict { display: flex; gap: 6px; justify-content: flex-end; }
+.revision-verdict button { padding: 6px 10px; border: 1px solid var(--border-light); border-radius: 5px; background: transparent; color: var(--text-secondary); }
+.revision-verdict button:hover { border-color: var(--text-muted); color: var(--text-primary); }

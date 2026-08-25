@@ -36,7 +36,7 @@ const seamAction = (alternative) => (
 
 export default function RevisionWorkspace({
   issue, issues = [], shotCount = 0, diagnosis, cut = null,
-  onBack, onChoose, onKeep,
+  onBack, onChoose, onKeep, onOpenLens, onClose,
   promptDraft, promptNote, rewriting, generating, onPromptChange, onClosePrompt, onSavePrompt,
   revisionPending, revisionImage, onAccept, onReject,
   applied = false, onReappraise,
@@ -209,13 +209,27 @@ export default function RevisionWorkspace({
             <button type="button" className="primary" onClick={onReappraise}>
               다시 보기
             </button>
-            <button type="button" onClick={onKeep}>나중에</button>
+            {/* 적용은 이미 했다. 여기서 닫는 것은 `유지` 판정이 아니라
+                다시 보기를 미루는 것뿐이다 — onKeep을 부르면 적용해 놓고
+                유지로 기록된다. */}
+            <button type="button" onClick={onClose}>나중에</button>
           </div>
         </section>
       )}
 
+      {/* 판정 세 가지. 기존 Decision Card가 하던 것을 그대로 가져온다 —
+          DG1 P2의 수용·수정·거부다. `직접 수정`은 그 렌즈의 상세 화면을
+          연다: 도구를 여기 다시 만들지 않고 이미 있는 흐름으로 보낸다
+          (DecisionBoard의 `openCurrentDirectingIssue`와 같은 이유). */}
       {!applied && (
-        <footer><button type="button" onClick={onKeep}>현재 유지</button></footer>
+        <footer className="revision-verdict">
+          <button type="button" onClick={onKeep}>현재 유지</button>
+          {onOpenLens && (
+            <button type="button" onClick={onOpenLens}>
+              {LENS_NAMES[diagnosis.lens] || '이 렌즈'}에서 직접 수정
+            </button>
+          )}
+        </footer>
       )}
     </section>
   )

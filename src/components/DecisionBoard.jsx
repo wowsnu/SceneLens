@@ -5961,7 +5961,29 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
                   revisionPending={revisionIsPending}
                   revisionImage={revisionDraftImage}
                   onBack={() => setRevisionWorkspace(null)}
-                  onKeep={() => setRevisionWorkspace(null)}
+                  onKeep={() => {
+                    // 유지도 판정이다. 기록하지 않으면 감독이 무엇을
+                    // 감수하기로 했는지 남지 않는다 (PAPER_SECTION_4의
+                    // `verdict` 측정 항목).
+                    logEvent('verdict', {
+                      target: revisionWorkspace.diagnosis.id,
+                      verdict: 'keep',
+                      lens: revisionWorkspace.diagnosis.lens,
+                    })
+                    setRevisionWorkspace(null)
+                  }}
+                  onClose={() => setRevisionWorkspace(null)}
+                  onOpenLens={() => {
+                    // 도구를 여기 다시 만들지 않는다. 그 렌즈의 상세
+                    // 화면에 적용·재생성·되돌리기가 이미 있다.
+                    const lensId = revisionWorkspace.diagnosis.lens === 'mise'
+                      ? 'staging'
+                      : revisionWorkspace.diagnosis.lens
+                    logScaffold({ feature: 'lens', action: 'open', lens: lensId })
+                    setRevisionWorkspace(null)
+                    setFullAnalysisOpen(true)
+                    selectReviewMode(lensId)
+                  }}
                   onChoose={(alternative) => {
                     // 어느 렌즈가 짚었는지가 아니라 **이 선택지가 무엇을
                     // 하는지**로 정한다 (LENS_TRACKS_UI.md 5장 — 여기서는
@@ -5987,6 +6009,11 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
                   applied={Boolean(revisionWorkspace.applied)}
                   onAccept={() => {
                     acceptPanelRevision()
+                    logEvent('verdict', {
+                      target: revisionWorkspace.diagnosis.id,
+                      verdict: 'applied',
+                      lens: revisionWorkspace.diagnosis.lens,
+                    })
                     // 닫지 않는다. 고친 화면을 다른 렌즈가 어떻게 읽는지
                     // 다시 보는 것까지가 한 흐름이다 (Reappraise).
                     setRevisionWorkspace((current) => (
