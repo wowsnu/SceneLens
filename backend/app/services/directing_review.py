@@ -16,6 +16,7 @@ from app.services.shot_principles import ANGLES, MOVES, SHOT_SIZES
 
 from app.models.schemas import (
     DirectingCommonFinding,
+    DirectingIssue,
     DirectingLens,
     DirectingLensResult,
     DirectingOrder,
@@ -1281,6 +1282,149 @@ def _origin_lens_for(relation: dict, diagnoses_by_lens: dict) -> Optional[str]:
     return lenses[0] if lenses else None
 
 
+def _build_issues(
+    findings: list,
+    lens_results: dict,
+    order=None,
+) -> list:
+    """관계들을 Issue로 묶는다 — 화면이 쓰는 단위.
+
+    관계는 진단 **쌍**으로 나온다. 진단이 셋이면 쌍이 셋이라 같은 현상이
+    세 번 보고되고, 그대로 트랙에 올리면 렌즈당 마커가 여러 개 찍힌다
+    (진단은 렌즈당 하나뿐인데). 진단을 공유하는 관계를 하나로 합친다.
+
+    합쳐도 되는 근거는 `DirectingIssue` 주석에 있다 — 한 렌즈는 같은
+    층위에서 진단을 하나만 내므로, 진단을 공유하면 현상도 같다.
+
+    관계에 안 걸린 진단도 Issue가 된다. 한 렌즈만 짚은 것도 감독은 봐야
+    하고, `+ Add Lens`로 다른 렌즈를 겹쳐 보는 출발점이 바로 그것이다
+    (`LENS_TRACKS_UI.md` 4장).
+    """
+    diagnosis_by_id = {
+        diagnosis.id: (lens, diagnosis)
+        for lens, result in lens_results.items()
+        for diagnosis in result.diagnoses
+    }
+    if not diagnosis_by_id:
+        return []
+
+    # 진단을 노드로, 관계를 간선으로 보고 연결 요소를 찾는다.
+    parent: dict[str, str] = {}
+
+    def find(node: str) -> str:
+        parent.setdefault(node, node)
+        while parent[node] != node:
+            parent[node] = parent[parent[node]]
+            node = parent[node]
+        return node
+
+    def union(a: str, b: str) -> None:
+        root_a, root_b = find(a), find(b)
+        if root_a != root_b:
+            parent[root_a] = root_b
+
+    for did in diagnosis_by_id:
+        find(did)
+    for finding in findings:
+        ids = [i for i in finding.diagnosis_ids if i in diagnosis_by_id]
+        for left, right in zip(ids, ids[1:]):
+            union(left, right)
+
+    # 묶인 진단들과, 그 묶음에 기여한 관계들을 모은다.
+    members: dict[str, list[str]] = {}
+    for did in diagnosis_by_id:
+        members.setdefault(find(did), []).append(did)
+    relations_of: dict[str, list] = {}
+    for finding in findings:
+        ids = [i for i in finding.diagnosis_ids if i in diagnosis_by_id]
+        if ids:
+            relations_of.setdefault(find(ids[0]), []).append(finding)
+
+    issues = []
+    for index, (root, ids) in enumerate(members.items(), start=1):
+        picked = [diagnosis_by_id[i][1] for i in ids]
+        lenses = []
+        for i in ids:
+            lens = diagnosis_by_id[i][0]
+            if lens not in lenses:
+                lenses.append(lens)
+        related = relations_of.get(root, [])
+
+        # origin: 관계가 있으면 그쪽 판단을 따르고, 없으면 유일한 렌즈다.
+        origin = None
+        for finding in related:
+            if finding.type == "consequence" and finding.source_lens:
+                origin = finding.source_lens
+                break
+        if origin is None and order and order.first_lens in lenses:
+            # 관계가 방향을 안 줬을 때, 어느 렌즈부터 볼지는 order가 안다.
+            origin = order.first_lens
+        if origin is None:
+            origin = related[0].origin_lens if related else lenses[0]
+        if origin not in lenses:
+            origin = lenses[0]
+
+        # title: origin 렌즈가 낀 관계의 이름을 우선한다 — 가장 근본에
+        # 가까운 쪽이다. 관계가 없으면 진단의 규칙에서 이름을 만든다.
+        title = ""
+        for finding in related:
+            if finding.title and origin in finding.lenses:
+                title = finding.title
+                break
+        if not title:
+            title = next((f.title for f in related if f.title), "")
+        if not title:
+            title = _title_from_rule(picked[0])
+
+        anchor, anchor_kind = _anchor_for(picked)
+        issues.append(DirectingIssue(
+            id=f"issue-{index}",
+            anchor=anchor,
+            anchor_kind=anchor_kind,
+            title=title,
+            diagnosis_ids=ids,
+            lenses=lenses,
+            origin_lens=origin,
+            # 방향이 있는 관계가 먼저다. consequence는 어디를 고쳐야
+            # 하는지까지 말해 주므로 감독이 먼저 읽어야 한다.
+            relation_types=sorted(
+                dict.fromkeys(f.type for f in related),
+                key=lambda t: {"consequence": 0, "conflict": 1, "agreement": 2}.get(t, 3),
+            ),
+        ))
+
+    # 렌즈가 많이 걸린 것이 먼저다. 여러 관점이 함께 짚은 것을 감독이
+    # 먼저 본다 — 트랙에서도 수직으로 길게 정렬되어 눈에 먼저 들어온다.
+    issues.sort(key=lambda issue: (-len(issue.lenses), issue.anchor))
+    return issues
+
+
+# 관계에 안 걸린 진단은 이름이 없다. 규칙 id에서 만든다 — 모델에게 다시
+# 묻지 않는다. 규칙은 이미 무엇을 보는 규칙인지 이름에 담고 있다.
+_RULE_TITLES = {
+    "mise-functional-elements": "필요한 요소",
+    "mise-relational-blocking": "인물 배치",
+    "mise-spatial-continuity": "공간 연속성",
+    "mise-visual-hierarchy": "시선 유도",
+    "camera-information-selection": "정보 선택",
+    "camera-viewpoint-intent": "시점",
+    "camera-axis-direction": "축과 방향",
+    "camera-movement-purpose": "카메라 움직임",
+    "editing-shot-function": "컷의 역할",
+    "editing-cut-continuity": "컷 연결",
+    "editing-information-order": "정보 순서",
+    "editing-visual-rhythm": "리듬",
+    "narrative-beat-progression": "장면 전개",
+    "narrative-action-visibility": "행동 제시",
+    "narrative-information-reveal": "정보 공개",
+    "narrative-causal-link": "인과",
+}
+
+
+def _title_from_rule(diagnosis) -> str:
+    return _RULE_TITLES.get(diagnosis.rule_id) or diagnosis.level.replace("_", " ")
+
+
 async def _relate_lenses(
     lens_results: dict,
     settled: list | None = None,
@@ -1441,6 +1585,7 @@ async def review_directing(request: DirectingReviewRequest) -> DirectingReviewRe
     result, questions = await analyze_lens(request, lens)
     return DirectingReviewResponse(
         lens_results={lens: result},
+        issues=_build_issues([], {lens: result}),
         questions=questions,
     )
 
@@ -1457,6 +1602,7 @@ async def _relate_only(request: DirectingReviewRequest) -> DirectingReviewRespon
     return DirectingReviewResponse(
         lens_results=request.lens_results,
         common_findings=findings,
+        issues=_build_issues(findings, request.lens_results, order),
         dropped_relations=dropped,
         order=order,
     )
@@ -1495,8 +1641,13 @@ async def _review_all_lenses(request: DirectingReviewRequest) -> DirectingReview
 
     # 관계는 여기서 찾지 않는다. 감독이 렌즈 판단을 먼저 읽고, 필요하면
     # 'relate' 모드로 따로 부른다 — 한 번에 하면 70초를 기다린다.
+    #
+    # 그래도 Issue는 만든다. 관계가 없으면 진단 하나가 곧 Issue 하나이고,
+    # 트랙은 그것으로 이미 그려진다 — 관계를 기다리는 동안 화면이 비어
+    # 있을 이유가 없다. 'relate'가 돌아오면 겹치는 것들이 합쳐진다.
     return DirectingReviewResponse(
         lens_results=lens_results,
+        issues=_build_issues([], lens_results),
         failed_lenses=failed_lenses,
         questions=questions,
     )

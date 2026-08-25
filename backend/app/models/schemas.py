@@ -674,6 +674,41 @@ class DirectingCommonFinding(BaseModel):
         return self
 
 
+class DirectingIssue(BaseModel):
+    """한 자리에서 하나의 현상. 트랙의 마커 하나이자 Inspector 카드 하나.
+
+    관계(`common_findings`)는 **진단 쌍**으로 나온다 — 진단이 셋이면 쌍이
+    셋이라, 같은 현상을 세 번 잘라 보고한다. 그대로 화면에 올리면 렌즈당
+    마커가 여러 개 찍힌다(진단은 렌즈당 하나뿐인데). 그래서 진단을 공유하는
+    관계들을 하나로 묶은 것이 Issue다.
+
+    합쳐도 되는 근거: 한 렌즈는 같은 층위에서 진단을 하나만 낸다
+    (`DirectingLensResult`의 검증). 그러므로 두 관계가 진단을 공유하면
+    그 진단이 가리키는 현상도 같다 — 정말 다른 현상이라면 진단이 달랐다.
+
+    관계 자체는 지우지 않는다. 종류(agreement/conflict/consequence)와 방향은
+    Issue 안에서 여전히 감독이 읽어야 할 정보다.
+    """
+
+    id: str
+    # 트랙에서 마커가 놓이는 가로 위치이자 Inspector의 `Where`.
+    anchor: str
+    anchor_kind: Literal["shot", "seam", "scene", ""] = ""
+    # 목록에서 이 Issue를 고르게 하는 이름. 합칠 때 후보가 여럿이면
+    # origin 렌즈가 낸 관계의 title을 쓴다 — 가장 근본에 가까운 쪽이다.
+    title: str
+    # 이 Issue를 이루는 진단들. 렌즈당 최대 하나.
+    diagnosis_ids: List[str] = Field(min_length=1)
+    # 이 현상에 걸린 렌즈들. Inspector에서 `●`로 표시되는 것들.
+    lenses: List[DirectingLens] = Field(min_length=1)
+    # 처음 짚은 렌즈. consequence면 원인 쪽.
+    origin_lens: Optional[DirectingLens] = None
+    # 이 Issue를 이루는 관계들. 종류와 방향이 여기 남는다.
+    relation_types: List[Literal["agreement", "conflict", "consequence"]] = Field(
+        default_factory=list
+    )
+
+
 class DirectingOrder(BaseModel):
     """어느 렌즈부터 손댈 것인가.
 
@@ -724,6 +759,10 @@ class DirectingReviewResponse(BaseModel):
     # 으로 읽는다 — 실제로는 검증에 걸려 결과가 없는 것이다.
     failed_lenses: List[DirectingLens] = Field(default_factory=list)
     common_findings: List[DirectingCommonFinding] = Field(default_factory=list)
+    # 화면이 쓰는 단위. common_findings를 진단 기준으로 묶은 것이다 —
+    # 관계는 진단 쌍으로 나와서 같은 현상이 여러 번 보고되기 때문이다
+    # (`DirectingIssue` 참고). 관계 자체는 위에 그대로 남는다.
+    issues: List[DirectingIssue] = Field(default_factory=list)
     # 모델이 관계를 냈으나 진단을 짚지 못해 버린 개수. 조용히 버리면
     # 화면에서 '관계 없음'과 구분되지 않아, 모델이 못 찾은 것인지 우리가
     # 버린 것인지 감독이 알 수 없다 — failed_lenses와 같은 이유다.
