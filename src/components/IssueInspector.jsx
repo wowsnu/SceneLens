@@ -1,0 +1,176 @@
+import { useState } from 'react'
+import EvidenceStage from './EvidenceStage'
+import { evidenceLineFor } from './evidenceSummary'
+import './IssueInspector.css'
+
+const LENSES = [
+  { id: 'mise', label: '미장센', mark: 'M' },
+  { id: 'camera', label: '촬영', mark: 'C' },
+  { id: 'editing', label: '편집', mark: 'E' },
+]
+
+const anchorKindLabel = (kind) => ({
+  shot: '컷',
+  seam: '이음새',
+  scene: '장면',
+}[kind] || '')
+
+/**
+ * 선택한 Issue 하나를 읽는 자리.
+ *
+ * 트랙은 "어디"만, 이 카드는 "무엇이 왜 걸렸는지"만 담당한다. 기존 렌즈
+ * 보고서를 다시 나열하지 않도록 evidence는 각 관점 안에서 접어 둔다.
+ */
+export default function IssueInspector({
+  issue,
+  diagnosesById,
+  lensChecks = {},
+  shots = [],
+  onCheckLens,
+  onRevise,
+}) {
+  // 지금 그림 위에 표시를 얹고 있는 렌즈. 그림은 그대로 있고 이것만
+  // 바뀐다 (`LENS_TRACKS_UI.md` 4장).
+  //
+  // 어느 Issue에서 고른 것인지 함께 들고 있는다. Issue가 바뀌면 그 선택은
+  // 무효다 — 이전 Issue에서 보던 렌즈가 남아 있으면 무엇을 보고 있는지
+  // 어긋난다. effect로 되돌리면 한 번 잘못 그린 뒤에 고치는 셈이라
+  // 렌더 중에 판정한다.
+  const [picked, setPicked] = useState({ issueId: null, lens: null })
+  const activeLens = picked.issueId === issue?.id
+    ? picked.lens
+    : (issue?.origin_lens || null)
+  const setActiveLens = (lens) => setPicked({ issueId: issue?.id, lens })
+
+  if (!issue) {
+    return (
+      <section className="issue-inspector empty" aria-label="선택한 검토 항목">
+        <p>트랙의 점을 선택하면 이 자리에서 살펴볼 수 있습니다.</p>
+      </section>
+    )
+  }
+
+  const diagnosisIds = new Set(issue.diagnosis_ids || [])
+  const perspectives = LENSES.map((lens) => {
+    const diagnosis = [...diagnosisIds]
+      .map((id) => diagnosesById.get(id))
+      .find((entry) => entry?.lens === lens.id)
+    return { lens, diagnosis, check: lensChecks[lens.id] || null }
+  })
+  const origin = perspectives.find(({ lens }) => lens.id === issue.origin_lens)?.diagnosis
+    || perspectives.find(({ diagnosis }) => diagnosis)?.diagnosis
+  const criterion = origin?.diagnosis?.criterion || ''
+
+  // 지금 그림에 표시를 얹을 진단. 고른 렌즈의 것이 없으면 처음 짚은
+  // 렌즈의 것으로 둔다 — 무대가 비어 보이지 않게.
+  const activeEntry = perspectives.find(({ lens }) => lens.id === activeLens)
+  const activeDiagnosis = activeEntry?.diagnosis?.diagnosis
+    || activeEntry?.check?.diagnosis
+    || origin?.diagnosis
+    || null
+
+  return (
+    <section className="issue-inspector" aria-label={`${issue.anchor} ${issue.title}`}>
+      <header className="issue-inspector-heading">
+        <span>{issue.anchor}{anchorKindLabel(issue.anchor_kind) && ` · ${anchorKindLabel(issue.anchor_kind)}`}</span>
+        <h3>{issue.title}</h3>
+        {criterion && <p>{criterion}</p>}
+      </header>
+
+      {/* 이 Issue가 걸린 컷들. 렌즈를 옮겨도 이 두 장은 그대로 있고
+          그 위의 표시만 바뀐다 — 같은 화면을 다르게 읽는다는 것이
+          화면에서 드러나야 한다. */}
+      <EvidenceStage
+        issue={issue}
+        diagnosis={activeDiagnosis}
+        shots={shots}
+        lensId={activeLens}
+      />
+
+      <div className="issue-perspectives">
+        {perspectives.map(({ lens, diagnosis, check }) => {
+          const isOrigin = lens.id === issue.origin_lens
+          const checking = check?.status === 'loading'
+          const checked = check?.status === 'ready'
+          const checkDiagnosis = check?.diagnosis
+          const visibleDiagnosis = diagnosis?.diagnosis || checkDiagnosis
+          if (!diagnosis) {
+            return (
+              <section key={lens.id} className={`issue-perspective lens-${lens.id} ${lens.id === activeLens ? 'active' : ''} ${checked && checkDiagnosis ? 'checked-response' : checked ? 'checked-clear' : 'unchecked'}`}>
+                <header><span>{checked && checkDiagnosis ? '◐' : '○'}</span><strong>{lens.label}</strong></header>
+                {checking ? (
+                  <p>이 위치를 확인하는 중입니다.</p>
+                ) : check?.status === 'error' ? (
+                  <>
+                    <p>{check.error || '확인하지 못했습니다.'}</p>
+                    <button type="button" onClick={() => onCheckLens?.(lens.id)}>다시 확인</button>
+                  </>
+                ) : checked && checkDiagnosis ? (
+                  <button
+                    type="button"
+                    className="issue-perspective-pick"
+                    onClick={() => setActiveLens(lens.id)}
+                    aria-pressed={lens.id === activeLens}
+                  >
+                    <p>{checkDiagnosis.diagnosis}</p>
+                    {evidenceLineFor(checkDiagnosis) && (
+                      <p className="issue-perspective-evidence">
+                        {evidenceLineFor(checkDiagnosis).label && (
+                          <strong>{evidenceLineFor(checkDiagnosis).label}</strong>
+                        )}
+                        <span>{evidenceLineFor(checkDiagnosis).detail}</span>
+                      </p>
+                    )}
+                  </button>
+                ) : checked ? (
+                  <p>이 위치에서는 별도 문제를 찾지 못했습니다.</p>
+                ) : (
+                  <>
+                    <p>아직 이 위치를 확인하지 않았습니다.</p>
+                    <button type="button" onClick={() => onCheckLens?.(lens.id)}>이 렌즈로 확인</button>
+                  </>
+                )}
+              </section>
+            )
+          }
+          const line = evidenceLineFor(visibleDiagnosis)
+          const isActive = lens.id === activeLens
+          return (
+            <section
+              key={lens.id}
+              className={`issue-perspective lens-${lens.id} ${isActive ? 'active' : ''}`}
+            >
+              {/* 카드를 누르면 그 렌즈의 표시가 그림에 얹힌다. 렌즈를
+                  고르는 일과 그 판단을 읽는 일이 같은 자리에서 일어난다. */}
+              <button
+                type="button"
+                className="issue-perspective-pick"
+                onClick={() => setActiveLens(lens.id)}
+                aria-pressed={isActive}
+              >
+                <header>
+                  <span>{isOrigin ? '●' : '◐'}</span>
+                  <strong>{lens.label}</strong>
+                  {isOrigin && <em>처음 발견</em>}
+                </header>
+                <p>{visibleDiagnosis.diagnosis}</p>
+                {line && (
+                  <p className="issue-perspective-evidence">
+                    {line.label && <strong>{line.label}</strong>}
+                    <span>{line.detail}</span>
+                  </p>
+                )}
+              </button>
+            </section>
+          )
+        })}
+      </div>
+
+      <footer>
+        <button type="button" className="primary" onClick={() => onRevise?.(origin)} disabled={!origin}>
+          이 문제 수정하기
+        </button>
+      </footer>
+    </section>
+  )
+}

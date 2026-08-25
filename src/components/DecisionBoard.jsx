@@ -5466,6 +5466,18 @@ export default function DecisionBoard({ boardView = 'split' }) {
                 </p>
               )}
 
+              {trackIssues.length > 0 && (
+                <IssueInspector
+                  issue={selectedTrackIssue}
+                  diagnosesById={diagnosesById}
+                  lensChecks={selectedIssueLensChecks}
+                  shots={shots}
+                  onCheckLens={checkSelectedIssueLens}
+                  onRevise={reviseTrackIssue}
+                />
+              )}
+
+              {trackIssues.length === 0 && (
               <section className="directing-checklist" aria-label="연출 검토 확인할 것">
                 <header>
                   <div>

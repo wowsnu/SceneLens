@@ -1,0 +1,199 @@
+/* Issue가 걸린 컷 두 장과 그 위의 표시.
+   LENS_TRACKS_UI.md 4장 — 그림은 그대로 있고 표시만 바뀐다. */
+
+.evidence-stage {
+  --lens: var(--text-secondary);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.evidence-stage.lens-mise { --lens: #10b981; }
+.evidence-stage.lens-camera { --lens: #3b82f6; }
+.evidence-stage.lens-editing { --lens: #ef4444; }
+
+.evidence-stage-frames {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.evidence-frame-slot {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
+}
+
+.evidence-arrow {
+  flex: none;
+  color: var(--text-muted);
+  font-size: 14px;
+}
+
+.evidence-frame {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+}
+
+.evidence-frame-id {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  z-index: 2;
+  padding: 1px 6px;
+  border-radius: 3px;
+  background: rgba(0, 0, 0, 0.6);
+  font-size: 9px;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.04em;
+  color: var(--text-secondary);
+}
+
+/* 표시의 좌표계 기준.
+   **여기서 비율을 고정하면 안 된다.** 좌표는 원본 그림 기준으로 나오는데,
+   프레임을 16:9로 두고 cover로 채우면 그림이 잘려 상자가 엉뚱한 자리에
+   온다 — 실제 패널은 3:2와 1:1이라 1:1은 좌우 44%가 날아간다.
+   그림이 자기 비율대로 놓이고, 상자는 그 그림에 얹힌다. */
+.evidence-frame-image {
+  position: relative;
+  display: block;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-light);
+  background: var(--bg-panel);
+  overflow: hidden;
+  /* 그림이 없을 때만 쓰이는 최소 높이. 있으면 그림이 정한다. */
+  min-height: 60px;
+}
+
+.evidence-frame-image img {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.evidence-frame-empty {
+  display: block;
+  width: 100%;
+  /* 그림이 없을 때만. 있으면 그림이 높이를 정한다. */
+  aspect-ratio: 3 / 2;
+  background: repeating-linear-gradient(
+    45deg,
+    transparent,
+    transparent 6px,
+    color-mix(in srgb, var(--border-light), transparent 55%) 6px,
+    color-mix(in srgb, var(--border-light), transparent 55%) 7px
+  );
+}
+
+/* --- 표시 ------------------------------------------------------------ */
+
+.evidence-box {
+  position: absolute;
+  border: 2px solid var(--lens);
+  border-radius: 3px;
+  /* 그림을 가리지 않는다. 근거는 "여기를 보라"이지 "이것을 덮는다"가
+     아니다 — 안이 안 보이면 확인할 수가 없다. */
+  background: color-mix(in srgb, var(--lens), transparent 92%);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.35);
+  pointer-events: none;
+}
+
+.evidence-box-label {
+  position: absolute;
+  bottom: 100%;
+  left: -2px;
+  margin-bottom: 2px;
+  padding: 1px 5px;
+  border-radius: 3px;
+  background: var(--lens);
+  color: #06131f;
+  font-size: 9px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* 방향 화살표. 상자 가장자리에서 향한 쪽으로 뻗는다.
+   confidence가 낮으면 백엔드가 facing을 지우므로 여기 오지 않는다. */
+.evidence-facing {
+  position: absolute;
+  width: 0;
+  height: 0;
+  border: 6px solid transparent;
+}
+
+.evidence-facing.facing-left {
+  top: 50%;
+  left: -14px;
+  margin-top: -6px;
+  border-right-color: var(--lens);
+}
+
+.evidence-facing.facing-right {
+  top: 50%;
+  right: -14px;
+  margin-top: -6px;
+  border-left-color: var(--lens);
+}
+
+.evidence-facing.facing-up {
+  left: 50%;
+  top: -14px;
+  margin-left: -6px;
+  border-bottom-color: var(--lens);
+}
+
+.evidence-facing.facing-down {
+  left: 50%;
+  bottom: -14px;
+  margin-left: -6px;
+  border-top-color: var(--lens);
+}
+
+/* 정면·뒤는 화살표로 그릴 방향이 없다. 상자 자체를 점으로 표시한다. */
+.evidence-facing.facing-toward-camera,
+.evidence-facing.facing-away {
+  top: 50%;
+  left: 50%;
+  width: 10px;
+  height: 10px;
+  margin: -5px 0 0 -5px;
+  border: 2px solid var(--lens);
+  border-radius: 50%;
+}
+
+.evidence-facing.facing-away {
+  border-style: dashed;
+}
+
+/* --- 근거 한 줄 ------------------------------------------------------ */
+
+.evidence-line {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin: 0;
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+.evidence-line-tag {
+  flex: none;
+  font-size: 9px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.evidence-line strong {
+  flex: none;
+  color: var(--lens);
+  font-weight: 600;
+}
+
+.evidence-line span:last-child {
+  min-width: 0;
+}
