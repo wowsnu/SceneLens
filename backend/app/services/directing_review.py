@@ -179,6 +179,12 @@ theory_basis는 `책 이름 — 쉬운 설명 한 문장` 형식으로 씁니다
     하나씩, 서로 대응되는 것으로 넣습니다(같은 인물, 같은 소품).
   · reading은 그 자리가 왜 근거인지 한 문장. attribute일 때는 attribute·before·
     after를 채우고 regions는 빈 배열로 둡니다. 나머지 경우 그 셋은 빈 문자열입니다.
+  · **facing**은 그 대상이 화면에서 **어느 쪽을 향하는지**입니다. 시선 방향,
+    화면 방향(screen direction), 카메라 축이 문제일 때 채웁니다 — 상자는
+    "어디에 있는지"만 말하므로 방향은 이것으로만 그릴 수 있습니다.
+    방향이 이 진단과 무관하면 빈 문자열로 둡니다.
+  · **confidence**는 그 자리와 방향이 그림에서 확실히 보이는지입니다.
+    짐작이면 `low`로 답하세요 — **틀린 화살표는 없는 것보다 나쁩니다.**
   · **그림에서 확실히 보이는 것만 짚으세요.** 어디인지 자신 없으면
     visual_evidence를 빈 배열로 두면 됩니다 — 위 evidence 문장은 그대로 남습니다.
 - 각 diagnosis의 alternatives는 **갈 수 있는 길 2~3개**입니다. 판단 기준에 어떻게
@@ -452,7 +458,11 @@ LENS_RESPONSE_SCHEMA = {
                                         "items": {
                                             "type": "object",
                                             "additionalProperties": False,
-                                            "required": ["panel", "label", "x", "y", "w", "h"],
+                                            "required": [
+                                                "panel", "label",
+                                                "x", "y", "w", "h",
+                                                "facing", "confidence",
+                                            ],
                                             "properties": {
                                                 "panel": {"type": "string"},
                                                 "label": {"type": "string"},
@@ -460,6 +470,19 @@ LENS_RESPONSE_SCHEMA = {
                                                 "y": {"type": "number"},
                                                 "w": {"type": "number"},
                                                 "h": {"type": "number"},
+                                                # 화살표를 그릴 근거. 방향이
+                                                # 문제가 아니면 빈 문자열.
+                                                "facing": {
+                                                    "type": "string",
+                                                    "enum": [
+                                                        "left", "right", "up", "down",
+                                                        "toward-camera", "away", "",
+                                                    ],
+                                                },
+                                                "confidence": {
+                                                    "type": "string",
+                                                    "enum": ["high", "medium", "low", ""],
+                                                },
                                             },
                                         },
                                     },

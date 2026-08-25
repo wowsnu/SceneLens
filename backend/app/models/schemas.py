@@ -551,6 +551,23 @@ class DirectingEvidenceRegion(BaseModel):
     y: float = Field(ge=0, le=1)
     w: float = Field(gt=0, le=1)
     h: float = Field(gt=0, le=1)
+    # 이 대상이 향한 쪽. 화살표는 여기서 나온다 — 박스는 "어디에 있나"만
+    # 말하므로, screen direction·eyeline·camera angle은 이것 없이 그릴 수
+    # 없다 (`LENS_TRACKS_UI.md` 4장).
+    facing: Literal[
+        "left", "right", "up", "down", "toward-camera", "away", ""
+    ] = ""
+    # 그림에서 확실히 보이는가. 낮으면 화살표를 그리지 않는다 —
+    # 틀린 화살표는 없는 것보다 나쁘다. 문장(reading)은 그대로 남는다.
+    confidence: Literal["high", "medium", "low", ""] = ""
+
+    @model_validator(mode="after")
+    def drop_low_confidence_facing(self):
+        # 짐작으로 그린 화살표는 감독을 잘못된 자리로 데려간다. 방향만
+        # 지우고 상자는 남긴다 — 위치는 여전히 쓸모 있다.
+        if self.facing and self.confidence == "low":
+            self.facing = ""
+        return self
 
     @model_validator(mode="after")
     def clamp_to_frame(self):
