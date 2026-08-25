@@ -57,7 +57,10 @@ export default function LensTracks({
   onSelectIssue,
   onToggleLens,
   scrollRef = null,
+  onScroll,
+  embedded = false,
   loading = false,
+  relating = false,
 }) {
   const trackScrollRef = useRef(null)
   const scroller = scrollRef || trackScrollRef
@@ -118,43 +121,8 @@ export default function LensTracks({
   // 아래에 정확히 온다 — CSS 변수로 한 곳에서만 정한다.
   const style = { '--track-count': shots.length }
 
-  return (
-    <section className="lens-tracks" style={style} aria-label="렌즈 트랙">
-      <header className="lens-tracks-head">
-        <span className="lens-tracks-title">렌즈</span>
-        <div className="lens-tracks-toggles" role="group" aria-label="렌즈 켜고 끄기">
-          {TRACK_LENSES.map((lens) => {
-            const on = activeLenses.has(lens.id)
-            const count = markersByLens.get(lens.id)?.length || 0
-            return (
-              <button
-                key={lens.id}
-                type="button"
-                className={`lens-toggle lens-${lens.id} ${on ? 'on' : 'off'}`}
-                onClick={() => onToggleLens?.(lens.id)}
-                aria-pressed={on}
-                title={on ? `${lens.label} 끄기` : `${lens.label} 켜기`}
-              >
-                <span className="lens-toggle-dot" aria-hidden="true" />
-                {lens.label}
-                {count > 0 && <span className="lens-toggle-count">{count}</span>}
-              </button>
-            )
-          })}
-        </div>
-      </header>
-
-      <div className="lens-tracks-scroll" ref={scroller}>
-        <div className="lens-tracks-body">
-          {/* 컷 눈금. 스트립과 같은 그리드를 써서 가로축을 공유한다. */}
-          <div className="lens-tracks-ruler" aria-hidden="true">
-            {shots.map((shot, index) => (
-              <span key={shot?.id || index} className="lens-tracks-tick">
-                S{index + 1}
-              </span>
-            ))}
-          </div>
-
+  const tracks = (
+    <div className="lens-tracks-body">
           {/* 여러 렌즈가 함께 짚은 자리를 잇는 세로선. 마커보다 아래
               깔려서 "이 자리에 여러 관점이 걸려 있다"만 말한다. */}
           <div className="lens-tracks-stacks" aria-hidden="true">
@@ -175,7 +143,15 @@ export default function LensTracks({
                 key={lens.id}
                 className={`lens-track lens-${lens.id} ${on ? '' : 'muted'}`}
               >
-                <span className="lens-track-label" aria-hidden="true">{lens.mark}</span>
+                <button
+                  type="button"
+                  className="lens-track-label"
+                  onClick={() => onToggleLens?.(lens.id)}
+                  aria-pressed={on}
+                  title={on ? `${lens.label} 끄기` : `${lens.label} 켜기`}
+                >
+                  {lens.label}
+                </button>
                 <div className="lens-track-line">
                   {on && markers.map(({ issue, position }) => {
                     const stacked = (issue.lenses?.length || 0) >= 2
@@ -200,10 +176,27 @@ export default function LensTracks({
               </div>
             )
           })}
+    </div>
+  )
+
+  return (
+    <section className={`lens-tracks ${embedded ? 'embedded' : ''}`} style={style} aria-label="렌즈 트랙">
+      {embedded ? tracks : (
+        <div className="lens-tracks-scroll" ref={scroller} onScroll={onScroll}>
+          {tracks}
         </div>
-      </div>
+      )}
 
       {loading && <p className="lens-tracks-status">렌즈가 보는 중입니다…</p>}
+      {/* 관계를 아직 찾는 중이면 그렇다고 말한다. 이 사이에는 같은
+          현상을 두 렌즈가 짚었어도 마커가 따로 찍혀 있어, 감독이
+          "다른 문제"로 읽고 각각 열어 보게 된다. 곧 합쳐질 수 있다는
+          것을 알려야 그 오해를 막는다. */}
+      {!loading && relating && (
+        <p className="lens-tracks-status" role="status">
+          관점 사이의 관계를 확인하는 중입니다 — 같은 문제로 묶일 수 있습니다.
+        </p>
+      )}
       {!loading && issues.length === 0 && (
         <p className="lens-tracks-status">아직 볼 것이 없습니다. 분석하면 여기에 표시됩니다.</p>
       )}

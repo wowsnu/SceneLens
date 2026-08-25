@@ -5383,30 +5383,59 @@ export default function DecisionBoard({ boardView = 'split' }) {
 
           {reviewMode === 'multi' && (
             <section className="multi-review-preview" aria-label="다관점 패널 검토">
-              <header className="multi-review-preview-heading">
-                <div>
-                  {/* 범위를 골라도 제목이 한 컷을 가리키면 무엇을 분석한
-                      건지 어긋난다. */}
-                  <h2>{multiScopeLabel} 연출 검토</h2>
+              <section className="lens-review-sequence" aria-label="스토리보드와 렌즈 트랙">
+                <div className="lens-review-sequence-controls" aria-label="스토리보드 이동">
+                  <span>스토리보드</span>
+                  <div>
+                    <button type="button" onClick={() => moveReviewSequence(-1)} aria-label="이전 컷 보기">←</button>
+                    <button type="button" onClick={() => moveReviewSequence(1)} aria-label="다음 컷 보기">→</button>
+                  </div>
                 </div>
-                <button
-                  type="button"
-                  className="multi-review-run-button"
-                  onClick={runMultiReview}
-                  disabled={multiReviewLoading || multiReviewIntentDirty}
-                  title={multiReviewIntentDirty ? '변경한 의도를 먼저 적용해주세요.' : undefined}
-                >
-                  {multiReviewIntentDirty
-                    ? '의도 먼저 적용'
-                    : multiReviewLoading
-                      ? '분석 중…'
-                      : (multiReviewRun.status === 'stale' || multiReviewOutdated)
-                        ? '변경 반영'
-                        : multiReviewHasResult
-                          ? '다시 분석'
-                          : '분석하기'}
-                </button>
-              </header>
+                <div className="lens-review-shared-scroll" ref={reviewSequenceScrollRef}>
+                  <StoryboardStripLane
+                    embedded
+                    shots={shots}
+                    selectedShotIndex={
+                      browsingShotIndex ?? selectedTrackShotIndex ?? scopedShotIndex
+                    }
+                    highlightRange={reviewStripHighlight}
+                    onSelectShot={(index) => {
+                      if (scopeSelection) {
+                        selectScopeShot(index)
+                        return
+                      }
+                      // 스트립을 훑는 것은 검토 대상을 바꾸는 일이 아니다.
+                      // 대상은 범위가 잠가 두고, 여기서는 보는 자리만 옮긴다.
+                      setBrowsingShotIndex(index)
+                      setFlowActiveShot(index)
+                      setSelectedIssueId(null)
+                    }}
+                    onSelectSeam={(index) => {
+                      setFlowActiveShot(index)
+                      setLensFocusedShotIndex(index)
+                    }}
+                  />
+                  <LensTracks
+                    embedded
+                    shots={shots}
+                    issues={trackIssuesWithAddedLenses}
+                    activeLenses={activeTrackLenses}
+                    selectedIssueId={selectedIssueId}
+                    loading={multiReviewLoading}
+                    relating={Boolean(multiReviewRun.relating)}
+                    scrollRef={reviewSequenceScrollRef}
+                    onSelectIssue={selectTrackIssue}
+                    onToggleLens={(lensId) => setActiveTrackLenses((current) => {
+                      const next = new Set(current)
+                      if (next.has(lensId)) next.delete(lensId)
+                      else next.add(lensId)
+                      return next
+                    })}
+                  />
+                </div>
+              </section>
+
+              {scopePanel}
 
               <details className="multi-review-intent">
                 <summary>
@@ -5469,10 +5498,13 @@ export default function DecisionBoard({ boardView = 'split' }) {
               {trackIssues.length > 0 && (
                 <IssueInspector
                   issue={selectedTrackIssue}
+                  issues={trackIssuesWithAddedLenses}
                   diagnosesById={diagnosesById}
                   lensChecks={selectedIssueLensChecks}
                   shots={shots}
+                  relating={Boolean(multiReviewRun.relating)}
                   onCheckLens={checkSelectedIssueLens}
+                  onSelectIssue={selectTrackIssue}
                   onRevise={reviseTrackIssue}
                 />
               )}

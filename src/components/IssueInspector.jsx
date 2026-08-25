@@ -23,10 +23,13 @@ const anchorKindLabel = (kind) => ({
  */
 export default function IssueInspector({
   issue,
+  issues = [],
   diagnosesById,
   lensChecks = {},
   shots = [],
+  relating = false,
   onCheckLens,
+  onSelectIssue,
   onRevise,
 }) {
   // 지금 그림 위에 표시를 얹고 있는 렌즈. 그림은 그대로 있고 이것만
@@ -60,6 +63,16 @@ export default function IssueInspector({
   const origin = perspectives.find(({ lens }) => lens.id === issue.origin_lens)?.diagnosis
     || perspectives.find(({ diagnosis }) => diagnosis)?.diagnosis
   const criterion = origin?.diagnosis?.criterion || ''
+
+  // 같은 자리에 걸린 다른 Issue. 두 렌즈가 같은 컷을 짚었는데 관계가
+  // 잡히지 않으면 여기 남는다 — 같은 이유일 수도, 다른 이유일 수도
+  // 있고 그 판단은 감독이 한다 (`LENS_TRACKS_UI.md` 3장).
+  //
+  // 시스템이 임의로 합치지 않는다. 다른 concern을 한 카드에 섞으면
+  // 무엇을 판정하는지 알 수 없게 된다.
+  const siblings = issues.filter((entry) => (
+    entry.id !== issue.id && entry.anchor === issue.anchor
+  ))
 
   // 지금 그림에 표시를 얹을 진단. 고른 렌즈의 것이 없으면 처음 짚은
   // 렌즈의 것으로 둔다 — 무대가 비어 보이지 않게.
@@ -179,6 +192,31 @@ export default function IssueInspector({
           )
         })}
       </div>
+
+      {/* 관계를 아직 찾는 중. 잠시 뒤 이 Issue가 옆 것과 합쳐질 수 있다. */}
+      {relating && siblings.length > 0 && (
+        <p className="issue-inspector-relating" role="status">
+          이 자리의 다른 관점과 같은 문제인지 확인하는 중입니다.
+        </p>
+      )}
+
+      {/* 같은 자리인데 따로 잡힌 것들. 시스템이 관계를 못 찾았을 수도
+          있으므로 감독이 직접 견줘 볼 수 있게 둔다. */}
+      {!relating && siblings.length > 0 && (
+        <div className="issue-inspector-siblings">
+          <span>같은 자리에 걸린 다른 검토</span>
+          <ul>
+            {siblings.map((entry) => (
+              <li key={entry.id}>
+                <button type="button" onClick={() => onSelectIssue?.(entry.id)}>
+                  <strong>{entry.title}</strong>
+                  <em>{entry.lenses?.map((id) => LENSES.find((l) => l.id === id)?.label || id).join(' · ')}</em>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       <footer>
         <button type="button" className="primary" onClick={() => onRevise?.(origin)} disabled={!origin}>

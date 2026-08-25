@@ -191,3 +191,65 @@
   color: color-mix(in srgb, var(--lens), white 10%);
   font-weight: 600;
 }
+
+/* --- 같은 자리의 다른 검토 ------------------------------------------- */
+
+/* 두 렌즈가 같은 컷을 짚었는데 관계가 잡히지 않은 경우. 같은 이유일
+   수도 다른 이유일 수도 있고, 그 판단은 감독이 한다 — 시스템이 임의로
+   합치면 다른 concern이 한 카드에 섞인다. 견줘 볼 길만 열어 둔다. */
+.issue-inspector-relating,
+.issue-inspector-siblings {
+  padding: 8px 12px;
+  border-top: 1px solid var(--border);
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.issue-inspector-relating { margin: 0; }
+
+.issue-inspector-siblings > span {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 9px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.issue-inspector-siblings ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.issue-inspector-siblings button {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 4px 9px;
+  border: 1px solid var(--border-light);
+  border-radius: 999px;
+  background: transparent;
+  font: inherit;
+  font-size: 11px;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.issue-inspector-siblings button:hover {
+  border-color: var(--text-muted);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.issue-inspector-siblings button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.issue-inspector-siblings em {
+  font-style: normal;
+  font-size: 9px;
+  color: var(--text-muted);
+}
