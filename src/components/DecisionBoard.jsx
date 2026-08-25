@@ -3693,11 +3693,28 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
   // 그림이 도는 중인지, 나온 초안은 무엇인지.
   //
   // `cutForDiagnosis`를 쓰므로 그 뒤에 와야 한다.
-  const revisionTargetShot = revisionWorkspace
-    ? shots.find((shot) => (
-        shot.cutPlanItemId === cutForDiagnosis(revisionWorkspace.diagnosis)?.id
-      )) || null
-    : null
+  //
+  // 두 컷을 가리키는 진단(이음새)에서는 `cutForDiagnosis`가 맞지 않는다 —
+  // 그것은 단일 컷 진단용이라 targets의 첫 패널을 집는데, 이음새 진단은
+  // 대개 뒤 컷을 고치라고 한다("S3를 연속 컷으로 쓸 거라면…"). 첫 패널을
+  // 그대로 쓰면 S3를 고치라는 진단에 S2 그림이 뜬다(실제로 그랬다).
+  //
+  // 수정 지시가 어느 컷을 부르는지 문장에서 읽어 그 컷을 고른다. 못
+  // 읽으면 기존 방식으로 돌아간다.
+  const revisionTargetShot = (() => {
+    if (!revisionWorkspace) return null
+    const { diagnosis } = revisionWorkspace
+    const named = (diagnosis?.suggested_action || '').match(/S(\d+)/)
+    const targets = (diagnosis?.targets || [])
+      .map((target) => target.split('.', 1)[0])
+      .filter((target) => /^S\d+$/.test(target))
+    // 지시가 부르는 컷이 이 진단의 대상 안에 있을 때만 믿는다.
+    if (named && targets.includes(`S${named[1]}`)) {
+      return shots[Number(named[1]) - 1] || null
+    }
+    const cut = cutForDiagnosis(diagnosis)
+    return shots.find((shot) => shot.cutPlanItemId === cut?.id) || null
+  })()
   const revisionIsPending = Boolean(
     revisionTargetShot && panelRevisionPending?.shotId === revisionTargetShot.id,
   )
@@ -5978,10 +5995,16 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
                   onBack={() => setRevisionWorkspace(null)}
                   onKeep={() => setRevisionWorkspace(null)}
                   onChoose={(alternative) => {
-                    if (revisionWorkspace.diagnosis.lens === 'editing') {
-                      routeDiagnosisTool(editingActionFor(alternative).id, revisionWorkspace.diagnosis, alternative)
-                    } else {
+                    // 어느 렌즈가 짚었는지가 아니라 **이 선택지가 무엇을
+                    // 하는지**로 정한다 (LENS_TRACKS_UI.md 5장 — 여기서는
+                    // intervention target이 중심이다). 촬영이 이음새를
+                    // 짚고 컷을 넣자고 할 수도 있고, 편집이 프레이밍만
+                    // 조정하자고 할 수도 있다.
+                    const action = editingActionFor(alternative).id
+                    if (action === 'seam') {
                       applyAlternative(revisionWorkspace.diagnosis, alternative)
+                    } else {
+                      routeDiagnosisTool(action, revisionWorkspace.diagnosis, alternative)
                     }
                   }}
                   onPromptChange={(text) => openPromptEditor(revisionWorkspace.diagnosis, text)}
