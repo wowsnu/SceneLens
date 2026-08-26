@@ -16,6 +16,7 @@
   display: flex;
   align-items: center;
   gap: 4px;
+  min-height: 148px;
 }
 
 .evidence-frame-slot {
@@ -30,6 +31,17 @@
   flex: none;
   color: var(--text-muted);
   font-size: 14px;
+  text-align: center;
+}
+
+.evidence-arrow small {
+  display: block;
+  margin-bottom: 1px;
+  color: color-mix(in srgb, var(--lens), white 10%);
+  font-size: 8px;
+  font-weight: 750;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
 }
 
 .evidence-frame {
@@ -106,6 +118,89 @@
     color-mix(in srgb, var(--border-light), transparent 55%) 6px,
     color-mix(in srgb, var(--border-light), transparent 55%) 7px
   );
+}
+
+/* 한 컷 문제는 앞·뒤의 작은 문맥 안에 놓는다. 사진을 단지 키우는 대신,
+   "이 컷에서 무엇이 걸렸는가"를 앞뒤 흐름 속에서 보게 한다. */
+.evidence-stage-shot .evidence-frame-slot {
+  flex: 0 1 25%;
+}
+
+.evidence-stage-shot .evidence-frame-slot.evidence-frame-focus {
+  flex: 1 1 50%;
+}
+
+.evidence-stage-shot .evidence-frame-context {
+  opacity: 0.58;
+}
+
+.evidence-stage-shot .evidence-frame-context .evidence-frame-image img {
+  max-height: 132px;
+}
+
+.evidence-stage-shot .evidence-frame-focus .evidence-frame-image img {
+  max-height: 240px;
+}
+
+/* 이음새는 두 컷이 동등한 대상이다. 가운데 표식이 두 사진의 사이를
+   가리키므로, 단일 사진을 크게 놓아 생기던 여백이 남지 않는다. */
+.evidence-stage-seam .evidence-frame-slot {
+  flex: 1 1 0;
+}
+
+.evidence-stage-seam .evidence-arrow {
+  color: color-mix(in srgb, var(--lens), white 10%);
+}
+
+/* 이음새는 두 컷 사이의 **자리**다. 화살표 하나만 두면 컷 두 장이
+   둥둥 떠 있고 문제가 어디 있는지 보이지 않는다 — 그 자리를 실제
+   대상으로 그린다 (LENS_TRACKS_UI.md 3장, DG2 P1). */
+.evidence-seam-arrow {
+  align-self: stretch;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  min-width: 54px;
+  padding: 10px 6px;
+  border: 1px dashed color-mix(in srgb, var(--lens), transparent 55%);
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--lens), transparent 92%);
+}
+
+.evidence-seam-arrow small {
+  margin: 0;
+  color: color-mix(in srgb, var(--lens), white 18%);
+  font-size: 9px;
+}
+
+/* 양옆 컷과 이음새를 잇는 선. 셋이 한 덩어리로 읽혀야 한다. */
+.evidence-seam-arrow::before,
+.evidence-seam-arrow::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  width: 6px;
+  height: 1px;
+  background: color-mix(in srgb, var(--lens), transparent 55%);
+}
+
+.evidence-seam-arrow::before { right: 100%; }
+.evidence-seam-arrow::after { left: 100%; }
+
+.evidence-stage-seam .evidence-frame-slot { position: relative; }
+.evidence-seam-arrow { position: relative; }
+
+@media (max-width: 620px) {
+  .evidence-stage-shot .evidence-frame-context .evidence-frame-image img {
+    max-height: 94px;
+  }
+
+  .evidence-stage-shot .evidence-frame-focus .evidence-frame-image img,
+  .evidence-stage-seam .evidence-frame-image img {
+    max-height: 174px;
+  }
 }
 
 /* --- 표시 ------------------------------------------------------------ */

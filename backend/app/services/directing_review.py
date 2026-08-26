@@ -166,12 +166,16 @@ theory_basis는 `책 이름 — 쉬운 설명 한 문장` 형식으로 씁니다
   놓인 마커들을 이 이름으로 구별합니다.
   · **문장이 아니라 이름입니다.** 화면에 걸린 **현상**을 가리키세요.
   · **4~9자.** 길면 트랙에서 잘려 읽히지 않습니다.
+  · **이름은 화면에서 본 것을 가리켜야 합니다.** 이 컷의 evidence에 적은 것을
+    그대로 짧게 부르세요. evidence에 없는 말이 이름에 나오면 안 됩니다.
   · **규칙 이름을 그대로 쓰지 마세요.** 같은 규칙으로 여러 컷을 짚으면 이름이
-    전부 같아져 어느 마커가 무엇인지 구별할 수 없습니다. 규칙이 아니라
-    **이 컷에서 실제로 본 것**의 이름이어야 합니다.
-    ✓ `창밖 정보 없음`, `그래프 안 읽힘`, `두 인물 겹침`, `노트가 작음`
-    ✗ `정보 선택`(규칙 이름), `필요한 요소`(규칙 이름),
-      `프레이밍이 정보를 담지 못함`(문장)
+    전부 같아져 어느 마커가 무엇인지 구별할 수 없습니다.
+    ✗ `정보 선택`, `필요한 요소`, `컷의 역할` — 전부 규칙 이름입니다.
+  · **추상적인 개념 이름도 안 됩니다.** 감독이 그 이름만 보고 화면의 어느
+    부분인지 떠올릴 수 없으면 이름이 아닙니다.
+    ✗ `문제 제시 지연`, `정보 밀도 부족`, `긴장 완화` — 화면에서 무엇을
+      가리키는지 알 수 없습니다.
+  · **문장도 아닙니다.** ✗ `프레이밍이 정보를 담지 못함`
   · 같은 렌즈가 여러 진단을 낼 때 **서로 다른 이름**이어야 합니다.
 - 각 diagnosis의 evidence는 화면에서 확인되는 근거 1~2개, suggested_action은 한 문장입니다.
 - 각 diagnosis의 **visual_evidence는 그 근거를 그림 위에서 가리키는 것**입니다.
@@ -1433,6 +1437,12 @@ def _panel_ids(diagnosis) -> list[str]:
     return seen
 
 
+def _panel_order(panel: str) -> tuple:
+    """컷 번호 순으로 세운다. 진단이 도착한 순서를 따르면 같은 두 컷인데
+    `S3→S2`가 되기도 한다."""
+    return (0, int(panel[1:])) if panel[1:].isdigit() else (1, 0)
+
+
 def _anchor_for(diagnoses: list) -> tuple[str, str]:
     """Issue가 걸리는 자리와 그 종류를 진단들에서 계산한다.
 
@@ -1457,25 +1467,27 @@ def _anchor_for(diagnoses: list) -> tuple[str, str]:
     if "scene_structure" in levels:
         # 범위 전체에 걸린 것. 양 끝으로 범위를 적는다.
         if len(panels) >= 2:
-            return f"{panels[0]}–{panels[-1]}", "scene"
+            ordered = sorted(panels, key=_panel_order)
+            return f"{ordered[0]}–{ordered[-1]}", "scene"
         return (panels[0] if panels else ""), "scene"
 
-    if "shot_relation" in levels and len(panels) >= 2:
-        # 이음새. 인접한 두 컷 사이를 가리킨다.
-        return f"{panels[0]}→{panels[1]}", "seam"
+    if len(panels) >= 2:
+        # 두 컷을 함께 가리키면 문제는 그 **사이**에 있다.
+        #
+        # `level`만 믿지 않는다. 모델이 "두 컷이 나란히 있을 때 반복으로
+        # 읽힌다"는 컷 사이 문제를 내면서 level을 `attribute`로 답하는
+        # 일이 있다(실제로 그랬다). 그러면 마커가 앞 컷 위에 찍혀,
+        # 고쳐야 할 자리가 컷 안인 것처럼 보인다.
+        #
+        # 한 컷의 문제라면 애초에 컷을 하나만 가리켰을 것이다.
+        ordered = sorted(panels, key=_panel_order)
+        return f"{ordered[0]}→{ordered[1]}", "seam"
 
     if len(panels) == 1:
         return panels[0], "shot"
 
-    # 여러 컷의 같은 속성을 함께 짚은 경우. 이음새가 아니라 컷들이므로
-    # shot으로 두되 자리는 **순서대로** 적는다.
-    #
-    # 정렬하지 않으면 같은 세 컷인데 진단이 도착한 순서에 따라
-    # `S4·S3·S2`가 되기도 하고 `S2·S3·S4`가 되기도 한다 — 실제로 그랬다.
-    def _order(panel: str) -> tuple:
-        return (0, int(panel[1:])) if panel[1:].isdigit() else (1, 0)
-
-    return "·".join(sorted(panels, key=_order)), "shot"
+    # 여기까지 오면 가리키는 컷이 없다.
+    return "", ""
 
 
 def _origin_lens_for(relation: dict, diagnoses_by_lens: dict) -> Optional[str]:

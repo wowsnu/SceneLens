@@ -114,7 +114,9 @@ export default function EvidenceStage({
             <div key={panelId} className={`evidence-frame-slot evidence-frame-${role}`}>
               {index > 0 && (
                 <span className={`evidence-arrow ${isSeam ? 'evidence-seam-arrow' : ''}`} aria-hidden="true">
-                  {isSeam && <small>이음새</small>}
+                  {/* 이음새면 어느 사이인지 적는다. `이음새`만 있으면
+                      어느 자리를 고치는 것인지 카드 제목을 다시 봐야 한다. */}
+                  {isSeam && <small>{issue?.anchor || '이음새'}</small>}
                   {/* 이어지는 두 컷일 때만 화살표다. `·`로 묶인 앵커는
                       나란하지 않은 별개의 컷들이라, 화살표를 그리면
                       있지도 않은 순서를 말하게 된다. */}
