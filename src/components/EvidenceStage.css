@@ -106,10 +106,13 @@
   max-height: 240px;
 }
 
+/* 그림이 없을 때만 쓰인다. 부모(.evidence-frame-image)가 inline-block이라
+   내용만큼만 차지하므로, 여기서 width:100%를 주면 서로를 참조해 폭이
+   0에 가까워진다 — 실제 크기를 정해 둔다. */
 .evidence-frame-empty {
   display: block;
-  width: 100%;
-  /* 그림이 없을 때만. 있으면 그림이 높이를 정한다. */
+  width: 240px;
+  max-width: 100%;
   aspect-ratio: 3 / 2;
   background: repeating-linear-gradient(
     45deg,

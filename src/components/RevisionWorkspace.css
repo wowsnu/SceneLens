@@ -47,15 +47,18 @@
   border-radius: 5px;
 }
 /* 아직 그림이 없는 자리. 여기는 상자가 필요하다 — 무엇이 들어올
-   자리인지 보여야 하기 때문이다. */
+   자리인지 보여야 하기 때문이다.
+   다만 **들어올 그림만 한 크기로 둔다.** width:100%로 두면 컬럼을 다
+   차지해, 정작 그림이 들어왔을 때보다 훨씬 넓은 빈 상자가 된다. */
 .revision-shot-compare i {
   display: grid;
   place-items: center;
   box-sizing: border-box;
-  width: 100%;
-  /* 그림이 들어오면 최대 180px이 된다. 빈 자리가 그보다 훨씬 낮으면
-     추천안을 고르는 순간 화면이 크게 튄다. */
-  min-height: 160px;
+  /* 그림은 최대 180px 높이에 16:9~3:2 언저리다. 그 정도로 잡는다. */
+  width: 270px;
+  max-width: 100%;
+  height: 160px;
+  margin: 0 auto;
   padding: 12px;
   border: 1px dashed var(--border-light);
   border-radius: 5px;
