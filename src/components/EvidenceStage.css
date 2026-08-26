@@ -216,21 +216,39 @@
      아니다 — 안이 안 보이면 확인할 수가 없다. */
   background: color-mix(in srgb, var(--lens), transparent 92%);
   box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.35);
+  /* 그림 위에 얹혀 있지만 클릭을 가로채지는 않는다. 라벨을 띄우는
+     hover는 부모(.evidence-frame-image)가 받는다. */
   pointer-events: none;
 }
 
+/* 라벨은 상자 위 모서리에 걸친다.
+   전에는 불투명한 배경에 큰 글씨라, 상자가 겹치면 라벨이 그림을 덮어
+   정작 가리키는 것이 안 보였다(`paper area`가 종이를 가렸다).
+   작고 반투명하게 두어 그림이 비쳐 보이게 한다 — 무엇을 가리키는지는
+   읽히되 가리키는 대상은 가리지 않는다. */
 .evidence-box-label {
   position: absolute;
-  bottom: 100%;
-  left: -2px;
-  margin-bottom: 2px;
-  padding: 1px 5px;
+  bottom: calc(100% + 1px);
+  left: -1px;
+  max-width: 120px;
+  padding: 0 4px;
   border-radius: 3px;
-  background: var(--lens);
+  background: color-mix(in srgb, var(--lens), transparent 22%);
   color: #06131f;
-  font-size: 9px;
-  font-weight: 600;
+  font-size: 8.5px;
+  font-weight: 700;
+  line-height: 1.5;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 프레임 위쪽에 붙은 상자는 라벨이 잘린다. 그때는 상자 안 위쪽에
+   둔다 — 잘려 안 보이는 것보다 낫다. */
+.evidence-box.at-top .evidence-box-label {
+  bottom: auto;
+  top: 1px;
+  left: 1px;
 }
 
 /* 방향 화살표. 상자 가장자리에서 향한 쪽으로 뻗는다.

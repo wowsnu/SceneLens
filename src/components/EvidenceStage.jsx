@@ -1,4 +1,4 @@
-import { overlaysFor } from './evidenceSummary'
+import { overlaysFor, panelsOf, hasOverlay } from './evidenceSummary'
 import './EvidenceStage.css'
 
 /**
@@ -10,15 +10,6 @@ import './EvidenceStage.css'
  *
  * 표시가 없어도 이 자리는 성립한다 — 그림 두 장과 근거 한 줄은 남는다.
  */
-
-// 앵커에서 볼 패널을 뽑는다. 백엔드 `_anchor_for`가 만든 형식이다.
-const panelsOf = (anchor) => (
-  (anchor || '')
-    .split(/[→–·]/)
-    .map((part) => part.trim())
-    .filter(Boolean)
-    .slice(0, 2)
-)
 
 // 두 컷이 이어지는 관계인가. 이음새(`→`)와 범위(`–`)만 그렇다.
 // `·`는 나란하지 않은 별개의 컷들을 묶은 것이다.
@@ -68,7 +59,10 @@ function Overlay({ region }) {
     height: `${region.h * 100}%`,
   }
   return (
-    <span className="evidence-box" style={style}>
+    <span
+      className={`evidence-box ${region.y < 0.08 ? 'at-top' : ''}`}
+      style={style}
+    >
       <span className="evidence-box-label">{region.label}</span>
       {region.facing && (
         <span className={`evidence-facing facing-${region.facing}`} aria-hidden="true" />
@@ -99,9 +93,7 @@ export default function EvidenceStage({
   // 이 진단이 그림에서 가리키는 자리가 하나라도 있는가. 없으면 그림만
   // 나오는데, 그것이 "표시가 없는 근거"인지 "덜 받은 데이터"인지
   // 감독은 구분할 수 없다 — 조용히 비워 두지 않는다.
-  const hasAnyRegion = anchorPanels.some(
-    (panelId) => overlaysFor(diagnosis, panelId).length > 0
-  )
+  const hasAnyRegion = hasOverlay(diagnosis, issue?.anchor)
 
   return (
     <div className={`evidence-stage evidence-stage-${issue?.anchor_kind || 'shot'} lens-${lensId || 'none'}`}>
