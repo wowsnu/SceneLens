@@ -472,6 +472,26 @@ class DirectingReviewPanel(BaseModel):
     scene_id: Optional[str] = None
 
 
+class DirectingIssueFocus(BaseModel):
+    """다른 렌즈가 이미 선택된 Issue 하나만 다시 볼 때의 입력.
+
+    전체 범위를 새로 훑게 하면 새 concern을 들고 돌아와, "이 Issue에 이
+    렌즈를 더한다"는 동작이 무너진다. 위치와 기준을 명시해 독립적으로
+    판단하되, 다른 문제를 새로 만들지 않게 한다.
+    """
+
+    id: str
+    anchor: str
+    anchor_kind: Literal["shot", "seam", "scene", ""] = ""
+    title: str
+    criterion: str = ""
+    panel_ids: List[str] = Field(min_length=1)
+    # 먼저 발견한 렌즈의 실제 판단. 다른 렌즈가 제목만 보고 새 진단을
+    # 병렬로 만들지 않고, 이 판단을 자기 언어로 이어 읽게 한다.
+    origin_lens: DirectingLens = "mise"
+    origin_reading: str = ""
+
+
 class DirectingSettledRelation(BaseModel):
     """감독이 이미 판정한 관계.
 
@@ -508,6 +528,8 @@ class DirectingReviewRequest(BaseModel):
     # mode="relate"일 때만 쓴다. 이미 받은 렌즈 결과를 그대로 돌려보낸다 —
     # 이미지를 다시 올리지 않으므로 관계 찾기는 훨씬 빠르다.
     lens_results: Optional[Dict[DirectingLens, "DirectingLensResult"]] = None
+    # Inspector에서 아직 보지 않은 렌즈를 더할 때만 쓴다.
+    focus: Optional[DirectingIssueFocus] = None
 
 
 class DirectingAlternativePatch(BaseModel):
@@ -615,6 +637,11 @@ class DirectingDiagnosis(BaseModel):
     rule_id: str
     level: DirectingDiagnosticLevel
     targets: List[str] = Field(min_length=1)
+    # 이 진단 하나를 부르는 이름. 트랙 위의 마커는 이것으로 구별된다 —
+    # 규칙 이름을 쓰면 같은 규칙에 걸린 진단이 전부 같은 이름이 되어
+    # 마커를 아무리 늘어놓아도 어느 것이 무엇인지 알 수 없다.
+    # 비어 있으면 서버가 규칙 이름으로 채운다(`_title_from_rule`).
+    title: str = ""
     diagnosis: str
     # 이 판단이 무엇을 보고 내려졌는가. 모델이 아니라 서버가 rule_id로
     # 채운다 — 기준이 매번 달라지면 같은 문제에 다른 잣대가 적용된다.
@@ -754,6 +781,22 @@ class DirectingCommonFinding(BaseModel):
         return self
 
 
+class DirectingComparisonDifference(BaseModel):
+    lens: DirectingLens
+    text: str = Field(min_length=1, max_length=180)
+
+
+class DirectingLensComparison(BaseModel):
+    """같은 현상을 렌즈마다 어떻게 확인하는지의 짧은 비교.
+
+    관계와 달리 Issue를 합치거나 수정 순서를 정하지 않는다. 서로 다른
+    intervention target이어도, 감독이 같은 현상을 비교해 볼 수 있다.
+    """
+    diagnosis_ids: List[str] = Field(min_length=2)
+    common: str = Field(min_length=1, max_length=180)
+    differences: List[DirectingComparisonDifference] = Field(min_length=2, max_length=3)
+
+
 class DirectingIssue(BaseModel):
     """한 자리에서 하나의 현상. 트랙의 마커 하나이자 Inspector 카드 하나.
 
@@ -819,6 +862,10 @@ class DirectingChoice(BaseModel):
 
 
 class DirectingQuestion(BaseModel):
+    """감독이 확인한 뒤 다시 분석할 검토 방향.
+
+    API 키는 기존 클라이언트 호환성을 위해 ``questions``로 유지한다.
+    """
     id: str
     prompt: str
     lenses: List[DirectingLens] = Field(default_factory=list)
@@ -839,6 +886,7 @@ class DirectingReviewResponse(BaseModel):
     # 으로 읽는다 — 실제로는 검증에 걸려 결과가 없는 것이다.
     failed_lenses: List[DirectingLens] = Field(default_factory=list)
     common_findings: List[DirectingCommonFinding] = Field(default_factory=list)
+    comparisons: List[DirectingLensComparison] = Field(default_factory=list)
     # 화면이 쓰는 단위. common_findings를 진단 기준으로 묶은 것이다 —
     # 관계는 진단 쌍으로 나와서 같은 현상이 여러 번 보고되기 때문이다
     # (`DirectingIssue` 참고). 관계 자체는 위에 그대로 남는다.

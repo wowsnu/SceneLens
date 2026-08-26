@@ -16,6 +16,7 @@ from app.services.shot_principles import ANGLES, MOVES, SHOT_SIZES
 
 from app.models.schemas import (
     DirectingCommonFinding,
+    DirectingLensComparison,
     DirectingIssue,
     DirectingLens,
     DirectingLensResult,
@@ -56,15 +57,39 @@ COMMON_LENS_PROMPT = """목표는 멋진 대안을 많이 내는 것이 아니�
 의도를 어떻게 지지하거나 방해하는지 화면 근거로 진단하는 것입니다. 보이지 않는 사실을
 만들지 마세요.
 
-사용자에게 바로 보이는 답입니다. 영화를 만드는 사람에게 말하되, 논문·평론 같은 어려운
-말투는 쓰지 마세요. 먼저 화면에서 보이는 사실을 짚고, 그 때문에 무엇이 잘 읽히거나
-헷갈리는지를 평이한 한 문장으로 말하세요. `서사적 기능`, `시각적 위계`, `공간적 관계`,
-`리듬의 변주`, `정보의 위계`처럼 추상적인 말을 답의 중심에 두지 마세요. 꼭 필요한 촬영
+사용자에게 바로 보이는 답입니다. **옆에서 같이 그림을 보며 말해 주는 사람처럼
+쓰세요.** 강평하거나 채점하는 말투가 아닙니다. 짧은 문장으로, 본 것을 그대로 말합니다.
+
+이렇게 씁니다.
+✓ `그래프 선이 연필 한 겹이라 화면에서 거의 안 보여요.`
+✓ `S2에서 얼굴을 이미 봤는데, S3도 얼굴이 화면의 절반이에요.`
+✓ `노트북을 조금만 더 카메라 쪽으로 돌리면 화면이 보일 것 같아요.`
+
+이렇게 쓰지 마세요.
+✗ `S3는 문제를 보여줘야 하는 자리인데 컷의 역할이 흐려집니다.`  ← 무슨 말인지 알 수 없다
+✗ `시각적 위계가 충분히 확보되지 않았습니다.`                   ← 평론 말투
+✗ `서사적 기능을 고려할 때 재검토가 필요합니다.`                ← 아무것도 말하지 않았다
+
+`서사적 기능`, `시각적 위계`, `공간적 관계`, `리듬의 변주`, `정보의 위계`, `컷의 역할`,
+`자리`, `읽힘`, `강조`, `흐려집니다`, `확보`, `재검토`처럼 뜻이 넓은 말을 답의 중심에
+두지 마세요. 꼭 필요한 촬영
 용어도 짧게 풀어 쓰세요. 예: `프레이밍` 대신 `화면에 담긴 범위`, `블로킹` 대신 `인물의
 자리와 움직임`, `시점` 대신 `카메라가 보는 자리`.
 
+**조건문으로 빠져나가지 마세요.** `~가 작고 약하면 ~가 흐려집니다`처럼 쓰면 그것이
+실제로 그런지 판정하지 않은 것입니다. 화면을 보고 단정하세요 — `그래프 선이 연필 한
+겹이라 화면에서 거의 안 보입니다`처럼 본 것을 그대로 씁니다. 확인이 안 되면 `확인되지
+않는다`고 쓰고, 애매한 조건문으로 만들지 마세요.
+
+**감독이 무엇을 하면 되는지가 없으면 답이 아닙니다.** 문제만 말하고 끝내지 말고,
+suggested_action에는 손으로 할 수 있는 일을 쓰세요 — `그래프를 화면의 3분의 1까지
+키운다`처럼 구체적으로. `강조한다`, `역할을 분명히 한다`처럼 다시 해석해야 하는 말은
+행동이 아닙니다.
+
 summary, level_assessments의 summary, diagnosis, evidence, suggested_action, alternatives의
-effect와 questions는 모두 짧고 자연스러운 한국어로 씁니다. 한 문장에는 한 가지 판단만
+effect와 questions는 모두 짧고 자연스러운 한국어로 씁니다. 말하듯이 `~예요`, `~어요`,
+`~같아요`로 끝내고, `~됩니다`, `~하십시오` 같은 딱딱한 어미나 명사로 끝내는 문장
+(`~의 부재`, `~에 대한 재검토`)은 쓰지 마세요. 한 문장에는 한 가지 판단만
 넣고, 수식어를 겹치거나 어려운 이론 용어로 문제를 포장하지 마세요. 이론은 theory_basis
 필드에서만 간단히 언급할 수 있습니다.
 
@@ -150,8 +175,11 @@ theory_basis는 `책 이름 — 쉬운 설명 한 문장` 형식으로 씁니다
   ✗ "편집자는 관객의 기대를 선도하는 안내자로 기능한다."  ← 번역투 일반론이다
 
 수정 여부는 감독이 결정합니다. 의도적으로 유지할 수 있는 차이는 결함으로 단정하지 말고,
-선택이 필요한 경우 questions에 질문으로 남기세요. 질문에도 위와 동일한 targets 규칙을
-적용하세요.
+선택이 필요한 경우 questions에 **검토 방향**으로 남기세요. API 키만 questions일 뿐,
+화면에서는 "이 방향으로 검토"로 보입니다. prompt에는 이 렌즈로 무엇을 확인하고 감독이
+어떤 결정을 알려야 하는지 자연스럽게 적으세요. 단순한 막연한 질문 대신
+`~인지 확인해 주세요. 어느 쪽을 의도했는지도 알려 주세요.`처럼 확인할 대상과 다음 판단을
+함께 적습니다. targets에도 위와 동일한 규칙을 적용하세요.
 
 감독의 의도나 사건 설명에 특정 컷, 대상, 자세, 동작, 시간 연결이 이미 명시됐다면 그것은
 확정된 결정입니다. 화면이 그 결정과 충돌할 때 `정말 그렇게 할 것인지` 또는 다른 컷에
@@ -214,20 +242,25 @@ theory_basis는 `책 이름 — 쉬운 설명 한 문장` 형식으로 씁니다
     ✓ "더 넓게 잡기" / "시점 바꾸기"     ← 둘 다 할 수 없다
     ✗ "크기를 조정" / "조명을 조정"      ← 함께 할 수 있다
   · label은 12자 이내의 짧은 말, effect는 그 길을 고르면 무엇이 달라지는지 한 문장.
-  · **patch에는 그 선택지가 바꾸는 컷 표의 값을 적습니다.** 감독이 화면을 옮기지 않고
-    그 자리에서 적용할 수 있어야 합니다. 바꾸지 않는 항목은 null입니다.
+  · **patch에는 그 선택지가 바꾸는 컷 표의 값을 적습니다.** 하나의 수정안은 하나의
+    일관된 카메라 방향입니다. 따라서 그 방향에 필요하면 shot_size, angle, move를
+    **둘 이상 함께** 바꿔도 됩니다. 감독이 화면을 옮기지 않고 그 수정안 하나를
+    그대로 적용할 수 있어야 합니다. 바꾸지 않는 항목만 null입니다.
     허용된 값은 아래 [컷 표의 값] 목록에 있는 것뿐입니다.
     ✓ "카메라 낮추기" → patch: shot_size=null, angle="Low angle", move=null
     ✓ "더 넓게 잡기" → patch: shot_size="Wide", angle=null, move=null
-    · **그 선택지가 실제로 바꾸는 항목만 적으세요.** 예를 들어 앵글만 바꾸는
-      선택지라면 shot_size와 move는 null입니다. 바꾸지 않는 항목까지 채우면
+    ✓ "낮은 와이드로 따라가기" → patch: shot_size="Wide", angle="Low angle", move="Tracking"
+    · **그 선택지가 실제로 바꾸는 항목은 모두 적으세요.** 앵글만 바꾸는
+      선택지라면 shot_size와 move는 null이지만, 한 카메라 방향에 필요한 값들을
+      인위적으로 하나만 남기지 마세요. 건드릴 생각이 없던 값까지 채우면
       감독은 무엇이 달라지는지 알 수 없고, 건드릴 생각이 없던 값이 함께 바뀝니다.
     · **kind="keep"은 언제나 전부 null입니다.** 유지하는 길은 아무것도 바꾸지 않습니다.
     · 조명·표정·소품·인물 배치처럼 위 세 값으로 표현되지 않는 것은 전부 null로 두세요.
       억지로 비슷한 값을 넣으면 감독이 누른 것과 다른 것이 바뀝니다. null이면 화면이
       프롬프트를 고치는 쪽으로 안내합니다.
-- questions는 0~1개입니다. 제공된 의도와 사건 설명에 답이 없고, 답에 따라 수정 방향이
-  달라질 때만 질문하세요. 진단이나 suggested_action을 질문형으로 반복하지 마세요.
+- questions는 0~1개입니다. 제공된 의도와 사건 설명에 답이 없고, 감독의 확인에 따라
+  수정 방향이 달라질 때만 검토 방향을 만드세요. 진단이나 suggested_action을 질문형으로
+  반복하지 마세요.
 - 현재 구성이 의도를 충분히 지지하면 억지로 `change`를 만들지 말고 해당 층위를 keep으로
   남기세요. 단, 결과 전체에서 "현재 유지"만 반복하지 말고 네 층위의 판단 근거를 각각
   짧게 적으세요.
@@ -917,7 +950,14 @@ def _validate_referenced_panels(
     result: DirectingLensResult,
     questions: list[DirectingQuestion],
 ) -> None:
-    """Do not let an analysis discuss a panel while hiding it from its targets."""
+    """Keep regular analyses explicit about every panel they diagnose.
+
+    A focused cross-lens check is different: its targets name the *existing
+    Issue* being checked, not every neighbouring panel used as visual context.
+    For example, an Editing check of an S3 camera Issue may naturally compare
+    S2 to S3, while it must still target S3 only so it cannot create a new S2
+    Issue. Requiring S2 in targets here conflicts with `_validate_issue_focus`.
+    """
     panel_ids = {panel.id for panel in request.panels}
     items = [
         *(
@@ -950,6 +990,10 @@ def _validate_referenced_panels(
             )
         }
         missing_targets = referenced_panel_ids - target_panel_ids
+        # The focused Issue already constrains targets to its anchor panels.
+        # Other selected panels can be named only as context for that reading.
+        if request.focus:
+            missing_targets -= panel_ids - set(request.focus.panel_ids)
         if missing_targets:
             raise ValueError(
                 "every panel discussed in a diagnosis or question must appear in targets: "
@@ -1070,10 +1114,26 @@ async def analyze_lens(
             f"이름: {focus.title}\n"
             f"판단 기준: {focus.criterion or '입력되지 않음'}\n"
             f"확인할 패널: {', '.join(focus.panel_ids)}\n"
-            "이 요청은 새 문제를 찾는 검토가 아닙니다. 위 위치와 기준만 이 렌즈의 "
-            "화면 근거로 독립적으로 확인하세요. 문제가 보이면 diagnoses에는 정확히 하나만 "
-            "넣고 targets는 확인할 패널 안에서만 쓰세요. 문제가 보이지 않으면 diagnoses를 "
-            "빈 배열로 두세요. 다른 위치의 문제를 추가하지 마세요."
+            f"처음 발견한 렌즈: {focus.origin_lens}\n"
+            f"처음 발견한 판단: {focus.origin_reading or focus.title}\n"
+            "이 요청은 새 문제를 찾는 검토가 아닙니다. 위의 `처음 발견한 판단` 하나를 "
+            "논점으로 삼아, 그것이 당신의 렌즈에서 강화되는지·약해지는지·다른 원인을 "
+            "가리키는지 답하세요. 독립적인 화면 요약이나 새 문제를 앞세우지 마세요. "
+            "result.summary는 처음 발견한 판단과 당신의 관찰이 이어지는 짧은 답으로 쓰세요. "
+            "원래 판단이 이 렌즈에서도 성립하거나 더 강해 보인다는 사실만으로 diagnoses를 "
+            "만들지 마세요. 이 렌즈가 직접 고쳐야 할 별도의 원인과 개입이 있을 때에만 "
+            "diagnoses에 넣고, 그렇지 않으면 diagnoses는 비워 둔 채 summary로만 반응하세요. "
+            "동의하지 않거나 별도 수정이 필요 없더라도 '문제를 찾지 못했다'고 끝내지 말고, "
+            "**이 렌즈에서 새로 보이는 것 하나**를 말하세요. 원래 판단을 다른 말로 바꿔 "
+            "되풀이하는 것은 답이 아닙니다 — 감독은 그 판단을 이미 읽었습니다. "
+            "`처음 판단은 이 렌즈에서도 유지됩니다` 같은 문장으로 시작하지 말고, "
+            "이 렌즈에서 본 화면 사실을 먼저 말하세요. "
+            "예: `S2에서 이미 얼굴을 봤는데 S3도 얼굴이 화면 절반이라, 두 컷이 비슷해 "
+            "보여요.` — 이렇게 본 것을 먼저 말하고, 필요하면 그다음에 판단을 붙입니다. "
+            "덧붙일 것이 정말 없으면 짧게 그렇다고만 쓰세요. 한 문단을 채우려고 "
+            "일반론을 만들지 마세요. 수정이 필요할 때만 "
+            "diagnoses에 정확히 하나를 넣고 targets는 확인할 패널 안에서만 쓰세요. 다른 "
+            "위치의 문제를 추가하지 마세요."
         )
     ordered_scope = " → ".join(
         f"{order}:{panel.id}"
@@ -1291,6 +1351,18 @@ consequence가 기본값이 아닙니다 — 방향이 실제로 보일 때만 c
   서로 다른 현상에는 서로 다른 이름을 붙이세요.
 - 0~3개면 충분합니다.
 
+**comparisons — 관점 비교**
+relations와 별도로, 두 렌즈 이상이 같은 현상이나 정보에 닿았을 때 0~3개를 만드세요.
+이것은 Issue를 합치거나 어느 렌즈가 원인인지 판정하는 데이터가 아닙니다. 감독이
+`공통 / 차이`로 읽을 수 있게 관점을 번역하는 데이터입니다.
+- common은 두 렌즈가 함께 중요하게 보는 현상을 짧은 한 문장으로 씁니다.
+  예: `그래프가 장면의 전환을 이해시키는 핵심 정보예요.`
+- differences는 렌즈마다 **무엇을 확인하는지가 어떻게 다른지** 씁니다. 규칙 이름이나
+  criterion을 옮기지 마세요.
+  예: 촬영 `이 컷 안에서 그래프가 바로 읽히는지 봐요.` / 편집
+  `다음 컷의 행동까지 그래프 정보가 이어지는지 봐요.`
+- 같은 컷에 있다는 이유만으로 만들지 말고, 같은 현상·정보를 실제로 다뤘을 때만 만드세요.
+
 **order — 어느 렌즈부터 손댈 것인가.**
 감독은 세 탭 중 어디를 먼저 열어야 할지 모릅니다. 관계가 그 순서를 정합니다.
 
@@ -1318,7 +1390,7 @@ CROSS_LENS_SCHEMA = {
     "schema": {
         "type": "object",
         "additionalProperties": False,
-        "required": ["relations", "order"],
+        "required": ["relations", "comparisons", "order"],
         "properties": {
             # 어느 렌즈부터 손댈 것인가. 관계가 그 순서를 정한다 —
             # 원인 렌즈를 먼저 고치지 않으면 나머지는 증상만 사라진다.
@@ -1379,6 +1451,30 @@ CROSS_LENS_SCHEMA = {
                         "affected_lens": {
                             "type": ["string", "null"],
                             "enum": ["mise", "camera", "editing", "narrative", None],
+                        },
+                    },
+                },
+            },
+            "comparisons": {
+                "type": "array",
+                "maxItems": 3,
+                "items": {
+                    "type": "object",
+                    "additionalProperties": False,
+                    "required": ["diagnosis_ids", "common", "differences"],
+                    "properties": {
+                        "diagnosis_ids": {"type": "array", "minItems": 2, "items": {"type": "string"}},
+                        "common": {"type": "string"},
+                        "differences": {
+                            "type": "array", "minItems": 2, "maxItems": 3,
+                            "items": {
+                                "type": "object", "additionalProperties": False,
+                                "required": ["lens", "text"],
+                                "properties": {
+                                    "lens": {"type": "string", "enum": ["mise", "camera", "editing", "narrative"]},
+                                    "text": {"type": "string"},
+                                },
+                            },
                         },
                     },
                 },
@@ -1707,7 +1803,7 @@ def _title_from_rule(diagnosis) -> str:
 async def _relate_lenses(
     lens_results: dict,
     settled: list | None = None,
-) -> tuple[list[DirectingCommonFinding], Optional[DirectingOrder], int]:
+) -> tuple[list[DirectingCommonFinding], list[DirectingLensComparison], Optional[DirectingOrder], int]:
     """렌즈 판단들 사이의 관계와, 어느 렌즈부터 볼지, 버린 관계 수.
 
     진단이 둘 미만이면 관계가 있을 수 없다. 다만 그때도 순서는 쓸모가
@@ -1719,7 +1815,7 @@ async def _relate_lenses(
         for diagnosis in result.diagnoses
     }
     if not known_ids:
-        return [], None, 0
+        return [], [], None, 0
     # 어느 렌즈의 진단인지. consequence가 id를 하나만 준 경우 나머지
     # 한쪽을 그 렌즈 안에서 찾는 데 쓴다.
     ids_by_lens: dict[str, list[str]] = {
@@ -1759,6 +1855,7 @@ async def _relate_lenses(
     data = json.loads(response.choices[0].message.content.strip())
 
     findings = []
+    comparisons = []
     dropped = 0
     raw_relations = data.get("relations", [])
     for relation in raw_relations:
@@ -1808,6 +1905,7 @@ async def _relate_lenses(
                 f"known={sorted(known_ids)}"
             )
             continue
+
         # 자리와 origin은 서버가 채운다. 모델은 관계만 본다.
         picked = [diagnosis_by_id[rid] for rid in ids if rid in diagnosis_by_id]
         anchor, anchor_kind = _anchor_for(picked)
@@ -1833,6 +1931,33 @@ async def _relate_lenses(
             )
             continue
 
+    # 비교는 relation보다 넓다. 같은 현상에 대한 서로 다른 검토 범위를
+    # 보여 줄 뿐, Issue를 합치거나 원인·결과를 단정하지 않는다.
+    lens_of_diagnosis = {
+        diagnosis.id: lens
+        for lens, result in lens_results.items()
+        for diagnosis in result.diagnoses
+    }
+    for comparison in data.get("comparisons", []):
+        ids = [item for item in comparison.get("diagnosis_ids", []) if item in known_ids]
+        if len(ids) < 2:
+            continue
+        lenses = {lens_of_diagnosis[item] for item in ids}
+        differences = [
+            item for item in comparison.get("differences", [])
+            if item.get("lens") in lenses and (item.get("text") or "").strip()
+        ]
+        if len({item["lens"] for item in differences}) < 2:
+            continue
+        try:
+            comparisons.append(DirectingLensComparison(
+                diagnosis_ids=ids,
+                common=(comparison.get("common") or "").strip(),
+                differences=differences,
+            ))
+        except ValueError:
+            continue
+
     order = None
     raw_order = data.get("order")
     if raw_order and raw_order.get("first_lens") in lens_results:
@@ -1848,7 +1973,7 @@ async def _relate_lenses(
             )
         except ValueError:
             order = None
-    return findings, order, dropped
+    return findings, comparisons, order, dropped
 
 
 async def review_directing(request: DirectingReviewRequest) -> DirectingReviewResponse:
@@ -1877,10 +2002,11 @@ async def _relate_only(request: DirectingReviewRequest) -> DirectingReviewRespon
     """
     if not request.lens_results:
         raise ValueError("relate mode requires lens_results")
-    findings, order, dropped = await _relate_lenses(request.lens_results, request.settled)
+    findings, comparisons, order, dropped = await _relate_lenses(request.lens_results, request.settled)
     return DirectingReviewResponse(
         lens_results=request.lens_results,
         common_findings=findings,
+        comparisons=comparisons,
         issues=_build_issues(findings, request.lens_results, order),
         dropped_relations=dropped,
         order=order,
