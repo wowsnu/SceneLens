@@ -6,8 +6,8 @@ import useStore, {
   isSeamMarked,
 } from '../store/useStore'
 import { GapGhostCell } from './GapFillPanel'
+import SeamEditor from './SeamEditor'
 import './GridView.css'
-import { logScaffold } from '../store/studyLog'
 
 const TECHNIQUE_LABEL = {
   match_cut: '매치컷',
@@ -74,14 +74,9 @@ export default function GridView({
   const openAutoFill = useStore((s) => s.openAutoFill)
   const gapFills = useStore((s) => s.gapFills)
   const seams = useStore((s) => s.seams)
-  const screenplay = useStore((s) => s.screenplay)
   const updateSeam = useStore((s) => s.updateSeam)
   const clearSeam = useStore((s) => s.clearSeam)
   const cutPlan = useStore((s) => s.cutPlan)
-  const mergeCuts = useStore((s) => s.mergeCuts)
-  const splitCut = useStore((s) => s.splitCut)
-  const addCutPlanItem = useStore((s) => s.addCutPlanItem)
-  const completeEditingOperation = useStore((s) => s.completeEditingOperation)
   const autoFill = useStore((s) => s.autoFill)
   const panelGenerationPending = useStore((s) => s.panelGenerationPending)
 
@@ -128,56 +123,20 @@ export default function GridView({
   // 실행 전에 무엇이 바뀌고 무엇이 사라지는지 보여준다 (DG2 P3).
   // 눌러서 바로 실행하면 사용자는 결과만 받게 된다.
   const [pendingEdit, setPendingEdit] = useState(null)
-  // 합쳐질 내용. AI가 이어붙인 것을 기본값으로 두되 고칠 수 있게 한다.
-  const [mergeDraft, setMergeDraft] = useState('')
-  // AI 조립 상태. 기본값은 여전히 기계적으로 이어붙인 문장이다 — 감독이
-  // 묻기 전까지는 빈 화면보다 그것이 낫다. 물으면 겹치는 부분을 지운
-  // 안으로 바꿔치기한다.
-  const [mergePending, setMergePending] = useState(false)
-  const [mergeError, setMergeError] = useState(null)
-  // 넣을 컷의 후보. 빈 컷을 만들어 두면 대개 비어 있는 채로 남는다 —
-  // 무엇을 넣어야 하는지는 앞뒤 컷에 이미 드러나 있다.
-  const [insertCandidates, setInsertCandidates] = useState([])
-  const [insertChoice, setInsertChoice] = useState(null)
-  const [insertPending, setInsertPending] = useState(false)
-  const [insertError, setInsertError] = useState(null)
-  // 나눈 안. 감독이 직접 나눌 때는 비워 둔다 — 어디서 끊을지는 연출 판단이다.
-  // 편집 렌즈가 "두 사건이 겹쳤다"고 진단한 경우에만 채운다.
-  const [splitDraft, setSplitDraft] = useState(null)
-  const [splitPending, setSplitPending] = useState(false)
-  const [splitError, setSplitError] = useState(null)
-
-  const resetSeamAction = () => {
-    setPendingEdit(null)
-    setMergeDraft('')
-    setInsertCandidates([])
-    setInsertChoice(null)
-    setInsertError(null)
-    setSplitDraft(null)
-    setSplitError(null)
-  }
+  // 초안·후보·나눈 안은 전부 SeamEditor가 들고 있다. 여기서는 어느
+  // 자리를 어떤 조작으로 여는지만 정한다.
+  const resetSeamAction = () => setPendingEdit(null)
 
   const closeSeamCard = () => {
     resetSeamAction()
     setOpenSeamId(null)
   }
 
-  // 미리보기를 열 때 초안을 만든다. 두 컷 사이에 생략해 둔 것이 있으면
-  // 그것도 넣는다 — 합치면 그 일이 한 컷 안에서 일어나기 때문이다.
-  //
-  // 이 초안은 이어붙인 것이지 합친 것이 아니다. 두 문장이 같은 동작을
-  // 다르게 말하고 있어도 그대로 남는다 — 감독이 'AI에게 물어보기'를
-  // 누르면 겹치는 부분을 지운 안으로 바뀐다.
+  // 합치기를 연다. 초안(이어붙인 문장)은 SeamEditor가 대상에서 세운다 —
+  // 두 곳에서 만들면 어느 문장이 화면에 있는지 갈린다.
   const openMergePreview = (prevShot, shot, index, proposal = null) => {
     const cutIndex = cutPlan.findIndex((item) => item.id === prevShot.cutPlanItemId)
     if (cutIndex < 0 || cutIndex >= cutPlan.length - 1) return
-    const seam = seams[seamKeyFor(prevShot.id)]
-    setMergeDraft([
-      cutPlan[cutIndex].content,
-      seam?.elision && `(${seam.elision})`,
-      cutPlan[cutIndex + 1].content,
-    ].filter(Boolean).join(' '))
-    setMergeError(null)
     setPendingEdit({
       kind: 'merge',
       cutId: prevShot.cutPlanItemId,
@@ -187,100 +146,9 @@ export default function GridView({
     })
   }
 
-  // 겹치는 부분을 지운 안을 받는다. 그림도 함께 보낸다 — 두 그림이 이미
-  // 같은 인물·소품·구도를 보여주고 있다면 그것이 문장보다 곧은 근거다.
-  const requestMergeDraft = async (firstCut, secondCut, firstShot, secondShot) => {
-    setMergePending(true)
-    setMergeError(null)
-    try {
-      const { suggestSeamMerge } = await import('../services/api')
-      const seam = firstShot ? seams[seamKeyFor(firstShot.id)] : null
-      const result = await suggestSeamMerge({
-        firstContent: firstCut?.content || '',
-        firstPurpose: firstCut?.purpose || '',
-        secondContent: secondCut?.content || '',
-        secondPurpose: secondCut?.purpose || '',
-        elision: seam?.elision || '',
-        script: screenplay
-          .filter((element) => element.type === 'action')
-          .map((element) => element.text)
-          .join('\n'),
-        firstImage: firstShot?.image || null,
-        secondImage: secondShot?.image || null,
-      })
-      setMergeDraft(result.content)
-    } catch (error) {
-      setMergeError(error.message)
-    } finally {
-      setMergePending(false)
-    }
-  }
   // 진단에서 보낸 이음새 요청. 훅은 조건부 return보다 위에 있어야 한다.
   const seamFocusRequest = useStore((s) => s.seamFocusRequest)
   const [handledSeamFocus, setHandledSeamFocus] = useState(null)
-
-  // 이음새의 '생략된 것'을 함께 넘긴다 — 감독이 직접 적어 둔 것이라
-  // 무엇이 빠졌는지 가장 곧게 말해 준다.
-  const prevShotOf = (edit) => (edit ? shots[edit.index - 1] : null)
-
-  const requestInsertCandidates = async (cut, nextCut, prevShot, nextShot) => {
-    setInsertPending(true)
-    setInsertError(null)
-    try {
-      const { suggestSeamInsert } = await import('../services/api')
-      const seam = prevShot ? seams[seamKeyFor(prevShot.id)] : null
-      const candidates = await suggestSeamInsert({
-        beforeContent: cut?.content || '',
-        beforePurpose: cut?.purpose || '',
-        afterContent: nextCut?.content || '',
-        afterPurpose: nextCut?.purpose || '',
-        elision: seam?.elision || '',
-        script: screenplay
-          .filter((element) => element.type === 'action')
-          .map((element) => element.text)
-          .join('\n'),
-        beforeImage: prevShot?.image || null,
-        afterImage: nextShot?.image || null,
-      })
-      setInsertCandidates(candidates)
-    } catch (error) {
-      setInsertError(error.message)
-    } finally {
-      setInsertPending(false)
-    }
-  }
-
-  // 나눈 안을 받는다. 그림도 함께 보낸다 — 문장에 없는 자세·소품이
-  // 화면에는 있을 수 있고, 그림이 텍스트보다 강한 근거다
-  // (PANEL_GENERATION_DESIGN.md).
-  const requestSplitDraft = async (cut, prevCut, nextCut, diagnosis, images = {}) => {
-    if (!cut?.content?.trim()) return
-    setSplitPending(true)
-    setSplitError(null)
-    try {
-      const { suggestSeamSplit } = await import('../services/api')
-      const draft = await suggestSeamSplit({
-        content: cut.content,
-        purpose: cut.purpose || '',
-        characters: cut.characters || '',
-        beforeContent: prevCut?.content || '',
-        afterContent: nextCut?.content || '',
-        script: screenplay
-          .filter((element) => element.type === 'action')
-          .map((element) => element.text)
-          .join('\n'),
-        diagnosis: diagnosis || '',
-        cutImage: images.cut || null,
-        beforeImage: images.before || null,
-        afterImage: images.after || null,
-      })
-      setSplitDraft(draft)
-    } catch (error) {
-      setSplitError(error.message)
-    } finally {
-      setSplitPending(false)
-    }
-  }
 
   const [rangeMode, setRangeMode] = useState(false)   // true = waiting for second tap
   const [rangeAnchor, setRangeAnchor] = useState(null) // first tap index
@@ -311,28 +179,14 @@ export default function GridView({
       setOpenSeamId(null)
       const target = shots[index]
       if (target?.cutPlanItemId) {
-        setSplitDraft(null)
-        setSplitError(null)
+        // 진단에서 왔으므로 나눈 안도 함께 받는다 — 진단은 이미 무엇과
+        // 무엇이 겹쳤는지 알고 있다. 그 요청은 proposal을 받은 SeamEditor가
+        // 한다.
         setPendingEdit({ kind: 'split', cutId: target.cutPlanItemId, index, proposal: seamFocusRequest.proposal })
-        // 진단에서 왔으므로 나눈 안을 함께 받는다. 진단은 이미 무엇과 무엇이
-        // 겹쳤는지 알고 있는데, 그것을 적어 주지 않으면 감독이 진단을 읽고
-        // 같은 것을 처음부터 다시 찾아야 한다.
-        const cutIndex = cutPlan.findIndex((item) => item.id === target.cutPlanItemId)
-        requestSplitDraft(
-          cutPlan[cutIndex],
-          cutPlan[cutIndex - 1],
-          cutPlan[cutIndex + 1],
-          [seamFocusRequest.proposal?.title, seamFocusRequest.proposal?.detail]
-            .filter(Boolean).join(' — '),
-          { cut: target.image || null, before: shots[index - 1]?.image || null, after: shots[index + 1]?.image || null },
-        )
       }
     } else if (seamFocusRequest.action === 'insert' && index >= 0) {
       const target = shots[index]
       if (target?.cutPlanItemId && shots[index + 1]) {
-        setInsertCandidates([])
-        setInsertChoice(null)
-        setInsertError(null)
         setPendingEdit({
           kind: 'insert',
           cutId: target.cutPlanItemId,
@@ -558,8 +412,11 @@ export default function GridView({
                     ? `S${i + 1}을 검토 범위에 포함`
                     : `S${i + 1}은 이미지가 없어 검토 범위에 포함할 수 없음`
                   : undefined}
-                onClick={() => {
-                  if (selectingScope) onScopeShotSelect?.(i)
+                onClick={(event) => {
+                  // shift+클릭은 선택 모드 밖에서도 범위 선택으로 보낸다.
+                  // 모드를 열지 말지는 DecisionBoard가 정한다 — 여기서는
+                  // 범위를 잡으려는 의도인지만 구분한다.
+                  if (selectingScope || event.shiftKey) onScopeShotSelect?.(i, event)
                   else handleCellClick(i)
                 }}
                 onDoubleClick={() => {
@@ -574,7 +431,9 @@ export default function GridView({
                 onKeyDown={(event) => {
                   if (!selectingScope || (event.key !== 'Enter' && event.key !== ' ')) return
                   event.preventDefault()
-                  onScopeShotSelect?.(i)
+                  // 키보드로도 shift가 통해야 한다 — 마우스에서만 되는
+                  // 범위 선택은 키보드로 고르는 사람에게는 없는 기능이다.
+                  onScopeShotSelect?.(i, event)
                 }}
                 onMouseEnter={() => setHoveredIdx(i)}
                 title={selectingScope
@@ -624,13 +483,16 @@ export default function GridView({
                         // 앞 칸에 원본을 넣어 둔다. 감독은 뒤로 보낼 부분을
                         // 잘라 옮기면 되고, 빈 칸 둘을 마주하지 않는다.
                         const source = cutPlan.find((item) => item.id === shot.cutPlanItemId)
-                        setSplitError(null)
-                        setSplitDraft({
-                          first: { content: source?.content || '' },
-                          second: { content: '' },
-                        })
                         setOpenSeamId(null)
-                        setPendingEdit({ kind: 'split', cutId: shot.cutPlanItemId, index: i })
+                        setPendingEdit({
+                          kind: 'split',
+                          cutId: shot.cutPlanItemId,
+                          index: i,
+                          seedSplit: {
+                            first: { content: source?.content || '' },
+                            second: { content: '' },
+                          },
+                        })
                       }}
                       title="이 컷을 둘로 나눕니다"
                     >
@@ -885,313 +747,16 @@ export default function GridView({
           )}
 
           {/* 실행 전 영향 미리보기 (DG2 P3). 무엇이 바뀌고 무엇이 사라지는지
-              같은 카드의 하단에서 확인하고 적용한다. */}
-          {pendingEdit && (() => {
-        const cut = cutPlan.find((item) => item.id === pendingEdit.cutId)
-        if (!cut) return null
-        const cutIndex = cutPlan.findIndex((item) => item.id === pendingEdit.cutId)
-        const prevCut = cutPlan[cutIndex - 1]
-        const nextCut = cutPlan[cutIndex + 1]
-        const kind = pendingEdit.kind
-        const isMerge = kind === 'merge'
-        const TITLES = {
-          merge: '두 컷 합치기',
-          split: '컷 나누기',
-          insert: '사이에 컷 넣기',
-        }
+              같은 카드의 하단에서 확인하고 적용한다.
 
-        return (
-          <div className="grid-edit-preview in-seam-card" aria-label="편집 미리보기">
-            <header>
-              <strong>{TITLES[kind]}</strong>
-              <button type="button" onClick={() => { setPendingEdit(null); setSplitDraft(null) }} aria-label="닫기">✕</button>
-            </header>
-
-            {pendingEdit.proposal?.detail && (
-              <div className="grid-edit-ai-proposal">
-                <span>편집 렌즈 제안</span>
-                {pendingEdit.proposal.title && <strong>{pendingEdit.proposal.title}</strong>}
-                <p>{pendingEdit.proposal.detail}</p>
-                {/* 왜 이 자리에서 끊었는지. 감독이 이 안을 받아들일지
-                    판정하려면 근거가 보여야 한다. */}
-                {kind === 'split' && splitDraft?.reason && (
-                  <p className="grid-edit-split-reason">{splitDraft.reason}</p>
-                )}
-              </div>
-            )}
-            {kind === 'split' && splitError && (
-              <p className="grid-edit-split-error">
-                나눈 안을 받지 못했습니다 · {splitError} — 직접 나눌 수 있습니다.
-              </p>
-            )}
-
-            <div className="grid-edit-diff">
-              <div className="grid-edit-before">
-                <span>지금</span>
-                <p>{cut.content || '(비어 있음)'}</p>
-                {kind !== 'split' && nextCut && <p>{nextCut.content || '(비어 있음)'}</p>}
-              </div>
-              <div className="grid-edit-arrow" aria-hidden="true">→</div>
-              <div className="grid-edit-after">
-                <span>바뀐 뒤</span>
-                {isMerge ? (
-                  // 왼쪽 `지금`이 원문 두 문단을 다 보여주므로 이쪽도 그만큼은
-                  // 보여야 한다. CSS가 남은 높이를 채우지만, rows가 작으면
-                  // 최소 높이가 그만큼으로 잡혀 스크롤이 생긴다.
-                  <textarea
-                    value={mergeDraft}
-                    rows={8}
-                    onChange={(e) => setMergeDraft(e.target.value)}
-                    aria-label="합쳐진 내용"
-                  />
-                ) : kind === 'insert' ? (
-                  <>
-                    <p>{cut.content || '(비어 있음)'}</p>
-                    {/* 후보를 고르면 이 칸이 채워지고, 감독이 그 문장을
-                        그대로 두거나 고쳐 쓸 수 있다 — 안내 문구와 달리
-                        실제로 직접 쓸 자리가 없었다. */}
-                    <textarea
-                      className="grid-edit-new"
-                      value={insertChoice?.content ?? ''}
-                      rows={3}
-                      placeholder="새 컷 · 아래에서 고르거나 여기에 직접 씁니다"
-                      onChange={(e) => setInsertChoice((current) => ({
-                        ...(current || {}),
-                        content: e.target.value,
-                        // 후보를 고른 뒤 감독이 문장을 손대면 그 시점부터
-                        // 감독이 쓴 것이다 — 골랐다는 사실이 아니라 지금
-                        // 화면에 있는 문장이 누구 것인지가 출처를 정한다.
-                        provenance: 'User',
-                      }))}
-                      aria-label="새 컷 내용"
-                    />
-                    <p>{nextCut?.content || '(비어 있음)'}</p>
-                  </>
-                ) : kind === 'split' ? (
-                  // 두 칸 모두 감독이 고친다. 진단에서 왔으면 나눈 안이
-                  // 채워져 있고, 직접 나눌 때는 앞 칸에 원본이 그대로 들어와
-                  // 뒤로 보낼 부분을 잘라 옮기면 된다 — AI가 끊는 자리를
-                  // 정하지 않으면서도 이 화면에서 나누기가 끝난다.
-                  <>
-                    <textarea
-                      value={splitDraft?.first?.content ?? ''}
-                      rows={4}
-                      placeholder={splitPending ? '나눌 자리를 찾는 중…' : '앞 컷에 남길 내용'}
-                      onChange={(e) => setSplitDraft((current) => ({
-                        ...current,
-                        first: { ...(current?.first || {}), content: e.target.value },
-                        second: current?.second || { content: '' },
-                      }))}
-                      aria-label="앞 컷 내용"
-                    />
-                    <textarea
-                      className="grid-edit-new"
-                      value={splitDraft?.second?.content ?? ''}
-                      rows={4}
-                      placeholder={splitPending ? '' : '뒤 컷으로 보낼 내용'}
-                      onChange={(e) => setSplitDraft((current) => ({
-                        ...current,
-                        first: current?.first || { content: '' },
-                        second: { ...(current?.second || {}), content: e.target.value },
-                      }))}
-                      aria-label="뒤 컷 내용"
-                    />
-                  </>
-                ) : (
-                  <p>{cut.content || '(비어 있음)'}</p>
-                )}
-              </div>
-            </div>
-
-            {/* Merge는 이어붙인 문장으로 시작한다. 겹치는 부분을 지운
-                안으로 바꾸려면 물어야 한다 — 자동으로 바꾸면 감독이
-                손대던 문장이 예고 없이 사라진다. */}
-            {isMerge && (
-              <div className="grid-edit-candidates">
-                <div className="grid-edit-candidates-head">
-                  <span>겹치는 부분이 있을 수 있습니다</span>
-                  <button
-                    type="button"
-                    disabled={mergePending}
-                    onClick={() => {
-                      const firstShot = shots.find((entry) => entry.cutPlanItemId === pendingEdit.cutId)
-                      const secondShot = nextCut
-                        ? shots.find((entry) => entry.cutPlanItemId === nextCut.id)
-                        : null
-                      requestMergeDraft(cut, nextCut, firstShot, secondShot)
-                    }}
-                  >
-                    {mergePending ? '보는 중…' : 'AI에게 물어보기'}
-                  </button>
-                </div>
-                {mergeError && (
-                  <p className="grid-edit-error">{mergeError} — 직접 고쳐 쓸 수 있습니다.</p>
-                )}
-              </div>
-            )}
-
-            {/* 직접 나눌 때도 AI 도움을 받을 수 있다. 진단에서 온 경우는
-                이미 채워져 있으니 다시 물을 이유가 없다 — splitPending이나
-                splitDraft가 있으면 이미 받았거나 받는 중이다. */}
-            {kind === 'split' && !splitDraft && !splitPending && (
-              <div className="grid-edit-candidates">
-                <div className="grid-edit-candidates-head">
-                  <span>어디서 나눌지 막막하다면</span>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const targetShot = shots.find((entry) => entry.cutPlanItemId === pendingEdit.cutId)
-                      const targetIndex = shots.findIndex((entry) => entry.cutPlanItemId === pendingEdit.cutId)
-                      requestSplitDraft(
-                        cut, prevCut, nextCut, '',
-                        {
-                          cut: targetShot?.image || null,
-                          before: targetIndex > 0 ? shots[targetIndex - 1]?.image || null : null,
-                          after: shots[targetIndex + 1]?.image || null,
-                        },
-                      )
-                    }}
-                  >
-                    편집에 물어보기
-                  </button>
-                </div>
-                {splitError && <p className="grid-edit-error">{splitError} — 직접 나눌 수 있습니다.</p>}
-              </div>
-            )}
-
-            {/* 무엇을 넣을지. 앞뒤 컷과 이음새의 '생략된 것'에서 나온다. */}
-            {kind === 'insert' && (
-              <div className="grid-edit-candidates">
-                <div className="grid-edit-candidates-head">
-                  <span>무엇을 넣을까요</span>
-                  <button
-                    type="button"
-                    onClick={() => requestInsertCandidates(
-                      cut, nextCut, prevShotOf(pendingEdit), shots[pendingEdit.index],
-                    )}
-                    disabled={insertPending}
-                  >
-                    {insertPending ? '보는 중…' : insertCandidates.length ? '다시 제안' : '편집에 물어보기'}
-                  </button>
-                </div>
-                {insertError && <p className="grid-edit-error">{insertError}</p>}
-                {insertCandidates.map((candidate) => {
-                  const chosen = insertChoice?.content === candidate.content
-                  return (
-                    <button
-                      key={candidate.content}
-                      type="button"
-                      className={`grid-edit-candidate${chosen ? ' selected' : ''}`}
-                      aria-pressed={chosen}
-                      onClick={() => {
-                        logScaffold({
-                          feature: 'alternative',
-                          action: chosen ? 'reject' : 'select',
-                          target: pendingEdit.cutId,
-                          purpose: candidate.purpose,
-                        })
-                        setInsertChoice(chosen ? null : { ...candidate, provenance: 'AI' })
-                      }}
-                    >
-                      {/* 인물 이름은 뺀다 — content(문장) 안에 이미
-                          있어서 태그 줄에 다시 적으면 같은 정보가 두 번
-                          보인다. 텍스트를 줄이는 게 우선이다. */}
-                      <strong>{candidate.content}</strong>
-                      <em>{candidate.purpose}</em>
-                      <span>{candidate.reason}</span>
-                    </button>
-                  )
-                })}
-              </div>
-            )}
-
-            {/* 함께 바뀌는 것. 요청한 변경과 구분해 보여준다. */}
-            <ul className="grid-edit-effects">
-              {isMerge && (
-                <>
-                  <li>컷 {cutPlan.length} → {cutPlan.length - 1}</li>
-                  <li>두 컷 사이의 이음새가 사라집니다</li>
-                  {pendingEdit.losesDrawing && (
-                    <li className="warn">S{pendingEdit.index + 1}의 그림이 사라집니다</li>
-                  )}
-                </>
-              )}
-              {kind === 'split' && (
-                <>
-                  <li>컷 {cutPlan.length} → {cutPlan.length + 1}</li>
-                  <li>사이에 새 이음새가 생깁니다 · 컷 · 연속</li>
-                  {/* 두 칸을 다 채우면 앞 컷의 내용도 줄어든다. 옛 그림은 더
-                      이상 그 컷을 담고 있지 않으므로 두 컷을 다 다시 그린다. */}
-                  {splitDraft?.first?.content?.trim() && splitDraft?.second?.content?.trim()
-                    ? <li className="warn">앞 컷의 내용도 줄어들어 두 컷을 다시 그립니다</li>
-                    : <li>뒤 칸을 비워 두면 기존 그림은 앞 컷에 남습니다</li>}
-                </>
-              )}
-              {kind === 'insert' && (
-                <>
-                  <li>컷 {cutPlan.length} → {cutPlan.length + 1}</li>
-                  <li>{insertChoice
-                    ? '선택한 내용으로 새 패널을 바로 생성합니다'
-                    : '내용을 고르지 않으면 빈 패널로 추가됩니다'}</li>
-                  <li>이 이음새는 새 컷 뒤로 옮겨집니다</li>
-                </>
-              )}
-            </ul>
-
-            <div className="grid-edit-actions">
-              <button type="button" onClick={() => { setPendingEdit(null); setSplitDraft(null) }}>취소</button>
-              <button
-                type="button"
-                className="primary"
-                onClick={() => {
-                  if (isMerge) {
-                    mergeCuts(pendingEdit.cutId, { content: mergeDraft })
-                  } else if (kind === 'insert') {
-                    logScaffold({
-                      feature: 'alternative',
-                      // 세 갈래다 — 후보 그대로면 accept, 감독이 직접 쓴
-                      // 것이면(후보를 손봤든 처음부터 썼든) modify, 아무것도
-                      // 안 쓰고 빈 컷을 만들었으면 reject다.
-                      action: !insertChoice?.content?.trim()
-                        ? 'reject'
-                        : insertChoice.provenance === 'AI' ? 'accept' : 'modify',
-                      target: pendingEdit.cutId,
-                      proposed: insertCandidates.length > 0,
-                    })
-                    addCutPlanItem(pendingEdit.cutId, cut.beat, insertChoice?.content?.trim() ? {
-                      content: insertChoice.content,
-                      purpose: insertChoice.purpose,
-                      characters: insertChoice.characters,
-                      provenance: insertChoice.provenance,
-                    } : {})
-                  } else {
-                    splitCut(pendingEdit.cutId, {
-                      // 감독이 고친 내용까지 실어 보낸다. 한쪽이 비면 나눈
-                      // 것이 아니므로 빈 컷을 붙이는 기존 동작으로 둔다.
-                      parts: splitDraft?.first?.content?.trim()
-                        && splitDraft?.second?.content?.trim()
-                        ? splitDraft : null,
-                    })
-                  }
-                  if (pendingEdit.proposal?.operationId) {
-                    completeEditingOperation(pendingEdit.proposal.operationId, kind)
-                  }
-                  setPendingEdit(null)
-                  setSplitDraft(null)
-                  setOpenSeamId(null)
-                }}
-                // 앞 칸만 고치고 뒤를 비워 두면 그 수정이 조용히 버려진다.
-                // 나누는 일이므로 두 칸이 다 차야 실행할 수 있다.
-                disabled={kind === 'split'
-                  && Boolean(splitDraft?.first?.content?.trim())
-                  !== Boolean(splitDraft?.second?.content?.trim())}
-              >
-                {{ merge: '합치기', split: '나누기', insert: '넣기' }[kind]}
-              </button>
-            </div>
-          </div>
-        )
-      })()}
+              Lens Workbench도 같은 편집기를 쓴다. 두 벌로 두면 한쪽만
+              고쳐진다 (`LENS_TRACKS_UI.md` 11장). */}
+          <SeamEditor
+            pendingEdit={pendingEdit}
+            shots={shots}
+            onClose={() => { setPendingEdit(null) }}
+            onDone={() => { setPendingEdit(null); setOpenSeamId(null) }}
+          />
         </section>
       )}
     </div>

@@ -3,7 +3,7 @@ import StoryboardView from './components/StoryboardView'
 import DecisionBoard from './components/DecisionBoard'
 import StudyLogPanel from './components/StudyLogPanel'
 import CenterPanel from './components/CenterPanel'
-import useStore, { selectCutStage } from './store/useStore'
+import useStore from './store/useStore'
 import { exportLog, summarize, resetLog, setCondition, condition } from './store/studyLog'
 import './App.css'
 
@@ -11,9 +11,6 @@ function App() {
   const [isFullscreen, setIsFullscreen] = useState(false)
   // 실험자만 여는 창. 로그가 쌓이는지 세션 중에 확인할 수 있어야 한다.
   const [studyLogOpen, setStudyLogOpen] = useState(false)
-  // 검토는 그림이 있어야 성립한다. 렌즈도 관객 읽기도 패널을 보고
-  // 판단하므로, 패널 단계 전에는 넘어갈 자리가 아니다.
-  const cutStage = useStore(selectCutStage)
   const maximizedPanel = useStore((s) => s.maximizedPanel)
   const setMaximizedPanel = useStore((s) => s.setMaximizedPanel)
   const leftPanelVisible = useStore((s) => s.leftPanelVisible)
@@ -27,14 +24,6 @@ function App() {
   const activeBeat = useStore((s) => s.activeBeat)
   const zenMode = useStore((s) => s.zenMode)
   const setZenMode = useStore((s) => s.setZenMode)
-  // 테스트 중에는 컷 플랜을 확정하지 않았어도, 실제 이미지 패널이 하나면
-  // 검토 화면을 열어 분석 흐름만 빠르게 확인할 수 있다.
-  const hasReviewablePanel = useStore((s) => {
-    const scene = s.scenes?.[s.activeScene]
-    const branch = scene?.branches?.[scene.activeBranch ?? 0]
-    return Boolean(branch?.shots?.some((shot) => shot.image))
-  })
-  const canEnterReview = cutStage === 'panels' || (import.meta.env.DEV && hasReviewablePanel)
 
   // 실험 로그 내보내기. 참가자에게 보이는 버튼을 두면 과제 중에 눈에
   // 걸리므로 단축키로만 연다 — 실험자가 세션 끝에 누른다.
@@ -155,81 +144,21 @@ function App() {
         {/* LEFT */}
         {(maximizedPanel === null || maximizedPanel === 'left' || drawingWorkspaceOpen) && (
           <section className={`panel-container left-panel ${!leftPanelVisible ? 'collapsed' : ''} ${maximizedPanel === 'left' ? 'maximized' : ''} ${drawingFocused ? 'panel-hidden' : ''}`}>
-            <div className="panel-header">
-              {leftPanelVisible && <span className="panel-title">📜 NARRATIVE</span>}
-              {/* 화살표만 두면 어디로 가는 버튼인지 알 수 없다. 이 전환은
-                  '패널을 넓게 보기'와 '검토 화면으로 가기'라는 두 가지 일이다.
-                  뒤쪽은 패널을 접었다 펴는 버튼들과 같은 모양이면 안 된다 —
-                  만드는 일에서 검토하는 일로 넘어가는 자리이고, 렌즈로
-                  결정을 살펴보고 관객이 어떻게 읽는지 보는 단계 전체가
-                  거기서 열린다. */}
-              {maximizedPanel === 'left' ? (
-                <button
-                  className="panel-control-btn stage-forward-btn"
-                  disabled={!canEnterReview}
-                  onClick={enterReview}
-                  style={{ marginLeft: 'auto' }}
-                  title={cutStage === 'panels'
-                    ? '렌즈로 결정을 검토하고 관객이 어떻게 읽는지 봅니다'
-                    : hasReviewablePanel && import.meta.env.DEV
-                      ? '테스트 이미지 패널로 검토 흐름을 바로 확인합니다'
-                    : '패널을 만든 뒤에 검토할 수 있습니다'}
-                >
-                  검토로 넘어가기
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                    <path d="m9 18 6-6-6-6" />
-                  </svg>
-                </button>
-              ) : (
-                <>
-                  {leftPanelVisible && (
-                    <button
-                      className="panel-control-btn"
-                      onClick={() => {
-                        // 그리는 중이면 그리기를 끝내고 나간다. 패널만 넓히면
-                        // 그리기 화면에 남은 채 왼쪽만 커져 어디에 있는지
-                        // 알 수 없게 된다.
-                        if (drawingWorkspaceOpen) {
-                          closeDrawingWorkspace()
-                          setLeftPanelVisible(true)
-                          setMaximizedPanel('left')
-                          return
-                        }
-                        setMaximizedPanel('left')
-                      }}
-                      style={{ marginLeft: 'auto' }}
-                      title={drawingWorkspaceOpen ? '그리기를 끝내고 패널로' : '스토리보드를 넓게 보기'}
-                    >
-                      ← 스토리보드
-                    </button>
-                  )}
-                  <button
-                    className="panel-control-btn"
-                    onClick={() => setLeftPanelVisible(!leftPanelVisible)}
-                    aria-label={leftPanelVisible ? '왼쪽 패널 접기' : '왼쪽 패널 펼치기'}
-                  >
-                    {leftPanelVisible ? '‹' : '›'}
-                  </button>
-                </>
-              )}
-            </div>
             {/* 접힌 패널도 스토리보드의 생성 요청을 받을 수 있어야 한다.
                 검토 화면에서 재생성할 때 이 컴포넌트가 언마운트되면, 요청을
                 전달하려고 왼쪽 대본 패널을 강제로 다시 열어야 했다. 숨겨도
                 마운트는 유지해 패널을 열지 않고 백그라운드 재생성한다. */}
             <div className="panel-content">
-              <StoryboardView />
+              <StoryboardView onEnterReview={enterReview} />
             </div>
           </section>
         )}
 
         {/* CENTER */}
         <section className={`panel-container center-panel ${maximizedPanel === 'left' ? 'panel-hidden' : ''} ${drawingWorkspaceOpen ? 'drawing-workspace' : ''} ${drawingFocused ? 'maximized' : ''}`}>
-          <div className="panel-header">
-            <span className="panel-title">
-              {drawingWorkspaceOpen ? `DRAWING · BEAT ${activeBeat + 1}` : 'STORYBOARD DECISION BOARD'}
-            </span>
-            {drawingWorkspaceOpen ? (
+          {drawingWorkspaceOpen && (
+            <div className="panel-header">
+              <span className="panel-title">{`DRAWING · BEAT ${activeBeat + 1}`}</span>
               <>
                 <button
                   className="panel-control-btn"
@@ -251,39 +180,19 @@ function App() {
                   {drawingFocused ? 'Exit Focus' : 'Focus'}
                 </button>
               </>
-            ) : (
-              <div className="decision-header-controls">
-                {/* 검토하러 왔으면 돌아갈 길이 있어야 한다. 왼쪽 패널이
-                    접혀 있으면 스토리보드가 화면에서 아예 사라진다.
-
-                    검토 화면의 진단 라우팅은 화면을 옮기려고 임시 상태를
-                    남긴다 — '직접 그리기'는 drawingWorkspaceOpen을 켜고,
-                    서사/대본 진단은 cutPlanStageOverride를 'script'로
-                    세운다(DecisionBoard.jsx). 여기서 정리하지 않으면
-                    스토리보드로 돌아가도 그 상태가 남아, Agents rail이
-                    숨거나 컷을 확정해 둔 감독이 대본 단계로 떨어진다. */}
-                {!leftPanelVisible && (
-                  <button
-                    type="button"
-                    className="panel-control-btn"
-                    onClick={() => {
-                      if (drawingWorkspaceOpen) closeDrawingWorkspace()
-                      leaveReview()
-                      setLeftPanelVisible(true)
-                      setMaximizedPanel('left')
-                    }}
-                    title="스토리보드로 돌아가기"
-                  >
-                    ← 스토리보드
-                  </button>
-                )}
-              </div>
-            )}
-          </div>
+            </div>
+          )}
           <div className="panel-content">
             {drawingWorkspaceOpen
               ? <CenterPanel showScriptPanel={drawingFocused} />
-              : <DecisionBoard boardView="split" />}
+              : <DecisionBoard
+                  boardView="split"
+                  onBackToStoryboard={!leftPanelVisible ? () => {
+                    leaveReview()
+                    setLeftPanelVisible(true)
+                    setMaximizedPanel('left')
+                  } : null}
+                />}
           </div>
         </section>
 

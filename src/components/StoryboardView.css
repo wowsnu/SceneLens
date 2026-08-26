@@ -106,6 +106,14 @@
   padding: 0 40px;
 }
 
+/* 콘티 표는 열이 여섯이라 다른 화면보다 넓게 쓴다. 다만 화면 끝까지
+   늘리지는 않는다 — 한 줄이 너무 길면 눈이 다음 줄 첫머리를 못 찾고,
+   그림과 설명이 멀어져 둘을 함께 보기 어렵다. */
+.storyboard-list-inner.is-conte {
+  max-width: 1280px;
+  padding: 0 24px;
+}
+
 /* 인라인 스크립트 에디터 (스토리보드 상단 배치) */
 .inline-script-editor {
   background: #111114;
@@ -1002,6 +1010,7 @@
 .cut-plan-stages li > button:not(:disabled):hover {
   background: rgba(255, 255, 255, 0.03);
 }
+
 
 .cut-plan-stages .stage-locked > button {
   cursor: not-allowed;
@@ -4556,8 +4565,8 @@
 /* 그림으로 고른다 — 러프/디테일/실사의 차이는 글로 잘 전달되지 않는다. */
 .style-preset-picker.is-row {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 6px;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
 }
 
 .style-preset-picker.is-row > button {
@@ -4804,6 +4813,35 @@
   padding: 18px 24px 36px;
 }
 
+/* 단계 카드는 현재 위치만 말한다. 검토는 패널을 끝까지 훑은 다음의 행동이라
+   그리드 끝에 단독으로 둔다. */
+.panels-review-next {
+  display: flex;
+  justify-content: flex-end;
+  max-width: 1100px;
+  margin: 0 auto 34px;
+  padding: 0 24px;
+}
+
+.panels-review-next button {
+  min-height: 34px;
+  padding: 0 13px;
+  border: 1px solid rgba(216, 170, 98, 0.56);
+  border-radius: 7px;
+  background: rgba(216, 170, 98, 0.14);
+  color: #f0d5a8;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.panels-review-next button:hover {
+  border-color: rgba(216, 170, 98, 0.8);
+  background: rgba(216, 170, 98, 0.23);
+  color: #fff2dd;
+}
+
 /* 좁아지면 칸을 줄인다. 3열을 고집하면 패널이 알아볼 수 없이 작아진다. */
 @media (max-width: 900px) {
   .sb-panel-grid {
@@ -4942,4 +4980,774 @@
   color: rgba(255, 255, 255, 0.44);
   font-size: 10.5px;
   line-height: 1.55;
+}
+
+/* ── 絵コン테 표 (대본과 함께 보기) ────────────────────────────────
+   컷이 한 행이고 열은 `컷 / 그림 / 설명 / 길이`다. 표로 두는 이유는
+   컷 번호가 끊기지 않고 이어져야 콘티로 읽히기 때문이다 — Beat마다
+   구획을 넣으면 그 안에서만 비교하게 된다. */
+.sb-conte {
+  --conte-no: 44px;
+  /* 그림 칸은 16:9가 알아볼 수 있는 크기에서 멈춘다. 표 폭을 따라 계속
+     커지면 한 행이 화면을 채워 컷이 이어지는 것을 볼 수 없다. */
+  --conte-pic: minmax(240px, 340px);
+  --conte-cap: minmax(200px, 1fr);
+  /* 샷·앵글은 예시 그림이 알아볼 만한 최소 폭이다. 더 좁히면 그림으로
+     두는 뜻이 없어진다. */
+  --conte-framing: 92px;
+  --conte-dur: 58px;
+  /* 인스펙터를 걷어낸 만큼 넓어진다. 남는 폭은 설명 칸이 받는다(1fr) —
+     컷 내용을 여기서 고치므로 한 줄이 어느 정도는 길어야 한다. */
+  width: 100%;
+  margin: 0 auto;
+  padding: 14px 16px 36px;
+}
+
+/* 열 이름은 스크롤해도 남아야 어느 칸을 보는지 알 수 있다. */
+.sb-conte-head {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  display: grid;
+  grid-template-columns:
+    var(--conte-no) var(--conte-pic) var(--conte-cap)
+    var(--conte-framing) var(--conte-framing) var(--conte-dur);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 8px 8px 0 0;
+  background: #16161a;
+}
+
+.sb-conte-head > span {
+  padding: 7px 10px;
+  color: rgba(255, 255, 255, 0.62);
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-align: center;
+}
+
+.sb-conte-head > span + span {
+  border-left: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* 길이는 스토리보드가 정하지 않는다. 열 이름 아래에 위임이라고 적어,
+   빈 칸이 '아직 안 적음'이 아니라 '여기서 정하지 않음'으로 읽히게 한다
+   (DG1 P3). */
+.sb-conte-head > span.is-delegated {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  color: rgba(255, 255, 255, 0.34);
+}
+
+.sb-conte-head > span.is-delegated em {
+  font-size: 8.5px;
+  font-style: normal;
+  font-weight: 600;
+  letter-spacing: 0;
+  opacity: 0.75;
+}
+
+.sb-conte-row {
+  display: grid;
+  grid-template-columns:
+    var(--conte-no) var(--conte-pic) var(--conte-cap)
+    var(--conte-framing) var(--conte-framing) var(--conte-dur);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-top: none;
+  background: rgba(255, 255, 255, 0.015);
+  cursor: pointer;
+}
+
+.sb-conte-row:hover {
+  background: rgba(255, 255, 255, 0.035);
+}
+
+/* 지금 보고 있는 컷. 선은 왼쪽에만 둔다 — 표의 격자선을 덮어쓰면
+   행 경계가 무너져 어느 칸이 어디까지인지 안 보인다. */
+.sb-conte-row.inspected,
+.sb-conte-row.active-shot {
+  background: rgba(150, 190, 210, 0.07);
+  box-shadow: inset 3px 0 0 rgba(150, 190, 210, 0.7);
+}
+
+.sb-conte-row.has-ai-candidate {
+  box-shadow: inset 3px 0 0 rgba(251, 113, 133, 0.7);
+}
+
+/* 컷 번호 칸. 콘티에서 컷을 부르는 이름이므로 가장 크게 읽혀야 한다. */
+.sb-conte-no {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 12px 4px;
+  border-right: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.sb-conte-no > span {
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 15px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+/* 삭제는 되돌릴 수 없으므로 항상 보이지는 않게 한다. */
+.sb-conte-delete {
+  padding: 2px;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.3);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.12s ease;
+}
+
+.sb-conte-row:hover .sb-conte-delete {
+  opacity: 1;
+}
+
+.sb-conte-delete:hover:not(:disabled) {
+  background: rgba(251, 113, 133, 0.18);
+  color: rgba(251, 113, 133, 0.95);
+}
+
+.sb-conte-delete:disabled {
+  cursor: not-allowed;
+  opacity: 0;
+}
+
+/* 그림 칸. 표에서 가장 큰 자리이고, 손대는 일도 전부 여기서 일어난다. */
+.sb-conte-pic {
+  position: relative;
+  padding: 12px;
+  border-right: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* 프레임을 자르지 않는다. 잘라내면 화면에 무엇이 들어 있는지가 달라져,
+   콘티가 보여주려는 것 자체가 바뀐다 — 열 높이를 맞추자고 프레이밍을
+   고칠 수는 없다. 이미지의 비율을 그대로 두고 칸을 거기에 맞춘다. */
+.sb-conte-pic .sb-img-wrapper {
+  position: relative;
+  /* 공용 `.sb-img-wrapper`는 16:9로 잘라 둔다. 콘티에서는 프레임을
+     자르지 않으므로 그 비율을 여기서 푼다. */
+  aspect-ratio: auto;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 4px;
+  overflow: hidden;
+  background: #0c0c0f;
+}
+
+.sb-conte-pic .sb-img-wrapper > img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+/* 아직 그림이 없는 칸도 자리를 지킨다 — 빠진 것이 보여야 무엇이 남았는지
+   안다. 그려지면 들어올 비율에 맞춰 둬서 행이 튀지 않게 한다. */
+.sb-conte-pic .sb-add-shot,
+.sb-conte-pic .sb-panel-pending {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  /* 공용 규칙의 16/9보다 뒤에 오지만 명시도가 같지 않으므로 다시 적는다. */
+  aspect-ratio: 3 / 2;
+  /* 안의 글과 버튼이 상자를 밀어내지 않게 한다. 빈 칸이 그려진 칸보다
+     커지면 아직 없는 것이 있는 것보다 눈에 띈다. */
+  min-height: 0;
+  padding: 0;
+  overflow: hidden;
+  border: 1px dashed rgba(255, 255, 255, 0.16);
+  border-radius: 4px;
+}
+
+/* 도구는 그림 위 hover로 모은다. 표에 버튼 줄을 따로 두면 열두 행마다
+   같은 버튼이 반복돼 그림이 안 보인다. */
+.sb-conte-tools {
+  position: absolute;
+  right: 6px;
+  bottom: 6px;
+  z-index: 2;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 4px;
+  opacity: 0;
+  transition: opacity 0.12s ease;
+}
+
+.sb-conte-pic:hover .sb-conte-tools,
+.sb-conte-tools:focus-within,
+/* 그리는 중에는 hover가 풀려도 남아야 한다 — 도구가 사라지면 지금 무엇을
+   하는 중인지 화면에서 사라진다. */
+.sb-conte-tools.pinned {
+  opacity: 1;
+}
+
+.sb-conte-tools .sb-action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 3px 7px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+  background: rgba(12, 12, 15, 0.86);
+  color: rgba(255, 255, 255, 0.86);
+  font-family: inherit;
+  font-size: 10px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.sb-conte-tools .sb-action-btn:hover {
+  border-color: rgba(255, 255, 255, 0.4);
+}
+
+.sb-conte-tools .sb-action-btn.active {
+  border-color: rgba(150, 190, 210, 0.8);
+  background: rgba(150, 190, 210, 0.22);
+  color: #fff;
+}
+
+/* 설명 칸. 콘티의 Action Notes 자리다. 대사·효과음 칸은 두지 않는다 —
+   대본이 그 줄 종류를 갖지 않기로 했고, 빈 칸만 남으면 아직 안 적은
+   것으로 읽힌다. */
+.sb-conte-caption {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px 12px 12px 13px;
+  border-right: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+
+.sb-conte-purpose {
+  align-self: flex-start;
+  padding: 2.5px 8px;
+  border-radius: 4px;
+  background: rgba(150, 190, 210, 0.14);
+  color: rgba(186, 214, 228, 0.92);
+  font-size: 10.5px;
+  font-weight: 700;
+}
+
+.sb-conte-caption > p {
+  margin: 0;
+  /* 콘티에서 감독이 실제로 읽는 글이다. 그림 옆에 있다고 작을 이유가
+     없다 — 컷마다 이 문장을 읽고 그림과 맞는지 판단한다. */
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 15px;
+  line-height: 1.66;
+}
+
+/* 감독이 직접 쓴 메모. AI가 조립한 컷 설명과 갈려 보여야 한다. */
+.sb-conte-note {
+  padding-left: 8px;
+  border-left: 2px solid rgba(255, 255, 255, 0.2);
+  color: rgba(255, 255, 255, 0.7) !important;
+  font-size: 13.5px !important;
+}
+
+/* 길이 칸. 비어 있으면 위임이고, 적으면 스토리보드가 정한 값이다. */
+.sb-conte-dur {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px 6px;
+}
+
+.sb-conte-dur > input {
+  width: 100%;
+  min-width: 0;
+  padding: 5px 2px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.85);
+  font-family: inherit;
+  font-size: 12.5px;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+  /* 값을 적은 칸은 위에 붙는다 — 그림이 큰 행에서 길이가 세로 가운데에
+     떠 있으면 어느 컷의 값인지 눈으로 잇기 어렵다. */
+  align-self: flex-start;
+}
+
+/* 비어 있는 칸은 눌러서 고칠 수 있다는 것만 알린다. 평소에 테두리를
+   그리면 열여덟 줄이 전부 빈 입력칸으로 보여, 위임이 아니라 안 채운
+   것으로 읽힌다. */
+.sb-conte-dur > input::placeholder {
+  color: rgba(255, 255, 255, 0.18);
+}
+
+.sb-conte-dur > input:hover:not(:disabled) {
+  border-color: rgba(255, 255, 255, 0.16);
+}
+
+.sb-conte-dur > input:focus {
+  outline: none;
+  border-color: rgba(150, 190, 210, 0.7);
+  background: rgba(150, 190, 210, 0.08);
+}
+
+.sb-conte-dur > input:disabled {
+  cursor: not-allowed;
+}
+
+/* 감독이 정한 값. 위임된 빈 칸과 갈려 보여야 한다 — 같은 회색이면
+   무엇이 정해졌고 무엇이 넘어갔는지 표에서 구별되지 않는다. */
+.sb-conte-dur.is-set > input {
+  color: rgba(186, 214, 228, 0.95);
+  font-weight: 600;
+}
+
+/* 씬 경계. 시공간이 바뀌는 자리는 콘티에서도 행을 가로질러 보여야 한다. */
+.sb-conte-scene {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-top: none;
+  background: rgba(255, 255, 255, 0.05);
+  color: inherit;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.sb-conte-scene:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.sb-conte-scene-caret {
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 10px;
+}
+
+.sb-conte-scene > span:not(.sb-conte-scene-caret) {
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.sb-conte-scene > strong {
+  color: rgba(255, 255, 255, 0.88);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.sb-conte-scene > em {
+  margin-left: auto;
+  color: rgba(255, 255, 255, 0.38);
+  font-size: 10px;
+  font-style: normal;
+}
+
+/* 이음새. 두 컷 사이에서 정한 것이므로 행 사이에 낀다 (DG2 P1). */
+.sb-conte-seam {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 4px 12px 4px calc(var(--conte-no) + 12px);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-top: none;
+  background: rgba(0, 0, 0, 0.22);
+}
+
+.sb-conte-seam > span {
+  padding: 1px 6px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.55);
+  font-size: 9.5px;
+  font-weight: 600;
+}
+
+/* 마지막 행의 아래 모서리를 표에 맞춘다. */
+.sb-conte > :last-child {
+  border-radius: 0 0 8px 8px;
+}
+
+/* 좁아지면 그림 칸을 지킨다 — 설명이 먼저 줄어야 콘티로 읽힌다. */
+@media (max-width: 1180px) {
+  .sb-conte {
+    --conte-no: 36px;
+    --conte-pic: minmax(200px, 260px);
+    --conte-cap: minmax(140px, 0.8fr);
+    --conte-framing: 72px;
+    --conte-dur: 46px;
+    padding-inline: 12px;
+  }
+}
+
+/* ── 콘티 표: 설명 편집과 샷·앵글 고르기 ─────────────────────────── */
+
+/* 컷 내용을 그 자리에서 고친다. 프롬프트를 따로 열지 않고 여기서
+   고치고 다시 그리는 것이 짧다 — 이 문장이 곧 프롬프트의 본문이다. */
+.sb-conte-content {
+  width: 100%;
+  margin: 0;
+  padding: 3px 6px;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.9);
+  font-family: inherit;
+  font-size: 15px;
+  line-height: 1.66;
+  resize: none;
+  overflow: hidden;
+}
+
+/* 평소에 입력칸으로 보이지 않게 둔다. 열여덟 줄이 전부 상자로 보이면
+   표가 서식이 아니라 양식처럼 읽힌다. */
+.sb-conte-content:hover {
+  border-color: rgba(255, 255, 255, 0.14);
+}
+
+.sb-conte-content:focus {
+  outline: none;
+  border-color: rgba(150, 190, 210, 0.65);
+  background: rgba(150, 190, 210, 0.06);
+}
+
+.sb-conte-content::placeholder {
+  color: rgba(255, 255, 255, 0.25);
+}
+
+.sb-conte-framing {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 12px 5px;
+  border-right: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* 팝업의 기준은 셀이 아니라 이 상자다. 셀은 행 높이(240px 남짓)만큼
+   크기 때문에, 셀을 기준으로 띄우면 팝업이 행 바닥까지 내려가 누른
+   자리에서 멀어진다. */
+.conte-framing {
+  position: relative;
+  width: 100%;
+}
+
+/* 지금 값. 이름만 있으면 `Bust`와 `Medium`이 무엇이 다른지 고르는
+   순간에 알 수 없어, 그림이 값을 말하게 한다. */
+.conte-framing-current {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  width: 100%;
+  padding: 4px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.conte-framing-current:hover:not(:disabled) {
+  border-color: rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+/* 예시 도형. 프레임 사각형 안에 인물이 얼마나 크게 들어오는지가 곧
+   샷 크기이고, 카메라가 어디서 보는지가 앵글이다. */
+.framing-glyph {
+  display: block;
+  width: 100%;
+  aspect-ratio: 3 / 2;
+}
+
+.framing-glyph-frame {
+  fill: rgba(255, 255, 255, 0.04);
+  stroke: rgba(255, 255, 255, 0.3);
+  stroke-width: 1.2;
+}
+
+.framing-glyph-figure {
+  fill: rgba(255, 255, 255, 0.62);
+}
+
+/* OTS는 두 인물의 앞뒤가 보여야 한다 — 앞은 어깨만 걸리고 뒤가 대상이다. */
+.framing-glyph-near { fill: rgba(255, 255, 255, 0.78); }
+.framing-glyph-far { opacity: 0.55; }
+
+.framing-glyph-ground {
+  stroke: rgba(255, 255, 255, 0.16);
+  stroke-width: 1;
+}
+
+.framing-glyph-cam { fill: rgba(150, 190, 210, 0.95); }
+
+.framing-glyph-sight {
+  stroke: rgba(150, 190, 210, 0.6);
+  stroke-width: 1;
+  stroke-dasharray: 2.5 2;
+}
+
+.framing-glyph-eye {
+  fill: none;
+  stroke: rgba(150, 190, 210, 0.95);
+  stroke-width: 1.4;
+}
+
+.framing-glyph-pupil { fill: rgba(150, 190, 210, 0.95); }
+
+/* POV에서 프레임 아래에 걸리는 자기 몸. 보는 대상과 갈려야 "내가 보는
+   중"이라는 것이 읽힌다. */
+.framing-glyph-own { fill: rgba(150, 190, 210, 0.55); }
+
+/* 고른 값은 도형도 밝아진다. */
+.conte-framing-menu button.is-active .framing-glyph-frame {
+  stroke: rgba(150, 190, 210, 0.9);
+}
+
+.conte-framing-menu button.is-active .framing-glyph-figure {
+  fill: rgba(255, 255, 255, 0.92);
+}
+
+.conte-framing-current > em {
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 10px;
+  font-style: normal;
+  line-height: 1.3;
+  text-align: center;
+  /* 이름이 길어도 칸을 밀지 않는다. 그림이 이미 값을 말한다. */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+
+/* 아직 안 정한 값. 촬영이 할 일이 남았다는 것이 보여야 한다 (DG1 P2) —
+   기본값처럼 채워 두면 정해진 것으로 읽혀 그냥 넘어가게 된다. */
+.conte-framing-current.is-unset > em {
+  color: rgba(255, 255, 255, 0.34);
+}
+
+.conte-framing-blank {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  aspect-ratio: 3 / 2;
+  border: 1px dashed rgba(255, 255, 255, 0.16);
+  border-radius: 4px;
+  color: rgba(255, 255, 255, 0.22);
+  font-size: 12px;
+}
+
+/* 바깥을 눌러 닫는 자리. 보이지 않지만 표 전체를 덮는다. */
+.conte-framing-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  border: none;
+  background: transparent;
+  cursor: default;
+}
+
+/* 후보를 그림으로 늘어놓는다. 나란히 놓고 비교해야 크기 차이가 보인다. */
+.conte-framing-menu {
+  position: absolute;
+  top: calc(100% - 4px);
+  right: 0;
+  z-index: 21;
+  width: 340px;
+  padding: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 9px;
+  background: #17171b;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.6);
+}
+
+.conte-framing-menu > p {
+  margin: 0 0 8px;
+  color: rgba(255, 255, 255, 0.55);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.conte-framing-menu > div {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+}
+
+.conte-framing-menu button {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 7px;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.7);
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.conte-framing-menu button:hover {
+  border-color: rgba(255, 255, 255, 0.3);
+  color: rgba(255, 255, 255, 0.95);
+}
+
+.conte-framing-menu button.is-active {
+  border-color: rgba(150, 190, 210, 0.75);
+  background: rgba(150, 190, 210, 0.14);
+  color: #fff;
+}
+
+.conte-framing-menu button > em {
+  font-size: 11px;
+  font-weight: 600;
+  font-style: normal;
+  line-height: 1.25;
+  text-align: center;
+}
+
+
+/* 이미지가 정할 것 (DG1 P3). 컷마다 매번 볼 것은 아니라 접어 두되,
+   판정하지 않은 것이 남았으면 그 수를 접힌 채로도 보여 준다. */
+.sb-conte-decl {
+  margin-top: 2px;
+}
+
+.sb-conte-decl > summary {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 6px;
+  border-radius: 5px;
+  color: rgba(255, 255, 255, 0.42);
+  font-size: 11px;
+  cursor: pointer;
+  list-style: none;
+}
+
+.sb-conte-decl > summary::-webkit-details-marker { display: none; }
+
+.sb-conte-decl > summary::before {
+  content: '▸';
+  font-size: 9px;
+}
+
+.sb-conte-decl[open] > summary::before { content: '▾'; }
+
+.sb-conte-decl > summary:hover {
+  background: rgba(255, 255, 255, 0.04);
+  color: rgba(255, 255, 255, 0.7);
+}
+
+/* 아직 판정하지 않은 수. 접혀 있어도 남은 일이 보여야 한다. */
+.sb-conte-decl > summary em {
+  padding: 1px 6px;
+  border-radius: 8px;
+  background: rgba(251, 191, 113, 0.16);
+  color: rgba(251, 191, 113, 0.95);
+  font-size: 9.5px;
+  font-style: normal;
+  font-weight: 700;
+}
+
+.sb-conte-decl > ul {
+  margin: 6px 0 0;
+  padding: 0 0 0 14px;
+  list-style: none;
+}
+
+.sb-conte-decl > ul > li + li { margin-top: 8px; }
+
+.sb-conte-decl-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.sb-conte-decl-head > strong {
+  color: rgba(255, 255, 255, 0.82);
+  font-size: 11.5px;
+  font-weight: 600;
+}
+
+.sb-conte-decl .deferred-dismiss {
+  margin-left: auto;
+  padding: 0 4px;
+  border: none;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.3);
+  font-size: 13px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.sb-conte-decl .deferred-dismiss:hover { color: rgba(251, 113, 133, 0.95); }
+
+.sb-conte-decl .deferred-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 4px;
+}
+
+.sb-conte-decl .deferred-chips button {
+  padding: 2px 7px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 4px;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.55);
+  font-family: inherit;
+  font-size: 10px;
+  cursor: pointer;
+}
+
+.sb-conte-decl .deferred-chips button:hover {
+  border-color: rgba(255, 255, 255, 0.32);
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.sb-conte-decl .deferred-chips button.active {
+  border-color: rgba(150, 190, 210, 0.7);
+  background: rgba(150, 190, 210, 0.16);
+  color: #fff;
+}
+
+/* 아직 판정 전인 AI 제안. 확정과 같은 모양이면 이미 정해진 것으로
+   읽힌다 (DG1 P2). */
+.sb-conte-decl .deferred-chips.is-proposed button.active {
+  border-style: dashed;
+  background: rgba(150, 190, 210, 0.07);
+  color: rgba(255, 255, 255, 0.7);
+}
+
+
+/* 고쳤지만 아직 스토어에 안 들어간 문장. 그리기를 누르면 반영되므로
+   저장 버튼은 두지 않되, 그 상태는 보여야 한다. */
+.sb-conte-content-wrap {
+  position: relative;
+}
+
+.sb-conte-content-wrap.is-dirty .sb-conte-content {
+  border-color: rgba(251, 191, 113, 0.5);
+  background: rgba(251, 191, 113, 0.05);
+}
+
+.sb-conte-content-dirty {
+  display: block;
+  margin: 3px 0 0 6px;
+  color: rgba(251, 191, 113, 0.85);
+  font-size: 10.5px;
 }

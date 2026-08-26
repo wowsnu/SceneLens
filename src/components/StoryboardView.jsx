@@ -25,6 +25,7 @@ import useStore, {
   selectLayoutForCut,
   cutFindingFingerprint,
 } from '../store/useStore'
+import FramingGlyph from './FramingGlyph'
 import './StoryboardView.css'
 import { logEdit, logEvent, logScaffold } from '../store/studyLog'
 import useRequestHistory from '../hooks/useRequestHistory'
@@ -89,6 +90,116 @@ const layerOfCheckFinding = (finding) => {
 }
 
 const EMPTY_SHOTS = []
+
+// 컷 내용을 그 자리에서 고친다. 타이핑마다 스토어를 고치면 열여덟 행이
+// 매번 다시 그려지므로, 편집 중에는 로컬에 두고 손을 뗄 때 커밋한다.
+// 커밋된 문장이 곧 그림 프롬프트의 본문이 된다 (`buildCutPrompt`).
+function ConteContent({ cutId, value, onCommit }) {
+  const [draft, setDraft] = useState(value)
+  // 고친 것이 아직 안 들어갔는지 보여준다. 손을 뗄 때 저장되는데, 그
+  // 사실이 화면에 없으면 고치고도 반영됐는지 알 수 없어 다시 누르게 된다.
+  const dirty = draft.trim() !== value
+  return (
+    <div className={`sb-conte-content-wrap${dirty ? ' is-dirty' : ''}`}>
+    <textarea
+      className="sb-conte-content"
+      /* 그리기 직전에 아직 커밋되지 않은 칸을 찾아내기 위한 표시다.
+         편집 중인 문장은 blur 전까지 로컬에만 있어서, 고치자마자 재생성을
+         누르면 옛 문장으로 그려질 수 있다 — 그 창을 없앤다
+         (`commitOpenContentEdits`). */
+      data-conte-content={cutId}
+      data-conte-committed={value}
+      value={draft}
+      rows={1}
+      placeholder="이 컷에서 무슨 일이 일어나는가"
+      onClick={(event) => event.stopPropagation()}
+      onChange={(event) => setDraft(event.target.value)}
+      onBlur={() => onCommit(draft.trim())}
+      onKeyDown={(event) => {
+        // Escape는 되돌린다. 잘못 고쳤을 때 원문으로 돌아갈 길이 있어야 한다.
+        if (event.key === 'Escape') {
+          setDraft(value)
+          event.currentTarget.blur()
+        }
+      }}
+      ref={(el) => {
+        // 내용만큼 늘린다. 스크롤바가 생기면 문장 뒷부분이 표에서 사라진다.
+        if (!el) return
+        el.style.height = 'auto'
+        el.style.height = `${el.scrollHeight}px`
+      }}
+    />
+    {/* 그리기를 누르면 이 문장이 먼저 반영되므로(`commitOpenContentEdits`)
+        따로 저장을 누를 필요는 없다. 다만 아직 안 들어갔다는 것은
+        보여야 한다. */}
+    {dirty && <span className="sb-conte-content-dirty">고친 내용 · 그리면 반영됩니다</span>}
+    </div>
+  )
+}
+
+// 표 안에서 샷·앵글을 고른다. 지금 값은 그림으로 보이고, 누르면 후보가
+// 그림으로 펼쳐진다 — 훑을 때는 그림이 값을 말하고, 고를 때는 후보를
+// 나란히 비교한다.
+function FramingPicker({ value, options, kind, label, placeholder, onChange, disabled }) {
+  const [open, setOpen] = useState(false)
+  return (
+    <div className={`conte-framing${open ? ' is-open' : ''}`}>
+      <button
+        type="button"
+        className={`conte-framing-current${value ? '' : ' is-unset'}`}
+        aria-label={`${label}${value ? ` · ${value}` : ' 정하기'}`}
+        aria-expanded={open}
+        disabled={disabled}
+        onClick={(event) => {
+          event.stopPropagation()
+          setOpen((on) => !on)
+        }}
+      >
+        {value
+          ? <FramingGlyph kind={kind} value={value} />
+          : <span className="conte-framing-blank" aria-hidden="true">—</span>}
+        <em>{value || placeholder}</em>
+      </button>
+      {open && (
+        <>
+          {/* 바깥을 누르면 닫힌다. 표의 다른 칸을 누르려다 계속 열려
+              있으면 그 클릭이 먹히지 않는다. */}
+          <button
+            type="button"
+            className="conte-framing-scrim"
+            aria-label="닫기"
+            onClick={(event) => {
+              event.stopPropagation()
+              setOpen(false)
+            }}
+          />
+          <div className="conte-framing-menu" role="dialog" aria-label={`${label} 고르기`}>
+            <p>{label}</p>
+            <div>
+              {options.map((option) => (
+                <button
+                  type="button"
+                  key={option}
+                  className={option === value ? 'is-active' : ''}
+                  onClick={(event) => {
+                    event.stopPropagation()
+                    // 고른 값을 다시 누르면 비운다 — 촬영이 아직 정하지
+                    // 않은 상태로 되돌릴 길이 있어야 한다 (DG1 P2).
+                    onChange(option === value ? '' : option)
+                    setOpen(false)
+                  }}
+                >
+                  <FramingGlyph kind={kind} value={option} />
+                  <em>{option}</em>
+                </button>
+              ))}
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  )
+}
 
 
 // 줄 종류는 둘뿐이다. 대사·괄호·전환은 두지 않는다 — 정지 이미지가
@@ -647,8 +758,16 @@ function ScriptLineEditor({
   )
 }
 
-// Panels 단계의 오른쪽. 선택한 패널이 어느 컷에서 왔고 무엇이 정해져
-// 있는지 보여주고 그 자리에서 고친다. 값의 출처는 컷이므로 컷을 고친다.
+// [사용하지 않음 — 2026-08-26] Panels의 오른쪽 패널이었다.
+//
+// 콘티 표가 샷·앵글·길이를 열로 갖고 설명을 그 자리에서 고치게 되면서
+// 이 패널이 할 일이 없어졌다. 컷 하나를 열어 보는 것보다 표에서 컷들이
+// 어떻게 흘러가는지 보는 편이 낫고, 오른쪽을 비우면 설명 칸이 그만큼
+// 넓어진다. 책임 선언(DG1 P3)은 표의 `이미지가 정할 것`으로 옮겼다.
+//
+// 지우지 않고 남겨 둔 이유: 프롬프트 원문 편집(`promptOverride`)이
+// 여기에만 있었다. 설명을 고치고 다시 그리는 흐름으로 갈음했지만,
+// 조립된 문장을 직접 손봐야 하는 경우가 남는지 아직 모른다.
 // 설계 근거: docs/PANEL_GENERATION_DESIGN.md §3.3
 function ShotInspector({
   shot, cut, prompt, shotSizes, angles, moves, onChange, onClose,
@@ -1054,7 +1173,7 @@ function NarrativeSuggestionCard({ suggestion, onAccept, onDismiss }) {
   )
 }
 
-export default function StoryboardView() {
+export default function StoryboardView({ onEnterReview = null }) {
   const screenplay = useStore((s) => s.screenplay)
   const setScreenplay = useStore((s) => s.setScreenplay)
   const sceneIntention = useStore((s) => s.sceneIntention)
@@ -1175,7 +1294,6 @@ export default function StoryboardView() {
   const acceptShotFix = useStore((s) => s.acceptShotFix)
   const rejectShotFix = useStore((s) => s.rejectShotFix)
   const cutPlanAngles = useStore((s) => s.cutPlanAngles)
-  const cutPlanMoves = useStore((s) => s.cutPlanMoves)
   const scenePromptNote = useStore((s) => s.scenePromptNote)
   const setScenePromptNote = useStore((s) => s.setScenePromptNote)
   const panelImageModel = useStore((s) => s.panelImageModel)
@@ -1867,23 +1985,6 @@ export default function StoryboardView() {
     else cutPlanBeatGroups.push({ beat: item.beat, items: [{ item, index }] })
   })
 
-  // 인스펙터에 띄울 패널과 그 근원 컷.
-  const inspectedShot = flowShots.find((shot) => shot.id === inspectedShotId) || null
-  const inspectedCut = inspectedShot
-    ? cutPlan.find((item) => item.id === inspectedShot.cutPlanItemId) || null
-    : null
-  const inspectedPrompt = inspectedCut
-    ? buildCutPrompt(inspectedCut, {
-      sceneIntention,
-      sceneNote: scenePromptNote,
-      declarations,
-      sceneState: sceneStateForCut(inspectedCut),
-      seam: seamBefore(inspectedCut.id),
-      cutIndex: cutPlan.findIndex((item) => item.id === inspectedCut.id),
-      cutOrder,
-    })
-    : null
-
   const toggleScene = (openingBeat) => setCollapsedScenes((current) => (
     current.includes(openingBeat)
       ? current.filter((entry) => entry !== openingBeat)
@@ -1893,6 +1994,36 @@ export default function StoryboardView() {
   const toggleCutBeat = (beat) => setCollapsedCutBeats((current) => (
     current.includes(beat) ? current.filter((b) => b !== beat) : [...current, beat]
   ))
+
+  // 콘티 표의 행 목록. 컷은 Beat를 건너뛰고 한 줄로 이어지고, 씬이 바뀌는
+  // 자리에만 구분 행이 들어간다. 접힌 씬의 컷은 행을 만들지 않는다 —
+  // 씬 구분 행은 남아야 다시 펼 수 있다.
+  const conteRows = (() => {
+    const rows = []
+    let lastOpening = null
+    flowShots.forEach((shot, shotIdx) => {
+      const cut = cutPlan.find((item) => item.id === shot.cutPlanItemId)
+      const beat = cut?.beat ?? shot.scriptBeat ?? 0
+      const opening = openingBeatOf(beat)
+      if (opening !== null && opening !== lastOpening) {
+        lastOpening = opening
+        const heading = screenplay.find((element) => (
+          element.type === 'scene-heading' && (element.beat ?? 0) === opening
+        ))
+        rows.push({
+          kind: 'scene',
+          beat: opening,
+          number: sceneNumberOf(opening),
+          text: heading?.text || '',
+          cutCount: cutsInScene(opening),
+          collapsed: collapsedScenes.includes(opening),
+        })
+      }
+      if (opening !== null && collapsedScenes.includes(opening)) return
+      rows.push({ kind: 'cut', shot, shotIdx, cut })
+    })
+    return rows
+  })()
 
   const getBeatShots = (beat) => flowShots
     .map((shot, shotIdx) => ({ shot, shotIdx }))
@@ -1936,6 +2067,24 @@ export default function StoryboardView() {
     setOpenReferenceCards((current) => ({ ...current, [cardKey]: true }))
   }
 
+  // 아직 커밋되지 않은 설명 편집을 먼저 반영한다.
+  //
+  // 설명 칸은 타이핑마다 스토어를 고치지 않는다(열여덟 행이 매 글자마다
+  // 다시 그려진다). 대신 손을 뗄 때 커밋하는데, 고치자마자 재생성을 누르면
+  // blur와 클릭의 순서가 브라우저에 달려 있어 옛 문장으로 그려질 수 있다.
+  // 그리기는 30초가 걸리므로 그 한 번이 그대로 낭비가 된다.
+  //
+  // React 상태를 기다리지 않고 DOM에서 직접 읽는다 — 지금 화면에 있는
+  // 문장이 곧 감독이 의도한 문장이고, 그것이 프롬프트로 가야 한다.
+  const commitOpenContentEdits = () => {
+    document.querySelectorAll('[data-conte-content]').forEach((el) => {
+      const cutId = el.dataset.conteContent
+      const typed = el.value.trim()
+      if (!cutId || typed === (el.dataset.conteCommitted || '')) return
+      updateCutPlanItem(cutId, { content: typed })
+    })
+  }
+
   // 조립한 프롬프트로 실제 그림을 만든다. 씬 기준·책임 선언·이음새·샷이
   // 전부 이 문장으로 모이므로, 여기서 쓰지 않으면 앞 공정이 무의미해진다.
   const handleGeneratePanels = async (
@@ -1963,6 +2112,10 @@ export default function StoryboardView() {
       autoAccept = false,
     } = {},
   ) => {
+    // 편집 중이던 설명을 먼저 스토어에 넣는다. 이 뒤의 프롬프트 조립은
+    // 스토어에서 컷을 다시 읽으므로, 여기서 넣은 문장이 그대로 반영된다.
+    commitOpenContentEdits()
+
     const eligibleTargets = includeExisting
       ? targets
       : targets.filter(({ shot }) => !getShotVisual(shot))
@@ -1996,17 +2149,23 @@ export default function StoryboardView() {
     }
     const failures = []
 
-    const promptOf = (cut) => (cut
-      ? buildCutPrompt(cut, {
-        sceneIntention,
-        sceneNote: scenePromptNote,
-        declarations,
-        sceneState: sceneStateForCut(cut),
-        seam: seamBefore(cut.id),
-        cutIndex: cutPlan.findIndex((item) => item.id === cut.id),
-        cutOrder,
-      })
-      : null)
+    // 방금 커밋한 설명이 반영된 컷을 쓴다. 이 함수를 감싼 클로저의
+    // `cutPlan`은 이번 렌더 시점의 값이라 그 편집을 아직 모른다.
+    const latestPlan = useStore.getState().cutPlan
+    const promptOf = (cut) => {
+      const fresh = cut ? latestPlan.find((item) => item.id === cut.id) || cut : null
+      return fresh
+        ? buildCutPrompt(fresh, {
+          sceneIntention,
+          sceneNote: scenePromptNote,
+          declarations,
+          sceneState: sceneStateForCut(fresh),
+          seam: seamBefore(fresh.id),
+          cutIndex: latestPlan.findIndex((item) => item.id === fresh.id),
+          cutOrder,
+        })
+        : null
+    }
 
     // 컷 순서대로, 한 장씩 만든다. 동시에 만들면 각 패널이 앞 컷을 모른 채
     // 그려져 같은 씬인데 이어지지 않는다. 앞 컷의 문장을 함께 넘긴다.
@@ -2709,7 +2868,13 @@ export default function StoryboardView() {
           </nav>
         )}
       <div className="storyboard-scroll-container">
-        <div className="storyboard-list-inner">
+        {/* 콘티 표는 폭을 훨씬 넓게 쓴다. 대본·컷 플랜은 읽는 화면이라
+            한 줄이 길면 눈이 되돌아오기 힘들어 1100px로 묶지만, 콘티는
+            그림·설명·샷·앵글을 나란히 놓고 비교하는 표라 열이 많다 —
+            좁히면 설명 칸부터 줄어든다. */}
+        <div className={`storyboard-list-inner${
+          showStoryboardPanels && !panelGridView && !drawingWorkspaceOpen ? ' is-conte' : ''
+        }`}>
           {showWriteScene && (
             <div className="inline-script-editor">
               <div className="editor-header">
@@ -3375,7 +3540,483 @@ export default function StoryboardView() {
             </section>
           )}
 
-          {!isCutPlanStage && !(showStoryboardPanels && panelGridView) && beats.map((beatGroup, i) => {
+          {/* 絵コンテ 표. 컷이 한 행이고, 열은 `컷 번호 / 그림 / 설명 / 길이`다.
+              Beat는 열지 않는다 — Beat는 대본을 나눈 단위이지 콘티를 읽는
+              단위가 아니고, 행 사이에 끼면 컷 번호가 끊긴다. 씬은 남긴다:
+              시공간이 바뀌는 자리는 콘티에서도 경계로 읽혀야 한다. */}
+          {showStoryboardPanels && !panelGridView && !drawingWorkspaceOpen && (
+            <section className="sb-conte" aria-label="대본과 함께 보기 · 콘티 표">
+              <div className="sb-conte-head" role="row">
+                <span role="columnheader">컷</span>
+                <span role="columnheader">그림</span>
+                <span role="columnheader">설명</span>
+                {/* 샷과 앵글은 촬영이 정하는 값이다. 콘티 표에 두어야
+                    컷을 훑으면서 크기가 어떻게 흘러가는지 보인다 —
+                    한 컷씩 인스펙터를 열어 보면 그 흐름이 안 보인다. */}
+                <span role="columnheader">샷</span>
+                <span role="columnheader">앵글</span>
+                {/* 길이는 기본이 위임이다 — 비어 있는 칸은 후속 공정이
+                    정할 자리라는 뜻이지 아직 안 적었다는 뜻이 아니다
+                    (DG1 P3). 다만 감독이 정하고 싶으면 정할 수 있어야
+                    한다. 그래서 열을 지우지 않고 입력을 받는다. */}
+                <span role="columnheader" className="is-delegated">
+                  길이
+                  <em>비우면 후속 공정</em>
+                </span>
+              </div>
+
+              {conteRows.map((row) => {
+                if (row.kind === 'scene') {
+                  return (
+                    <button
+                      type="button"
+                      key={`scene-${row.beat}`}
+                      className={`sb-conte-scene${row.collapsed ? ' collapsed' : ''}`}
+                      onClick={() => toggleScene(row.beat)}
+                      aria-expanded={!row.collapsed}
+                    >
+                      <span className="sb-conte-scene-caret" aria-hidden="true">
+                        {row.collapsed ? '▸' : '▾'}
+                      </span>
+                      <span>Scene {row.number}</span>
+                      <strong>{row.text}</strong>
+                      <em>{row.cutCount} cuts</em>
+                    </button>
+                  )
+                }
+
+                const { shot, shotIdx, cut: shotCut } = row
+                const cutLabel = shotCut
+                  ? `Cut ${shotCut.order || shotIdx + 1}`
+                  : `Panel ${shotIdx + 1}`
+                const committedImage = getShotVisual(shot)
+                const candidate = panelCandidates[shot.id]
+                const displayImage = candidate?.image || committedImage
+                // 앞 컷과의 이음새. 정한 것이 있을 때만 행 사이에 끼운다 —
+                // 전부 '컷 · 연속'인 기본값까지 그리면 실제로 정한 것이 묻힌다.
+                const prevShot = shotIdx > 0 ? flowShots[shotIdx - 1] : null
+                const seamBefore2 = prevShot ? seams[seamKeyFor(prevShot.id)] : null
+                const showSeam = isSeamMarked(seamBefore2)
+                // 이 컷이 그림 밖 채널로 남긴 것 (DG1 P3).
+                const shotPrompt = shotCut
+                  ? buildCutPrompt(shotCut, {
+                    sceneIntention,
+                    sceneNote: scenePromptNote,
+                    declarations,
+                    sceneState: sceneStateForCut(shotCut),
+                    seam: seamBefore(shotCut.id),
+                    cutIndex: cutPlan.findIndex((item) => item.id === shotCut.id),
+                    cutOrder,
+                  })
+                  : null
+                const { marks: panelMarks, notes: panelNotes } = buildPanelMarks(
+                  shotPrompt?.responsibility?.offImage || [],
+                )
+                const hasArrows = (shot.arrows || []).length > 0
+                const visibleNotes = panelNotes.filter(
+                  (note) => !(note.needsArrow && hasArrows),
+                )
+
+                return (
+                  <Fragment key={shot.id || shotIdx}>
+                    {showSeam && (
+                      <div className="sb-conte-seam">
+                        <span className="sb-seam-join">
+                          {SEAM_JOINS.find((j) => j.id === seamBefore2.join)?.label}
+                        </span>
+                        {seamBefore2.elapsed !== 'continuous' && (
+                          <span className="sb-seam-elapsed">
+                            {SEAM_ELAPSED.find((e) => e.id === seamBefore2.elapsed)?.label}
+                          </span>
+                        )}
+                        {seamBefore2.elision && (
+                          <span className="sb-seam-elision">생략 · {seamBefore2.elision}</span>
+                        )}
+                      </div>
+                    )}
+                    <div
+                      data-shot-id={shot.id}
+                      className={`sb-conte-row${shotIdx === activeShot ? ' active-shot' : ''}${candidate ? ' has-ai-candidate' : ''}${inspectedShotId === shot.id ? ' inspected' : ''}`}
+                      role="row"
+                      onClick={() => {
+                        setFlowActiveShot(shotIdx)
+                        setInspectedShotId(shot.id)
+                      }}
+                    >
+                      {/* 컷 번호. 콘티에서 컷을 부르는 이름이므로 가장 왼쪽에
+                          두고, 스크롤 중에도 행의 시작을 잡아 준다. */}
+                      <div className="sb-conte-no">
+                        <span>{shotCut?.order || shotIdx + 1}</span>
+                        <button
+                          type="button"
+                          className="sb-conte-delete"
+                          disabled={flowShots.length <= 1}
+                          title={flowShots.length <= 1 ? '씬에 컷이 하나는 남아야 합니다' : `${cutLabel} 삭제`}
+                          aria-label={`${cutLabel} 삭제`}
+                          onClick={(event) => {
+                            event.stopPropagation()
+                            handleDeleteShot(shot.id, shotIdx)
+                          }}
+                        >
+                          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6M10 10v6M14 10v6" />
+                          </svg>
+                        </button>
+                      </div>
+
+                      {/* 그림. 콘티에서 가장 큰 칸이고, 손대는 일도 여기서
+                          일어난다 — 그리기·재생성·화살표·메모를 그림 위에
+                          모아 표가 버튼으로 채워지지 않게 한다. */}
+                      <div className="sb-conte-pic">
+                        {panelGenPending[shot.id] ? (
+                          <div className="sb-panel-pending">
+                            <span className="sb-pending-spinner" />
+                            <span>그리는 중…</span>
+                          </div>
+                        ) : candidate ? (
+                          <div className="sb-panel-candidate">
+                            <div className="sb-img-wrapper">
+                              <img src={displayImage} alt={`${cutLabel} AI draft`} />
+                              <span className="sb-candidate-badge">AI candidate · V{candidate.version}</span>
+                            </div>
+                            <div className="sb-candidate-actions">
+                              <button type="button" onClick={() => dismissPanelCandidate(shot.id)}>Dismiss</button>
+                              <button
+                                type="button"
+                                onClick={() => handleGeneratePanels([{ shot, shotIdx }], { includeExisting: true })}
+                              >
+                                Again
+                              </button>
+                              <button type="button" onClick={() => handleDrawOverCandidate(shot, shotIdx)}>Draw over</button>
+                              <button
+                                type="button"
+                                className="accept"
+                                onClick={() => acceptPanelCandidate(shot.id)}
+                              >
+                                Accept
+                              </button>
+                            </div>
+                          </div>
+                        ) : committedImage ? (
+                          <div className="sb-img-wrapper">
+                            <img src={displayImage} alt={cutLabel} />
+                            <PanelOverlay
+                              marks={panelMarks}
+                              arrows={shot.arrows || []}
+                              drawing={arrowDrawingShotId === shot.id}
+                              selectedArrowId={selectedArrow?.shotId === shot.id
+                                ? selectedArrow.arrowId
+                                : null}
+                              onDrawArrow={(arrow) => {
+                                setPendingArrow({ shotId: shot.id, arrow })
+                                setSelectedArrow(null)
+                                setArrowDrawingShotId(null)
+                              }}
+                              onSelectArrow={(arrowId) => {
+                                setPendingArrow(null)
+                                setSelectedArrow({ shotId: shot.id, arrowId })
+                              }}
+                            />
+                            <PanelNote
+                              note={shot.note || ''}
+                              onChange={(value) => setShotNote(shot.id, value)}
+                              editing={noteEditingShotId === shot.id}
+                              onEditingChange={(editing) => (
+                                setNoteEditingShotId(editing ? shot.id : null)
+                              )}
+                            />
+                            {/* 표를 깔끔히 두기 위해 도구는 그림 위 hover로
+                                모은다. 화살표·메모는 그리는 중일 때 계속
+                                보여야 하므로 그때는 hover가 풀려도 남긴다. */}
+                            <div className={`sb-conte-tools${arrowDrawingShotId === shot.id || noteEditingShotId === shot.id ? ' pinned' : ''}`}>
+                              <button
+                                className="sb-action-btn"
+                                onClick={(event) => {
+                                  event.stopPropagation()
+                                  handleEditShot(shotIdx, shot.scriptBeat ?? shotCut?.beat ?? 0)
+                                }}
+                              >
+                                Draw
+                              </button>
+                              <button
+                                className="sb-action-btn secondary"
+                                onClick={(event) => {
+                                  event.stopPropagation()
+                                  handleGeneratePanels([{ shot, shotIdx }], { includeExisting: true })
+                                }}
+                              >
+                                재생성
+                              </button>
+                              <button
+                                type="button"
+                                className={`sb-action-btn icon${arrowDrawingShotId === shot.id ? ' active' : ''}`}
+                                aria-pressed={arrowDrawingShotId === shot.id}
+                                title="패널 위를 끌어서 카메라 이동 방향을 표시합니다"
+                                onClick={(event) => {
+                                  event.stopPropagation()
+                                  const closing = arrowDrawingShotId === shot.id
+                                  setArrowDrawingShotId(closing ? null : shot.id)
+                                  setNoteEditingShotId(null)
+                                  setPendingArrow(null)
+                                  setSelectedArrow(null)
+                                }}
+                              >
+                                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round">
+                                  <path d="M5 12h13M13 6l6 6-6 6" />
+                                </svg>
+                                {arrowDrawingShotId === shot.id ? '그리는 중' : '카메라'}
+                              </button>
+                              <button
+                                type="button"
+                                className={`sb-action-btn icon${noteEditingShotId === shot.id ? ' active' : ''}`}
+                                aria-pressed={noteEditingShotId === shot.id}
+                                onClick={(event) => {
+                                  event.stopPropagation()
+                                  setNoteEditingShotId(
+                                    noteEditingShotId === shot.id ? null : shot.id,
+                                  )
+                                  setArrowDrawingShotId(null)
+                                  setPendingArrow(null)
+                                  setSelectedArrow(null)
+                                }}
+                              >
+                                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                                  <path d="M5 4h14v13H9l-4 3V4Z" />
+                                </svg>
+                                메모
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="sb-add-shot existing-empty">
+                            <span>{cutLabel}</span>
+                            <small>Choose how to start</small>
+                            <div className="sb-empty-panel-actions">
+                              <button
+                                type="button"
+                                onClick={(event) => {
+                                  event.stopPropagation()
+                                  handleEditShot(shotIdx, shot.scriptBeat ?? shotCut?.beat ?? 0)
+                                }}
+                              >
+                                Draw
+                              </button>
+                              <button
+                                type="button"
+                                onClick={(event) => {
+                                  event.stopPropagation()
+                                  handleGeneratePanels([{ shot, shotIdx }])
+                                }}
+                              >
+                                Generate
+                              </button>
+                            </div>
+                          </div>
+                        )}
+
+                        {pendingArrow?.shotId === shot.id && (
+                          <CameraMovePicker
+                            onChoose={(move) => {
+                              addShotArrow(shot.id, {
+                                ...pendingArrow.arrow,
+                                channel: 'camera-move',
+                                kind: move.id,
+                                label: move.label,
+                              })
+                              setPendingArrow(null)
+                            }}
+                            onCancel={() => setPendingArrow(null)}
+                          />
+                        )}
+                        {selectedArrow?.shotId === shot.id && (
+                          <CameraMovePicker
+                            existing
+                            onChoose={(move) => {
+                              updateShotArrow(shot.id, selectedArrow.arrowId, {
+                                channel: 'camera-move',
+                                kind: move.id,
+                                label: move.label,
+                              })
+                              setSelectedArrow(null)
+                              setArrowDrawingShotId(null)
+                            }}
+                            onDelete={() => {
+                              removeShotArrow(shot.id, selectedArrow.arrowId)
+                              setSelectedArrow(null)
+                              setArrowDrawingShotId(null)
+                            }}
+                            onCancel={() => setSelectedArrow(null)}
+                          />
+                        )}
+                      </div>
+
+                      {/* 설명. 콘티의 Action Notes 자리다. 대사·효과음 칸은
+                          두지 않는다 — 대본이 그 줄 종류를 갖지 않기로 했고
+                          (`SCRIPT_LINE_TYPES`), 빈 칸만 남으면 아직 안 적은
+                          것으로 읽힌다. */}
+                      <div className="sb-conte-caption">
+                        {shotCut?.purpose && (
+                          <span className="sb-conte-purpose">{shotCut.purpose}</span>
+                        )}
+                        {/* 컷 내용은 여기서 고친다. 이 문장이 그대로 그림
+                            프롬프트의 본문이 되므로(`buildCutPrompt`),
+                            프롬프트를 따로 열어 고치는 것보다 여기서
+                            고치고 다시 그리는 편이 짧다. */}
+                        {shotCut && (
+                          <ConteContent
+                            key={`${shotCut.id}:${shotCut.content || ''}`}
+                            cutId={shotCut.id}
+                            value={shotCut.content || ''}
+                            onCommit={(next) => (
+                              next !== (shotCut.content || '')
+                                && updateCutPlanItem(shotCut.id, { content: next })
+                            )}
+                          />
+                        )}
+                        {shot.note && <p className="sb-conte-note">{shot.note}</p>}
+                        {/* 아직 그리지 않은 그림 밖 채널만 남긴다. 이미
+                            그렸으면 화살표가 그 자리에 있으므로 한 번 더
+                            말하지 않는다. */}
+                        {visibleNotes.length > 0 && (
+                          <ul className="sb-shot-offimage-notes">
+                            {visibleNotes.map((note, index) => (
+                              <li
+                                key={`${note.element}-${index}`}
+                                className={note.needsArrow ? 'needs-arrow' : ''}
+                                title={note.needsArrow
+                                  ? '화살표 버튼을 눌러 표시하세요'
+                                  : note.element}
+                              >
+                                <em>{note.element}</em>
+                                {note.label !== note.element && <span>{note.label}</span>}
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+
+                        {/* 무엇을 그림에서 정하고 무엇을 촬영에 넘길지
+                            (DG1 P3). 컷마다 매번 볼 것은 아니라 접어 두되,
+                            판정하지 않은 것이 남아 있으면 그 수를 밖에
+                            보여 준다 — 접힌 채로 잊히면 AI 가정이 그대로
+                            굳는다 (DG1 P2). */}
+                        {shotCut && (() => {
+                          const scoped = (decl) => (
+                            decl.scope === 'scene' || decl.cutId === shotCut.id
+                          )
+                          const undecided = deferredDeclarations.filter(scoped)
+                          const decided = acceptedDeclarations.filter(scoped)
+                          if (undecided.length === 0 && decided.length === 0) return null
+                          return (
+                            <details className="sb-conte-decl">
+                              <summary>
+                                <span>이미지가 정할 것</span>
+                                {undecided.length > 0 && <em>{undecided.length} 미정</em>}
+                              </summary>
+                              <ul>
+                                {[...undecided, ...decided].map((decl) => {
+                                  const isDecided = decl.status === 'Accepted'
+                                  return (
+                                    <li key={decl.id} className={isDecided ? 'is-decided' : ''}>
+                                      <div className="sb-conte-decl-head">
+                                        <strong>{decl.element}</strong>
+                                        {!isDecided && <span className="deferred-mark">미정</span>}
+                                        <button
+                                          type="button"
+                                          className="deferred-dismiss"
+                                          title={isDecided ? '선언 해제' : '이 요소는 선언하지 않는다'}
+                                          aria-label={`${decl.element} ${isDecided ? '선언 해제' : '선언하지 않음'}`}
+                                          onClick={() => rejectDeclaration(decl.id)}
+                                        >
+                                          ×
+                                        </button>
+                                      </div>
+                                      {/* 칩을 고르는 것이 곧 판정이다. AI 기본값을
+                                          그대로 두면 판정하지 않은 것으로 남는다. */}
+                                      <div className={`deferred-chips${isDecided ? '' : ' is-proposed'}`}>
+                                        {RESPONSIBILITY_LEVELS.map((level) => (
+                                          <button
+                                            key={level.id}
+                                            type="button"
+                                            className={decl.responsibility === level.id ? 'active' : ''}
+                                            title={isDecided ? level.hint : `${level.hint} · AI 제안, 눌러서 확정`}
+                                            onClick={() => decideDeclaration(decl.id, level.id)}
+                                          >
+                                            {level.label}
+                                          </button>
+                                        ))}
+                                      </div>
+                                    </li>
+                                  )
+                                })}
+                              </ul>
+                            </details>
+                          )
+                        })()}
+                      </div>
+
+                      {/* 샷·앵글. 값이 없으면 촬영이 아직 안 정한 것이다 —
+                          기본값을 채워 두면 정해진 것처럼 읽혀 촬영을
+                          부르지 않고 넘어가게 된다 (DG1 P2). */}
+                      <div
+                        className="sb-conte-framing"
+                        onClick={(event) => event.stopPropagation()}
+                      >
+                        <FramingPicker
+                          label="샷 크기"
+                          placeholder="미정"
+                          value={shotCut?.shotSize || ''}
+                          options={cutPlanShotSizes}
+                          kind="shot"
+                          disabled={!shotCut}
+                          onChange={(next) => updateCutPlanItem(shotCut.id, { shotSize: next })}
+                        />
+                      </div>
+                      <div
+                        className="sb-conte-framing"
+                        onClick={(event) => event.stopPropagation()}
+                      >
+                        <FramingPicker
+                          label="앵글"
+                          placeholder="미정"
+                          value={shotCut?.angle || ''}
+                          options={cutPlanAngles}
+                          kind="angle"
+                          disabled={!shotCut}
+                          onChange={(next) => updateCutPlanItem(shotCut.id, { angle: next })}
+                        />
+                      </div>
+
+                      {/* 길이 칸. 비워 두면 후속 공정에 넘긴 것이고(DG1 P3),
+                          적으면 그때부터 스토리보드가 정한 값이다. 둘을
+                          화면에서 갈라 둬야 빈 칸이 '아직 안 적음'으로
+                          읽히지 않는다. */}
+                      <div
+                        className={`sb-conte-dur${shotCut?.duration ? ' is-set' : ''}`}
+                        onClick={(event) => event.stopPropagation()}
+                      >
+                        <input
+                          type="text"
+                          inputMode="decimal"
+                          value={shotCut?.duration || ''}
+                          placeholder="—"
+                          aria-label={`${cutLabel} 길이`}
+                          title={shotCut?.duration
+                            ? '컷 길이. 지우면 후속 공정에 넘깁니다.'
+                            : '비어 있으면 후속 공정이 정합니다. 직접 적으려면 입력하세요.'}
+                          disabled={!shotCut}
+                          onChange={(event) => (
+                            updateCutPlanItem(shotCut.id, { duration: event.target.value })
+                          )}
+                        />
+                      </div>
+                    </div>
+                  </Fragment>
+                )
+              })}
+            </section>
+          )}
+
+          {!isCutPlanStage && !showStoryboardPanels && beats.map((beatGroup, i) => {
             // 접힌 씬의 Beat는 그리지 않는다. 씬을 여는 Beat는 남겨야
             // 헤더가 보이고 다시 펼 수 있다.
             if (isSceneCollapsed(beatGroup.beat)) return null
@@ -3878,30 +4519,20 @@ export default function StoryboardView() {
               </div>
             )
           })}
+          {showStoryboardPanels && !drawingWorkspaceOpen && onEnterReview && (
+            <div className="panels-review-next">
+              <button
+                type="button"
+                onClick={onEnterReview}
+                title="렌즈와 읽힘 관점으로 패널을 검토합니다"
+              >
+                검토로 넘어가기 →
+              </button>
+            </div>
+          )}
         </div>
       </div>
       </div>
-      {isExpanded && !drawingWorkspaceOpen && cutStage === 'panels' && (
-        <ShotInspector
-          shot={inspectedShot}
-          cut={inspectedCut}
-          prompt={inspectedPrompt}
-          shotSizes={cutPlanShotSizes}
-          angles={cutPlanAngles}
-          moves={cutPlanMoves}
-          onChange={updateCutPlanItem}
-          onClose={() => setInspectedShotId(null)}
-          deferredDeclarations={deferredDeclarations.filter((decl) => (
-            decl.scope === 'scene' || decl.cutId === inspectedCut?.id
-          ))}
-          decidedDeclarations={acceptedDeclarations.filter((decl) => (
-            decl.scope === 'scene' || decl.cutId === inspectedCut?.id
-          ))}
-          onDeclarationDecide={decideDeclaration}
-          onDeclarationReject={rejectDeclaration}
-        />
-      )}
-
       {/* Panels에는 rail을 두지 않는다. 인스펙터와 나란히 서면 rail이 둘로
           보이고, 보드도 630px 좁아진다. 샷은 컷 플랜에서 이미 정해진다. */}
       {isExpanded && !drawingWorkspaceOpen && cutStage !== 'panels' && (
