@@ -490,6 +490,10 @@ class DirectingIssueFocus(BaseModel):
     # 병렬로 만들지 않고, 이 판단을 자기 언어로 이어 읽게 한다.
     origin_lens: DirectingLens = "mise"
     origin_reading: str = ""
+    # 이 자리를 처음 짚은 것이 렌즈가 아니라 관객일 수 있다. 관객 읽기가
+    # 갈린 자리를 렌즈로 확인할 때다 — 그때 `처음 발견한 렌즈`라고 부르면
+    # 출처를 잘못 말하게 되고, 그 렌즈가 자기 판단을 이어 읽는 시늉을 한다.
+    origin_kind: Literal["lens", "viewer"] = "lens"
 
 
 class DirectingSettledRelation(BaseModel):

@@ -3369,7 +3369,20 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
         mode: lens,
         panels: await buildReviewPanels(selectedShotEntriesOf()),
         intent: '',
-        answers: multiReviewRuns[issue.sourceScopeKey]?.creatorContext || [],
+        // 감독이 확정한 전제를 전부 싣는다. 읽힘 검토에서 "여기는
+        // 어떻게 읽히길 바라나요?"에 답한 것도 여기 들어 있다 —
+        // 그것이 이 렌즈가 판단할 기준이므로 빠지면 안 된다
+        // (`answeredDirectingQuestions`가 둘을 합쳐 둔다).
+        // `creatorContext`는 그 run을 돌릴 때 실었던 답이고,
+        // `answeredDirectingQuestions`는 지금까지 답한 전부다. 둘은
+        // 겹치므로 질문 문장으로 중복을 걷어낸다 — 같은 전제를 두 번
+        // 실으면 렌즈가 그것을 강조로 읽는다.
+        answers: [...new Map(
+          [
+            ...(multiReviewRuns[issue.sourceScopeKey]?.creatorContext || []),
+            ...answeredDirectingQuestions,
+          ].map((entry) => [`${entry.level}|${entry.question}`, entry]),
+        ).values()],
         focus: {
           id: issue.id,
           anchor: issue.anchor,
@@ -3377,6 +3390,9 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
           title: issue.title,
           criterion,
           panel_ids: focusPanelIds,
+          // 관객이 짚은 자리면 그렇게 말한다. `처음 발견한 렌즈`로
+          // 넘기면 그 렌즈가 있지도 않은 자기 판단을 이어 읽는다.
+          origin_kind: issue.from_viewer ? 'viewer' : 'lens',
           origin_lens: originEntry?.lens || issue.origin_lens || lens,
           origin_reading: viewerReading || originEntry?.diagnosis?.diagnosis || issue.title,
         },
