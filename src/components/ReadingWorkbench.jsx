@@ -105,18 +105,14 @@ export default function ReadingWorkbench({
   // 화면을 내리거나 올린다. 이미 이 안에서 걷고 있을 때만 이어 준다.
   const shellRef = useRef(null)
   const focusKey = step ? `${step.condition}:${step.order}` : ''
-  const wasFocused = useRef(false)
   useEffect(() => {
     const shell = shellRef.current
     if (!shell || !focusKey) return
-    const inside = shell.contains(document.activeElement)
-    if (inside) {
-      wasFocused.current = true
-      return
-    }
-    // 방금까지 여기서 걷고 있었는데 다시 그려지며 포커스를 잃은 경우에만
-    // 되돌린다. 그래야 화살표 연타가 한 번에 끊기지 않는다.
-    if (!wasFocused.current) return
+    // 이미 이 안을 만지고 있으면 뺏지 않는다 — 답을 쓰던 중에 껍데기로
+    // 끌려오면 입력이 끊긴다.
+    if (shell.contains(document.activeElement)) return
+    // 칸을 고르면 곧바로 화살표로 걸을 수 있어야 한다. `preventScroll`로
+    // 포커스 때문에 화면이 움직이는 것은 막는다.
     shell.focus({ preventScroll: true })
   }, [focusKey])
 

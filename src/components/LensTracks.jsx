@@ -211,7 +211,11 @@ export default function LensTracks({
                     style={{ '--pos': position }}
                     onClick={() => onSelectDivergence?.(id)}
                     aria-pressed={id === selectedDivergenceId}
-                    title={`${anchor} · ${anchorKind === 'seam' ? '이음새' : '컷'} · ${title}\n${(conditions || []).join(' / ')}에서 읽힘이 갈렸습니다`}
+                    title={[
+                      `${anchor} · ${anchorKind === 'seam' ? '이음새' : '컷'} · ${title}`,
+                      `${(conditions || []).join(' / ')}에서 읽힘이 갈렸습니다`,
+                      '눌러서 이 자리를 검토 범위로',
+                    ].join('\n')}
                   >
                     <span className="lens-marker-dot" aria-hidden="true" />
                     <span className="lens-marker-label">{title}</span>
