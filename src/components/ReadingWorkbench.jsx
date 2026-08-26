@@ -30,7 +30,7 @@ import './ReadingWorkbench.css'
  * 그래서 버튼도 `수정하기`가 아니라 `답 남기기`다. 무엇을 하는 버튼인지
  * 이름에 그대로 적는다.
  */
-function ReadingAnswer({ finding, saved, onAnswer }) {
+function ReadingAnswer({ finding, scopeLabel = '', saved, onAnswer }) {
   const [draft, setDraft] = useState('')
   // 다른 갈림으로 옮기면 쓰던 초안은 무효다. effect로 되돌리면 한 번
   // 잘못 그린 뒤 고치는 셈이라 렌더 중에 판정한다.
@@ -62,7 +62,8 @@ function ReadingAnswer({ finding, saved, onAnswer }) {
       }}
     >
       <label htmlFor={`reading-answer-${finding.id}`}>
-        여기는 어떻게 읽히길 바라나요?
+        {scopeLabel && <b>{scopeLabel}</b>}
+        이 자리는 어떻게 읽히길 바라나요?
       </label>
       <textarea
         id={`reading-answer-${finding.id}`}
@@ -179,18 +180,40 @@ export default function ReadingWorkbench({
     title: '',
   }
 
-  // 같은 칸을 읽은 다른 관객들. 갈렸을 때만 견준다 — 안 갈렸는데 나열하면
-  // 갈리지 않았다는 사실이 오히려 안 보인다.
+  // 이 갈림이 걸친 컷들. 이음새면 둘이다.
+  //
+  // 갈림은 컷 하나가 아니라 구간에서 일어나는데, 컷마다 읽힘이 다르다.
+  // 그것을 한 문장으로 뭉뚱그리면 감독은 무엇에 답하는지 알 수 없다 —
+  // 답은 갈림 하나에 하나지만, **답하기 전에 컷별로 무엇이 갈렸는지는
+  // 보여야** 그 한 문장을 제대로 쓸 수 있다.
+  const spannedOrders = finding?.panelOrders?.length
+    ? finding.panelOrders
+    : [step.order]
+
+  // 같은 자리를 읽은 다른 관객들. 갈렸을 때만 견준다 — 안 갈렸는데
+  // 나열하면 갈리지 않았다는 사실이 오히려 안 보인다.
   const others = finding
     ? (finding.conditions || [])
       .filter((conditionId) => conditionId !== step.condition)
       .map((conditionId) => ({
         id: conditionId,
         label: labelOf(conditionId),
-        line: finding.lines?.[conditionId] || stepOf(conditionId, step.order)?.immediate_reading || '',
+        // 갈림 전체에 대한 요약. 컷별 읽기는 아래에서 따로 편다.
+        line: finding.lines?.[conditionId] || '',
+        // 이 관객이 각 컷에서 실제로 뭐라고 읽었는가.
+        perCut: spannedOrders.map((order) => ({
+          order,
+          reading: stepOf(conditionId, order)?.immediate_reading || '',
+        })).filter((entry) => entry.reading),
       }))
-      .filter((entry) => entry.line)
+      .filter((entry) => entry.line || entry.perCut.length > 0)
     : []
+
+  // 지금 관객이 각 컷에서 읽은 것. 견주려면 내 쪽도 있어야 한다.
+  const minePerCut = spannedOrders.map((order) => ({
+    order,
+    reading: stepOf(step.condition, order)?.immediate_reading || '',
+  })).filter((entry) => entry.reading)
 
   return (
     <section
@@ -270,18 +293,47 @@ export default function ReadingWorkbench({
                   그 답을 전제로 삼아 세 렌즈로 본 뒤에 한다. */}
               {finding && (
                 <section className="reading-divergence">
-                  <h4>같은 컷, 다른 읽기</h4>
-                  {others.map((other) => (
-                    <p key={other.id}>
-                      <em>{other.label}</em>
-                      {other.line}
-                    </p>
-                  ))}
+                  <h4>{spannedOrders.length > 1 ? '이 구간, 다른 읽기' : '같은 컷, 다른 읽기'}</h4>
+
+                  {/* 컷이 둘 이상이면 컷별로 갈라 보여 준다. 이음새의
+                      갈림은 두 컷에서 각각 다르게 읽힌 결과인데, 한
+                      문장으로 뭉뚱그리면 무엇에 답하는지 알 수 없다. */}
+                  {spannedOrders.length > 1 ? (
+                    <div className="reading-divergence-grid">
+                      {spannedOrders.map((order) => (
+                        <div key={order} className="reading-divergence-cut">
+                          <span className="reading-divergence-cut-id">S{order}</span>
+                          <p>
+                            <em>{labelOf(step.condition)}</em>
+                            {minePerCut.find((entry) => entry.order === order)?.reading || '—'}
+                          </p>
+                          {others.map((other) => (
+                            <p key={other.id}>
+                              <em>{other.label}</em>
+                              {other.perCut.find((entry) => entry.order === order)?.reading || '—'}
+                            </p>
+                          ))}
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    others.map((other) => (
+                      <p key={other.id}>
+                        <em>{other.label}</em>
+                        {other.line}
+                      </p>
+                    ))
+                  )}
                   {finding.why_it_matters && (
                     <p className="reading-divergence-why">{finding.why_it_matters}</p>
                   )}
                   <ReadingAnswer
                     finding={finding}
+                    /* 답은 갈림 하나에 하나다. 그 하나가 어느 자리를
+                       덮는지 밝혀야, 컷별로 다른 읽힘을 감안해 쓴다. */
+                    scopeLabel={spannedOrders.length > 1
+                      ? `S${spannedOrders[0]}–S${spannedOrders[spannedOrders.length - 1]}`
+                      : `S${spannedOrders[0]}`}
                     saved={answers[finding.id] || null}
                     onAnswer={onAnswer}
                   />

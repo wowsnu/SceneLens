@@ -196,18 +196,22 @@ export default function LensTracks({
               위 진단들과 세로로 맞춰 읽힌다. */}
           {readingDivergences.length > 0 && (
             <div className="lens-track reading-lane">
-              <span className="lens-track-label" aria-hidden="true">관객이 갈린 자리</span>
+              {/* 이름은 짧게. 라벨 열은 렌즈 이름(2~3자)에 맞춰져 있어
+                  길면 두 줄로 접히고, 접힌 줄이 아래 상태 문구와 겹친다. */}
+              <span className="lens-track-label" title="관객이 갈린 자리">관객</span>
               <div className="lens-track-line">
-                {readingDivergences.map(({ id, position, title, anchor, conditions }) => (
+                {readingDivergences.map(({ id, position, title, anchor, anchor_kind: anchorKind, conditions }) => (
                   <button
                     key={id}
                     type="button"
                     data-divergence-id={id}
-                    className={`lens-marker reading-marker-lane ${id === selectedDivergenceId ? 'selected' : ''}`}
+                    /* `anchorKind`를 함께 얹어, 컷 안인지 컷 사이인지가
+                       렌즈 트랙과 같은 문법으로 읽히게 한다. */
+                    className={`lens-marker reading-marker-lane ${anchorKind || 'shot'} ${id === selectedDivergenceId ? 'selected' : ''}`}
                     style={{ '--pos': position }}
                     onClick={() => onSelectDivergence?.(id)}
                     aria-pressed={id === selectedDivergenceId}
-                    title={`${anchor} · ${title}\n${(conditions || []).join(' / ')}에서 읽힘이 갈렸습니다`}
+                    title={`${anchor} · ${anchorKind === 'seam' ? '이음새' : '컷'} · ${title}\n${(conditions || []).join(' / ')}에서 읽힘이 갈렸습니다`}
                   >
                     <span className="lens-marker-dot" aria-hidden="true" />
                     <span className="lens-marker-label">{title}</span>
@@ -237,8 +241,15 @@ export default function LensTracks({
           관점 사이의 관계를 확인하는 중입니다 — 같은 문제로 묶일 수 있습니다.
         </p>
       )}
+      {/* 이 문구는 **렌즈 진단**이 없다는 뜻이다. 갈림 마커가 떠 있는데
+          "아직 볼 것이 없습니다"라고만 하면 화면과 어긋난다 — 그때는
+          무엇이 없는 것인지 밝힌다. */}
       {!loading && issues.length === 0 && (
-        <p className="lens-tracks-status">아직 볼 것이 없습니다. 분석하면 여기에 표시됩니다.</p>
+        <p className="lens-tracks-status">
+          {readingDivergences.length > 0
+            ? '렌즈가 짚은 것은 아직 없습니다. 아래는 관객이 갈린 자리입니다.'
+            : '아직 볼 것이 없습니다. 분석하면 여기에 표시됩니다.'}
+        </p>
       )}
     </section>
   )

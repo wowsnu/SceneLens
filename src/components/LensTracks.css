@@ -384,6 +384,11 @@
   --lens: #a78bfa;
   margin-top: 9px;
   padding-top: 9px;
+  /* `.lens-track`은 높이가 28px로 고정이라, 여기에 padding을 얹으면
+     내용이 그만큼 아래로 넘쳐 상태 문구 위에 겹친다. 늘어난 만큼
+     높이도 함께 키운다. */
+  height: 37px;
+  box-sizing: border-box;
   /* 구분선. 위는 진단, 아래는 근거다. */
   border-top: 1px dashed rgba(255, 255, 255, 0.12);
 }
@@ -395,6 +400,11 @@
   /* 라벨은 누르는 것이 아니다 — 렌즈처럼 껐다 켰다 하지 않는다. */
   cursor: default;
   opacity: 0.62;
+  /* 접히지 않게 한 줄로 묶는다. 두 줄이 되면 줄 높이를 넘어가 아래
+     상태 문구 위에 겹친다(실제로 그랬다). */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* 바탕선도 점선으로. 진단 줄과 형태부터 다르다. */
@@ -404,15 +414,20 @@
   height: 0;
 }
 
-/* 마름모, 그리고 **비어 있다.** 채운 점은 진단의 것이다. */
+/* **비어 있다.** 채운 점은 진단의 것이고, 이 줄은 근거다.
+   모양(원/마름모)은 렌즈 트랙과 같은 문법을 따른다 — 컷 안이면 원,
+   컷 사이면 마름모. 위치만이 아니라 형태로도 어디가 갈렸는지 읽힌다. */
 .reading-marker-lane .lens-marker-dot {
-  width: 9px;
-  height: 9px;
-  border-radius: 2px;
-  transform: rotate(45deg);
   background: transparent;
   border: 1.5px solid var(--lens);
   box-shadow: none;
+}
+
+/* 컷 사이의 갈림. `.lens-marker.seam`이 이미 마름모로 돌리므로 여기서
+   크기만 맞춘다 — 테두리가 있어 같은 값이면 조금 커 보인다. */
+.reading-marker-lane.seam .lens-marker-dot {
+  width: 9px;
+  height: 9px;
 }
 
 .reading-marker-lane:hover .lens-marker-dot,

@@ -4203,6 +4203,9 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
           id: finding.id,
           // 트랙의 마커와 같은 계산이다 — 컷 인덱스 기준의 실수.
           position: orders.length > 1 ? (first + last) / 2 : first,
+          // 컷 안인지 컷 사이인지. 렌즈 트랙과 같은 문법으로 그린다 —
+          // 위치만이 아니라 형태로도 읽히게.
+          anchor_kind: finding.anchor_kind,
           title: finding.title,
           anchor: finding.anchor,
           conditions: (finding.conditions || []).map((conditionId) => (
