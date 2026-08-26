@@ -14,17 +14,57 @@
 .revision-workspace-prompt > div, .revision-workspace-preview > div:last-child { display: flex; gap: 6px; margin-top: 8px; }
 .revision-workspace-prompt > div button:not(.primary), .revision-workspace-preview button:not(.primary), .revision-workspace footer button { padding: 5px 8px; border: 1px solid var(--border-light); border-radius: 5px; background: transparent; color: var(--text-secondary); }
 .revision-workspace-preview { display: grid; gap: 8px; }
-.revision-workspace-preview img { width: 100%; max-height: 220px; object-fit: contain; border-radius: 5px; background: var(--bg-panel); }
+/* 미리보기도 같다 — width:100%로 늘이면 좌우가 빈다. 그림이 자기
+   크기를 정하게 둔다. */
+.revision-workspace-preview img { display: block; width: auto; height: auto; max-width: 100%; max-height: 220px; margin: 0 auto; border-radius: 5px; }
 .revision-workspace-preview strong, .revision-workspace-preview span { display: block; color: var(--text-primary); font-size: 12px; }
 .revision-workspace-preview span { margin-top: 3px; color: var(--text-muted); font-size: 11px; }
 .revision-workspace footer { display: flex; justify-content: flex-end; padding: 9px 12px; }
 
-.revision-shot-compare { display: grid; grid-template-columns: minmax(0,1fr) auto minmax(0,1fr); align-items: center; gap: 8px; margin: 0; padding: 12px 14px; border-bottom: 1px solid var(--border); }
-.revision-shot-compare figure { min-width: 0; margin: 0; }
-.revision-shot-compare figure > span { display: block; margin-bottom: 5px; color: var(--text-muted); font-size: 10px; font-weight: 750; }
-.revision-shot-compare img, .revision-shot-compare i { display: block; box-sizing: border-box; width: 100%; min-height: 128px; max-height: 200px; object-fit: contain; border: 1px solid var(--border-light); border-radius: 5px; background: var(--bg-panel); }
-.revision-shot-compare i { display: grid; place-items: center; padding: 12px; color: var(--text-muted); font-size: 11px; font-style: normal; text-align: center; }
-.revision-shot-compare > b { color: #e9c58d; }
+/* 현재 그림과 수정안을 나란히.
+   **그림에 테두리를 두르지 않는다.** width:100% + object-fit:contain으로
+   두면 상자는 컬럼 폭을 다 차지하는데 그림은 안에서 작아져, 테두리가
+   빈 공간을 감싼다 — 그림 하나에 좌우 공백이 절반이 된다.
+   그림이 자기 크기를 정하게 두고 상자는 없앤다. */
+.revision-shot-compare {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: start;
+  gap: 10px;
+  margin: 0;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border);
+}
+.revision-shot-compare figure { min-width: 0; margin: 0; text-align: center; }
+.revision-shot-compare figure > span { display: block; margin-bottom: 5px; color: var(--text-muted); font-size: 10px; font-weight: 750; text-align: left; }
+.revision-shot-compare img {
+  display: block;
+  width: auto;
+  height: auto;
+  max-width: 100%;
+  max-height: 180px;
+  margin: 0 auto;
+  border-radius: 5px;
+}
+/* 아직 그림이 없는 자리. 여기는 상자가 필요하다 — 무엇이 들어올
+   자리인지 보여야 하기 때문이다. */
+.revision-shot-compare i {
+  display: grid;
+  place-items: center;
+  box-sizing: border-box;
+  width: 100%;
+  /* 그림이 들어오면 최대 180px이 된다. 빈 자리가 그보다 훨씬 낮으면
+     추천안을 고르는 순간 화면이 크게 튄다. */
+  min-height: 160px;
+  padding: 12px;
+  border: 1px dashed var(--border-light);
+  border-radius: 5px;
+  color: var(--text-muted);
+  font-size: 11px;
+  font-style: normal;
+  text-align: center;
+}
+.revision-shot-compare > b { align-self: center; color: #e9c58d; }
 
 .revision-seam-canvas { display: grid; grid-template-columns: minmax(0,1fr) 118px minmax(0,1fr); align-items: center; gap: 7px; padding: 14px; border-bottom: 1px solid var(--border); }
 .revision-seam-panel { display: grid; min-height: 104px; place-content: center; border: 1px solid var(--border-light); border-radius: 6px; background: var(--bg-panel); text-align: center; }
@@ -59,6 +99,11 @@
 .revision-seam-canvas.operation-delete .revision-seam-operation { border-style: solid; }
 .revision-workspace-options article button.selected { border-color: #e9c58d; background: rgba(216,170,98,.22); }
 .revision-seam-open { width: 100%; margin-top: 9px; padding: 7px 8px; border: 1px solid rgba(216,170,98,.55); border-radius: 5px; background: rgba(216,170,98,.14); color: #f0cb91; font-weight: 800; }
+.revision-adjustment { display: grid; gap: 8px; margin-top: 10px; padding: 10px; border: 1px solid rgba(216,170,98,.25); border-radius: 6px; background: rgba(216,170,98,.06); }
+.revision-adjustment > span { color: #e9c58d; font-size: 10px; font-weight: 800; }
+.revision-adjustment label { display: grid; grid-template-columns: 88px minmax(0,1fr); align-items: center; gap: 8px; color: var(--text-secondary); font-size: 11px; }
+.revision-adjustment label b { font-weight: 650; }
+.revision-adjustment select { min-width: 0; padding: 5px 7px; border: 1px solid var(--border-light); border-radius: 5px; background: var(--bg-panel); color: var(--text-primary); font: inherit; font-size: 11px; }
 
 /* 이 수정이 바꾸는 것. 적용 전에 보여 주는 자리다 — 되돌리는 것보다
    미리 아는 편이 싸다. 판정은 하지 않는다(DG1 P2). */

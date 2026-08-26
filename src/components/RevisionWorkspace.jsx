@@ -4,6 +4,11 @@ import { revisionImpact } from './revisionImpact'
 import './RevisionWorkspace.css'
 
 const LENS_NAMES = { mise: '미장센', camera: '촬영', editing: '편집' }
+const PATCH_CONTROLS = {
+  shot_size: { label: '샷 크기', values: ['Extreme wide', 'Wide', 'Medium wide', 'Medium', 'Medium close-up', 'Close-up', 'Extreme close-up'] },
+  angle: { label: '앵글', values: ['Eye-level', 'High angle', 'Low angle', 'Bird’s-eye', 'Dutch angle'] },
+  move: { label: '카메라 움직임', values: ['Static', 'Pan', 'Tilt', 'Dolly in', 'Dolly out', 'Tracking'] },
+}
 
 // 실행 버튼이 무엇을 하는지 그대로 적는다. 컷이 지워지는 일과 그림을
 // 다시 그리는 일은 되돌리는 비용이 다르므로 같은 말로 부르지 않는다.
@@ -43,6 +48,7 @@ export default function RevisionWorkspace({
   currentImage = '',
 }) {
   const [selected, setSelected] = useState(null)
+  const [draftPatch, setDraftPatch] = useState({})
   const changes = (diagnosis?.alternatives || []).filter((item) => item.kind === 'change')
   // 이음새 자리라도 **구조를 바꾸는 선택지가 있을 때만** 시퀀스 캔버스를
   // 쓴다. 촬영이 이음새를 짚는 경우처럼 선택지가 전부 `조정`이면 컷의
@@ -53,10 +59,11 @@ export default function RevisionWorkspace({
     && changes.some((item) => editingActionFor(item).id !== 'seam')
   const [beforePanel, afterPanel] = panelsOf(issue?.anchor)
   const operation = selected ? seamAction(selected) : null
+  const adjustedAlternative = selected ? { ...selected, patch: draftPatch } : null
   // 고른 수정안이 무엇을 바꾸는가. 적용 전에 보여 준다 — 컷을 넣으면
   // 뒤 번호가 밀리고, 그 자리에 다른 렌즈가 짚어 둔 검토가 있을 수도
   // 있다. 되돌리는 것보다 미리 아는 편이 싸다.
-  const impact = revisionImpact(selected, issue, issues, shotCount)
+  const impact = revisionImpact(adjustedAlternative, issue, issues, shotCount)
   if (!diagnosis) return null
   return (
     <section className="revision-workspace" aria-label="수정 작업 공간">
@@ -81,7 +88,7 @@ export default function RevisionWorkspace({
         </section>
       ) : (
         <section className="revision-shot-compare" aria-label="현재 샷과 수정안 비교">
-          <figure><span>현재</span>{currentImage ? <img src={currentImage} alt="현재 샷" /> : <i />}</figure>
+          <figure><span>현재</span>{currentImage ? <img src={currentImage} alt="현재 샷" /> : <i>이 컷은 아직 그리지 않았습니다</i>}</figure>
           <b aria-hidden="true">→</b>
           <figure><span>수정안</span>{revisionImage ? <img src={revisionImage} alt="수정안 샷" /> : <i>추천안을 고르면 여기에 보입니다</i>}</figure>
         </section>
@@ -132,7 +139,11 @@ export default function RevisionWorkspace({
             <button
               type="button"
               className={selected === alternative ? 'selected' : ''}
-              onClick={() => setSelected(selected === alternative ? null : alternative)}
+              onClick={() => {
+                const next = selected === alternative ? null : alternative
+                setSelected(next)
+                setDraftPatch(next?.patch || {})
+              }}
               aria-pressed={selected === alternative}
               disabled={revisionPending || rewriting || generating}
             >
@@ -167,6 +178,30 @@ export default function RevisionWorkspace({
           </div>
         )}
 
+        {/* 추천안은 출발점이다. 카메라 값이 들어 있는 경우에는 여기서
+            바꿔 본 뒤에만 수정안을 만든다. 추천값을 즉시 적용하면 이
+            공간이 사실상 자동 실행 버튼이 된다. */}
+        {selected && Object.keys(draftPatch).some((key) => PATCH_CONTROLS[key]) && (
+          <section className="revision-adjustment" aria-label="추천안 조정">
+            <span>이 변화 조정</span>
+            {Object.entries(PATCH_CONTROLS).map(([key, control]) => {
+              if (!draftPatch[key]) return null
+              const values = [...new Set([draftPatch[key], ...control.values])]
+              return (
+                <label key={key}>
+                  <b>{control.label}</b>
+                  <select
+                    value={draftPatch[key]}
+                    onChange={(event) => setDraftPatch((current) => ({ ...current, [key]: event.target.value }))}
+                  >
+                    {values.map((value) => <option key={value} value={value}>{value}</option>)}
+                  </select>
+                </label>
+              )
+            })}
+          </section>
+        )}
+
         {/* 실행은 여기 하나뿐이다. 위에서 고르고 영향을 확인한 뒤에
             누른다. 무엇을 하는 버튼인지 이름에 적는다 — `확인`처럼
             뭉뚱그리면 컷이 지워지는 것도 같은 말이 된다. */}
@@ -174,10 +209,12 @@ export default function RevisionWorkspace({
           <button
             type="button"
             className="revision-run"
-            onClick={() => onChoose(selected)}
+            onClick={() => onChoose(adjustedAlternative)}
             disabled={revisionPending || rewriting || generating}
           >
-            {RUN_LABELS[seamAction(selected)] || '이 수정안으로 그려 보기'}
+            {Object.keys(draftPatch).some((key) => PATCH_CONTROLS[key])
+              ? '이 설정으로 수정안 보기'
+              : RUN_LABELS[seamAction(selected)] || '이 수정안으로 그려 보기'}
           </button>
         )}
       </section>
