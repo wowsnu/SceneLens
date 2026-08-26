@@ -3375,6 +3375,7 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
         [key]: {
           status: 'ready',
           diagnosis: result.diagnoses?.[0] || null,
+          reading: result.summary || '',
           question: response.questions?.[0] || null,
         },
       }))
@@ -4632,6 +4633,46 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
     </div>
   )
 
+  const multiReviewIntentPanel = (
+      <details className="multi-review-intent">
+        <summary>
+          <span>검토 의도</span>
+          <strong>
+            {multiReviewIntentDirty
+              ? '적용되지 않은 변경이 있습니다'
+              : multiReviewIntent.trim() || '필요할 때 추가'}
+          </strong>
+        </summary>
+        <label>
+          <span>
+            {scopeMode === 'range' ? '이 범위에서 전달하려는 것' : '이 컷에서 전달하려는 것'}
+          </span>
+          <textarea
+            value={multiReviewIntentDraft}
+            rows={2}
+            disabled={multiReviewLoading}
+            onChange={(event) => {
+              setCurrentMultiReviewIntent(event.target.value)
+              multiRequestRecall.resetNavigation(event.target.value)
+            }}
+            onKeyDown={multiRequestRecall.onKeyDown}
+            placeholder="예: 인물의 고립은 보이되, 무엇을 알아냈는지는 아직 숨기고 싶다."
+            aria-label="다관점 검토 의도"
+          />
+        </label>
+        <div className="multi-review-intent-footer">
+          <p>교차 검토에만 사용하며 관객 관점에는 전달하지 않습니다.</p>
+          <button
+            type="button"
+            onClick={submitMultiReviewIntent}
+            disabled={!multiReviewIntentDirty || multiReviewLoading}
+          >
+            {multiReviewIntentDirty ? '의도 적용' : '적용됨'}
+          </button>
+        </div>
+      </details>
+  )
+
   const scopePanel = (
     <section className="scope-panel" aria-label="Scope selection">
         <div className="scope-panel-row">
@@ -4720,6 +4761,11 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
             )}
           </div>
         </div>
+
+        {/* 검토 의도는 분석 요청에 함께 실린다 — 즉 결과가 아니라
+            **입력**이다. 결과 영역에 두면 의도를 적으러 아래로 갔다가
+            실행하러 다시 위로 와야 한다. 범위·실행과 한 덩어리로 둔다. */}
+        {reviewMode === 'multi' && multiReviewIntentPanel}
     </section>
   )
 
@@ -5887,44 +5933,6 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
 
               {scopePanel}
 
-              <details className="multi-review-intent">
-                <summary>
-                  <span>검토 의도</span>
-                  <strong>
-                    {multiReviewIntentDirty
-                      ? '적용되지 않은 변경이 있습니다'
-                      : multiReviewIntent.trim() || '필요할 때 추가'}
-                  </strong>
-                </summary>
-                <label>
-                  <span>
-                    {scopeMode === 'range' ? '이 범위에서 전달하려는 것' : '이 컷에서 전달하려는 것'}
-                  </span>
-                  <textarea
-                    value={multiReviewIntentDraft}
-                    rows={2}
-                    disabled={multiReviewLoading}
-                    onChange={(event) => {
-                      setCurrentMultiReviewIntent(event.target.value)
-                      multiRequestRecall.resetNavigation(event.target.value)
-                    }}
-                    onKeyDown={multiRequestRecall.onKeyDown}
-                    placeholder="예: 인물의 고립은 보이되, 무엇을 알아냈는지는 아직 숨기고 싶다."
-                    aria-label="다관점 검토 의도"
-                  />
-                </label>
-                <div className="multi-review-intent-footer">
-                  <p>교차 검토에만 사용하며 관객 관점에는 전달하지 않습니다.</p>
-                  <button
-                    type="button"
-                    onClick={submitMultiReviewIntent}
-                    disabled={!multiReviewIntentDirty || multiReviewLoading}
-                  >
-                    {multiReviewIntentDirty ? '의도 적용' : '적용됨'}
-                  </button>
-                </div>
-              </details>
-
               {multiReviewLoading && (
                 <section className="multi-review-loading" role="status" aria-live="polite">
                   <div>
@@ -5998,6 +6006,16 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
                     setRevisionWorkspace(null)
                     setFullAnalysisOpen(true)
                     selectReviewMode(lensId)
+                  }}
+                  onPrepare={(alternative) => {
+                    // 미장센·촬영의 문장형 추천안은 실행 전에 먼저 프롬프트
+                    // 초안으로 열어 사용자가 직접 만진다. 편집은 아래
+                    // seam 캔버스가 조작 자리라 여기서 초안을 만들지 않는다.
+                    const patch = alternative?.patch || {}
+                    const hasPatch = Boolean(patch.shot_size || patch.angle || patch.move)
+                    if (!hasPatch && revisionWorkspace.diagnosis.lens !== 'editing') {
+                      requestPromptRewrite(revisionWorkspace.diagnosis, alternative)
+                    }
                   }}
                   onChoose={(alternative) => {
                     // 어느 렌즈가 짚었는지가 아니라 **이 선택지가 무엇을

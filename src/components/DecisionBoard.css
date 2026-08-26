@@ -44,13 +44,20 @@
   color: #fff7ed;
 }
 
+/* 검토 대상·실행·의도를 한 덩어리로 쌓는다. 의도는 분석 요청에 함께
+   실리는 **입력**이므로 실행 버튼과 같은 자리에 있어야 한다 — 결과
+   영역에 두면 적으러 내려갔다가 실행하러 다시 올라와야 한다. */
 .scope-panel {
   flex-shrink: 0;
   display: flex;
+  flex-direction: column;
+  gap: 6px;
   min-height: 38px;
   padding: 4px 2px 8px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.075);
 }
+
+.scope-panel > .scope-panel-row { flex: 1; }
 
 .scope-panel-row {
   width: 100%;
@@ -1494,9 +1501,12 @@
   opacity: 0.48;
 }
 
+/* 검토 대상 줄 아래에 붙는다. scope-panel 안이므로 아래 테두리는
+   그쪽이 이미 긋는다 — 위만 나눈다. */
 .multi-review-intent {
   border-top: 1px solid rgba(255, 255, 255, 0.07);
   background: rgba(0, 0, 0, 0.08);
+  border-radius: 0 0 6px 6px;
 }
 
 .multi-review-intent > summary {
