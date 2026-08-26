@@ -28,8 +28,6 @@ function SplitShotFocus({ shotIndex, shotPreview, draftImages, draftVersions, on
     .filter((line) => line.type === 'action' && (line.beat ?? 0) === (shot.scriptBeat ?? 0))
     .map((line) => line.text)
     .filter(Boolean)
-  // 대본이 아직 비어 있거나 이 컷만 별도로 추가된 경우에도, 컷에 적힌
-  // 사건은 남긴다. 확대 패널에서 그림과 무엇을 검토하는지 함께 읽는다.
   const cutContent = cutPlan.find((cut) => cut.id === shot.cutPlanItemId)?.content || ''
   const scriptText = scriptLines.join(' ') || cutContent
   const details = [
@@ -82,7 +80,6 @@ function SplitShotFocus({ shotIndex, shotPreview, draftImages, draftVersions, on
           <p>{scriptText}</p>
         </section>
       )}
-
       <dl>
         {details.map(([label, value]) => (
           <div key={label}>
@@ -93,22 +90,15 @@ function SplitShotFocus({ shotIndex, shotPreview, draftImages, draftVersions, on
       </dl>
 
       <footer>
-        <button
-          type="button"
-          disabled={shotIndex === 0}
-          onClick={() => moveTo(shotIndex - 1)}
-        >
+        <button type="button" disabled={shotIndex === 0} onClick={() => moveTo(shotIndex - 1)}>
           ← 이전 Shot
         </button>
         <span>{shotIndex + 1} / {shots.length}</span>
-        <button
-          type="button"
-          disabled={shotIndex === shots.length - 1}
-          onClick={() => moveTo(shotIndex + 1)}
-        >
+        <button type="button" disabled={shotIndex === shots.length - 1} onClick={() => moveTo(shotIndex + 1)}>
           다음 Shot →
         </button>
       </footer>
+
       </>}
     </section>
   )

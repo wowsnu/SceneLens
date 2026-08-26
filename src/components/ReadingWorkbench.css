@@ -1,0 +1,302 @@
+/* 읽힘 검토의 Workbench — 고른 칸의 그림을 크게 보는 자리.
+
+   순차 읽기는 위 트랙이 맡는다. 여기서 문장을 다시 늘어놓지 않는다
+   (LENS_TRACKS_UI.md 7장). */
+
+.reading-workbench {
+  --reader-0: #a78bfa;
+  --reader-1: #f59e0b;
+  --reader-2: #22d3ee;
+  --reader-3: #f472b6;
+  margin: 0 12px 12px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.11);
+  border-radius: 9px;
+  background: rgba(8, 8, 10, 0.42);
+}
+
+.reading-workbench.empty {
+  padding: 20px 14px;
+  color: rgba(226, 232, 240, 0.46);
+  font-size: 12px;
+}
+
+.reading-workbench.empty p { margin: 0; }
+
+/* --- 머리: 어느 칸을 보고 있는가 ------------------------------------ */
+
+.reading-workbench-bar {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 11px 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+  background: color-mix(in srgb, var(--reader), transparent 94%);
+}
+
+.reading-workbench-bar > strong {
+  color: color-mix(in srgb, var(--reader), white 30%);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
+.reading-workbench-bar > span {
+  color: rgba(226, 232, 240, 0.72);
+  font-size: 11.5px;
+}
+
+/* 갈렸는지 아닌지를 머리에서 먼저 말한다. 침묵을 "문제 없음"으로 읽지
+   않게 한다 (design_goal.md DG1 P2). */
+.reading-workbench-bar > em {
+  margin-left: auto;
+  color: var(--text-muted);
+  font-size: 10px;
+  font-style: normal;
+  letter-spacing: 0.03em;
+}
+
+.reading-workbench-bar > em.diverged {
+  padding: 2px 9px;
+  border: 1px solid color-mix(in srgb, var(--reader), transparent 55%);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--reader), transparent 85%);
+  color: color-mix(in srgb, var(--reader), white 34%);
+  font-weight: 800;
+}
+
+/* 화살표로 걸을 수 있다는 표시. 조용히 두되 있다는 것은 알린다. */
+.reading-walk-hint {
+  flex: none;
+  padding: 1px 7px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 4px;
+  color: var(--text-muted);
+  font-family: inherit;
+  font-size: 9.5px;
+  letter-spacing: 0.06em;
+}
+
+/* 이 껍데기는 누르는 칸이 아니라 화살표 키를 받기만 하는 자리다.
+   포커스 테두리를 두면 걸을 때마다 화면 전체에 큰 테두리가 깜빡인다 —
+   지금 어디를 읽는지는 위 트랙의 강조 칸과 아래 머리글이 이미 말한다. */
+.reading-workbench:focus,
+.reading-workbench:focus-visible { outline: none; }
+
+/* --- 몸통: 그림 + 근거 ---------------------------------------------- */
+
+.reading-workbench-body {
+  display: grid;
+  /* 그림이 주인이다. 근거는 옆에서 대조하는 자리라 좁게 둔다. */
+  grid-template-columns: minmax(0, 1fr) minmax(230px, 0.38fr);
+  align-items: start;
+  min-width: 0;
+}
+
+.reading-workbench-picture {
+  min-width: 0;
+  border-right: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.reading-workbench-side {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 16px;
+  background: rgba(255, 255, 255, 0.022);
+}
+
+.reading-workbench-side h4 {
+  margin: 0 0 6px;
+  color: rgba(226, 232, 240, 0.46);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.reading-workbench-side p {
+  margin: 0;
+  color: rgba(226, 232, 240, 0.78);
+  font-size: 11.5px;
+  line-height: 1.55;
+}
+
+/* 무엇이 눈에 들어왔나 — 그 관객이 왜 그렇게 읽었는지의 근거다. */
+.reading-cues ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.reading-cues li {
+  padding: 3px 8px;
+  border: 1px solid color-mix(in srgb, var(--reader), transparent 72%);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--reader), transparent 90%);
+  color: color-mix(in srgb, var(--reader), white 32%);
+  font-size: 10px;
+}
+
+/* --- 갈렸을 때만 ----------------------------------------------------- */
+
+.reading-divergence {
+  padding-top: 13px;
+  border-top: 1px solid color-mix(in srgb, var(--reader), transparent 78%);
+}
+
+.reading-divergence p {
+  margin: 0 0 8px;
+}
+
+.reading-divergence p em {
+  display: block;
+  margin-bottom: 2px;
+  color: var(--text-muted);
+  font-size: 9px;
+  font-style: normal;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+}
+
+.reading-divergence-why {
+  color: rgba(226, 232, 240, 0.56) !important;
+  font-size: 10.5px !important;
+}
+
+/* 관객이 남긴 물음에 감독이 답하는 칸. 여기서 고치지 않으므로 버튼도
+   `수정하기`가 아니라 `답 남기기`다 (LENS_TRACKS_UI.md 7장). */
+.reading-answer {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.reading-answer label {
+  color: color-mix(in srgb, var(--reader), white 34%);
+  font-size: 10.5px;
+  font-weight: 700;
+}
+
+.reading-answer textarea {
+  width: 100%;
+  padding: 8px 9px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.24);
+  color: rgba(240, 244, 250, 0.92);
+  font: inherit;
+  font-size: 11.5px;
+  line-height: 1.5;
+  resize: vertical;
+}
+
+.reading-answer textarea:focus {
+  border-color: color-mix(in srgb, var(--reader), transparent 45%);
+  outline: none;
+}
+
+.reading-answer button {
+  align-self: flex-start;
+  padding: 6px 12px;
+  border: 1px solid color-mix(in srgb, var(--reader), transparent 55%);
+  border-radius: 7px;
+  background: color-mix(in srgb, var(--reader), transparent 88%);
+  color: color-mix(in srgb, var(--reader), white 32%);
+  font: inherit;
+  font-size: 10.5px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.reading-answer button:hover:not(:disabled) {
+  border-color: var(--reader);
+  background: color-mix(in srgb, var(--reader), transparent 78%);
+}
+
+.reading-answer button:disabled { opacity: 0.4; cursor: default; }
+
+/* 이 답이 어디로 가는지. 적어 두기만 하는데 곧 무언가 일어날 것처럼
+   보이면 감독이 결과를 기다리게 된다. */
+.reading-answer small {
+  color: var(--text-muted);
+  font-size: 9.5px;
+  line-height: 1.5;
+}
+
+/* 이미 답한 자리. 무엇을 적었는지 남겨 두고 고칠 길만 연다. */
+.reading-answer.answered p {
+  margin: 0;
+  padding: 8px 10px;
+  border-left: 2px solid color-mix(in srgb, var(--reader), transparent 45%);
+  background: color-mix(in srgb, var(--reader), transparent 92%);
+  color: rgba(226, 232, 240, 0.86);
+  font-size: 11.5px;
+  line-height: 1.55;
+}
+
+.reading-answer-mark {
+  align-self: flex-start;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--reader), transparent 78%);
+  color: color-mix(in srgb, var(--reader), white 36%);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+}
+
+.reading-answer.answered button {
+  border-color: rgba(255, 255, 255, 0.16);
+  background: transparent;
+  color: rgba(226, 232, 240, 0.7);
+  font-weight: 700;
+}
+
+/* --- 수정 작업면 ------------------------------------------------------ */
+
+.reading-revision-stage {
+  min-width: 0;
+  container-type: inline-size;
+}
+
+.reading-revision-shell {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 16px 16px;
+}
+
+.reading-revision-back {
+  align-self: flex-start;
+  padding: 4px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 999px;
+  background: transparent;
+  color: rgba(226, 232, 240, 0.72);
+  font: inherit;
+  font-size: 10px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.reading-revision-back:hover {
+  border-color: color-mix(in srgb, var(--reader), transparent 50%);
+  color: color-mix(in srgb, var(--reader), white 30%);
+}
+
+@media (max-width: 900px) {
+  .reading-workbench-body {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .reading-workbench-picture {
+    border-right: 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  }
+}

@@ -8034,3 +8034,172 @@ button.active .lens-glass::after {
   background: color-mix(in srgb, var(--lens-color) 26%, transparent);
   color: rgba(248, 250, 252, 0.98);
 }
+
+/* --- 읽힘 검토 표면 ---------------------------------------------------
+   연출 검토(`.multi-review-preview`)와 같은 형태로 둔다
+   (LENS_TRACKS_UI.md 7장). 스토리보드 + 트랙이 위, Workbench가 아래다. */
+
+.reading-review-surface {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.reading-review-sequence {
+  min-width: 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+  background: rgba(0, 0, 0, 0.12);
+}
+
+.reading-review-sequence-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  min-height: 27px;
+  padding: 5px 12px 0;
+}
+
+.reading-review-sequence-controls > span {
+  flex: none;
+  color: rgba(226, 232, 240, 0.38);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+}
+
+.reading-review-sequence-controls > strong {
+  flex: none;
+  color: #c9b6f5;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* 다시 읽기는 범위 오른쪽에 둔다 — 무엇을 읽는지 보면서 돌린다. */
+/* `scopeSummary`가 이미 margin-left:auto로 오른쪽에 붙으므로, 이 버튼은
+   그 묶음 바로 옆에 온다 — 연출 검토의 `분석하기`와 같은 자리다. */
+.reading-run-button {
+  flex: 0 0 auto;
+  min-height: 30px;
+  padding: 0 12px;
+  border: 1px solid rgba(167, 139, 250, 0.45);
+  border-radius: 7px;
+  background: rgba(167, 139, 250, 0.12);
+  color: #d6c6fb;
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.reading-run-button:hover:not(:disabled) {
+  border-color: rgba(167, 139, 250, 0.7);
+  background: rgba(167, 139, 250, 0.2);
+}
+
+.reading-run-button:disabled { opacity: 0.45; cursor: default; }
+
+/* 읽는 방식 고르기. 연출 검토의 `검토 의도`가 바 아래 접혀 있는 것과
+   같은 자리다. */
+.reading-conditions-bar {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0 12px;
+  padding: 10px 0 2px;
+}
+
+/* 스트립과 조건 트랙이 같은 축을 보는 하나의 스크롤면이다. 각 줄을 따로
+   동기화하면 두 스크롤바와 미세한 어긋남이 생긴다 — 부모만 움직인다. */
+.reading-review-shared-scroll {
+  width: 100%;
+  min-width: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 6px 12px 8px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.26) transparent;
+}
+
+.reading-review-shared-scroll::-webkit-scrollbar { height: 7px; }
+.reading-review-shared-scroll::-webkit-scrollbar-track { background: transparent; }
+.reading-review-shared-scroll::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.22);
+}
+.reading-review-shared-scroll::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.35); }
+
+/* 스트립이 트랙과 같은 그리드를 그리게 한다. 값은 ReadingTracks.css가
+   유일한 정의 자리이고, 여기서는 상속만 시킨다. */
+.reading-review-shared-scroll > .strip-lane {
+  --track-cell: 168px;
+  --track-label-w: 132px;
+}
+
+/* --- 수정 작업면 ------------------------------------------------------
+   왼쪽 자리만 바뀌고 오른쪽 관객 흐름은 남는다 (문서 5장). */
+
+.reading-revision-shell {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 16px 16px;
+}
+
+.reading-revision-back {
+  align-self: flex-start;
+  padding: 4px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 999px;
+  background: transparent;
+  color: rgba(226, 232, 240, 0.72);
+  font: inherit;
+  font-size: 10px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.reading-revision-back:hover {
+  border-color: rgba(167, 139, 250, 0.5);
+  color: #d6c6fb;
+}
+
+.reading-revision-shell .viewer-fix-card {
+  margin: 0;
+}
+
+/* 이 화면이 보여 주는 것은 갈림이다. 관객이 하나면 갈릴 수 없다는 것을
+   시작 화면에서 미리 말한다 (LENS_TRACKS_UI.md 7장). */
+.viewer-reflection-lead {
+  margin: 0;
+  color: rgba(226, 232, 240, 0.62);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.viewer-reflection-hint {
+  margin: 0;
+  padding: 8px 10px;
+  border: 1px solid rgba(167, 139, 250, 0.26);
+  border-radius: 6px;
+  background: rgba(167, 139, 250, 0.08);
+  color: #d6c6fb;
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+
+/* 읽힘 검토에서 남긴 답이 연출 분석의 전제로 실린다는 표시. */
+.review-bar-premises {
+  flex: none;
+  padding: 3px 9px;
+  border: 1px solid rgba(167, 139, 250, 0.4);
+  border-radius: 999px;
+  background: rgba(167, 139, 250, 0.12);
+  color: #d6c6fb;
+  font-size: 10px;
+  font-weight: 700;
+  white-space: nowrap;
+}

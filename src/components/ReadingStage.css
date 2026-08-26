@@ -1,0 +1,375 @@
+/* 갈린 자리의 컷들과 그 자리를 지나는 순차 읽기.
+   연출 쪽 EvidenceStage와 같은 자리·같은 규칙 (LENS_TRACKS_UI.md 4장). */
+
+.reading-stage {
+  --reader: var(--text-secondary);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px 16px 16px;
+}
+
+.reading-stage-frames {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  /* 걸어도 이 줄의 높이가 변하지 않게 못 박는다. 대상 컷은 460px까지
+     커지는데 컷마다 비율이 다르고, 범위 끝에서는 컷이 둘만 나온다 —
+     높이가 그때그때 달라지면 아래 내용이 밀려 화면이 출렁인다. */
+  height: 476px;
+}
+
+.reading-frame-slot {
+  position: relative;
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+
+.reading-arrow {
+  position: relative;
+  flex: none;
+  color: var(--text-muted);
+  font-size: 14px;
+  text-align: center;
+}
+
+.reading-arrow:not(.reading-seam-arrow) {
+  z-index: 3;
+  display: grid;
+  width: 26px;
+  height: 26px;
+  margin: 0 6px;
+  place-items: center;
+  border: 1px solid color-mix(in srgb, var(--reader), transparent 46%);
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--bg-panel), var(--reader) 12%);
+  box-shadow: 0 0 0 3px var(--bg-panel);
+  color: color-mix(in srgb, var(--reader), white 18%);
+  font-size: 16px;
+  font-weight: 850;
+  line-height: 1;
+}
+
+/* 이음새는 두 컷 사이의 자리다. 화살표 하나만 두면 컷 두 장이 둥둥
+   떠 있고 갈린 자리가 어디인지 보이지 않는다 (문서 3장). */
+.reading-seam-arrow {
+  align-self: stretch;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  min-width: 52px;
+  padding: 10px 6px;
+  border: 1px dashed color-mix(in srgb, var(--reader), transparent 55%);
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--reader), transparent 92%);
+}
+
+.reading-seam-arrow small {
+  display: block;
+  color: color-mix(in srgb, var(--reader), white 18%);
+  font-size: 9px;
+  font-weight: 750;
+  white-space: nowrap;
+}
+
+.reading-seam-arrow::before,
+.reading-seam-arrow::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  width: 6px;
+  height: 1px;
+  background: color-mix(in srgb, var(--reader), transparent 55%);
+}
+
+.reading-seam-arrow::before { right: 100%; }
+.reading-seam-arrow::after { left: 100%; }
+
+.reading-frame {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  text-align: center;
+}
+
+/* 좌표를 그리지 않으므로 그림 상자는 단순하다. 다만 크기 규칙은 같다 —
+   그림이 자기 비율대로 놓이고 높이만 묶는다. */
+.reading-frame-image {
+  position: relative;
+  display: inline-block;
+  max-width: 100%;
+  overflow: hidden;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm);
+  background: var(--bg-panel);
+  vertical-align: top;
+  transition: border-color 0.16s;
+}
+
+.reading-frame-image img {
+  display: block;
+  width: auto;
+  height: auto;
+  max-width: 100%;
+  max-height: 460px;
+}
+
+.reading-frame-id {
+  position: absolute;
+  z-index: 2;
+  top: 4px;
+  left: 4px;
+  padding: 1px 6px;
+  border-radius: 3px;
+  background: rgba(0, 0, 0, 0.6);
+  color: var(--text-secondary);
+  font-size: 9px;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.04em;
+}
+
+.reading-frame-empty {
+  display: block;
+  width: 220px;
+  max-width: 100%;
+  aspect-ratio: 3 / 2;
+  background: repeating-linear-gradient(
+    45deg,
+    transparent,
+    transparent 6px,
+    color-mix(in srgb, var(--border-light), transparent 55%) 6px,
+    color-mix(in srgb, var(--border-light), transparent 55%) 7px
+  );
+}
+
+/* 앞뒤 컷은 눌러서 걸어갈 수 있다. 버튼이지만 그림 상자와 크기가 같아야
+   하므로(좌표계 기준) 버튼의 기본 여백·배경을 지운다. */
+.reading-frame-walk {
+  padding: 0;
+  font: inherit;
+  cursor: pointer;
+}
+
+.reading-frame-walk:hover {
+  border-color: color-mix(in srgb, var(--reader), transparent 40%);
+}
+
+.reading-frame-walk:hover img { opacity: 0.92; }
+
+.reading-frame-walk:focus-visible {
+  outline: 2px solid var(--reader);
+  outline-offset: 2px;
+}
+
+/* 어느 쪽으로 가는지. 가리키기 전엔 조용히 있다가 hover에서 드러난다 —
+   앞뒤 컷은 문맥이지 버튼 목록이 아니다. */
+.reading-frame-walk-hint {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  display: grid;
+  width: 26px;
+  height: 26px;
+  margin: -13px 0 0 -13px;
+  place-items: center;
+  border: 1px solid color-mix(in srgb, var(--reader), transparent 40%);
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--bg-panel), var(--reader) 16%);
+  color: color-mix(in srgb, var(--reader), white 24%);
+  font-size: 14px;
+  font-weight: 850;
+  line-height: 1;
+  opacity: 0;
+  transition: opacity 0.12s;
+  pointer-events: none;
+}
+
+.reading-frame-walk:hover .reading-frame-walk-hint,
+.reading-frame-walk:focus-visible .reading-frame-walk-hint { opacity: 1; }
+
+/* 지금 이 컷의 반응을 읽고 있다. 그림을 덮지 않고 테두리로만 말한다 —
+   가려 버리면 무엇을 보고 그렇게 읽었는지 확인할 수 없다. */
+.reading-frame.reading-here .reading-frame-image {
+  border-color: color-mix(in srgb, var(--reader), transparent 32%);
+}
+
+.reading-frame-here {
+  position: absolute;
+  inset: 0;
+  border: 2px solid var(--reader);
+  border-radius: var(--radius-sm);
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.4);
+  pointer-events: none;
+}
+
+/* 한 컷 문제는 앞·뒤의 작은 문맥 안에 놓는다. */
+.reading-stage-shot .reading-frame-slot { flex: 0 1 16%; }
+.reading-stage-shot .reading-frame-slot.reading-frame-focus { flex: 1 1 68%; }
+.reading-stage-shot .reading-frame-context { opacity: 0.5; }
+.reading-stage-shot .reading-frame-context .reading-frame-image img { max-height: 128px; }
+/* 여기가 근거를 실제로 확인하는 자리다. 트랙의 스트립은 훑는 크기라
+   인물의 시선·소품을 볼 수 없다 — 대상 컷은 충분히 크게 놓는다. */
+.reading-stage-shot .reading-frame-focus .reading-frame-image img { max-height: 460px; }
+
+/* 이음새는 두 컷이 동등한 대상이다. */
+.reading-stage-seam .reading-frame-slot { flex: 1 1 0; }
+.reading-stage-seam .reading-frame-image img { max-height: 380px; }
+
+@media (max-width: 620px) {
+  .reading-stage-frames { height: 216px; }
+  .reading-stage-shot .reading-frame-context .reading-frame-image img { max-height: 88px; }
+  .reading-stage-shot .reading-frame-focus .reading-frame-image img,
+  .reading-stage-seam .reading-frame-image img { max-height: 200px; }
+}
+
+/* --- 순차 읽기 ------------------------------------------------------- */
+
+.reading-trace {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 13px 14px 14px;
+  border: 1px solid color-mix(in srgb, var(--reader), transparent 78%);
+  border-radius: 7px;
+  background: color-mix(in srgb, var(--reader), transparent 95%);
+}
+
+.reading-trace-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.reading-trace-where {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+}
+
+.reading-trace-where strong {
+  color: color-mix(in srgb, var(--reader), white 26%);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.reading-trace-where span {
+  overflow: hidden;
+  color: var(--text-muted);
+  font-size: 10px;
+  letter-spacing: 0.03em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.reading-trace-walk {
+  display: flex;
+  flex: none;
+  gap: 4px;
+}
+
+.reading-trace-walk button {
+  display: grid;
+  width: 22px;
+  height: 22px;
+  min-height: 0;
+  place-items: center;
+  padding: 0;
+  border: 1px solid color-mix(in srgb, var(--reader), transparent 62%);
+  border-radius: 50%;
+  background: transparent;
+  color: color-mix(in srgb, var(--reader), white 24%);
+  font: inherit;
+  font-size: 13px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.reading-trace-walk button:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--reader), transparent 84%);
+}
+
+.reading-trace-walk button:disabled { opacity: 0.32; cursor: default; }
+
+.reading-trace-walk button:focus-visible {
+  outline: 2px solid var(--reader);
+  outline-offset: 2px;
+}
+
+/* 이 컷에서 든 생각이 먼저다. 판정은 이 한 문장으로 된다. */
+.reading-trace-immediate {
+  margin: 0;
+  color: rgba(248, 250, 252, 0.92);
+  font-size: 13.5px;
+  line-height: 1.5;
+}
+
+.reading-trace-feeling,
+.reading-trace-hypothesis,
+.reading-trace-question {
+  display: flex;
+  gap: 8px;
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 11.5px;
+  line-height: 1.55;
+}
+
+.reading-trace-feeling em,
+.reading-trace-hypothesis em,
+.reading-trace-question em,
+.reading-trace-divergence em {
+  flex: none;
+  min-width: 46px;
+  color: var(--text-muted);
+  font-size: 9px;
+  font-style: normal;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  line-height: 1.85;
+  text-transform: uppercase;
+}
+
+.reading-trace-cues {
+  margin: 0;
+  font-size: 11px;
+}
+
+.reading-trace-cues summary {
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 10px;
+  letter-spacing: 0.04em;
+}
+
+.reading-trace-cues p {
+  margin: 6px 0 0;
+  color: var(--text-secondary);
+  line-height: 1.55;
+}
+
+/* 걸어와서 여기가 갈린 자리다. 순차 읽기 아래에 붙는다. */
+.reading-trace-divergence {
+  display: flex;
+  gap: 8px;
+  margin: 2px 0 0;
+  padding-top: 10px;
+  border-top: 1px solid color-mix(in srgb, var(--reader), transparent 80%);
+  color: color-mix(in srgb, var(--reader), white 34%);
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.reading-stage-note {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 11px;
+}
