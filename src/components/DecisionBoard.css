@@ -1520,7 +1520,10 @@
   color: #f6d7a4;
 }
 
-.lens-review-sequence-controls button {
+/* 이동 화살표만. 셀렉터를 `controls button`으로 두면 바에 들어오는
+   모든 버튼이 24px로 고정되어, `범위 바꾸기`와 `분석하기`가 글자만큼
+   못 자라고 잘린다(실제로 그랬다). */
+.lens-review-sequence-nav button {
   width: 24px;
   height: 22px;
   padding: 0;
@@ -1533,7 +1536,7 @@
   cursor: pointer;
 }
 
-.lens-review-sequence-controls button:hover {
+.lens-review-sequence-nav button:hover {
   border-color: rgba(216, 170, 98, 0.5);
   color: #f3cf99;
 }
