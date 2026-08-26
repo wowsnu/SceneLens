@@ -15,6 +15,16 @@ import './EvidenceStage.css'
 // `·`는 나란하지 않은 별개의 컷들을 묶은 것이다.
 const isSequential = (anchor) => /[→–]/.test(anchor || '')
 
+// 펼친 이음새가 지금 무슨 조작인지. 캔버스가 그리는 구조와 실제로 열리는
+// 도구가 갈리면 안 되므로 이름은 도구가 쓰는 것과 같게 둔다.
+const SEAM_OP_LABELS = {
+  insert: '새 컷 넣기',
+  split: '컷 나누기',
+  merge: '두 컷 합치기',
+  delete: '컷 빼기',
+  seam: '이음새 조정',
+}
+
 const panelIndexOf = (panelId, shots) => {
   const match = /^S(\d+)$/.exec(panelId)
   if (match) return Number(match[1]) - 1
@@ -78,6 +88,16 @@ export default function EvidenceStage({
   lensId,
   // 지금 검토 중인 범위. 앞뒤 컷을 이 안에서만 가져온다.
   range = null,
+  // 이음새 자리에서 펼쳐진 편집기. 있으면 두 컷 사이가 넓어지며 그
+  // 안으로 들어간다 — 기존 시퀀스가 그대로 캔버스이고, 고칠 자리는
+  // 두 컷 사이 그대로다 (`LENS_TRACKS_UI.md` 5장).
+  seamEditor = null,
+  // 이 이음새에서 지금 무슨 조작을 고르고 있는가.
+  // `insert` | `split` | `merge` | `delete` | null
+  seamOperation = null,
+  // 빠지는 컷. 무엇이 사라지는지 그 컷 위에 표시한다 — 미리 지워서
+  // 보여주면 무엇이 없어지는지 확인할 수 없다.
+  removingPanel = null,
 }) {
   const anchorPanels = panelsOf(issue?.anchor)
   if (anchorPanels.length === 0) return null
@@ -95,25 +115,71 @@ export default function EvidenceStage({
   // 감독은 구분할 수 없다 — 조용히 비워 두지 않는다.
   const hasAnyRegion = hasOverlay(diagnosis, issue?.anchor)
 
+  // 편집기가 들어갈 슬롯이 실제로 있는가. 대상 컷이 이 무대의 첫 칸이면
+  // (앞 컷이 범위 밖이라 안 붙었다) 사이가 없다 — 그때는 무대 아래에
+  // 편다. 자리가 없다고 편집기를 통째로 잃는 편이 더 나쁘다.
+  const seamHostIndex = frames.findIndex(({ role }, index) => (
+    issue?.anchor_kind === 'seam' ? index === 1 : role === 'focus' && index > 0
+  ))
+  const seamBelowStage = Boolean(seamEditor) && seamHostIndex < 0
+
   return (
-    <div className={`evidence-stage evidence-stage-${issue?.anchor_kind || 'shot'} lens-${lensId || 'none'}`}>
+    <div className={[
+      'evidence-stage',
+      `evidence-stage-${issue?.anchor_kind || 'shot'}`,
+      `lens-${lensId || 'none'}`,
+      seamEditor && 'evidence-stage-seam-open',
+      seamOperation && `evidence-seam-op-${seamOperation}`,
+    ].filter(Boolean).join(' ')}>
       <div className="evidence-stage-frames" aria-label={`${issue?.anchor || ''} 주변 스토리보드`}>
         {frames.map(({ id: panelId, role }, index) => {
           const shot = shotFor(panelId)
           const regions = overlaysFor(diagnosis, panelId)
           const isSeam = issue?.anchor_kind === 'seam' && index === 1
+          // 단일 Shot Issue도 앞·대상·뒤 컷을 순서대로 놓는다. 앵커가
+          // `S4` 하나라 해도 이 문맥 패널들은 실제로 이어진 컷이므로
+          // 가운데 점이 아니라 화살표로 읽혀야 한다.
+          const followsSequence = isSequential(issue?.anchor)
+            || (issue?.anchor_kind === 'shot' && frames.length > 1)
+          // 이 자리가 지금 펼쳐져 있는가. 펼쳐지면 화살표 자리가 실제
+          // 슬롯으로 넓어지고 그 안에서 편집한다 — 두 컷은 그 자리에
+          // 그대로 있고, 사이가 벌어질 뿐이다.
+          const seamOpen = Boolean(seamEditor) && index === seamHostIndex
+          // 빠지는 컷. 취소선과 마스크로 덮되 지우지는 않는다 — 무엇이
+          // 사라지는지 보고 판정해야 한다.
+          const isRemoving = removingPanel === panelId
           return (
-            <div key={panelId} className={`evidence-frame-slot evidence-frame-${role}`}>
+            <div
+              key={panelId}
+              className={[
+                'evidence-frame-slot',
+                `evidence-frame-${role}`,
+                seamOpen && 'evidence-frame-slot-seam-open',
+                isRemoving && 'evidence-frame-removing',
+              ].filter(Boolean).join(' ')}
+            >
               {index > 0 && (
-                <span className={`evidence-arrow ${isSeam ? 'evidence-seam-arrow' : ''}`} aria-hidden="true">
-                  {/* 이음새면 어느 사이인지 적는다. `이음새`만 있으면
-                      어느 자리를 고치는 것인지 카드 제목을 다시 봐야 한다. */}
-                  {isSeam && <small>{issue?.anchor || '이음새'}</small>}
-                  {/* 이어지는 두 컷일 때만 화살표다. `·`로 묶인 앵커는
-                      나란하지 않은 별개의 컷들이라, 화살표를 그리면
-                      있지도 않은 순서를 말하게 된다. */}
-                  {isSequential(issue?.anchor) ? '→' : '·'}
-                </span>
+                seamOpen ? (
+                  // 펼친 이음새. 두 컷 사이에 실제 작업 자리가 열린다
+                  // (LENS_TRACKS_UI.md 5장 — 시퀀스가 곧 캔버스다).
+                  <div className="evidence-seam-slot" aria-label={`${issue?.anchor || '이음새'} 편집`}>
+                    <span className="evidence-seam-slot-head">
+                      <small>{issue?.anchor || '이음새'}</small>
+                      {SEAM_OP_LABELS[seamOperation] && <b>{SEAM_OP_LABELS[seamOperation]}</b>}
+                    </span>
+                    <div className="evidence-seam-slot-body">{seamEditor}</div>
+                  </div>
+                ) : (
+                  <span className={`evidence-arrow ${isSeam ? 'evidence-seam-arrow' : ''}`} aria-hidden="true">
+                    {/* 이음새면 어느 사이인지 적는다. `이음새`만 있으면
+                        어느 자리를 고치는 것인지 카드 제목을 다시 봐야 한다. */}
+                    {isSeam && <small>{issue?.anchor || '이음새'}</small>}
+                    {/* 이어지는 두 컷일 때만 화살표다. `·`로 묶인 앵커는
+                        나란하지 않은 별개의 컷들이라, 화살표를 그리면
+                        있지도 않은 순서를 말하게 된다. */}
+                    {followsSequence ? '→' : '·'}
+                  </span>
+                )
               )}
               <figure className="evidence-frame">
                 <span className="evidence-frame-image">
@@ -126,12 +192,32 @@ export default function EvidenceStage({
                   {regions.map((region, i) => (
                     <Overlay key={`${region.label}-${i}`} region={region} />
                   ))}
+                  {/* 빠지는 컷 위에 그린다. 지우지 않고 덮어서, 무엇이
+                      사라지는지 보이게 둔다. */}
+                  {isRemoving && (
+                    <span className="evidence-frame-remove-mark">
+                      <span aria-hidden="true" />
+                      <b>빠짐</b>
+                    </span>
+                  )}
                 </span>
               </figure>
             </div>
           )
         })}
       </div>
+
+      {/* 사이에 낄 자리가 없을 때. 대상이 이 무대의 첫 칸이면 앞 컷이
+          없어 벌릴 사이가 없다 — 무대 바로 아래에 편다. */}
+      {seamBelowStage && (
+        <div className="evidence-seam-slot evidence-seam-slot-below" aria-label={`${issue?.anchor || '이음새'} 편집`}>
+          <span className="evidence-seam-slot-head">
+            <small>{issue?.anchor || '이음새'}</small>
+            {SEAM_OP_LABELS[seamOperation] && <b>{SEAM_OP_LABELS[seamOperation]}</b>}
+          </span>
+          <div className="evidence-seam-slot-body">{seamEditor}</div>
+        </div>
+      )}
 
       {/* 표시가 없을 때. 두 경우가 있고 감독에게는 구분되지 않는다 —
           모델이 자리를 짚지 못했거나, 이 결과가 표시를 만들기 전에 받은

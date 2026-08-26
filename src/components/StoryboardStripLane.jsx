@@ -114,7 +114,9 @@ export default function StoryboardStripLane({
       return
     }
     movedByKey.current = true
-    onSelectShot?.(next)
+    // shift+화살표는 범위를 늘린다. 마우스의 shift+클릭과 같은 규칙이라
+    // 키보드로 고르는 사람도 범위를 처음부터 다시 잡지 않아도 된다.
+    onSelectShot?.(next, event)
   }, [shots.length, selectedShotIndex, onSelectShot, focusCell])
 
   if (shots.length === 0) return null
@@ -163,7 +165,9 @@ export default function StoryboardStripLane({
                 aria-selected={selected}
                 /* 선택된 것만 탭을 받는다. 나머지는 화살표로 온다. */
                 tabIndex={index === tabbableIndex ? 0 : -1}
-                onClick={() => onSelectShot?.(index)}
+                /* 이벤트를 함께 넘긴다. 범위를 고르는 쪽에서 shift 여부를
+                   알아야 "여기부터 저기까지"를 한 번에 잡을 수 있다. */
+                onClick={(event) => onSelectShot?.(index, event)}
                 /* 컷 번호는 아래에 이미 적혀 있다. 툴팁까지 `S1`이면
                    같은 말이 두 번 뜬다 — 내용이 있을 때만 띄운다. */
                 title={shot?.content || undefined}

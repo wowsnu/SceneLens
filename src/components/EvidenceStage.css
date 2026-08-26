@@ -6,6 +6,10 @@
   display: flex;
   flex-direction: column;
   gap: 10px;
+  /* 사진과 바로 아래 렌즈 분석 카드가 경계선 하나로 맞닿지 않게 띄운다.
+     오른쪽 '관점 흐름' 열의 길이에 따라 이 칸이 늘어났다 줄었다 하므로,
+     간격을 그 계산에 맡기지 않고 여기서 고정한다. */
+  padding-bottom: 14px;
 }
 
 .evidence-stage.lens-mise { --lens: #10b981; }
@@ -25,6 +29,11 @@
   gap: 4px;
   flex: 1;
   min-width: 0;
+  position: relative;
+  /* 슬롯이 사진보다 넓으면 남는 폭이 한쪽에 쏠려, 슬롯 왼쪽 끝에 붙는
+     화살표가 사진에서 멀어진다. 안의 사진을 가운데로 모아 양쪽 여백을
+     같게 두면 화살표가 두 사진 사이에 온다. */
+  justify-content: center;
 }
 
 .evidence-arrow {
@@ -32,6 +41,34 @@
   color: var(--text-muted);
   font-size: 14px;
   text-align: center;
+}
+
+/* 앞·대상·뒤 문맥은 순서로 읽혀야 한다. 작은 글자로 두면 사진 사이에서
+   사라지므로, 동그란 표식으로 키워 두 사진 사이에 둔다.
+
+   슬롯 왼쪽 끝(absolute + left:0)에 붙이던 것을 흐름 안으로 되돌린다.
+   슬롯은 폭을 비율로 미리 나눠 갖는데(18%/64%) 사진은 높이 상한에 걸려
+   그보다 좁다. 그래서 슬롯 경계는 사진 경계가 아니고, 거기 붙인 화살표는
+   두 사진 사이가 아니라 빈칸 한가운데에 찍혔다.
+   흐름에 두면 슬롯이 사진과 화살표를 함께 가운데로 모아, 화살표가 앞
+   사진과 뒤 사진 사이에 놓인다. */
+.evidence-arrow:not(.evidence-seam-arrow) {
+  flex: none;
+  z-index: 3;
+  display: grid;
+  width: 28px;
+  height: 28px;
+  /* 사진 사이 간격. 양옆이 같아야 가운데로 보인다. */
+  margin: 0 6px;
+  place-items: center;
+  border: 1px solid color-mix(in srgb, var(--lens), transparent 42%);
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--bg-panel), var(--lens) 14%);
+  box-shadow: 0 0 0 3px var(--bg-panel);
+  color: color-mix(in srgb, var(--lens), white 18%);
+  font-size: 18px;
+  font-weight: 850;
+  line-height: 1;
 }
 
 .evidence-arrow small {
@@ -101,9 +138,9 @@
   width: auto;
   height: auto;
   max-width: 100%;
-  /* 3:2 그림이면 360×240이 된다. 이보다 작으면 상자 표시가 안 보이고,
-     크면 아래 렌즈 카드가 화면 밖으로 밀린다. */
-  max-height: 240px;
+  /* 사진은 바로 아래의 현재 렌즈 분석과 한 묶음이다. 대상 컷을 충분히
+     크게 보여 주되, 분석은 사진 아래에서 곧바로 이어진다. */
+  max-height: 320px;
 }
 
 /* 그림이 없을 때만 쓰인다. 부모(.evidence-frame-image)가 inline-block이라
@@ -126,11 +163,11 @@
 /* 한 컷 문제는 앞·뒤의 작은 문맥 안에 놓는다. 사진을 단지 키우는 대신,
    "이 컷에서 무엇이 걸렸는가"를 앞뒤 흐름 속에서 보게 한다. */
 .evidence-stage-shot .evidence-frame-slot {
-  flex: 0 1 25%;
+  flex: 0 1 18%;
 }
 
 .evidence-stage-shot .evidence-frame-slot.evidence-frame-focus {
-  flex: 1 1 50%;
+  flex: 1 1 64%;
 }
 
 .evidence-stage-shot .evidence-frame-context {
@@ -138,11 +175,11 @@
 }
 
 .evidence-stage-shot .evidence-frame-context .evidence-frame-image img {
-  max-height: 132px;
+  max-height: 120px;
 }
 
 .evidence-stage-shot .evidence-frame-focus .evidence-frame-image img {
-  max-height: 240px;
+  max-height: 320px;
 }
 
 /* 이음새는 두 컷이 동등한 대상이다. 가운데 표식이 두 사진의 사이를
@@ -202,7 +239,7 @@
 
   .evidence-stage-shot .evidence-frame-focus .evidence-frame-image img,
   .evidence-stage-seam .evidence-frame-image img {
-    max-height: 174px;
+    max-height: 220px;
   }
 }
 
@@ -339,4 +376,189 @@
   margin: 0;
   font-size: 10px;
   color: var(--text-muted);
+}
+
+/* ── 펼친 이음새 ──────────────────────────────────────────────────
+   삽입·나누기·합치기·빼기는 전부 두 컷 **사이**의 일이다. 별도 창을
+   열면 고칠 자리가 화면에서 사라지므로, 화살표 자리가 그대로 넓어지며
+   그 안에서 편집한다 — 기존 시퀀스가 곧 캔버스다
+   (LENS_TRACKS_UI.md 5장, DG2 P1). */
+.evidence-stage-seam-open .evidence-stage-frames {
+  /* 두 컷은 위에 맞춰 둔다. stretch로 두면 편집기 높이만큼 사진 칸이
+     늘어나 그림 아래 목적 없는 여백이 생긴다. */
+  align-items: flex-start;
+  gap: 8px;
+  /* 편집기가 들어오면 높이는 내용이 정한다. 기본 무대의 최소 높이를
+     그대로 두면 짧은 조작에서도 빈칸이 남는다. */
+  min-height: 0;
+}
+
+/* 사이가 벌어진다. 두 컷은 자리를 지키되 좁아지고, 열린 자리가 폭을
+   가져간다 — 무엇을 하는 중인지가 화면의 중심이 된다. */
+.evidence-frame-slot-seam-open {
+  flex: 4 1 0;
+  align-items: stretch;
+  gap: 8px;
+  /* 기본 슬롯은 사진을 가운데로 모아 양쪽 여백을 같게 둔다(화살표가 두
+     사진 사이에 오게). 열린 이음새는 남는 폭을 실제로 가져가야 하므로
+     그 중앙 정렬을 푼다 — 안 그러면 편집기가 자기 최소 폭으로 쪼그라든다. */
+  justify-content: stretch;
+}
+
+/* 열린 이음새가 폭을 가져간다. 두 컷은 자리를 지키되 좁아진다 —
+   `.evidence-stage-seam .evidence-frame-slot`의 flex:1 1 0을 덮는다. */
+.evidence-stage-seam-open .evidence-frame-slot:not(.evidence-frame-slot-seam-open) {
+  flex: 1 1 0;
+}
+
+.evidence-stage-seam.evidence-stage-seam-open .evidence-frame-slot-seam-open {
+  /* 삽입기 자체가 넓어지며 양쪽 컷을 밀어 내면, 이음새를 고치다가
+     정작 무엇과 무엇 사이인지 잃는다. 열린 칸은 편집기와 뒤 컷이
+     같은 비중을 나눠 갖도록 한다. */
+  flex: 2 1 0;
+}
+
+.evidence-stage-seam-open .evidence-frame-slot-seam-open > .evidence-frame {
+  flex: none;
+  align-self: center;
+}
+
+.evidence-seam-slot {
+  flex: 0 1 420px;
+  min-width: 0;
+  max-width: 420px;
+  max-height: 430px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px;
+  border: 1px dashed color-mix(in srgb, var(--lens), transparent 45%);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--lens), transparent 94%);
+}
+
+/* 삽입 후보·합친 문장처럼 편집 내용이 길어져도, 이음새가 아래로 계속
+   자라서 다음 판단을 밀어 내지 않는다. 작업기 안에서만 스크롤하고
+   양쪽 패널은 항상 같은 화면에 남긴다. */
+.evidence-seam-slot-body {
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-right: 2px;
+}
+
+.evidence-seam-slot-head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.evidence-seam-slot-head small {
+  color: color-mix(in srgb, var(--lens), white 18%);
+  font-size: 9px;
+  font-weight: 750;
+  letter-spacing: .06em;
+}
+
+.evidence-seam-slot-head b {
+  color: var(--text-primary);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+/* 편집기는 격자에서 뜨는 대화상자다(absolute + max-height + 그림자).
+   여기서는 두 컷 사이에 **놓이는** 것이므로 그 띄움을 전부 푼다 —
+   그대로 두면 자기 폭으로 떠서 뒤 컷을 덮고, max-height에 걸려 안쪽에
+   스크롤이 생긴다(실제로 그랬다). */
+.evidence-seam-slot-body > .grid-edit-preview {
+  position: static;
+  transform: none;
+  width: auto;
+  max-height: none;
+  overflow: visible;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+/* 이음새가 열려 있어도 두 컷의 그림은 계속 보여야 한다. 무엇을 사이에
+   두고 고치는 중인지가 그림에서 읽혀야 하기 때문이다. */
+.evidence-stage-seam-open .evidence-frame-image img {
+  max-height: 138px;
+}
+
+/* ── 빠지는 컷 ────────────────────────────────────────────────────
+   지우지 않고 덮는다. 미리 없애 버리면 무엇이 사라지는지 확인할 수
+   없다 — 판정할 것이 화면에 남아 있어야 한다 (DG1 P2). */
+.evidence-frame-removing .evidence-frame-image {
+  position: relative;
+}
+
+.evidence-frame-removing .evidence-frame-image img {
+  filter: grayscale(1) brightness(.55);
+}
+
+.evidence-frame-remove-mark {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  display: grid;
+  place-items: center;
+  border: 1px solid color-mix(in srgb, #ef4444, transparent 35%);
+  border-radius: 4px;
+  background: color-mix(in srgb, #ef4444, transparent 88%);
+}
+
+/* 취소선. 그림을 가로질러 '이건 빠진다'가 한눈에 읽히게 한다.
+   기울이지 않는다 — 칸의 가로세로 비가 매번 달라서 각도를 고정하면
+   어떤 칸에서는 모서리를 잇는 대각선이 되어 지저분해진다. */
+.evidence-frame-remove-mark > span {
+  position: absolute;
+  top: 50%;
+  left: 6%;
+  right: 6%;
+  height: 1.5px;
+  background: color-mix(in srgb, #ef4444, transparent 25%);
+}
+
+/* 배지는 선 위에 겹치지 않게 아래로 내린다. 겹치면 글자가 선에 걸려
+   무엇이라 적혔는지 읽히지 않는다. */
+.evidence-frame-remove-mark b {
+  position: relative;
+  transform: translateY(14px);
+  padding: 2px 7px;
+  border-radius: 3px;
+  background: rgba(12,12,14,.9);
+  color: #fca5a5;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .04em;
+}
+
+@media (max-width: 620px) {
+  /* 좁으면 사이를 벌릴 폭이 없다. 두 컷 아래로 내려 세로로 쌓는다 —
+     자리는 여전히 두 컷 사이다. */
+  .evidence-stage-seam-open .evidence-stage-frames {
+    flex-wrap: wrap;
+  }
+
+  .evidence-frame-slot-seam-open {
+    flex: 1 1 100%;
+    flex-direction: column;
+  }
+
+  .evidence-seam-slot {
+    flex-basis: auto;
+    max-width: none;
+    max-height: 460px;
+  }
+}
+
+/* 사이에 낄 자리가 없을 때만 쓰인다. 무대 아래로 내려오되 같은 칸으로
+   보이게 둔다 — 자리는 달라도 고치는 대상은 같다. */
+.evidence-seam-slot-below {
+  margin-top: 10px;
 }

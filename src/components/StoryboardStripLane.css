@@ -167,17 +167,43 @@
   content: '';
   position: absolute;
   left: 50%;
-  top: 20%;
-  bottom: 20%;
+  top: 13%;
+  bottom: 28%;
   width: 2px;
   transform: translateX(-50%);
   border-radius: 1px;
-  background: transparent;
+  /* 이음새는 Issue가 없어도 시퀀스에 항상 존재한다. 컷 안(shot)과 컷
+     사이(seam)를 물리적으로 구분할 수 있게 선을 항상 남긴다. */
+  background: rgba(255, 255, 255, 0.34);
   transition: background 0.12s;
 }
 
-.strip-seam:hover::before {
-  background: color-mix(in srgb, var(--accent), transparent 45%);
+/* 선만 있으면 패널 간 여백으로 읽힌다. 작은 마름모를 붙여 "여기부터는
+   다음 컷"이라는 대상을 만든다. Issue가 생겼을 때 트랙의 seam 마커와도
+   같은 형태로 대응한다. */
+.strip-seam::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: 18%;
+  width: 4px;
+  height: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.48);
+  border-radius: 1px;
+  background: var(--bg-panel);
+  transform: translateX(-50%) rotate(45deg);
+  transition: border-color 0.12s, background 0.12s;
+}
+
+.strip-seam:hover::before,
+.strip-seam:focus-visible::before {
+  background: color-mix(in srgb, var(--accent), transparent 12%);
+}
+
+.strip-seam:hover::after,
+.strip-seam:focus-visible::after {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent), var(--bg-panel) 78%);
 }
 
 .strip-seam:focus-visible {

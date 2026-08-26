@@ -522,6 +522,11 @@ const createCutPlanItem = ({
   shotReason = '',
   // 화면에서 시선이 먼저 가야 할 것. 프롬프트가 이것을 강조한다.
   dominant = '',
+  // 컷 길이. 비어 있는 것이 기본이고, 그것은 '아직 안 적음'이 아니라
+  // 후속 공정에 넘긴 상태다 (DG1 P3 위임). 감독이 적으면 그때부터
+  // 스토리보드가 정한 값이 된다. 초 단위 문자열로 둔다 — `2`, `1.5`,
+  // `00:16`처럼 감독이 쓰던 표기를 그대로 받기 위해서다.
+  duration = '',
   // 사용자가 조립된 프롬프트를 직접 고친 경우. 비어 있으면 컷에서 조립한
   // 문장을 쓴다. 원문은 언제든 다시 조립할 수 있으므로 되돌리기가 가능하다.
   promptOverride = '',
@@ -549,6 +554,7 @@ const createCutPlanItem = ({
     cameraMove,
     shotReason,
     dominant,
+    duration,
     promptOverride,
     provenance,
     requirements: createCutRequirements(id, requirements, provenance),

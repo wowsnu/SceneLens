@@ -17,9 +17,155 @@
 
 .issue-inspector.empty p { margin: 0; }
 
+.issue-inspector-workspace {
+  min-width: 0;
+}
+
+.issue-evidence-stage {
+  display: grid;
+  grid-template-areas: 'image flow';
+  /* 오른쪽은 Workbench의 일부다. 왼쪽 작업면이 넓어지면서 관점 흐름을
+     밀어 내지 않도록, 두 칼럼 모두 줄어들 수 있는 폭을 명시한다. */
+  grid-template-columns: minmax(0, 1fr) minmax(236px, 0.46fr);
+  align-items: start;
+  min-width: 0;
+  overflow: hidden;
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.012), rgba(255, 255, 255, 0.025));
+}
+
+.issue-evidence-focus {
+  grid-area: image;
+  position: relative;
+  min-width: 0;
+  border-right: 1px solid rgba(255, 255, 255, 0.08);
+  animation: issue-lens-focus-in 220ms cubic-bezier(0.22, 0.8, 0.34, 1) both;
+}
+
+/* 렌즈가 갈아 끼워지는 순간, 그림을 새로 만들지 않고 같은 장면 위에
+   색이 아주 얇게 스치며 초점만 바뀐다. */
+.issue-evidence-focus::after {
+  position: absolute;
+  z-index: 5;
+  inset: 0;
+  background: linear-gradient(112deg, transparent 35%, color-mix(in srgb, var(--lens), transparent 76%) 52%, transparent 68%);
+  content: '';
+  pointer-events: none;
+  animation: issue-lens-sheen 280ms ease-out both;
+}
+
+.issue-evidence-focus.lens-mise { --lens: var(--mise-lens); }
+.issue-evidence-focus.lens-camera { --lens: var(--camera-lens); }
+.issue-evidence-focus.lens-editing { --lens: var(--editing-lens); }
+
+.issue-evidence-focus > .evidence-stage { min-height: 0; }
+
+@keyframes issue-lens-focus-in {
+  from { opacity: 0.28; filter: blur(1.5px) saturate(0.76); transform: scale(0.988); }
+  to { opacity: 1; filter: none; transform: scale(1); }
+}
+
+@keyframes issue-lens-sheen {
+  from { opacity: 0; transform: translateX(-18%); }
+  35% { opacity: 1; }
+  to { opacity: 0; transform: translateX(24%); }
+}
+
+/* 수정으로 들어가도 Workbench를 통째로 갈아 끼우지 않는다. 왼쪽의
+   증거 자리에만 축소된 작업면을 넣고, 오른쪽 렌즈 흐름은 같은 Issue를
+   계속 가리킨다. */
+.issue-evidence-stage.has-revision-workspace {
+  grid-template-areas: 'revision flow';
+  /* 왼쪽 수정 작업면은 길어질 수 있지만, 오른쪽 관점 흐름까지 같은 높이의
+     빈 패널로 늘어나면 안 된다. 흐름은 위에 고정한 채 자기 내용만 가진다. */
+  align-items: start;
+}
+
+/* 수정 작업면은 왼쪽 evidence/readings를 대체한다. React의 빠른 화면
+   전환 중 이전 EvidenceStage가 잠깐 DOM에 남더라도 grid item으로 남기면
+   암시적 열이 생겨 오른쪽에 큰 빈칸이 생긴다. 수정 중에는 그 이전
+   작업면을 명시적으로 제외해, stage에는 revision과 flow 두 칸만 남긴다. */
+.issue-evidence-stage.has-revision-workspace > .issue-evidence-focus,
+.issue-evidence-stage.has-revision-workspace > .issue-lens-view {
+  display: none;
+}
+
+/* 이음새를 고치는 중에는 다르다. 무대(두 컷 + 그 사이의 편집기)가 그대로
+   왼쪽 칸이고, 수정안 목록은 그 안에 쌓인다 — 고칠 자리가 화면에서
+   사라지면 안 되기 때문이다 (LENS_TRACKS_UI.md 5장). 위 규칙이 그 무대를
+   숨기므로 여기서 되돌리고, `revision` 칸을 무대가 가져간다. */
+.issue-evidence-stage.has-revision-workspace.has-seam-edit > .issue-evidence-focus {
+  display: block;
+  grid-area: revision;
+  min-width: 0;
+  border-right: 1px solid rgba(255, 255, 255, 0.08);
+  container-type: inline-size;
+}
+
+/* 렌즈 전환 도중 이전 EvidenceStage가 DOM에 잠깐 남아도, 구조 편집의
+   무대는 하나여야 한다. 여러 장의 S3와 이음새가 같은 좌표에 포개지면
+   작업기가 커 보일 뿐 아니라 어느 두 컷을 고치는지 읽을 수 없다. */
+.issue-evidence-stage.has-seam-edit > .issue-evidence-focus:not(:has(.evidence-seam-slot)) {
+  display: none;
+}
+
+/* 이때 안쪽 Workspace는 이미 무대 안이므로 grid item이 아니다. 자기
+   테두리를 한 번 더 그리면 상자 안의 상자가 된다. */
+.issue-evidence-stage.has-seam-edit .issue-revision-stage-under {
+  border-right: 0;
+}
+
+.issue-revision-stage {
+  grid-area: revision;
+  min-width: 0;
+  border-right: 1px solid rgba(255, 255, 255, 0.08);
+  /* Revision Workspace는 이 칸의 실제 폭에 맞춰 비교 화면을 접는다.
+     바깥 viewport 폭으로 판단하면 split board 안에서 다시 넘친다. */
+  container-type: inline-size;
+}
+
+.issue-revision-stage .revision-workspace {
+  min-height: 100%;
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+}
+
+.issue-cross-lens {
+  grid-area: flow;
+  align-self: start;
+  position: relative;
+  min-width: 0;
+  padding: 17px 16px 18px 30px;
+  background: rgba(255, 255, 255, 0.022);
+}
+
+/* 오른쪽은 독립된 카드 목록이 아니라, 왼쪽 Issue를 각 렌즈로 이어 보는
+   흐름이다. 공통 선과 각 카드의 짧은 연결선을 두어 그 관계를 보인다. */
+.issue-cross-lens::before {
+  position: absolute;
+  top: 49px;
+  bottom: 20px;
+  left: 15px;
+  width: 1px;
+  background: linear-gradient(to bottom, rgba(216, 170, 98, 0.42), rgba(255, 255, 255, 0.12));
+  content: '';
+}
+
+.issue-cross-lens-label {
+  display: block;
+  margin-bottom: 12px;
+  color: rgba(226, 232, 240, 0.48);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
 .issue-inspector-heading {
-  padding: 13px 14px 12px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+  padding: 15px 15px 14px;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 7px;
+  background: rgba(0, 0, 0, 0.12);
 }
 
 .issue-inspector-heading > span {
@@ -45,56 +191,361 @@
   line-height: 1.5;
 }
 
-.issue-lens-deck {
-  display: flex;
-  align-items: end;
-  gap: 3px;
-  padding: 10px 12px 0;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
-}
-
-.issue-lens-deck button {
-  --lens: var(--text-muted);
+.issue-lens-stack {
   position: relative;
   display: grid;
+  gap: 10px;
+  margin-top: 12px;
+  padding-left: 12px;
+}
+
+/* 카드의 배경이 아니라, 관점 흐름선 위에서 움직이는 작은 광학 렌즈다.
+   비친 빛·가장자리·안쪽 그림자를 분리해 유리의 두께가 느껴지게 한다. */
+.issue-lens-glass {
+  position: absolute;
+  z-index: 3;
+  top: 0;
+  left: 0;
+  width: 18px;
+  height: 18px;
+  border: 1px solid rgba(232, 245, 255, 0.72);
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 31% 27%, rgba(255, 255, 255, 0.92) 0 8%, transparent 25%),
+    radial-gradient(circle at 64% 72%, rgba(117, 189, 255, 0.24), transparent 58%),
+    rgba(214, 238, 255, 0.16);
+  box-shadow:
+    0 0 0 2px rgba(137, 204, 255, 0.08),
+    0 2px 8px rgba(0, 0, 0, 0.48),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.3),
+    inset 0 -3px 5px rgba(43, 99, 145, 0.28);
+  backdrop-filter: blur(3px) saturate(1.45);
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    transform 330ms cubic-bezier(0.24, 0.9, 0.32, 1),
+    opacity 160ms ease;
+}
+
+.issue-lens-glass::after {
+  position: absolute;
+  top: 50%;
+  left: 100%;
+  width: 16px;
+  border-top: 1px solid rgba(177, 224, 255, 0.72);
+  box-shadow: 0 0 6px rgba(100, 185, 255, 0.44);
+  content: '';
+}
+
+/* 렌즈 한 칸. 고르는 버튼과 고치는 버튼이 한 줄에 나란히 있다. */
+.issue-lens-slot {
+  --lens: var(--text-muted);
+  position: relative;
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+  min-width: 0;
+  padding: 11px 11px 10px;
+  border: 1px solid color-mix(in srgb, var(--lens), transparent 76%);
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--lens), transparent 94%);
+  color: color-mix(in srgb, var(--lens), white 24%);
+  opacity: 0.7;
+}
+
+.issue-lens-slot::before {
+  position: absolute;
+  top: 50%;
+  right: 100%;
+  width: 17px;
+  border-top: 1px solid color-mix(in srgb, var(--lens), transparent 62%);
+  content: '';
+}
+
+.issue-lens-slot::after {
+  position: absolute;
+  top: calc(50% - 3px);
+  left: -20px;
+  width: 5px;
+  height: 5px;
+  border: 1px solid color-mix(in srgb, var(--lens), transparent 36%);
+  border-radius: 50%;
+  background: #111217;
+  content: '';
+}
+
+.issue-lens-pick {
+  display: grid;
+  flex: 1;
   grid-template-columns: auto 1fr;
   align-items: baseline;
   gap: 2px 6px;
   min-width: 0;
-  flex: 1;
-  padding: 7px 8px 8px;
-  border: 1px solid transparent;
-  border-bottom: 0;
-  border-radius: 6px 6px 0 0;
-  background: color-mix(in srgb, var(--lens), transparent 94%);
-  color: color-mix(in srgb, var(--lens), white 24%);
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
   font: inherit;
   text-align: left;
   cursor: pointer;
-  opacity: 0.7;
 }
 
-.issue-lens-deck button.lens-mise { --lens: var(--mise-lens); }
-.issue-lens-deck button.lens-camera { --lens: var(--camera-lens); }
-.issue-lens-deck button.lens-editing { --lens: var(--editing-lens); }
-.issue-lens-deck button > span { font-size: 10px; font-weight: 900; }
-.issue-lens-deck button > strong { min-width: 0; font-size: 11px; }
-.issue-lens-deck button > em { grid-column: 1 / -1; overflow: hidden; color: var(--text-muted); font-size: 9px; font-style: normal; text-overflow: ellipsis; white-space: nowrap; }
-.issue-lens-deck button.ready { opacity: 0.92; }
-.issue-lens-deck button.ready:not(.active)::after { position: absolute; top: 5px; right: 6px; width: 5px; height: 5px; border-radius: 50%; background: var(--lens); box-shadow: 0 0 0 2px color-mix(in srgb, var(--lens), transparent 78%); content: ''; }
-.issue-lens-deck button.loading > em { color: color-mix(in srgb, var(--lens), white 10%); }
-.issue-lens-deck button.active { position: relative; z-index: 1; padding-top: 9px; border-color: color-mix(in srgb, var(--lens), transparent 45%); background: color-mix(in srgb, var(--lens), transparent 84%); color: color-mix(in srgb, var(--lens), white 34%); opacity: 1; }
-.issue-lens-deck button.active::before { position: absolute; top: -2px; right: 7px; left: 7px; height: 2px; border-radius: 99px; background: var(--lens); content: ''; }
-.issue-lens-deck button:focus-visible { outline: 2px solid var(--lens); outline-offset: 2px; }
+/* 이 렌즈의 판단을 고치러 간다. 고르는 일과 구분되게 오른쪽 끝에 둔다. */
+.issue-lens-revise {
+  flex: none;
+  align-self: center;
+  padding: 3px 8px;
+  border: 1px solid color-mix(in srgb, var(--lens), transparent 58%);
+  border-radius: 999px;
+  background: transparent;
+  color: color-mix(in srgb, var(--lens), white 30%);
+  font: inherit;
+  font-size: 9.5px;
+  font-weight: 800;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.issue-lens-revise:hover {
+  background: color-mix(in srgb, var(--lens), transparent 82%);
+}
+
+.issue-lens-slot.lens-mise { --lens: var(--mise-lens); }
+.issue-lens-slot.lens-camera { --lens: var(--camera-lens); }
+.issue-lens-slot.lens-editing { --lens: var(--editing-lens); }
+.issue-lens-pick > span { font-size: 10px; font-weight: 900; }
+.issue-lens-pick > strong { min-width: 0; font-size: 11px; }
+.issue-lens-pick > em { grid-column: 1 / -1; overflow: hidden; color: var(--text-muted); font-size: 9px; font-style: normal; text-overflow: ellipsis; white-space: nowrap; }
+.issue-lens-spinner {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-right: 5px;
+  border: 1.5px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: issue-lens-spin 700ms linear infinite;
+  vertical-align: -1px;
+}
+.issue-lens-slot.ready { opacity: 0.92; }
+.issue-lens-slot.loading .issue-lens-pick > em { color: color-mix(in srgb, var(--lens), white 10%); }
+.issue-lens-slot.active {
+  border-color: color-mix(in srgb, var(--lens), transparent 28%);
+  background: color-mix(in srgb, var(--lens), transparent 86%);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--lens), transparent 76%) inset;
+  color: color-mix(in srgb, var(--lens), white 34%);
+  opacity: 1;
+  animation: issue-lens-seat 220ms cubic-bezier(0.22, 0.8, 0.34, 1);
+}
+
+.issue-lens-slot.primary {
+  border-color: color-mix(in srgb, var(--lens), transparent 50%);
+  background: color-mix(in srgb, var(--lens), transparent 90%);
+}
+
+.issue-lens-slot.active::before { border-top-color: color-mix(in srgb, var(--lens), white 24%); }
+.issue-lens-slot.active::after { border-color: var(--lens); background: var(--lens); box-shadow: 0 0 9px color-mix(in srgb, var(--lens), transparent 38%); }
+
+@keyframes issue-lens-seat {
+  from { transform: translateX(7px); }
+  to { transform: translateX(0); }
+}
+.issue-lens-pick:focus-visible,
+.issue-lens-revise:focus-visible { outline: 2px solid var(--lens); outline-offset: 2px; }
+
+/* 아직 이 Issue에 포함되지 않은 렌즈는 카드로 미리 늘어놓지 않는다.
+   감독이 눌러 실제로 확인을 요청할 때만 위 흐름에 한 칸이 생긴다. */
+.issue-lens-additions {
+  display: grid;
+  gap: 7px;
+  margin: 14px 0 0 12px;
+  padding: 12px 0 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.issue-lens-additions > span {
+  color: rgba(226, 232, 240, 0.46);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+}
+
+.issue-lens-additions > div { display: flex; flex-wrap: wrap; gap: 6px; }
+
+.issue-lens-additions button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 27px;
+  padding: 4px 8px;
+  border: 1px dashed rgba(255, 255, 255, 0.2);
+  border-radius: 5px;
+  background: transparent;
+  color: rgba(226, 232, 240, 0.7);
+  font: inherit;
+  font-size: 10px;
+  cursor: pointer;
+}
+
+.issue-lens-additions button:hover { border-color: rgba(216, 170, 98, 0.56); color: #f0cb91; }
+.issue-lens-additions button b { color: #e9c58d; font-size: 9px; }
+
+/* 관계와 달리, 비교는 같은 현상을 렌즈마다 어디까지 확인하는지 요약한다.
+   규칙 이름이나 criterion 전문은 여기 반복하지 않는다. */
+.issue-perspective-comparison {
+  display: grid;
+  gap: 9px;
+  margin-top: 13px;
+  padding: 11px 0 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+.issue-perspective-comparison-trigger {
+  justify-self: start;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: rgba(248, 250, 252, 0.9);
+  font: inherit;
+  font-size: 11px;
+  font-weight: 850;
+  cursor: pointer;
+}
+.issue-perspective-comparison-trigger:hover:not(:disabled) { color: #f0cb91; }
+.issue-perspective-comparison-trigger:disabled { cursor: default; opacity: .55; }
+.issue-perspective-comparison-common,
+.issue-perspective-comparison-differences {
+  display: grid;
+  gap: 4px;
+}
+.issue-perspective-comparison strong {
+  color: rgba(226, 232, 240, 0.54);
+  font-size: 9px;
+  font-weight: 850;
+  letter-spacing: .08em;
+}
+.issue-perspective-comparison p {
+  margin: 0;
+  color: rgba(248, 250, 252, 0.84);
+  font-size: 11px;
+  line-height: 1.5;
+}
+.issue-perspective-comparison ul {
+  display: grid;
+  gap: 5px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.issue-perspective-comparison li {
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr);
+  gap: 7px;
+  font-size: 11px;
+  line-height: 1.45;
+}
+.issue-perspective-comparison li b { color: #e9c58d; font-weight: 800; }
+.issue-perspective-comparison li span { color: rgba(226, 232, 240, 0.78); }
+.issue-perspective-comparison-empty { color: rgba(226, 232, 240, 0.58) !important; }
+
+/* 자유 메모를 요구하지 않는다. 처음 발견한 렌즈가 화면만으로 확정하지
+   못한 검토 방향이 있을 때만, 감독의 확인을 받아 다시 읽는다. */
+.issue-lens-question {
+  display: grid;
+  gap: 6px;
+  margin-top: 12px;
+  padding-top: 11px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.issue-lens-question.lens-mise { --lens: var(--mise-lens); }
+.issue-lens-question.lens-camera { --lens: var(--camera-lens); }
+.issue-lens-question.lens-editing { --lens: var(--editing-lens); }
+
+/* 어느 렌즈의 검토 방향인지 색과 머리글자로 구분한다. 오른쪽에 여러
+   방향이 함께 놓일 수 있으므로, 라벨만으로는 섞여 읽힌다. */
+.issue-lens-question label {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: rgba(226, 232, 240, 0.56);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+}
+
+.issue-lens-question label > span {
+  display: grid;
+  width: 14px;
+  height: 14px;
+  place-items: center;
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--lens, var(--text-muted)), transparent 78%);
+  color: color-mix(in srgb, var(--lens, var(--text-muted)), white 30%);
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: 0;
+}
+
+.issue-lens-question p {
+  margin: 0;
+  color: rgba(248, 250, 252, 0.84);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.issue-lens-question textarea {
+  resize: vertical;
+  min-height: 48px;
+  padding: 7px 8px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 5px;
+  background: rgba(0, 0, 0, 0.18);
+  color: rgba(248, 250, 252, 0.9);
+  font: inherit;
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.issue-lens-question textarea:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+/* 확인 내용은 모아서 한 번에 보낸다. 버튼은 방향 목록 아래 하나뿐이다. */
+.issue-lens-questions {
+  display: grid;
+  gap: 0;
+}
+
+.issue-lens-questions-submit {
+  justify-self: start;
+  margin-top: 11px;
+  min-height: 27px;
+  padding: 0 9px;
+  border: 1px solid rgba(216, 170, 98, 0.48);
+  border-radius: 5px;
+  background: rgba(216, 170, 98, 0.11);
+  color: #f0cb91;
+  font: inherit;
+  font-size: 10.5px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.issue-lens-questions-submit:disabled { cursor: default; opacity: 0.42; }
 
 .issue-perspectives { display: block; }
 .issue-lens-view { overflow: hidden; }
-.issue-lens-view.lens-transition-forward,
-.issue-lens-view.lens-transition-back { animation: issue-lens-refocus 220ms cubic-bezier(0.22, 0.85, 0.36, 1) both; }
+.issue-lens-view.lens-switch { animation: issue-lens-reading-in 220ms cubic-bezier(0.22, 0.8, 0.34, 1) both; }
+.issue-evidence-focus > .issue-lens-view {
+  min-width: 0;
+  margin-top: 14px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
 
-@keyframes issue-lens-refocus {
-  from { opacity: 0; transform: translateY(10px) scale(0.992); }
-  to { opacity: 1; transform: translateY(0) scale(1); }
+@keyframes issue-lens-reading-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 .issue-perspective {
@@ -107,6 +558,9 @@
 .issue-perspective.lens-mise { --lens: var(--mise-lens); }
 .issue-perspective.lens-camera { --lens: var(--camera-lens); }
 .issue-perspective.lens-editing { --lens: var(--editing-lens); }
+
+/* 수정은 별도의 하단 칸이 아니라 이 판단의 옆 칸이다. 내용이 길어져도
+   행동이 카드 아래로 밀려나지 않고, 어느 분석을 고치는지 함께 읽힌다. */
 
 .issue-perspective:last-child { border-right: 0; }
 
@@ -129,6 +583,13 @@
 
 .issue-perspective.unchecked { opacity: 0.7; }
 .issue-perspective.unchecked > p { color: rgba(226, 232, 240, 0.46); }
+.issue-lens-rechecking {
+  display: flex;
+  align-items: center;
+  color: color-mix(in srgb, var(--lens), white 12%) !important;
+}
+.issue-lens-rechecking-label { color: color-mix(in srgb, var(--lens), white 12%); font-style: normal; }
+@keyframes issue-lens-spin { to { transform: rotate(360deg); } }
 /* 봤는데 문제를 못 찾은 것. 흐리게 두면 `아직 안 봄`과 구분되지
    않는다 — 이쪽은 확인이 끝난 상태다. 기호(◌)만으로 갈린다. */
 .issue-perspective.checked-clear > header > span { opacity: 0.55; }
@@ -156,32 +617,45 @@
 .issue-perspective summary { color: rgba(226, 232, 240, 0.48); font-size: 10px; cursor: pointer; }
 .issue-perspective ul { display: grid; gap: 4px; margin: 7px 0 0; padding-left: 15px; color: rgba(226, 232, 240, 0.65); font-size: 10.5px; line-height: 1.45; }
 
-.issue-inspector footer {
-  display: flex;
-  justify-content: flex-end;
-  padding: 9px 12px;
-  border-top: 1px solid rgba(255, 255, 255, 0.07);
-}
-
-.issue-inspector footer button {
-  min-height: 31px;
-  padding: 0 11px;
-  border: 1px solid rgba(216, 170, 98, 0.48);
-  border-radius: 6px;
-  background: rgba(216, 170, 98, 0.13);
-  color: #f0cb91;
-  font: inherit;
-  font-size: 11px;
-  font-weight: 800;
-  cursor: pointer;
-}
-
-.issue-inspector footer button:disabled { cursor: default; opacity: 0.42; }
-
 @media (max-width: 420px) {
-  .issue-lens-deck { gap: 1px; padding-inline: 8px; }
-  .issue-lens-deck button { padding-inline: 5px; }
-  .issue-lens-deck button > em { display: none; }
+  .issue-lens-stack { gap: 6px; padding-left: 8px; }
+  .issue-lens-slot { padding-inline: 5px; }
+  .issue-lens-pick > em { display: none; }
+}
+
+/* 정말 한 칼럼만 가능한 모바일 폭에서만 흐름을 아래로 보낸다. 이때도
+   선택한 렌즈의 reading은 관점 흐름보다 먼저 둔다. 흐름이 길면 미장센을
+   눌러도 아래 결과가 수 화면 뒤로 밀려 사라진 것처럼 보이기 때문이다. */
+@media (max-width: 600px) {
+  .issue-evidence-stage {
+    grid-template-areas:
+      'image'
+      'flow';
+    grid-template-columns: 1fr;
+  }
+  .issue-evidence-focus { border-right: 0; border-bottom: 1px solid rgba(255, 255, 255, 0.08); }
+  .issue-evidence-stage.has-revision-workspace {
+    grid-template-areas:
+      'revision'
+      'flow';
+  }
+  .issue-revision-stage { border-right: 0; border-bottom: 1px solid rgba(255, 255, 255, 0.08); }
+  .issue-cross-lens { padding: 11px; }
+  .issue-cross-lens::before,
+  .issue-lens-slot::before,
+  .issue-lens-slot::after,
+  .issue-lens-glass { display: none; }
+  .issue-lens-stack { padding-left: 0; }
+  .issue-lens-additions { margin-left: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .issue-lens-glass { transition: none; }
+  .issue-evidence-focus,
+  .issue-evidence-focus::after,
+  .issue-lens-glass,
+  .issue-lens-slot.active,
+  .issue-lens-view.lens-switch { animation: none; }
 }
 
 /* --- 렌즈 카드를 눌러 그림의 표시를 바꾼다 --------------------------- */
@@ -212,9 +686,25 @@
    같은 크기로 두면 제목과 내용의 위계가 사라진다. */
 .issue-perspective-pick > p:first-of-type {
   margin-top: 10px;
-  color: rgba(248, 250, 252, 0.9);
-  font-size: 14px;
-  line-height: 1.55;
+  /* 이 문장이 "무엇이 문제인가"를 말하는 진단 본문이다. 렌즈명·근거와
+     같은 보조 정보 크기로 두면 감독이 제일 먼저 읽어야 할 판단이 묻힌다. */
+  color: rgba(248, 250, 252, 0.96);
+  font-size: 16px;
+  font-weight: 560;
+  line-height: 1.65;
+  letter-spacing: -0.012em;
+}
+
+/* 활성 카드뿐 아니라, 다른 렌즈를 열어 본 응답/전환 중 카드도 같은
+   진단 본문을 쓴다. 구조 선택자에만 맡기면 일부 경로에서는 다시 12px
+   보조문 크기로 돌아간다. 진단 자체에 직접 위계를 준다. */
+.issue-evidence-focus .issue-observation {
+  margin: 12px 0 0 !important;
+  color: rgba(248, 250, 252, 0.96) !important;
+  font-size: 18px !important;
+  font-weight: 650;
+  line-height: 1.6 !important;
+  letter-spacing: -0.022em;
 }
 
 .issue-perspective-pick:focus-visible {
@@ -222,16 +712,6 @@
   outline-offset: 2px;
 }
 
-/* 지금 그림에 표시 중인 렌즈. 카드와 그림을 잇는 표시다. */
-.issue-perspective-showing {
-  margin-left: auto;
-  padding: 1px 6px;
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--lens), transparent 78%);
-  color: color-mix(in srgb, var(--lens), white 25%);
-  font-size: 9px;
-  white-space: nowrap;
-}
 
 /* 지금 그림에 표시를 얹고 있는 렌즈. 세 카드 중 어느 것을 보고 있는지
    한눈에 알아야 한다 — 그림의 표시 색과 같은 색으로 잇는다. */
@@ -256,6 +736,14 @@
 .issue-perspective-evidence strong {
   color: color-mix(in srgb, var(--lens), white 10%);
   font-weight: 600;
+}
+
+.issue-perspective-evidence em {
+  color: rgba(226, 232, 240, 0.4);
+  font-size: 9px;
+  font-style: normal;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
 }
 
 /* --- 같은 자리의 다른 검토 ------------------------------------------- */
@@ -318,4 +806,18 @@
   font-style: normal;
   font-size: 9px;
   color: var(--text-muted);
+}
+
+/* 이음새를 고치는 중에는 무대를 치우지 않는다. 두 컷과 그 사이의 편집기가
+   위에 남고, 수정안 목록은 그 아래로 내려간다 — 고칠 자리가 화면에서
+   사라지지 않게 (LENS_TRACKS_UI.md 5장). */
+.issue-revision-stage-under {
+  margin-top: 10px;
+}
+
+/* 이때 Workspace는 이미 무대 안이므로 자기 테두리를 한 번 더 그리지
+   않는다. 상자 안의 상자가 되면 어느 것이 지금 자리인지 흐려진다. */
+.issue-revision-stage-under .revision-workspace {
+  margin: 0;
+  background: transparent;
 }

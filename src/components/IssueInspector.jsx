@@ -1,5 +1,6 @@
-import { useRef, useState } from 'react'
+import { useLayoutEffect, useRef, useState } from 'react'
 import EvidenceStage from './EvidenceStage'
+import { hasOverlay } from './evidenceSummary'
 import { evidenceLineFor } from './evidenceSummary'
 import './IssueInspector.css'
 
@@ -25,13 +26,23 @@ export default function IssueInspector({
   issue,
   issues = [],
   diagnosesById,
+  comparisons = [],
   lensChecks = {},
   shots = [],
   range = null,
   relating = false,
   onCheckLens,
-  onSelectIssue,
+  onCompare,
+  mainLensQuestion = null,
+  onAnswerMainLensQuestion,
+  answeringMainLensQuestion = false,
   onRevise,
+  revisionWorkspace = null,
+  // 두 컷 사이에 펼칠 편집기와, 지금 무슨 조작인지·어느 컷이 빠지는지.
+  // 편집 렌즈의 구조 변경은 여기서만 자리를 얻는다.
+  seamEditor = null,
+  seamOperation = null,
+  removingPanel = null,
 }) {
   // 지금 그림 위에 표시를 얹고 있는 렌즈. 그림은 그대로 있고 이것만
   // 바뀐다 (`LENS_TRACKS_UI.md` 4장).
@@ -41,32 +52,82 @@ export default function IssueInspector({
   // 어긋난다. effect로 되돌리면 한 번 잘못 그린 뒤에 고치는 셈이라
   // 렌더 중에 판정한다.
   const [picked, setPicked] = useState({ issueId: null, lens: null })
-  const [lensTransition, setLensTransition] = useState('forward')
-  const inspectorRef = useRef(null)
+  const [lensMotion, setLensMotion] = useState(0)
+  const lensStackRef = useRef(null)
+  const [glassStyle, setGlassStyle] = useState(null)
+  // 검토 방향마다 따로 담는다. 하나로 두면 다른 칸을 건드리는 순간 먼저
+  // 쓴 내용이 지워진다 — 오른쪽에 여러 렌즈의 방향이 함께 놓일 수 있다.
+  const [questionAnswers, setQuestionAnswers] = useState({})
+  const [comparisonOpen, setComparisonOpen] = useState({ issueId: null, open: false })
   const activeLens = picked.issueId === issue?.id
     ? picked.lens
     : (issue?.origin_lens || null)
-  const setActiveLens = (lens, direction = null) => {
+  const setActiveLens = (lens) => {
     if (lens === activeLens) return
-    const currentIndex = LENSES.findIndex((item) => item.id === activeLens)
-    const nextIndex = LENSES.findIndex((item) => item.id === lens)
-    setLensTransition(direction || (nextIndex > currentIndex ? 'forward' : 'back'))
     setPicked({ issueId: issue?.id, lens })
+    // 렌즈 카드가 움직이는 대신, 같은 화면을 보는 초점이 짧게 바뀐다.
+    setLensMotion((current) => current + 1)
   }
-  const moveLens = (direction) => {
-    const currentIndex = Math.max(0, LENSES.findIndex((item) => item.id === activeLens))
-    const nextIndex = (currentIndex + direction + LENSES.length) % LENSES.length
-    setActiveLens(LENSES[nextIndex].id, direction > 0 ? 'forward' : 'back')
+  // 카드 전체가 아니라, 흐름선 위의 작은 원형 광학 렌즈만 움직인다.
+  // 실제 칸의 높이를 재므로 문장이 줄바꿈되어도 정확히 그 렌즈에 끼워진다.
+  useLayoutEffect(() => {
+    const stack = lensStackRef.current
+    const slot = stack?.querySelector('.issue-lens-slot.active')
+    if (!stack || !slot) {
+      const frame = requestAnimationFrame(() => setGlassStyle(null))
+      return () => cancelAnimationFrame(frame)
+    }
+    const measure = () => setGlassStyle({
+      opacity: 1,
+      transform: `translate(-28px, ${slot.offsetTop + (slot.offsetHeight - 20) / 2}px)`,
+    })
+    const frame = requestAnimationFrame(measure)
+    const observer = new ResizeObserver(measure)
+    observer.observe(stack)
+    return () => {
+      cancelAnimationFrame(frame)
+      observer.disconnect()
+    }
+  }, [issue?.id, activeLens, lensMotion])
+  const answerTextFor = (question) => questionAnswers[question?.id] || ''
+  // 질문은 처음 발견한 렌즈 것만 있는 게 아니다. 뒤늦게 참여한 렌즈도
+  // 화면만 봐서는 알 수 없는 것을 묻는다. 렌즈마다 그 카드 안에 둔다.
+  const questionFor = (lensId) => {
+    // 분석 결과가 막 도착한 순간에는 Track은 있지만 아직 고른 Issue가
+    // 없을 수 있다. 이때 질문도 없는 상태로 둔다.
+    if (lensId === issue?.origin_lens) return mainLensQuestion
+    const raw = lensChecks[lensId]?.question
+    if (!raw) return null
+    return {
+      id: raw.id || `${lensId}:${raw.prompt || raw.question}`,
+      prompt: raw.prompt || raw.question || '',
+    }
   }
-  const handleLensKey = (event) => {
-    if (event.key === 'ArrowLeft') {
-      event.preventDefault()
-      moveLens(-1)
-    }
-    if (event.key === 'ArrowRight') {
-      event.preventDefault()
-      moveLens(1)
-    }
+  // 렌즈가 남긴 검토 방향. 화면만 봐서는 알 수 없어 감독이 확인해 줘야
+  // 하는 것이다. 답은 세 렌즈 모두의 전제가 되므로(공유), 어느 카드에서
+  // 입력하든 같다.
+  const renderLensQuestion = (lens) => {
+    const question = questionFor(lens.id)
+    if (!question?.prompt) return null
+    return (
+      <div key={lens.id} className={`issue-lens-question lens-${lens.id}`}>
+        <label htmlFor={`issue-question-${question.id}`}>
+          <span aria-hidden="true">{lens.mark}</span>
+          {lens.label} 검토 방향
+        </label>
+        <p>{question.prompt}</p>
+        <textarea
+          id={`issue-question-${question.id}`}
+          rows={2}
+          value={answerTextFor(question)}
+          placeholder="확인한 내용을 짧게 적어 주세요"
+          onChange={(event) => setQuestionAnswers((current) => ({
+            ...current,
+            [question.id]: event.target.value,
+          }))}
+        />
+      </div>
+    )
   }
 
   if (!issue) {
@@ -84,10 +145,33 @@ export default function IssueInspector({
       .find((entry) => entry?.lens === lens.id)
     return { lens, diagnosis, check: lensChecks[lens.id] || null }
   })
-  const origin = perspectives.find(({ lens }) => lens.id === issue.origin_lens)?.diagnosis
-    || perspectives.find(({ diagnosis }) => diagnosis)?.diagnosis
-  const criterion = origin?.diagnosis?.criterion || ''
-
+  const primaryPerspective = perspectives.find(({ lens }) => lens.id === issue.origin_lens)
+    || perspectives[0]
+  // 처음 Issue에 포함된 렌즈와, 감독이 직접 더해 확인한 렌즈만 흐름에
+  // 남긴다. 아직 참여하지 않은 렌즈를 빈 카드로 미리 늘어놓지 않는다.
+  //
+  // **부른 순서대로 쌓는다.** `LENSES`는 미장센·촬영·편집 고정 순서라,
+  // 그대로 거르면 나중에 부른 미장센이 먼저 부른 촬영보다 위로 간다.
+  // 그러면 아래로 쌓이는 것이 "이 Issue에 새로 참여시킨 관점"이라는
+  // 뜻을 잃는다 (`LENS_TRACKS_UI.md` 4장).
+  //
+  // 진단으로 처음부터 들어와 있던 렌즈(`addedAt`이 없다)는 감독이 부른
+  // 것이 아니므로 부른 렌즈들보다 앞에 둔다.
+  const joinedPerspectives = perspectives.filter(({ lens, diagnosis, check }) => (
+    lens.id !== primaryPerspective.lens.id && Boolean(diagnosis || check)
+  )).sort((a, b) => (
+    (a.check?.addedAt ?? 0) - (b.check?.addedAt ?? 0)
+  ))
+  const visiblePerspectives = [primaryPerspective, ...joinedPerspectives]
+  const availablePerspectives = perspectives.filter(({ lens, diagnosis, check }) => (
+    lens.id !== primaryPerspective.lens.id && !diagnosis && !check
+  ))
+  // 새 렌즈를 부르는 일은 아직 왼쪽 증거를 바꾸지 않는다. 응답이 실제로
+  // 생긴 뒤에만 그 렌즈를 눌러 같은 그림을 다른 표시로 본다.
+  const addLens = (lensId) => onCheckLens?.(lensId)
+  const displayLens = visiblePerspectives.some(({ lens }) => lens.id === activeLens)
+    ? activeLens
+    : primaryPerspective.lens.id
   // 같은 자리에 걸린 다른 Issue. 두 렌즈가 같은 컷을 짚었는데 관계가
   // 잡히지 않으면 여기 남는다 — 같은 이유일 수도, 다른 이유일 수도
   // 있고 그 판단은 감독이 한다 (`LENS_TRACKS_UI.md` 3장).
@@ -100,71 +184,292 @@ export default function IssueInspector({
 
   // 지금 그림에 표시를 얹을 진단. 고른 렌즈의 것이 없으면 처음 짚은
   // 렌즈의 것으로 둔다 — 무대가 비어 보이지 않게.
-  const activeEntry = perspectives.find(({ lens }) => lens.id === activeLens)
+  const activeEntry = perspectives.find(({ lens }) => lens.id === displayLens)
   const activeDiagnosis = activeEntry?.diagnosis?.diagnosis
     || activeEntry?.check?.diagnosis
     || null
-
-  return (
-    <section
-      ref={inspectorRef}
-      className="issue-inspector"
-      aria-label={`${issue.anchor} ${issue.title}`}
-      tabIndex={-1}
-      onPointerDown={() => inspectorRef.current?.focus()}
-      onKeyDown={handleLensKey}
+  // 답은 모아서 한 번에 보낸다. 하나씩 보내면 답할 때마다 세 렌즈가 다시
+  // 돌고, 그 사이 결과가 갱신되며 아직 답하지 않은 질문이 사라질 수 있다.
+  const pendingQuestions = visiblePerspectives
+    .map(({ lens }) => ({ lens, question: questionFor(lens.id) }))
+    .filter(({ question }) => question?.prompt)
+  const filledAnswers = pendingQuestions.flatMap(({ question }) => {
+    const answer = answerTextFor(question).trim()
+    return answer ? [{ question, answer }] : []
+  })
+  const submitAnswers = () => {
+    if (filledAnswers.length === 0) return
+    onAnswerMainLensQuestion?.(filledAnswers.map(({ question, answer }) => ({
+      level: `${issue.anchor} ${anchorKindLabel(issue.anchor_kind) || '검토'}`,
+      question: question.prompt,
+      answer,
+    })))
+    setQuestionAnswers({})
+  }
+  const issueDiagnosisIds = new Set(issue.diagnosis_ids || [])
+  const comparison = comparisons.find((item) => (
+    (item.diagnosis_ids || []).some((id) => issueDiagnosisIds.has(id))
+  )) || null
+  const comparedLensCount = visiblePerspectives.filter(({ diagnosis, check }) => (
+    Boolean(diagnosis) || check?.status === 'ready'
+  )).length
+  const isComparisonOpen = comparisonOpen.issueId === issue.id && comparisonOpen.open
+  const openComparison = () => {
+    setComparisonOpen({ issueId: issue.id, open: true })
+    if (!comparison) onCompare?.()
+  }
+  // 오른쪽 관점 흐름의 길이는 왼쪽의 판단 위치를 밀면 안 된다. 활성
+  // 렌즈의 설명은 EvidenceStage와 같은 왼쪽 칸 안에 두어, 사진 바로
+  // 아래에서 항상 이어 읽는다.
+  const activeLensReading = !revisionWorkspace && (
+    <div
+      key={`${issue.id}:${displayLens}:${lensMotion}`}
+      className={`issue-lens-view lens-switch lens-${displayLens}`}
     >
-      <header className="issue-inspector-heading">
-        <span>{issue.anchor}{anchorKindLabel(issue.anchor_kind) && ` · ${anchorKindLabel(issue.anchor_kind)}`}</span>
-        <h3>{issue.title}</h3>
-        {criterion && <p>{criterion}</p>}
-      </header>
-
-      <nav className="issue-lens-deck" aria-label="이 이슈를 보는 렌즈">
-        {perspectives.map(({ lens, diagnosis, check }) => {
-          const checking = check?.status === 'loading'
-          const checked = check?.status === 'ready'
-          const hasDiagnosis = Boolean(diagnosis || check?.diagnosis)
-          const hasReading = Boolean(diagnosis || check?.diagnosis || check?.reading)
-          const isActive = lens.id === activeLens
-          return (
-            <button
-              key={lens.id}
-              type="button"
-              className={`lens-${lens.id} ${isActive ? 'active' : ''} ${hasReading ? 'ready' : checking ? 'loading' : ''}`}
-              onClick={() => setActiveLens(lens.id)}
-              aria-pressed={isActive}
-            >
-              <span>{lens.mark}</span>
-              <strong>{lens.label}</strong>
-              <em>{lens.id === issue.origin_lens ? '처음 발견' : checking ? '반응 중' : hasDiagnosis ? '반응 · 수정 필요' : checked ? '반응 완료' : '반응 대기'}</em>
-            </button>
-          )
-        })}
-      </nav>
-
-      <div key={activeLens} className={`issue-lens-view lens-transition-${lensTransition}`}>
-        {/* 화면과 판단을 함께 바꾼다. 렌즈가 바뀌면 같은 Issue를 보는
-            방식 전체가 전환되고, 근거 없는 색만 남지 않는다. */}
-        <EvidenceStage
-          issue={issue}
-          diagnosis={activeDiagnosis}
-          shots={shots}
-          lensId={activeLens}
-          range={range}
-        />
-
-        <div className="issue-perspectives">
-          {perspectives.filter(({ lens }) => lens.id === activeLens).map(({ lens, diagnosis, check }) => {
+      <div className="issue-perspectives">
+        {visiblePerspectives.filter(({ lens }) => lens.id === displayLens).map(({ lens, diagnosis, check }) => {
           const isOrigin = lens.id === issue.origin_lens
           const checking = check?.status === 'loading'
+          const rechecking = isOrigin && answeringMainLensQuestion
           const checked = check?.status === 'ready'
           const checkDiagnosis = check?.diagnosis
           const visibleDiagnosis = diagnosis?.diagnosis || checkDiagnosis
           const checkReading = check?.reading || ''
           if (!diagnosis) {
             return (
-              <section key={lens.id} className={`issue-perspective lens-${lens.id} ${lens.id === activeLens ? 'active' : ''} ${checked && (checkDiagnosis || checkReading) ? 'checked-response' : checked ? 'checked-clear' : 'unchecked'}`}>
+              <section key={lens.id} className={`issue-perspective lens-${lens.id} ${lens.id === displayLens ? 'active' : ''} ${checked && (checkDiagnosis || checkReading) ? 'checked-response' : checked ? 'checked-clear' : 'unchecked'}`}>
+                {!(checked && (checkDiagnosis || checkReading)) && <header><span>{checked ? '◌' : '○'}</span><strong>{lens.label}</strong></header>}
+                {rechecking ? <p className="issue-lens-rechecking"><i className="issue-lens-spinner" aria-hidden="true" />입력한 내용을 반영해 다시 검토하는 중입니다.</p>
+                  : checking ? <p>이 위치를 확인하는 중입니다.</p>
+                    : check?.status === 'error' ? <><p>{check.error || '확인하지 못했습니다.'}</p><button type="button" onClick={() => onCheckLens?.(lens.id)}>다시 확인</button></>
+                      : checked && (checkDiagnosis || checkReading) ? (
+                        <button type="button" className="issue-perspective-pick" onClick={() => setActiveLens(lens.id)} aria-pressed={lens.id === displayLens}>
+                          <header><span>◐</span><strong>{lens.label}</strong></header>
+                          <p className="issue-observation">{checkDiagnosis?.diagnosis || checkReading}</p>
+                          {checkDiagnosis && evidenceLineFor(checkDiagnosis) && <p className="issue-perspective-evidence"><em>근거</em>{evidenceLineFor(checkDiagnosis).label && <strong>{evidenceLineFor(checkDiagnosis).label}</strong>}<span>{evidenceLineFor(checkDiagnosis).detail}</span></p>}
+                        </button>
+                      ) : checked ? <p>이 관점에서는 짚을 것을 찾지 못했습니다.</p> : null}
+              </section>
+            )
+          }
+          const line = evidenceLineFor(visibleDiagnosis)
+          return (
+            <section key={lens.id} className={`issue-perspective lens-${lens.id} active`}>
+              <button type="button" className="issue-perspective-pick" onClick={() => setActiveLens(lens.id)} aria-pressed>
+                <header><span>{isOrigin ? '●' : '◐'}</span><strong>{lens.label}</strong>{rechecking ? <em className="issue-lens-rechecking-label"><i className="issue-lens-spinner" aria-hidden="true" />다시 검토 중</em> : isOrigin && <em>처음 발견</em>}</header>
+                <p className="issue-observation">{visibleDiagnosis.diagnosis}</p>
+                {line && <p className="issue-perspective-evidence"><em>근거</em>{line.label && <strong>{line.label}</strong>}<span>{line.detail}</span></p>}
+              </button>
+            </section>
+          )
+        })}
+      </div>
+    </div>
+  )
+
+  return (
+    <section
+      className="issue-inspector"
+      aria-label={`${issue.anchor} ${issue.title}`}
+    >
+      <div className="issue-inspector-workspace">
+        <div className={`issue-evidence-stage ${revisionWorkspace ? 'has-revision-workspace' : ''} ${seamEditor ? 'has-seam-edit' : ''}`}>
+          {/* 이음새를 고치는 중이면 두 컷을 치우지 않는다. 삽입·나누기·
+              합치기·빼기는 전부 두 컷 **사이**의 일이라, 그 자리가 화면에서
+              사라지면 무엇을 고치는 중인지 알 수 없다. 이때는 무대를 남기고
+              펼친 이음새 안에 편집기를 끼운 뒤, 수정안 목록만 아래에 둔다
+              (`LENS_TRACKS_UI.md` 5장 — 시퀀스가 곧 캔버스다). */}
+          {revisionWorkspace && !seamEditor ? (
+            <div className="issue-revision-stage">
+              {revisionWorkspace}
+            </div>
+          ) : (
+            <div
+              key={`${issue.id}:${displayLens}:${lensMotion}`}
+              className={`issue-evidence-focus lens-${displayLens}`}
+            >
+              <EvidenceStage
+                issue={issue}
+                diagnosis={activeDiagnosis}
+                shots={shots}
+                lensId={displayLens}
+                range={range}
+                seamEditor={seamEditor}
+                seamOperation={seamOperation}
+                removingPanel={removingPanel}
+              />
+              {activeLensReading}
+              {revisionWorkspace && (
+                <div className="issue-revision-stage issue-revision-stage-under">
+                  {revisionWorkspace}
+                </div>
+              )}
+            </div>
+          )}
+
+        <aside className="issue-cross-lens" aria-label="이 이슈의 렌즈 흐름">
+          <span className="issue-cross-lens-label">
+            관점 흐름
+          </span>
+      <header className="issue-inspector-heading">
+        <span>{issue.anchor}{anchorKindLabel(issue.anchor_kind) && ` · ${anchorKindLabel(issue.anchor_kind)}`}</span>
+        <h3>{issue.title}</h3>
+      </header>
+
+      <nav ref={lensStackRef} className="issue-lens-stack" aria-label="이 이슈에 참여한 렌즈">
+        <span className="issue-lens-glass" style={glassStyle} aria-hidden="true" />
+        {visiblePerspectives.map(({ lens, diagnosis, check }, index) => {
+          const checking = check?.status === 'loading'
+          const rechecking = lens.id === issue.origin_lens && answeringMainLensQuestion
+          const checked = check?.status === 'ready'
+          const hasDiagnosis = Boolean(diagnosis || check?.diagnosis)
+          // 다른 렌즈가 기존 Issue를 강화하는 summary를 남길 수 있다. 이는
+          // 이 렌즈가 diagnosis로 문제를 등록한 것은 아니지만, `이상 없음`도 아니다.
+          const agreesWithIssue = Boolean(!diagnosis && !check?.diagnosis && check?.reading)
+          const isActive = lens.id === displayLens
+          const state = rechecking
+            ? '다시 검토 중'
+            : lens.id === issue.origin_lens
+            ? '● 처음 발견'
+            : checking
+              ? '◌ 확인 중'
+              : hasDiagnosis
+                ? '◐ 이 렌즈도 문제를 짚음'
+                : agreesWithIssue
+                  ? '◐ 이 문제에 동의'
+                : checked
+                  ? '◌ 이상 없음'
+                  : '확인 중'
+          // 이 렌즈가 실제로 짚은 진단. 처음 발견한 렌즈면 그 진단이고,
+          // 뒤늦게 참여한 렌즈면 확인 결과의 것이다. 있어야 수정할 수 있다.
+          const reviseTarget = diagnosis?.diagnosis || check?.diagnosis || null
+          return (
+            // 버튼 안에 버튼을 넣을 수 없어 바깥은 div다. 렌즈를 고르는
+            // 일과 그 판단을 고치는 일이 한 줄에 나란히 있다.
+            <div
+              key={lens.id}
+              className={`issue-lens-slot lens-${lens.id} ${index === 0 ? 'primary' : 'added'} ${isActive ? 'active' : ''} ${hasDiagnosis || agreesWithIssue ? 'ready' : checking || rechecking ? 'loading' : ''}`}
+            >
+              <button
+                type="button"
+                className="issue-lens-pick"
+                onClick={() => setActiveLens(lens.id)}
+                aria-pressed={isActive}
+              >
+                <span>{lens.mark}</span>
+                <strong>{lens.label}</strong>
+                <em>{rechecking && <i className="issue-lens-spinner" aria-hidden="true" />}{state}</em>
+              </button>
+              {reviseTarget && (
+                <button
+                  type="button"
+                  className="issue-lens-revise"
+                  onClick={() => onRevise?.({ lens: lens.id, diagnosis: reviseTarget }, issue)}
+                >
+                  직접 수정
+                </button>
+              )}
+            </div>
+          )
+        })}
+      </nav>
+
+      {availablePerspectives.length > 0 && (
+        <section className="issue-lens-additions" aria-label="다른 렌즈로 검토하기">
+          <span>다른 렌즈로 검토하기</span>
+          <div>
+            {availablePerspectives.map(({ lens }) => (
+              <button type="button" key={lens.id} onClick={() => addLens(lens.id)}>
+                <b>{lens.mark}</b>{lens.label} 렌즈로 검토하기
+              </button>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {comparedLensCount >= 2 && (
+        <section className="issue-perspective-comparison" aria-label="관점 비교">
+          <button
+            type="button"
+            className="issue-perspective-comparison-trigger"
+            onClick={openComparison}
+            disabled={relating}
+          >
+            {relating ? '관점 비교 중…' : isComparisonOpen ? '관점 비교' : '관점 비교하기'}
+          </button>
+          {isComparisonOpen && comparison && (
+            <>
+              <div className="issue-perspective-comparison-common">
+                <strong>공통</strong>
+                <p>{comparison.common}</p>
+              </div>
+              <div className="issue-perspective-comparison-differences">
+                <strong>차이</strong>
+                <ul>
+                  {comparison.differences.map((difference) => {
+                    const lens = LENSES.find((item) => item.id === difference.lens)
+                    return (
+                      <li key={difference.lens}>
+                        <b>{lens?.label || difference.lens}</b>
+                        <span>{difference.text}</span>
+                      </li>
+                    )
+                  })}
+                </ul>
+              </div>
+            </>
+          )}
+          {isComparisonOpen && !relating && !comparison && (
+            <p className="issue-perspective-comparison-empty">두 판단 사이에 따로 정리할 공통점은 없어요.</p>
+          )}
+        </section>
+      )}
+
+      {/* 검토 방향도 조작이다. 오른쪽은 감독이 렌즈를 고르고 확인 내용을
+          적는 자리이며, 그 결과는 왼쪽 카드에 나온다. */}
+      {pendingQuestions.length > 0 && (
+        <form
+          className="issue-lens-questions"
+          onSubmit={(event) => {
+            event.preventDefault()
+            submitAnswers()
+          }}
+        >
+          {pendingQuestions.map(({ lens }) => renderLensQuestion(lens))}
+          <button
+            type="submit"
+            className="issue-lens-questions-submit"
+            disabled={answeringMainLensQuestion || filledAnswers.length === 0}
+          >
+            {answeringMainLensQuestion
+              ? '검토 방향을 반영하는 중…'
+              : filledAnswers.length > 1
+                ? `입력한 ${filledAnswers.length}개 방향으로 다시 검토`
+                : '이 방향으로 다시 검토'}
+          </button>
+        </form>
+      )}
+        </aside>
+
+      {activeLensReading == null && !revisionWorkspace && (
+      <div
+        key={`${issue.id}:${displayLens}:${lensMotion}`}
+        className={`issue-lens-view lens-switch lens-${displayLens}`}
+      >
+        {/* 화면과 판단을 함께 바꾼다. 렌즈가 바뀌면 같은 Issue를 보는
+            방식 전체가 전환되고, 근거 없는 색만 남지 않는다. */}
+        <div className="issue-perspectives">
+          {visiblePerspectives.filter(({ lens }) => lens.id === displayLens).map(({ lens, diagnosis, check }) => {
+          const isOrigin = lens.id === issue.origin_lens
+          const checking = check?.status === 'loading'
+          const rechecking = isOrigin && answeringMainLensQuestion
+          const checked = check?.status === 'ready'
+          const checkDiagnosis = check?.diagnosis
+          const visibleDiagnosis = diagnosis?.diagnosis || checkDiagnosis
+          const checkReading = check?.reading || ''
+          if (!diagnosis) {
+            return (
+              <section key={lens.id} className={`issue-perspective lens-${lens.id} ${lens.id === displayLens ? 'active' : ''} ${checked && (checkDiagnosis || checkReading) ? 'checked-response' : checked ? 'checked-clear' : 'unchecked'}`}>
                 {!(checked && (checkDiagnosis || checkReading)) && (
                   <header>
                     {/* 봤지만 문제를 못 찾은 것(◌)과 아직 안 본 것(○)은
@@ -174,7 +479,9 @@ export default function IssueInspector({
                     <strong>{lens.label}</strong>
                   </header>
                 )}
-                {checking ? (
+                {rechecking ? (
+                  <p className="issue-lens-rechecking"><i className="issue-lens-spinner" aria-hidden="true" />입력한 내용을 반영해 다시 검토하는 중입니다.</p>
+                ) : checking ? (
                   <p>이 위치를 확인하는 중입니다.</p>
                 ) : check?.status === 'error' ? (
                   <>
@@ -182,40 +489,44 @@ export default function IssueInspector({
                     <button type="button" onClick={() => onCheckLens?.(lens.id)}>다시 확인</button>
                   </>
                 ) : checked && (checkDiagnosis || checkReading) ? (
-                  <button
-                    type="button"
-                    className="issue-perspective-pick"
-                    onClick={() => setActiveLens(lens.id)}
-                    aria-pressed={lens.id === activeLens}
-                    title={lens.id === activeLens ? '지금 그림에 표시 중' : `${lens.label} 관점으로 보기`}
-                  >
-                    <header>
-                      <span>◐</span>
-                      <strong>{lens.label}</strong>
-                      {lens.id === activeLens && (
-                        <span className="issue-perspective-showing">그림에 표시 중</span>
+                  <>
+                    <button
+                      type="button"
+                      className="issue-perspective-pick"
+                      onClick={() => setActiveLens(lens.id)}
+                      aria-pressed={lens.id === displayLens}
+                      title={lens.id === displayLens
+                        ? (hasOverlay(checkDiagnosis, issue?.anchor)
+                          ? '지금 그림에 표시 중'
+                          : '지금 이 관점으로 보는 중 · 그림에 그릴 표시는 없다')
+                        : `${lens.label} 관점으로 보기`}
+                    >
+                      <header>
+                        <span>◐</span>
+                        <strong>{lens.label}</strong>
+                      </header>
+                      <p className="issue-observation">{checkDiagnosis?.diagnosis || checkReading}</p>
+                      {checkDiagnosis && evidenceLineFor(checkDiagnosis) && (
+                        <p className="issue-perspective-evidence">
+                          <em>근거</em>
+                          {evidenceLineFor(checkDiagnosis).label && (
+                            <strong>{evidenceLineFor(checkDiagnosis).label}</strong>
+                          )}
+                          <span>{evidenceLineFor(checkDiagnosis).detail}</span>
+                        </p>
                       )}
-                    </header>
-                    <p>{checkDiagnosis?.diagnosis || checkReading}</p>
-                    {checkDiagnosis && evidenceLineFor(checkDiagnosis) && (
-                      <p className="issue-perspective-evidence">
-                        {evidenceLineFor(checkDiagnosis).label && (
-                          <strong>{evidenceLineFor(checkDiagnosis).label}</strong>
-                        )}
-                        <span>{evidenceLineFor(checkDiagnosis).detail}</span>
-                      </p>
-                    )}
-                  </button>
+                    </button>
+                  </>
                 ) : checked ? (
                   <p>이 관점에서는 짚을 것을 찾지 못했습니다.</p>
-                ) : (
+                ) : checking ? (
                   <p>이 위치를 이 관점에서 확인하는 중입니다.</p>
-                )}
+                ) : null}
               </section>
             )
           }
           const line = evidenceLineFor(visibleDiagnosis)
-          const isActive = lens.id === activeLens
+          const isActive = lens.id === displayLens
           return (
             <section
               key={lens.id}
@@ -228,19 +539,23 @@ export default function IssueInspector({
                 className="issue-perspective-pick"
                 onClick={() => setActiveLens(lens.id)}
                 aria-pressed={isActive}
-                title={isActive ? '지금 그림에 표시 중' : `${lens.label} 관점으로 보기`}
+                title={isActive
+                  ? (hasOverlay(visibleDiagnosis, issue?.anchor)
+                    ? '지금 그림에 표시 중'
+                    : '지금 이 관점으로 보는 중 · 그림에 그릴 표시는 없다')
+                  : `${lens.label} 관점으로 보기`}
               >
                 <header>
                   <span>{isOrigin ? '●' : '◐'}</span>
                   <strong>{lens.label}</strong>
-                  {isOrigin && <em>처음 발견</em>}
-                  {/* 지금 그림에 표시 중인 렌즈. 셋 중 어느 것을 보고
-                      있는지 카드에서도 알아야 그림과 이어진다. */}
-                  {isActive && <span className="issue-perspective-showing">그림에 표시 중</span>}
+                  {rechecking
+                    ? <em className="issue-lens-rechecking-label"><i className="issue-lens-spinner" aria-hidden="true" />다시 검토 중</em>
+                    : isOrigin && <em>처음 발견</em>}
                 </header>
-                <p>{visibleDiagnosis.diagnosis}</p>
+                <p className="issue-observation">{visibleDiagnosis.diagnosis}</p>
                 {line && (
                   <p className="issue-perspective-evidence">
+                    <em>근거</em>
                     {line.label && <strong>{line.label}</strong>}
                     <span>{line.detail}</span>
                   </p>
@@ -251,6 +566,9 @@ export default function IssueInspector({
           })}
         </div>
       </div>
+      )}
+        </div>
+      </div>
 
       {/* 관계를 아직 찾는 중. 잠시 뒤 이 Issue가 옆 것과 합쳐질 수 있다. */}
       {relating && siblings.length > 0 && (
@@ -259,34 +577,6 @@ export default function IssueInspector({
         </p>
       )}
 
-      {/* 같은 자리인데 따로 잡힌 것들. 시스템이 관계를 못 찾았을 수도
-          있으므로 감독이 직접 견줘 볼 수 있게 둔다. */}
-      {!relating && siblings.length > 0 && (
-        <div className="issue-inspector-siblings">
-          <span>같은 자리에 걸린 다른 검토</span>
-          <ul>
-            {siblings.map((entry) => (
-              <li key={entry.id}>
-                <button type="button" onClick={() => onSelectIssue?.(entry.id)}>
-                  <strong>{entry.title}</strong>
-                  <em>{entry.lenses?.map((id) => LENSES.find((l) => l.id === id)?.label || id).join(' · ')}</em>
-                </button>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-
-      <footer>
-        <button type="button" className="primary" onClick={() => onRevise?.(
-          activeEntry?.diagnosis || (activeEntry?.check?.diagnosis
-            ? { lens: activeLens, diagnosis: activeEntry.check.diagnosis }
-            : origin),
-          issue,
-        )} disabled={!origin}>
-          {activeLens ? `${LENSES.find((lens) => lens.id === activeLens)?.label || ''}에서 수정하기` : '이 문제 수정하기'}
-        </button>
-      </footer>
     </section>
   )
 }

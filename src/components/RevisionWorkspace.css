@@ -6,10 +6,18 @@
 .revision-workspace-current, .revision-workspace-options, .revision-workspace-prompt, .revision-workspace-preview { padding: 12px 14px; border-bottom: 1px solid var(--border); }
 .revision-workspace-current > span, .revision-workspace-options > span, .revision-workspace-prompt > span { margin-top: 0; }
 .revision-workspace p { margin: 6px 0 0; color: var(--text-secondary); font-size: 12px; line-height: 1.5; }
-.revision-workspace-options article { margin-top: 9px; padding: 10px; border: 1px solid var(--border-light); border-radius: 6px; }
+.revision-workspace-options article { position: relative; margin-top: 9px; padding: 10px; border: 1px solid var(--border-light); border-radius: 6px; }
 .revision-workspace-options strong { color: var(--text-primary); font-size: 12px; }
 .revision-workspace button { font: inherit; font-size: 11px; cursor: pointer; }
 .revision-workspace-options article button, .revision-workspace-prompt .primary, .revision-workspace-preview .primary { margin-top: 9px; padding: 5px 8px; border: 1px solid rgba(216,170,98,.5); border-radius: 5px; background: rgba(216,170,98,.13); color: #f0cb91; font-weight: 800; }
+/* 제안 하나가 샷 크기·앵글·움직임을 함께 바꿀 수 있다. 적용은 그 제안
+   자체를 기준으로 하므로, 카드의 오른쪽에서 바로 고른다. */
+.revision-workspace-options article > .revision-alternative-apply { position: absolute; top: 10px; right: 10px; margin: 0; }
+.revision-workspace-options article:has(> .revision-alternative-apply) > strong,
+.revision-workspace-options article:has(> .revision-alternative-apply) > p:first-of-type { padding-right: 108px; }
+.revision-workspace-options article > .directing-alternative-patch,
+.revision-workspace-options article > .revision-field-change,
+.revision-workspace-options article > .revision-workspace-prompt { clear: both; }
 .revision-workspace-prompt textarea { box-sizing: border-box; width: 100%; margin-top: 9px; padding: 8px; border: 1px solid var(--border-light); border-radius: 5px; background: var(--bg-panel); color: var(--text-primary); font: inherit; font-size: 12px; line-height: 1.5; resize: vertical; }
 .revision-workspace-prompt > div, .revision-workspace-preview > div:last-child { display: flex; gap: 6px; margin-top: 8px; }
 .revision-workspace-prompt > div button:not(.primary), .revision-workspace-preview button:not(.primary), .revision-workspace footer button { padding: 5px 8px; border: 1px solid var(--border-light); border-radius: 5px; background: transparent; color: var(--text-secondary); }
@@ -68,6 +76,37 @@
   text-align: center;
 }
 .revision-shot-compare > b { align-self: center; color: #e9c58d; }
+.revision-camera-result-actions { display: grid; gap: 6px; margin-top: 8px; text-align: left; }
+.revision-camera-result-actions > strong { color: #dbeafe; font-size: 10.5px; }
+.revision-camera-result-actions > small { color: var(--text-muted); font-size: 10px; }
+.revision-camera-result-actions > div { display: flex; flex-wrap: wrap; gap: 5px; }
+.revision-camera-result-actions button { padding: 5px 7px; border: 1px solid var(--border-light); border-radius: 5px; background: transparent; color: var(--text-secondary); font: inherit; font-size: 10px; cursor: pointer; }
+.revision-camera-result-actions .primary { border-color: rgba(96,165,250,.55); background: rgba(59,130,246,.16); color: #dbeafe; font-weight: 800; }
+
+/* 편집 렌즈의 출발점은 사진 한 장 비교가 아니라 전후 맥락이다. 대상
+   컷을 가운데에 두고, 구조 수정안을 누르면 이 세 컷 사이가 작업기로
+   바뀐다. */
+.revision-edit-sequence { padding: 12px 14px; border-bottom: 1px solid var(--border); }
+.revision-edit-sequence > span { margin-top: 0; }
+.revision-edit-sequence > div { display: flex; align-items: center; gap: 7px; margin-top: 9px; }
+.revision-edit-sequence-shot { display: flex; flex: 1 1 0; align-items: center; gap: 7px; min-width: 0; }
+.revision-edit-sequence-shot > b { flex: none; color: var(--text-muted); font-size: 13px; }
+.revision-edit-sequence-shot figure { min-width: 0; width: 100%; margin: 0; }
+.revision-edit-sequence-shot figcaption { margin-bottom: 5px; color: var(--text-muted); font-size: 9px; font-weight: 750; }
+.revision-edit-sequence-shot.target figcaption { color: #e9c58d; }
+.revision-edit-sequence-shot img { display: block; width: 100%; max-height: 132px; object-fit: contain; border: 0; border-radius: 0; background: transparent; }
+.revision-edit-sequence-shot i { display: grid; min-height: 80px; place-items: center; border: 1px dashed var(--border-light); border-radius: 5px; color: var(--text-muted); font-size: 10px; font-style: normal; text-align: center; }
+.revision-edit-sequence-shot i.is-structure-preview { border-color: rgba(216,170,98,.6); background: rgba(216,170,98,.08); color: #e9c58d; font-weight: 750; }
+.revision-edit-sequence > p { margin: 8px 0 0; color: var(--text-muted); font-size: 10.5px; }
+.revision-edit-seam-workspace { padding: 12px 14px; border-bottom: 1px solid var(--border); background: rgba(196,150,210,.035); }
+/* GridView에서는 떠 있는 modal이던 작업기를, 여기서는 3장 시퀀스 아래의
+   정상 문서 흐름으로 쓴다. */
+.revision-edit-seam-workspace > .grid-edit-preview { position: static; width: 100%; max-height: none; margin: 0; padding: 0; border: 0; border-radius: 0; background: transparent; box-shadow: none; transform: none; }
+.revision-edit-direct { display: grid; gap: 8px; padding: 12px 14px; border-bottom: 1px solid var(--border); background: rgba(196,150,210,.035); }
+.revision-edit-direct > span { margin: 0; color: #e9c58d; font-size: 10px; font-weight: 800; }
+.revision-edit-direct > p { margin: -3px 0 0; color: var(--text-muted); font-size: 11px; }
+.revision-edit-direct > div { display: flex; flex-wrap: wrap; gap: 6px; }
+.revision-edit-direct button { padding: 6px 10px; border: 1px solid rgba(216,170,98,.48); border-radius: 5px; background: rgba(216,170,98,.1); color: #f0cb91; font: inherit; font-size: 11px; font-weight: 800; }
 
 .revision-seam-canvas { display: grid; grid-template-columns: minmax(0,1fr) 118px minmax(0,1fr); align-items: center; gap: 7px; padding: 14px; border-bottom: 1px solid var(--border); }
 .revision-seam-panel { display: grid; min-height: 104px; place-content: center; border: 1px solid var(--border-light); border-radius: 6px; background: var(--bg-panel); text-align: center; }
@@ -102,11 +141,20 @@
 .revision-seam-canvas.operation-delete .revision-seam-operation { border-style: solid; }
 .revision-workspace-options article button.selected { border-color: #e9c58d; background: rgba(216,170,98,.22); }
 .revision-seam-open { width: 100%; margin-top: 9px; padding: 7px 8px; border: 1px solid rgba(216,170,98,.55); border-radius: 5px; background: rgba(216,170,98,.14); color: #f0cb91; font-weight: 800; }
-.revision-adjustment { display: grid; gap: 8px; margin-top: 10px; padding: 10px; border: 1px solid rgba(216,170,98,.25); border-radius: 6px; background: rgba(216,170,98,.06); }
-.revision-adjustment > span { color: #e9c58d; font-size: 10px; font-weight: 800; }
-.revision-adjustment label { display: grid; grid-template-columns: 88px minmax(0,1fr); align-items: center; gap: 8px; color: var(--text-secondary); font-size: 11px; }
-.revision-adjustment label b { font-weight: 650; }
-.revision-adjustment select { min-width: 0; padding: 5px 7px; border: 1px solid var(--border-light); border-radius: 5px; background: var(--bg-panel); color: var(--text-primary); font: inherit; font-size: 11px; }
+
+/* 촬영 직접 수정은 Panels로 옮기지 않는다. 발견한 문제와 현재/변화된
+   사진을 보면서 값과 문장을 고칠 수 있어야 비교의 맥락이 남는다. */
+.revision-camera-direct-edit { display: grid; gap: 9px; margin-bottom: 12px; padding: 11px; border: 1px solid rgba(216,170,98,.38); border-radius: 6px; background: rgba(216,170,98,.06); }
+.revision-camera-direct-edit > span { margin: 0; color: #e9c58d; font-size: 10px; font-weight: 800; }
+.revision-camera-direct-edit > p { margin: -3px 0 0; color: var(--text-muted); font-size: 11px; }
+.revision-camera-direct-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.revision-camera-direct-fields label, .revision-camera-direct-prompt { display: grid; gap: 5px; color: var(--text-secondary); font-size: 11px; }
+.revision-camera-direct-fields b, .revision-camera-direct-prompt b { font-weight: 700; }
+.revision-camera-direct-fields select, .revision-camera-direct-prompt textarea { box-sizing: border-box; min-width: 0; width: 100%; padding: 6px 7px; border: 1px solid var(--border-light); border-radius: 5px; background: var(--bg-panel); color: var(--text-primary); font: inherit; font-size: 11px; }
+.revision-camera-direct-prompt textarea { line-height: 1.5; resize: vertical; }
+.revision-camera-direct-actions { display: flex; justify-content: flex-end; gap: 6px; }
+.revision-camera-direct-actions button { padding: 6px 8px; border: 1px solid var(--border-light); border-radius: 5px; background: transparent; color: var(--text-secondary); }
+.revision-camera-direct-actions .primary { border-color: rgba(216,170,98,.55); background: rgba(216,170,98,.16); color: #f0cb91; font-weight: 800; }
 
 /* 이 수정이 바꾸는 것. 적용 전에 보여 주는 자리다 — 되돌리는 것보다
    미리 아는 편이 싸다. 판정은 하지 않는다(DG1 P2). */
@@ -144,10 +192,127 @@
 .revision-field-change { display: block; margin-top: 5px; color: #e9c58d; font-size: 10px; font-variant-numeric: tabular-nums; }
 
 /* 실행 버튼. 고르고 영향을 확인한 뒤 누르는 자리다. */
-.revision-run { width: 100%; margin-top: 10px; padding: 8px; border: 1px solid rgba(216,170,98,.55); border-radius: 5px; background: rgba(216,170,98,.16); color: #f0cb91; font-weight: 800; }
-.revision-run:disabled { opacity: .5; cursor: default; }
 
 /* 판정 세 가지. 기존 Decision Card와 같은 자리·같은 뜻이다. */
 .revision-verdict { display: flex; gap: 6px; justify-content: flex-end; }
 .revision-verdict button { padding: 6px 10px; border: 1px solid var(--border-light); border-radius: 5px; background: transparent; color: var(--text-secondary); }
 .revision-verdict button:hover { border-color: var(--text-muted); color: var(--text-primary); }
+
+/* Lens Workbench의 왼쪽 칸에 들어갈 때도 카드의 테두리와 내용이 붙어
+   보이지 않게, 별도 화면보다 조금 더 넉넉한 안쪽 여백을 준다. */
+.issue-revision-stage .revision-workspace > header { padding: 16px 18px 15px; }
+.issue-revision-stage .revision-workspace-current,
+.issue-revision-stage .revision-workspace-options,
+.issue-revision-stage .revision-workspace-prompt,
+.issue-revision-stage .revision-workspace-preview,
+.issue-revision-stage .revision-basis { padding-right: 18px; padding-left: 18px; }
+.issue-revision-stage .revision-shot-compare,
+.issue-revision-stage .revision-seam-canvas { padding-right: 18px; padding-left: 18px; }
+
+/* 분할 보드에서는 viewport가 넓어도 왼쪽 Revision 칸은 좁다. 두 그림을
+   억지로 나란히 두면 오른쪽 관점 흐름까지 밀려 레이아웃이 깨진다. 이때는
+   왼쪽 안에서만 위아래 비교로 바꾼다. */
+@container (max-width: 560px) {
+  .revision-shot-compare {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .revision-shot-compare > b {
+    justify-self: center;
+    transform: rotate(90deg);
+  }
+
+  .revision-shot-compare i {
+    width: min(270px, 100%);
+  }
+
+  .revision-seam-canvas {
+    grid-template-columns: minmax(0, 1fr) 86px minmax(0, 1fr);
+    padding-inline: 12px;
+  }
+
+  .revision-edit-sequence > div { gap: 5px; }
+  .revision-edit-sequence-shot { gap: 5px; }
+  .revision-edit-sequence-shot img { max-height: 96px; }
+}
+.issue-revision-stage .revision-workspace-options article { margin-top: 11px; padding: 12px; }
+
+
+/* 수정 문안이 고른 수정안 안으로 들어갔다. 바깥 섹션이던 때의 좌우
+   여백과 아래 경계선을 그대로 두면 카드 안에서 한 번 더 들여쓰기가
+   되고 밑줄이 겹친다. 안쪽 칸으로 다시 그린다. */
+.revision-workspace-options article > .revision-workspace-prompt {
+  margin-top: 10px;
+  padding: 10px;
+  border: 1px solid rgba(216,170,98,.28);
+  border-radius: 6px;
+  background: rgba(216,170,98,.05);
+}
+.issue-revision-stage .revision-workspace-options article > .revision-workspace-prompt {
+  padding: 11px;
+}
+.revision-prompt-note { margin-top: 6px; color: var(--text-muted); font-size: 11px; }
+
+/* 기존 → 수정안. 고친 뒤 문장만 보이면 무엇이 달라졌는지 기억에
+   기대어 판정하게 된다. 읽기 전용이다 — 고칠 것은 아래 칸이다. */
+.revision-prompt-before {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  margin-top: 8px;
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  background: rgba(255,255,255,.02);
+}
+/* 라벨 줄과 문장을 한 줄에 두지 않는다. 나란히 두면 옛 프롬프트가
+   설명글처럼 읽혀, 아래 문장과 대조하는 일이 되지 않는다. */
+.revision-prompt-before > span {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 9px;
+  font-weight: 750;
+  letter-spacing: .06em;
+}
+.revision-prompt-before > span button {
+  padding: 2px 6px;
+  border: 1px solid var(--border-light);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 10px;
+  letter-spacing: 0;
+}
+.revision-prompt-before > p {
+  margin: 5px 0 0;
+  color: var(--text-muted);
+  font-size: 11px;
+  line-height: 1.5;
+}
+.revision-prompt-after-label {
+  display: block;
+  margin-top: 8px;
+  color: #e9c58d;
+  font-size: 9px;
+  font-weight: 750;
+  letter-spacing: .06em;
+}
+
+/* 이음새 편집기가 열려 있을 때. 실행은 거기서 하므로 여기 버튼을 하나
+   더 두지 않고, 어디를 보라고만 말한다. */
+.revision-seam-open-note {
+  margin-top: 10px;
+  padding: 8px 10px;
+  border: 1px dashed rgba(216,170,98,.35);
+  border-radius: 6px;
+  background: rgba(216,170,98,.06);
+  color: #e9c58d;
+  font-size: 11px;
+  line-height: 1.5;
+}

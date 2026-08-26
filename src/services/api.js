@@ -211,7 +211,7 @@ export async function requestViewerReflection({
 }
 
 export async function requestDirectingReview({
-  mode, panels, intent = '', settled = [], lensResults = null, answers = [],
+  mode, panels, intent = '', settled = [], lensResults = null, answers = [], focus = null,
 }) {
   return fetchWithTimeout(`${API_BASE}/directing-review`, {
     method: 'POST',
@@ -220,7 +220,7 @@ export async function requestDirectingReview({
     // lensResults는 mode='relate'일 때만 쓴다 — 이미지를 다시 올리지 않는다.
     // answers는 `check` 질문에 감독이 답한 것. 그 층위를 다시 판정하게 한다.
     body: JSON.stringify({
-      mode, panels, intent, settled, lens_results: lensResults, answers,
+      mode, panels, intent, settled, lens_results: lensResults, answers, focus,
     }),
   }, 180000)
 }

@@ -268,6 +268,40 @@ export const summarize = (log = readLog()) => {
         ? generates.length / (edits.length + generates.length)
         : 0,
     },
+    /* AI가 낸 진단이 어느 렌즈에서 어느 층위로 나왔는가.
+     *
+     * design_goal.md DG2의 주장 — "관점은 문제를 발견하는 근거이고 층위는
+     * 문제를 수정할 위치다. 미장센·촬영·편집은 모두 네 층위를 사용할 수
+     * 있다" — 을 뒷받침하는 증거다. 화면에 렌즈×층위 표를 두지 않는 대신
+     * 여기서 집계한다.
+     *
+     * `byLensLevel`이 교차표다. 어떤 렌즈가 특정 층위만 내고 있으면 그
+     * 칸이 비어 있어 바로 드러난다.
+     */
+    diagnosis: (() => {
+      const rows = log.filter((e) => e.type === 'diagnosis')
+      const byLensLevel = {}
+      rows.forEach((row) => {
+        const lens = row.lens || 'unspecified'
+        const level = row.level || 'unspecified'
+        byLensLevel[lens] = byLensLevel[lens] || {}
+        byLensLevel[lens][level] = (byLensLevel[lens][level] || 0) + 1
+      })
+      return {
+        total: rows.length,
+        byLens: count(rows, 'lens'),
+        byLevel: count(rows, 'level'),
+        byRule: count(rows, 'rule'),
+        // 렌즈가 실제로 몇 개 층위에 닿았는가. 넷 중 하나에만 머무르면
+        // 그 렌즈는 층위에 묶여 있다는 뜻이다.
+        levelsPerLens: Object.fromEntries(
+          Object.entries(byLensLevel).map(([lens, levels]) => [lens, Object.keys(levels).length]),
+        ),
+        byLensLevel,
+        // 한 컷을 볼 때와 범위를 볼 때 나오는 층위가 다른지 본다.
+        byScopeMode: count(rows, 'scopeMode'),
+      }
+    })(),
     viewer: {
       reads: log.filter((e) => e.type === 'viewer_read').length,
       verdicts: count(log.filter((e) => e.type === 'verdict'), 'verdict'),

@@ -165,7 +165,9 @@ export default function LensTracks({
                         style={{ '--pos': position }}
                         onClick={() => handleSelect(issue)}
                         aria-pressed={selected}
-                        title={`${issue.anchor} · ${issue.title}`}
+                        title={issue.detail
+                          ? `${issue.anchor} · ${issue.title}\n${issue.detail}`
+                          : `${issue.anchor} · ${issue.title}`}
                       >
                         <span className="lens-marker-dot" aria-hidden="true" />
                         <span className="lens-marker-label">{issue.title}</span>
