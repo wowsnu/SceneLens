@@ -1419,7 +1419,10 @@
 
 .lens-review-sequence {
   min-width: 0;
-  overflow: hidden;
+  /* overflow를 걸지 않는다. hidden이면 바의 검토 의도 팝업이 잘리고,
+     overflow-x:hidden + overflow-y:visible은 명세상 y가 auto로 바뀌어
+     세로 스크롤바가 생긴다. 가로 스크롤은 안쪽
+     `.lens-review-shared-scroll`이 이미 맡고 있다. */
   border-top: 1px solid rgba(255, 255, 255, 0.07);
   border-bottom: 1px solid rgba(255, 255, 255, 0.07);
   background: rgba(0, 0, 0, 0.12);
@@ -1456,8 +1459,12 @@
 /* 검토 대상과 실행을 바 오른쪽에 둔다. 범위를 보면서 바꾸고 바로
    돌리는 것이 자연스럽다 — 아래에 따로 줄을 두면 같은 일이 두 자리로
    갈린다. */
+/* 이 묶음 자체도 줄어들지 않는다. 안의 자식에만 flex:none을 주면
+   묶음이 압축되어 밖으로 넘치고, 부모의 overflow:hidden에 잘린다
+   — 실제로 `분석하기`가 반쯤 잘려 나왔다. */
 .review-bar-scope {
   display: flex;
+  flex: none;
   align-items: center;
   gap: 8px;
   margin-left: auto;
@@ -1578,21 +1585,73 @@
 
 /* 검토 대상 줄 아래에 붙는다. scope-panel 안이므로 아래 테두리는
    그쪽이 이미 긋는다 — 위만 나눈다. */
+/* 검토 의도는 바 위의 팝업이다. `details`를 그대로 쓰면 열 때 아래로
+   밀려 바가 뒤틀리므로, 요약만 바에 남기고 내용은 띄운다. */
 .multi-review-intent {
-  border-top: 1px solid rgba(255, 255, 255, 0.07);
-  background: rgba(0, 0, 0, 0.08);
-  border-radius: 0 0 6px 6px;
+  position: relative;
+  flex: none;
 }
 
 .multi-review-intent > summary {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
+  display: flex;
   align-items: center;
-  gap: 9px;
-  min-height: 38px;
-  padding: 0 12px;
+  gap: 5px;
+  padding: 3px 9px;
+  border: 1px solid var(--border-light);
+  border-radius: 5px;
+  white-space: nowrap;
   cursor: pointer;
   list-style: none;
+}
+
+.multi-review-intent > summary:hover {
+  border-color: var(--text-muted);
+}
+
+.multi-review-intent[open] > summary {
+  border-color: rgba(216, 170, 98, 0.5);
+  background: rgba(216, 170, 98, 0.12);
+}
+
+.multi-review-intent > summary > span {
+  color: var(--text-secondary);
+  font-size: 10.5px;
+}
+
+/* 적어 둔 것이 있는지 한눈에. 접혀 있어도 그 의도로 분석된다는 것을
+   놓치면 안 된다. */
+.multi-review-intent-set,
+.multi-review-intent-dirty {
+  padding: 0 5px;
+  border-radius: 999px;
+  font-size: 9px;
+  font-style: normal;
+  font-weight: 700;
+}
+
+.multi-review-intent-set {
+  background: rgba(216, 170, 98, 0.18);
+  color: #e9c58d;
+}
+
+.multi-review-intent-dirty {
+  background: rgba(232, 168, 168, 0.18);
+  color: rgba(244, 200, 200, 0.95);
+}
+
+/* 팝업 본체. 바 아래로 띄운다. */
+.multi-review-intent-popover {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 20;
+  width: 340px;
+  max-width: calc(100vw - 32px);
+  padding: 12px;
+  border: 1px solid var(--border-light);
+  border-radius: 8px;
+  background: var(--bg-elevated);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
 }
 
 .multi-review-intent > summary::-webkit-details-marker {

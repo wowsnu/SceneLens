@@ -4653,56 +4653,21 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
   // 검토 대상과 실행은 스토리보드 바에 둔다. 범위를 보면서 바꾸고
   // 바로 돌리는 것이 자연스럽고, 아래에 따로 줄을 두면 같은 일이 두
   // 자리로 갈린다. 범위를 고르는 중일 때만 그 도구가 아래로 펼쳐진다.
-  const scopeSummary = (
-    <div className="review-bar-scope">
-      <span>{reviewMode === 'viewer' ? '읽힘 검토 범위' : '검토 대상'}</span>
-      <strong>
-        {scopeSelectionFrom != null
-          ? scopeSelectionFrom === scopeSelectionTo
-            ? `S${scopeSelectionFrom + 1} · 한 컷`
-            : `S${scopeSelectionFrom + 1}–S${scopeSelectionTo + 1} · ${scopeSelectionTo - scopeSelectionFrom + 1}컷`
-          : scope.mode === 'range'
-            ? `S${scopeFrom + 1}–S${scopeTo + 1} · ${scopeTo - scopeFrom + 1}컷`
-            : `S${scopedShotIndex + 1} · 한 컷`}
-      </strong>
-      <button
-        type="button"
-        className="scope-change-button"
-        onClick={beginScopeSelection}
-        disabled={scopeSelectableShotIds.length === 0 || Boolean(scopeSelection)}
-      >
-        범위 바꾸기
-      </button>
-      {reviewMode === 'multi' && (
-        <button
-          type="button"
-          className="multi-review-run-button"
-          onClick={runMultiReview}
-          disabled={multiReviewLoading || multiReviewIntentDirty}
-          title={multiReviewIntentDirty ? '변경한 의도를 먼저 적용해주세요.' : undefined}
-        >
-          {multiReviewIntentDirty
-            ? '의도 먼저 적용'
-            : multiReviewLoading
-              ? '분석 중…'
-              : (multiReviewRun.status === 'stale' || multiReviewOutdated)
-                ? '변경 반영'
-                : multiReviewHasResult ? '다시 분석' : '분석하기'}
-        </button>
-      )}
-    </div>
-  )
-
+  // 바에 올리는 팝업. `details`를 그대로 쓰면 열 때 아래로 밀려 바가
+  // 뒤틀리므로, 내용만 띄운다(CSS의 position:absolute).
   const multiReviewIntentPanel = (
       <details className="multi-review-intent">
-        <summary>
+        <summary title={multiReviewIntent.trim() || '검토 의도를 적습니다'}>
           <span>검토 의도</span>
-          <strong>
-            {multiReviewIntentDirty
-              ? '적용되지 않은 변경이 있습니다'
-              : multiReviewIntent.trim() || '필요할 때 추가'}
-          </strong>
+          {/* 적어 둔 것이 있으면 표시한다. 접혀 있어도 무엇을 걸어 두었는지
+              알아야, 그 의도로 분석된다는 것을 놓치지 않는다. */}
+          {multiReviewIntentDirty
+            ? <em className="multi-review-intent-dirty">미적용</em>
+            : multiReviewIntent.trim()
+              ? <em className="multi-review-intent-set">적용됨</em>
+              : null}
         </summary>
+        <div className="multi-review-intent-popover">
         <label>
           <span>
             {scopeMode === 'range' ? '이 범위에서 전달하려는 것' : '이 컷에서 전달하려는 것'}
@@ -4730,8 +4695,51 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
             {multiReviewIntentDirty ? '의도 적용' : '적용됨'}
           </button>
         </div>
+        </div>
       </details>
   )
+
+  const scopeSummary = (
+    <div className="review-bar-scope">
+      <span>{reviewMode === 'viewer' ? '읽힘 검토 범위' : '검토 대상'}</span>
+      <strong>
+        {scopeSelectionFrom != null
+          ? scopeSelectionFrom === scopeSelectionTo
+            ? `S${scopeSelectionFrom + 1} · 한 컷`
+            : `S${scopeSelectionFrom + 1}–S${scopeSelectionTo + 1} · ${scopeSelectionTo - scopeSelectionFrom + 1}컷`
+          : scope.mode === 'range'
+            ? `S${scopeFrom + 1}–S${scopeTo + 1} · ${scopeTo - scopeFrom + 1}컷`
+            : `S${scopedShotIndex + 1} · 한 컷`}
+      </strong>
+      <button
+        type="button"
+        className="scope-change-button"
+        onClick={beginScopeSelection}
+        disabled={scopeSelectableShotIds.length === 0 || Boolean(scopeSelection)}
+      >
+        범위 바꾸기
+      </button>
+      {reviewMode === 'multi' && multiReviewIntentPanel}
+      {reviewMode === 'multi' && (
+        <button
+          type="button"
+          className="multi-review-run-button"
+          onClick={runMultiReview}
+          disabled={multiReviewLoading || multiReviewIntentDirty}
+          title={multiReviewIntentDirty ? '변경한 의도를 먼저 적용해주세요.' : undefined}
+        >
+          {multiReviewIntentDirty
+            ? '의도 먼저 적용'
+            : multiReviewLoading
+              ? '분석 중…'
+              : (multiReviewRun.status === 'stale' || multiReviewOutdated)
+                ? '변경 반영'
+                : multiReviewHasResult ? '다시 분석' : '분석하기'}
+        </button>
+      )}
+    </div>
+  )
+
 
   // 위 바가 검토 대상과 실행을 맡은 뒤로, multi에서는 범위를 고르는
   // 중에만 이 줄이 필요하다. 늘 두면 같은 정보가 두 자리에 나온다.
@@ -4828,10 +4836,6 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
         </div>
       )}
 
-      {/* 검토 의도는 분석 요청에 함께 실린다 — 즉 결과가 아니라
-          **입력**이다. 접힌 채로 있어 자리를 차지하지 않으므로 여기
-          둔다. */}
-      {reviewMode === 'multi' && multiReviewIntentPanel}
     </section>
   )
 
