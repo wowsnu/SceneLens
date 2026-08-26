@@ -256,8 +256,8 @@ Return exactly one cumulative Initial Reading. It is one plausible reading, neve
 
 Follow the viewer's changing thought in strict panel order instead of writing independent panel descriptions. Never describe an earlier panel as if it happened after a later one. For every panel:
 - noticed_cues: only one to three details that would actually attract attention. You do not need to catch every visible detail.
-- immediate_reading: the meaning or expectation prompted at that moment, not a literal description of the image.
-- feeling: a brief immediate response such as tension, doubt, curiosity, relief, or confusion, with a simple reason when useful.
+- immediate_reading: the meaning or expectation prompted at that moment, not a literal description of the image. HARD LIMIT: one sentence, at most 45 Korean characters. It is shown in a narrow fixed-size cell beside the other panels, so a longer line is cut off mid-word and the reading is lost. Cut qualifiers and second clauses rather than running over; say the one thing that matters most at this panel.
+- feeling: a brief immediate response such as tension, doubt, curiosity, relief, or confusion. HARD LIMIT: at most 20 Korean characters, and it must not repeat what immediate_reading already said. A bare feeling word with a two- or three-word reason is enough.
 - relation_to_previous: start for the first panel, then reinforced, shifted, unsettled, or new_question.
 - current_hypothesis: the viewer's best current guess about what is happening after seeing this panel. Carry it forward and genuinely update it; do not reset or repeat the same sentence mechanically.
 - open_question: one question that may pull the viewer into the next panel. Use an empty string if no meaningful question remains.
@@ -273,7 +273,9 @@ Look at each panel before writing about it. Work through it in this order: who o
 
 Adjacent panels do not by themselves prove cause and effect. When a location, composition, or subject changes, keep the connection as a possibility or an open question unless a visible action establishes it.
 One still panel establishes appearance and position more reliably than motion. Do not say that a person, train, or object is moving, attacking, or causing an event unless pose, motion blur, or the ordered sequence visibly supports that action.
-Do not invent off-screen facts, screenplay events, creator goals, correctness scores, demographics, or audience percentages. Avoid academic language and repeated hedging. Write emotional_arc as one natural sentence, not a numbered chart. Keep every field compact: summary at most two short sentences, each step field one short sentence, and lists short enough that all panels fit."""
+Do not invent off-screen facts, screenplay events, creator goals, correctness scores, demographics, or audience percentages. Avoid academic language and repeated hedging. Write emotional_arc as one natural sentence, not a numbered chart. Keep every field compact: summary at most two short sentences, each step field one short sentence, and lists short enough that all panels fit.
+
+LENGTH IS A HARD REQUIREMENT, NOT A PREFERENCE. The step fields are rendered side by side in fixed-width cells, one per panel, so text that runs long is visually truncated and the creator loses the reading. Before returning, check each step: immediate_reading at most 45 Korean characters, feeling at most 20, current_hypothesis at most 50, open_question at most 40. If a line is over, rewrite it shorter — do not simply trim the tail, which leaves a dangling clause. Prefer one concrete observation over a complete-sounding sentence."""
 
     content = [{"type": "text", "text": prompt}]
     for order, panel in enumerate(request.panels, start=1):
@@ -298,11 +300,45 @@ Do not invent off-screen facts, screenplay events, creator goals, correctness sc
     return json.loads(response.choices[0].message.content.strip())["initial_reading"]
 
 
+# 트랙의 칸은 폭이 고정이라, 길어진 문장은 화면에서 잘려 읽히지 않는다.
+# 프롬프트에서 글자 수를 못 박았지만 그것은 요청이지 보장이 아니므로,
+# 넘친 것은 여기서 자른다.
+#
+# 문장 부호에서 끊는다. 글자 수로만 자르면 말이 중간에 끊겨 무슨 뜻인지
+# 알 수 없게 된다 — 잘린 티가 나는 편이 낫다.
+STEP_FIELD_LIMITS = {
+    "immediate_reading": 45,
+    "feeling": 20,
+    "current_hypothesis": 50,
+    "open_question": 40,
+}
+
+
+def _shorten(text: str, limit: int) -> str:
+    text = (text or "").strip()
+    if len(text) <= limit:
+        return text
+    # 한도 안의 마지막 문장 경계에서 끊는다.
+    head = text[:limit]
+    for mark in (". ", "다. ", "? ", "! ", ", "):
+        cut = head.rfind(mark)
+        if cut > limit * 0.5:
+            return head[: cut + len(mark)].strip()
+    # 문장 경계가 없으면 어절 경계에서.
+    cut = head.rfind(" ")
+    if cut > limit * 0.5:
+        return head[:cut].rstrip() + "…"
+    return head.rstrip() + "…"
+
+
 def _normalize_reading(initial: dict, panel_count: int) -> None:
 
     # Keep the current Viewer UI useful until it is migrated to the cumulative
     # fields. This adapter does not send any creator context to the model.
     for step in initial["steps"]:
+        for field, limit in STEP_FIELD_LIMITS.items():
+            if field in step:
+                step[field] = _shorten(step[field], limit)
         step["visible_cues"] = step["noticed_cues"]
         step["possible_interpretations"] = [
             step["immediate_reading"],
@@ -363,7 +399,7 @@ async def _compare_readings(
     prompt = """Compare independent, intention-blind storyboard reading records written by different reading conditions. Write Korean in short, everyday sentences for a creator. Do not use academic, critic-like, or demographic language. Say what was seen and how it led to a different reading, rather than naming an abstract analytical concept.
 Do not invent a real audience consensus, demographic fact, screenplay fact, or creator intention. Do not declare a difference a flaw just because the readings differ.
 
-Return one short common_reading only if the records actually share a flow. Then return zero to three divergences only where the conditions reach meaningfully different interpretations at a panel or adjacent panel range. Divergence ranges must not overlap: one panel or cut connection gets at most one divergence. Order them from the most consequential difference to the least. Each readings item must use the matching condition_id and its differing reading in plain language. shared_cues must quote only short visible-cue phrases already present in the records. why_it_matters explains what decision the creator may need to consider, not what they should choose.
+Return one short common_reading only if the records actually share a flow. Then return zero to three divergences only where the conditions reach meaningfully different interpretations at a panel or adjacent panel range. Divergence ranges must not overlap: one panel or cut connection gets at most one divergence. Order them from the most consequential difference to the least. Each readings item must use the matching condition_id and its differing reading in plain language, at most 60 Korean characters — it is shown in a narrow side panel, so a longer line is cut off. shared_cues must quote only short visible-cue phrases already present in the records. why_it_matters explains what decision the creator may need to consider, not what they should choose.
 
 Only create a divergence when it can be inspected through mise, camera, or editing. Do not create one merely because identity, goal, or causal meaning remains unavailable from the panels; leave that uncertainty in the reading records. Use issue_kind and suspected_cause only to classify where to inspect the difference: element_visibility for hard-to-identify visible elements; spatial_relation for blocking/props/position; framing_readability for framing or emphasis; cut_connection for an unclear relation across panels; information_order for confusing reveal order. Do not create a divergence when the records merely use different wording.
 
