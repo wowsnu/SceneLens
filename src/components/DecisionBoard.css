@@ -1433,19 +1433,25 @@
 .lens-review-sequence-controls {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  gap: 10px;
+  /* 좁아지면 아래로 접는다. flex 자식은 기본으로 줄어들 수 있어서,
+     공간이 모자라면 버튼이 찌그러지고 글자가 한 글자씩 세로로
+     쪼개진다(실제로 그랬다). */
+  flex-wrap: wrap;
   min-height: 27px;
   padding: 5px 12px 0;
 }
 
 .lens-review-sequence-controls > span {
+  flex: none;
+  white-space: nowrap;
   color: rgba(226, 232, 240, 0.38);
   font-size: 9px;
   font-weight: 800;
   letter-spacing: 0.06em;
 }
 
-.lens-review-sequence-nav { display: flex; gap: 4px; }
+.lens-review-sequence-nav { display: flex; flex: none; gap: 4px; }
 
 /* 검토 대상과 실행을 바 오른쪽에 둔다. 범위를 보면서 바꾸고 바로
    돌리는 것이 자연스럽다 — 아래에 따로 줄을 두면 같은 일이 두 자리로
@@ -1456,6 +1462,11 @@
   gap: 8px;
   margin-left: auto;
 }
+
+/* 이 안의 것들은 줄어들지 않는다. 줄어들 바에는 줄을 바꾸는 편이 낫다. */
+.review-bar-scope > * { flex: none; }
+.review-bar-scope > strong,
+.review-bar-scope button { white-space: nowrap; }
 
 .review-bar-scope > span {
   color: rgba(226, 232, 240, 0.38);
