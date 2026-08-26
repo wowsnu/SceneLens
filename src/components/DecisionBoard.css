@@ -52,10 +52,19 @@
   display: flex;
   flex-direction: column;
   gap: 6px;
-  min-height: 38px;
   padding: 4px 2px 8px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.075);
 }
+
+/* 검토 대상이 위 바로 올라간 뒤로는, 이 자리에 접힌 의도만 남을 때가
+   있다. min-height를 두면 빈 줄이 생기므로 내용이 정하게 한다. */
+.scope-panel:not(:has(.scope-panel-row)) {
+  min-height: 0;
+  padding: 0 2px;
+  border-bottom: 0;
+}
+
+.scope-panel:has(.scope-panel-row) { min-height: 38px; }
 
 .scope-panel > .scope-panel-row { flex: 1; }
 
@@ -1436,7 +1445,62 @@
   letter-spacing: 0.06em;
 }
 
-.lens-review-sequence-controls > div { display: flex; gap: 4px; }
+.lens-review-sequence-nav { display: flex; gap: 4px; }
+
+/* 검토 대상과 실행을 바 오른쪽에 둔다. 범위를 보면서 바꾸고 바로
+   돌리는 것이 자연스럽다 — 아래에 따로 줄을 두면 같은 일이 두 자리로
+   갈린다. */
+.review-bar-scope {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.review-bar-scope > span {
+  color: rgba(226, 232, 240, 0.38);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+}
+
+.review-bar-scope > strong {
+  color: var(--text-primary);
+  font-size: 11.5px;
+  font-variant-numeric: tabular-nums;
+}
+
+.review-bar-scope button {
+  padding: 3px 9px;
+  border: 1px solid var(--border-light);
+  border-radius: 5px;
+  background: transparent;
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: 10.5px;
+  cursor: pointer;
+}
+
+.review-bar-scope button:hover:not(:disabled) {
+  border-color: var(--text-muted);
+  color: var(--text-primary);
+}
+
+.review-bar-scope button:disabled { opacity: 0.45; cursor: default; }
+
+/* 실행은 눈에 띄어야 한다 — 이 바에서 유일하게 무언가를 일으킨다. */
+.review-bar-scope .multi-review-run-button {
+  border-color: rgba(216, 170, 98, 0.5);
+  background: rgba(216, 170, 98, 0.14);
+  color: #f0cb91;
+  font-weight: 800;
+}
+
+.review-bar-scope .multi-review-run-button:hover:not(:disabled) {
+  background: rgba(216, 170, 98, 0.22);
+  border-color: rgba(216, 170, 98, 0.7);
+  color: #f6d7a4;
+}
 
 .lens-review-sequence-controls button {
   width: 24px;

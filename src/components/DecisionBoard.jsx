@@ -3387,6 +3387,23 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
     }
   }
 
+  // Issue를 열면 처음 발견한 렌즈의 진단은 이미 있다. 남은 렌즈는 버튼을
+  // 하나씩 누르라고 맡기지 않고 바로 같은 Issue를 각자 읽는다. 결과는
+  // 도착하는 대로 카드에 채워지므로, 세 응답을 기다린 뒤에야 읽게 하지
+  // 않는다. 재분석 결과나 다른 Issue로 옮길 때만 새로 시작한다.
+  useEffect(() => {
+    if (!selectedTrackIssue || revisionWorkspace) return
+    const missingLenses = ['mise', 'camera', 'editing'].filter((lens) => (
+      !selectedTrackIssue.lenses?.includes(lens)
+      && !issueLensChecks[issueLensCheckKey(selectedTrackIssue.id, lens)]
+    ))
+    missingLenses.forEach((lens) => { checkSelectedIssueLens(lens) })
+    // checkSelectedIssueLens는 현재 Issue와 범위를 읽는 이벤트 함수다.
+    // checks 갱신마다 다시 돌리면 완료 직전에도 중복 호출하므로, Issue가
+    // 바뀔 때만 시작한다.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedTrackIssue?.id, multiReviewRun.requestId])
+
   const keepCurrentDirectingIssue = () => {
     if (!currentDirectingIssue) return
     setDirectingIssueDecisions((current) => ({
@@ -4633,6 +4650,49 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
     </div>
   )
 
+  // 검토 대상과 실행은 스토리보드 바에 둔다. 범위를 보면서 바꾸고
+  // 바로 돌리는 것이 자연스럽고, 아래에 따로 줄을 두면 같은 일이 두
+  // 자리로 갈린다. 범위를 고르는 중일 때만 그 도구가 아래로 펼쳐진다.
+  const scopeSummary = (
+    <div className="review-bar-scope">
+      <span>{reviewMode === 'viewer' ? '읽힘 검토 범위' : '검토 대상'}</span>
+      <strong>
+        {scopeSelectionFrom != null
+          ? scopeSelectionFrom === scopeSelectionTo
+            ? `S${scopeSelectionFrom + 1} · 한 컷`
+            : `S${scopeSelectionFrom + 1}–S${scopeSelectionTo + 1} · ${scopeSelectionTo - scopeSelectionFrom + 1}컷`
+          : scope.mode === 'range'
+            ? `S${scopeFrom + 1}–S${scopeTo + 1} · ${scopeTo - scopeFrom + 1}컷`
+            : `S${scopedShotIndex + 1} · 한 컷`}
+      </strong>
+      <button
+        type="button"
+        className="scope-change-button"
+        onClick={beginScopeSelection}
+        disabled={scopeSelectableShotIds.length === 0 || Boolean(scopeSelection)}
+      >
+        범위 바꾸기
+      </button>
+      {reviewMode === 'multi' && (
+        <button
+          type="button"
+          className="multi-review-run-button"
+          onClick={runMultiReview}
+          disabled={multiReviewLoading || multiReviewIntentDirty}
+          title={multiReviewIntentDirty ? '변경한 의도를 먼저 적용해주세요.' : undefined}
+        >
+          {multiReviewIntentDirty
+            ? '의도 먼저 적용'
+            : multiReviewLoading
+              ? '분석 중…'
+              : (multiReviewRun.status === 'stale' || multiReviewOutdated)
+                ? '변경 반영'
+                : multiReviewHasResult ? '다시 분석' : '분석하기'}
+        </button>
+      )}
+    </div>
+  )
+
   const multiReviewIntentPanel = (
       <details className="multi-review-intent">
         <summary>
@@ -4673,8 +4733,13 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
       </details>
   )
 
+  // 위 바가 검토 대상과 실행을 맡은 뒤로, multi에서는 범위를 고르는
+  // 중에만 이 줄이 필요하다. 늘 두면 같은 정보가 두 자리에 나온다.
+  const scopeRowNeeded = reviewMode !== 'multi' || Boolean(scopeSelection)
+
   const scopePanel = (
     <section className="scope-panel" aria-label="Scope selection">
+      {scopeRowNeeded && (
         <div className="scope-panel-row">
           <div className="scope-panel-copy">
             <span>{reviewMode === 'viewer' ? '읽힘 검토 범위' : '검토 대상'}</span>
@@ -4761,11 +4826,12 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
             )}
           </div>
         </div>
+      )}
 
-        {/* 검토 의도는 분석 요청에 함께 실린다 — 즉 결과가 아니라
-            **입력**이다. 결과 영역에 두면 의도를 적으러 아래로 갔다가
-            실행하러 다시 위로 와야 한다. 범위·실행과 한 덩어리로 둔다. */}
-        {reviewMode === 'multi' && multiReviewIntentPanel}
+      {/* 검토 의도는 분석 요청에 함께 실린다 — 즉 결과가 아니라
+          **입력**이다. 접힌 채로 있어 자리를 차지하지 않으므로 여기
+          둔다. */}
+      {reviewMode === 'multi' && multiReviewIntentPanel}
     </section>
   )
 
@@ -5882,10 +5948,11 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
               <section className="lens-review-sequence" aria-label="스토리보드와 렌즈 트랙">
                 <div className="lens-review-sequence-controls" aria-label="스토리보드 이동">
                   <span>스토리보드</span>
-                  <div>
+                  <div className="lens-review-sequence-nav">
                     <button type="button" onClick={() => moveReviewSequence(-1)} aria-label="이전 컷 보기">←</button>
                     <button type="button" onClick={() => moveReviewSequence(1)} aria-label="다음 컷 보기">→</button>
                   </div>
+                  {scopeSummary}
                 </div>
                 <div className="lens-review-shared-scroll" ref={reviewSequenceScrollRef}>
                   <StoryboardStripLane
@@ -5931,6 +5998,9 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
                 </div>
               </section>
 
+              {/* 검토 대상과 실행은 위 바로 올라갔다. 여기 남는 것은
+                  범위를 고르는 중의 도구와 검토 의도다. 의도는 접혀
+                  있으므로 늘 두고, 범위 도구는 고르는 중에만 나온다. */}
               {scopePanel}
 
               {multiReviewLoading && (
