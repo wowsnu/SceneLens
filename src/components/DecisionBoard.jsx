@@ -2366,6 +2366,9 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
   const multiReviewRun = multiReviewRuns[multiReviewScopeKey] || { status: 'idle' }
   const multiReviewLoading = multiReviewRun.status === 'loading'
   const multiReviewHasResult = ['ready', 'stale'].includes(multiReviewRun.status)
+  // 분석을 시작한 순간 Inspect는 열려 있어야 한다. 첫 렌즈 결과가 오면
+  // 바로 트랙과 Inspector에 반영하고, 셋째 결과까지 기다리지 않는다.
+  const multiReviewVisible = multiReviewLoading || multiReviewHasResult
   // 관계는 세 종류다. 셋 다 같은 카드로 나열한다 — 합의만 요약 상자로
   // 빼두면 근거도 판정도 붙지 않아, 감독이 그 관계에 답할 수 없다.
   const multiFindings = multiReviewRun.commonFindings || []
@@ -2393,16 +2396,6 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
       return check ? [[lens, check]] : []
     }))
     : {}
-  const trackIssuesWithAddedLenses = useMemo(() => (
-    trackIssues.map((issue) => {
-      const addedLenses = ['mise', 'camera', 'editing'].filter((lens) => (
-        issueLensChecks[issueLensCheckKey(issue.id, lens)]?.diagnosis
-      ))
-      return addedLenses.length === 0
-        ? issue
-        : { ...issue, lenses: [...new Set([...(issue.lenses || []), ...addedLenses])] }
-    })
-  ), [issueLensCheckKey, issueLensChecks, trackIssues])
   const selectedTrackShotIndex = useMemo(() => {
     const match = selectedTrackIssue?.anchor?.match(/S(\d+)/)
     return match ? Number(match[1]) - 1 : null
@@ -2787,55 +2780,98 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
 
     try {
       const panels = await buildReviewPanels(entries)
-      // 세 렌즈는 독립적으로 판단한다. 관계는 결과가 둘 이상일 때 이어서
-      // 자동 분석한다.
-      const response = await requestDirectingReview({
-        mode: 'multi',
-        panels,
-        intent: multiReviewIntent,
-        answers,
-      })
+      // 한 multi 응답 안에서 gather하면 가장 느린 렌즈가 Inspect 전체를
+      // 막는다. 기존 단일 렌즈 API를 동시에 호출해, 끝난 렌즈부터 화면에
+      // 채운다. 각 렌즈의 진단 규칙과 출력은 기존과 완전히 같다.
+      const outcomes = await Promise.all(MULTI_LENS_ORDER.map(async ({ backendId, lensId }) => {
+        try {
+          const response = await requestDirectingReview({
+            mode: backendId,
+            panels,
+            intent: multiReviewIntent,
+            answers,
+          })
+          const result = response.lens_results?.[backendId]
+          if (!result) throw new Error(`${lensName(backendId)} 결과를 받지 못했습니다.`)
+
+          /* 이 렌즈가 어느 층위를 짚었는지 남긴다.
+           *
+           * design_goal.md DG2: "미장센·촬영·편집은 문제를 발견하는
+           * 관점이지 접근 가능한 층위를 제한하는 권한이 아니다. 모든
+           * 관점은 네 층위를 진단할 수 있으며…"
+           *
+           * 이 주장은 화면에 렌즈×층위 표를 늘어놓아서가 아니라, 실제로
+           * 그렇게 나왔다는 기록으로 뒷받침된다. 표를 두면 오히려 칸을
+           * 채워야 하는 것처럼 보여 반대 인상을 준다.
+           *
+           * 진단 하나가 한 줄이다 — 렌즈별 층위 분포를 나중에 집계할 수
+           * 있어야 하므로 합쳐서 세어 두지 않는다.
+           */
+          ;(result.diagnoses || []).forEach((diagnosis) => {
+            logEvent('diagnosis', {
+              lens: backendId,
+              level: diagnosis.level || null,
+              rule: diagnosis.rule_id || null,
+              // 어느 범위를 검토하다 나온 것인가. 같은 층위라도 한 컷을
+              // 볼 때와 범위를 볼 때 나오는 것이 다르다.
+              scopeMode: scope.mode,
+              scopeSize: scope.shotIds?.length ?? 0,
+              targets: (diagnosis.targets || []).length,
+            })
+          })
+
+          setMultiReviewRuns((current) => {
+            const previous = current[scopeKey]
+            if (previous?.requestId !== requestId) return current
+            const questions = [...(previous.questions || []), ...(response.questions || [])]
+            const issues = [...(previous.issues || []), ...(response.issues || [])]
+            return {
+              ...current,
+              [scopeKey]: {
+                ...previous,
+                lensResults: { ...(previous.lensResults || {}), [backendId]: result },
+                // 렌즈 하나가 끝나면 그 렌즈의 Issue도 곧바로 트랙에 올린다.
+                issues,
+                questions: [...new Map(questions.map((question) => [question.id, question])).values()],
+              },
+            }
+          })
+
+          // 같은 결과를 각 렌즈 작업대에도 즉시 심는다.
+          setLensReviewRuns((current) => ({
+            ...current,
+            [`${scopeKey}:${lensId}`]: {
+              status: 'ready',
+              requestId,
+              intent: multiReviewIntent,
+              fingerprint: scopeFingerprint,
+              result,
+              questions: (response.questions || [])
+                .filter((question) => question.lenses?.includes(backendId)),
+            },
+          }))
+          return { backendId, ok: true }
+        } catch (error) {
+          return { backendId, ok: false, error: error.message || '분석하지 못했습니다.' }
+        }
+      }))
+
       setMultiReviewRuns((current) => {
-        // 도중에 다시 눌렀으면 늦게 온 응답은 버린다.
-        if (current[scopeKey]?.requestId !== requestId) return current
+        const previous = current[scopeKey]
+        if (previous?.requestId !== requestId) return current
+        const failedLenses = outcomes.filter((outcome) => !outcome.ok).map((outcome) => outcome.backendId)
+        const complete = outcomes.length - failedLenses.length
         return {
           ...current,
-          [scopeKey]: {
-            status: 'ready',
-            requestId,
-            intent: multiReviewIntent,
-            fingerprint: scopeFingerprint,
-            lensResults: response.lens_results || {},
-            commonFindings: response.common_findings || [],
-            // 트랙과 Inspector가 쓰는 단위. 관계를 찾기 전에도 진단
-            // 하나당 하나씩 들어 있어 트랙이 바로 그려진다.
-            issues: response.issues || [],
-            order: response.order || null,
-            questions: response.questions || [],
-          },
+          [scopeKey]: complete > 0
+            ? { ...previous, status: 'ready', failedLenses }
+            : {
+                ...previous,
+                status: 'error',
+                failedLenses,
+                error: '미장센·촬영·편집 분석을 완료하지 못했습니다.',
+              },
         }
-      })
-
-      // 같은 패널을 렌즈 탭에서 또 분석하지 않게 결과를 심어 둔다.
-      // '촬영에서 이어서 보기'로 갔을 때 이미 분석된 상태로 열린다.
-      setLensReviewRuns((current) => {
-        const next = { ...current }
-        MULTI_LENS_ORDER.forEach(({ backendId, lensId }) => {
-          const result = response.lens_results?.[backendId]
-          if (!result) return
-          // lensReviewKey와 같은 규칙이어야 한다. 작업대는 키에 넣지 않는다.
-          const key = `${scopeKey}:${lensId}`
-          next[key] = {
-            status: 'ready',
-            requestId,
-            intent: multiReviewIntent,
-            fingerprint: scopeFingerprint,
-            result,
-            questions: (response.questions || [])
-              .filter((question) => question.lenses?.includes(backendId)),
-          }
-        })
-        return next
       })
     } catch (error) {
       setMultiReviewRuns((current) => {
@@ -3353,6 +3389,10 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
     const criterion = issue.diagnosis_ids
       .map((diagnosisId) => diagnosesById.get(diagnosisId)?.diagnosis.criterion)
       .find(Boolean) || ''
+    const originEntry = issue.diagnosis_ids
+      .map((diagnosisId) => diagnosesById.get(diagnosisId))
+      .find((entry) => entry?.lens === issue.origin_lens)
+      || issue.diagnosis_ids.map((diagnosisId) => diagnosesById.get(diagnosisId)).find(Boolean)
 
     try {
       const response = await requestDirectingReview({
@@ -3366,6 +3406,8 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
           title: issue.title,
           criterion,
           panel_ids: focusPanelIds,
+          origin_lens: originEntry?.lens || issue.origin_lens || 'mise',
+          origin_reading: originEntry?.diagnosis?.diagnosis || issue.title,
         },
       })
       const result = response.lens_results?.[lens]
@@ -3392,7 +3434,9 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
   // 도착하는 대로 카드에 채워지므로, 세 응답을 기다린 뒤에야 읽게 하지
   // 않는다. 재분석 결과나 다른 Issue로 옮길 때만 새로 시작한다.
   useEffect(() => {
-    if (!selectedTrackIssue || revisionWorkspace) return
+    // 초기 세 렌즈 분석이 아직 오는 중이면 같은 렌즈를 Issue 반응으로
+    // 한 번 더 부르지 않는다. 셋이 끝난 뒤 선택된 Issue에만 반응시킨다.
+    if (!selectedTrackIssue || revisionWorkspace || multiReviewLoading) return
     const missingLenses = ['mise', 'camera', 'editing'].filter((lens) => (
       !selectedTrackIssue.lenses?.includes(lens)
       && !issueLensChecks[issueLensCheckKey(selectedTrackIssue.id, lens)]
@@ -3402,7 +3446,7 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
     // checks 갱신마다 다시 돌리면 완료 직전에도 중복 호출하므로, Issue가
     // 바뀔 때만 시작한다.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedTrackIssue?.id, multiReviewRun.requestId])
+  }, [selectedTrackIssue?.id, multiReviewRun.requestId, multiReviewLoading])
 
   const keepCurrentDirectingIssue = () => {
     if (!currentDirectingIssue) return
@@ -6005,8 +6049,11 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
                         selectScopeShot(index)
                         return
                       }
-                      // 스트립을 훑는 것은 검토 대상을 바꾸는 일이 아니다.
-                      // 대상은 범위가 잠가 두고, 여기서는 보는 자리만 옮긴다.
+                      // 컷을 누른 것은 "이걸 보겠다"는 명시적 행동이다.
+                      // 검토 대상으로 삼는다 — 눌렀는데 대상이 그대로면
+                      // 무엇을 검토하는지 감독이 다시 확인해야 한다.
+                      setScopeMode('single')
+                      setSingleScopeShotId(shots[index]?.id || null)
                       setBrowsingShotIndex(index)
                       setFlowActiveShot(index)
                       setSelectedIssueId(null)
@@ -6019,7 +6066,7 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
                   <LensTracks
                     embedded
                     shots={shots}
-                    issues={trackIssuesWithAddedLenses}
+                    issues={trackIssues}
                     activeLenses={activeTrackLenses}
                     selectedIssueId={selectedIssueId}
                     loading={multiReviewLoading}
@@ -6051,7 +6098,7 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
                 </section>
               )}
 
-              {multiReviewHasResult && (
+              {multiReviewVisible && (
                 <>
               {/* 고치러 갔다 오면 옛 분석이 최신인 것처럼 남는다.
                   본 뒤에 패널이 바뀌었으면 그 사실을 밝힌다. */}
@@ -6173,7 +6220,7 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
               ) : trackIssues.length > 0 && (
                 <IssueInspector
                   issue={selectedTrackIssue}
-                  issues={trackIssuesWithAddedLenses}
+                  issues={trackIssues}
                   diagnosesById={diagnosesById}
                   lensChecks={selectedIssueLensChecks}
                   shots={shots}
@@ -6188,7 +6235,7 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
                 />
               )}
 
-              {trackIssues.length === 0 && (
+              {trackIssues.length === 0 && !multiReviewLoading && (
               <section className="directing-checklist" aria-label="연출 검토 확인할 것">
                 <header>
                   <div>
