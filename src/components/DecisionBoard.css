@@ -8189,17 +8189,3 @@ button.active .lens-glass::after {
   font-size: 11px;
   line-height: 1.5;
 }
-
-
-/* 읽힘 검토에서 남긴 답이 연출 분석의 전제로 실린다는 표시. */
-.review-bar-premises {
-  flex: none;
-  padding: 3px 9px;
-  border: 1px solid rgba(167, 139, 250, 0.4);
-  border-radius: 999px;
-  background: rgba(167, 139, 250, 0.12);
-  color: #d6c6fb;
-  font-size: 10px;
-  font-weight: 700;
-  white-space: nowrap;
-}

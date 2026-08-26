@@ -2309,7 +2309,6 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
     !directingQuestionDecisions[directingQuestionDecisionKey(question.id)]
   ))
   const currentDirectingQuestion = unresolvedDirectingQuestions[0] || null
-  const readingAnswerCount = Object.keys(readingAnswers).length
   const answeredDirectingQuestions = [
     ...directingQuestions.flatMap((question) => {
       const decision = directingQuestionDecisions[directingQuestionDecisionKey(question.id)]
@@ -4816,16 +4815,6 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
       >
         범위 바꾸기
       </button>
-      {/* 읽힘 검토에서 남긴 답은 이 분석의 전제다. 몇 개가 실려 있는지
-          돌리기 전에 밝힌다 — 안 밝히면 자기 답이 반영되는지 알 수 없다. */}
-      {reviewMode === 'multi' && readingAnswerCount > 0 && (
-        <span
-          className="review-bar-premises"
-          title="읽힘 검토에서 남긴 답이 이 분석의 전제로 들어갑니다."
-        >
-          읽힘 답 {readingAnswerCount}개 반영
-        </span>
-      )}
       {reviewMode === 'multi' && (
         <button
           type="button"
