@@ -574,10 +574,18 @@ issues: 0개
 이러면 UI가 아니라 서버를 먼저 본다.
 
 ```bash
-ps aux | grep uvicorn        # 언제 떴는지, --reload가 있는지
-.venv/bin/python -m uvicorn app.main:app \
-  --host 127.0.0.1 --port 8000 --reload --app-dir backend
+ps aux | grep uvicorn   # 언제 떴는지, --reload가 있는지
+npm run dev:api         # 백엔드만 (--reload 포함)
+npm run dev:all         # 프론트 + 백엔드 함께
 ```
+
+**`npm run dev:api`로 띄운다.** 손으로 명령을 치면 `--reload`가 빠지고,
+그 뒤로는 코드를 고쳐도 응답이 그대로다 — 이 일이 세 번 반복돼 스크립트로
+고정했다.
+
+이 증상은 **프론트를 새로고침해도 낫지 않는다.** 이미 받아 둔 분석
+결과가 화면에 남아 있는 것이므로, 서버를 고친 뒤 `다시 분석`을 눌러야
+새 앵커가 온다.
 
 재시작 뒤 같은 요청에서 `issues: 2개`, 상자 5개(방향 화살표 포함)가
 나오는 것을 확인했다.

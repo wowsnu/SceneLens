@@ -5,6 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:api": ".venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload --app-dir backend",
+    "dev:all": "concurrently -n web,api -c cyan,magenta \"npm run dev\" \"npm run dev:api\"",
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview"
