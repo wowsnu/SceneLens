@@ -4699,7 +4699,41 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
       </details>
   )
 
-  const scopeSummary = (
+  // 범위를 고르는 중에는 바가 그 도구가 된다. 아래에 따로 띄우면
+  // 스토리보드에서 컷을 누르면서 안내를 보려고 시선이 위아래로 오간다 —
+  // 고르는 자리와 고르는 대상이 붙어 있어야 한다.
+  const scopeSummary = scopeSelection ? (
+    <div className="review-bar-scope selecting" role="group" aria-label="검토 범위 선택">
+      <strong>
+        {scopeSelection.anchor == null
+          ? '시작 컷 선택'
+          : scopeSelection.end == null
+            ? `S${scopeSelection.anchor + 1} 선택됨`
+            : scopeSelectionFrom === scopeSelectionTo
+              ? `S${scopeSelectionFrom + 1} 한 컷`
+              : `S${scopeSelectionFrom + 1}–S${scopeSelectionTo + 1}`}
+      </strong>
+      <span className="review-bar-hint">
+        {scopeSelection.error
+          || (scopeSelection.anchor == null
+            ? '스토리보드에서 첫 컷을 누르세요'
+            : scopeSelection.end == null
+              ? reviewMode === 'viewer'
+                ? '끝 컷을 하나 더'
+                : '끝 컷을 누르거나 이 컷만 확정'
+              : '사이의 컷이 함께 선택됩니다')}
+      </span>
+      <button type="button" onClick={() => setScopeSelection(null)}>취소</button>
+      <button
+        type="button"
+        className="multi-review-run-button"
+        disabled={!scopeSelectionCanConfirm}
+        onClick={commitScopeSelection}
+      >
+        이 범위로 검토
+      </button>
+    </div>
+  ) : (
     <div className="review-bar-scope">
       <span>{reviewMode === 'viewer' ? '읽힘 검토 범위' : '검토 대상'}</span>
       <strong>
@@ -4741,9 +4775,9 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
   )
 
 
-  // 위 바가 검토 대상과 실행을 맡은 뒤로, multi에서는 범위를 고르는
-  // 중에만 이 줄이 필요하다. 늘 두면 같은 정보가 두 자리에 나온다.
-  const scopeRowNeeded = reviewMode !== 'multi' || Boolean(scopeSelection)
+  // multi에서는 바가 검토 대상·실행·범위 선택을 모두 맡는다. 이 줄은
+  // 다른 모드에서만 쓴다 — 두면 같은 도구가 두 자리에 나온다.
+  const scopeRowNeeded = reviewMode !== 'multi'
 
   const scopePanel = (
     <section className="scope-panel" aria-label="Scope selection">

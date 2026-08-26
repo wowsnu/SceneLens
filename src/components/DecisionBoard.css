@@ -1472,6 +1472,26 @@
 
 /* 이 안의 것들은 줄어들지 않는다. 줄어들 바에는 줄을 바꾸는 편이 낫다. */
 .review-bar-scope > * { flex: none; }
+
+/* 범위를 고르는 중. 바가 그 도구가 된다 — 고르는 자리와 고르는 대상이
+   붙어 있어야 시선이 위아래로 오가지 않는다. */
+.review-bar-scope.selecting {
+  padding: 3px 4px 3px 10px;
+  border: 1px solid rgba(216, 170, 98, 0.4);
+  border-radius: 7px;
+  background: rgba(216, 170, 98, 0.08);
+}
+
+.review-bar-scope.selecting > strong {
+  color: #e9c58d;
+  font-size: 11px;
+}
+
+.review-bar-hint {
+  color: var(--text-muted);
+  font-size: 10px;
+  white-space: nowrap;
+}
 .review-bar-scope > strong,
 .review-bar-scope button { white-space: nowrap; }
 
