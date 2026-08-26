@@ -1689,6 +1689,9 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
   // Issue에 추가로 확인한 렌즈의 상태. 원래 다관점 분석 결과를 덮어쓰지
   // 않아야, "아직 안 봄"과 "봤지만 문제 없음"을 구분할 수 있다.
   const [issueLensChecks, setIssueLensChecks] = useState({})
+  // 갈림을 눌러 범위를 옮긴 뒤, 그 범위로 검토를 돌려야 한다는 표시.
+  // 범위 state가 반영된 다음 렌더에서 실행된다.
+  const [pendingDivergenceReview, setPendingDivergenceReview] = useState(null)
   const reviewSequenceScrollRef = useRef(null)
   // 읽힘 검토의 스트립과 트랙이 공유하는 스크롤. 연출 쪽과 따로 둔다 —
   // 두 화면이 같은 ref를 쓰면 한쪽에서 옮긴 위치가 다른 쪽에 남는다.
@@ -3300,13 +3303,13 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
   // 여기는 연출 검토이므로, 그 자리를 세 렌즈가 보고 진단해야 한다.
   //
   // focus를 쓰지 않는다. focus는 "먼저 발견한 렌즈의 판단 하나를 논점으로
-  // 이어 읽어라"는 통로인데, 갈림에는 그 main lens가 없다 — 관객이 짚은
-  // 것이지 렌즈가 짚은 것이 아니다. 논점 없이 focus를 주면 렌즈가 있지도
-  // 않은 판단을 이어 읽는 시늉을 하게 된다.
+  // 이어 읽어라"는 통로인데 갈림에는 그 main lens가 없다 — 관객이 짚은
+  // 것이지 렌즈가 짚은 것이 아니다. 그냥 그 자리를 평범하게 검토한다.
   //
-  // 그래서 하는 일은 단순하다: **그 자리로 범위를 좁혀 평범하게 검토한다.**
-  // 갈림은 어디를 볼지 정해 줄 뿐이고, 무엇이 문제인지는 렌즈가 자기
-  // 방식으로 찾는다.
+  // 범위만 옮기고 끝내지 않는다. 갈림 자체는 진단이 아니라 근거라
+  // Inspector에 띄울 Issue가 없다 — 눌렀는데 아래가 비어 있으면 아무
+  // 일도 일어나지 않은 것으로 보인다. 검토를 실제로 돌려서 그 자리의
+  // Issue가 트랙과 Inspector에 채워지게 한다.
   const checkDivergenceWithLenses = (findingId) => {
     const finding = readingFindings.find((entry) => entry.id === findingId)
     if (!finding || multiReviewLoading) return
@@ -3331,7 +3334,27 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
     setFlowActiveShot(from)
     setSelectedIssueId(null)
     setSelectedReadingFindingId(findingId)
+    // 범위 state가 반영된 뒤에 돌려야 한다. 여기서 곧바로 부르면
+    // `multiReviewScopeKey`가 아직 옛 범위라 엉뚱한 자리를 검토한다.
+    setPendingDivergenceReview(findingId)
   }
+
+  // 갈림을 눌러 범위를 옮긴 뒤, 그 범위가 실제로 반영되면 검토를 돌린다.
+  //
+  // 핸들러 안에서 곧바로 부를 수 없다 — `runMultiReview`는 호출 시점의
+  // `multiReviewScopeKey`를 읽는데, 그때는 아직 옛 범위다.
+  useEffect(() => {
+    if (!pendingDivergenceReview) return
+    setPendingDivergenceReview(null)
+    // 이미 이 범위를 본 적이 있으면 다시 돌리지 않는다. 결과가 그대로
+    // 트랙과 Inspector에 남아 있고, 다시 보려면 `다시 분석`이 있다.
+    if (['ready', 'stale'].includes(multiReviewRuns[multiReviewScopeKey]?.status)) return
+    runMultiReview({ answers: answeredDirectingQuestions })
+    // 범위가 반영된 렌더에서만 돈다. `runMultiReview`·`multiReviewRuns`·
+    // `answeredDirectingQuestions`는 여기서 읽기만 하는 값이라 의존성에
+    // 넣지 않는다 — 넣으면 답을 하나 쓸 때마다 검토가 다시 돈다.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingDivergenceReview, multiReviewScopeKey])
 
   const checkSelectedIssueLens = async (lens) => {
     const issue = selectedTrackIssue

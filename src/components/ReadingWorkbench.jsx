@@ -186,31 +186,6 @@ export default function ReadingWorkbench({
     ? finding.panelOrders
     : [step.order]
 
-  // 같은 자리를 읽은 다른 관객들. 갈렸을 때만 견준다 — 안 갈렸는데
-  // 나열하면 갈리지 않았다는 사실이 오히려 안 보인다.
-  const others = finding
-    ? (finding.conditions || [])
-      .filter((conditionId) => conditionId !== step.condition)
-      .map((conditionId) => ({
-        id: conditionId,
-        label: labelOf(conditionId),
-        // 갈림 전체에 대한 요약. 컷별 읽기는 아래에서 따로 편다.
-        line: finding.lines?.[conditionId] || '',
-        // 이 관객이 각 컷에서 실제로 뭐라고 읽었는가.
-        perCut: spannedOrders.map((order) => ({
-          order,
-          reading: stepOf(conditionId, order)?.immediate_reading || '',
-        })).filter((entry) => entry.reading),
-      }))
-      .filter((entry) => entry.line || entry.perCut.length > 0)
-    : []
-
-  // 지금 관객이 각 컷에서 읽은 것. 견주려면 내 쪽도 있어야 한다.
-  const minePerCut = spannedOrders.map((order) => ({
-    order,
-    reading: stepOf(step.condition, order)?.immediate_reading || '',
-  })).filter((entry) => entry.reading)
-
   return (
     <section
       className="reading-workbench"
@@ -289,37 +264,10 @@ export default function ReadingWorkbench({
                   그 답을 전제로 삼아 세 렌즈로 본 뒤에 한다. */}
               {finding && (
                 <section className="reading-divergence">
-                  <h4>{spannedOrders.length > 1 ? '이 구간, 다른 읽기' : '같은 컷, 다른 읽기'}</h4>
-
-                  {/* 컷이 둘 이상이면 컷별로 갈라 보여 준다. 이음새의
-                      갈림은 두 컷에서 각각 다르게 읽힌 결과인데, 한
-                      문장으로 뭉뚱그리면 무엇에 답하는지 알 수 없다. */}
-                  {spannedOrders.length > 1 ? (
-                    <div className="reading-divergence-grid">
-                      {spannedOrders.map((order) => (
-                        <div key={order} className="reading-divergence-cut">
-                          <span className="reading-divergence-cut-id">S{order}</span>
-                          <p>
-                            <em>{labelOf(step.condition)}</em>
-                            {minePerCut.find((entry) => entry.order === order)?.reading || '—'}
-                          </p>
-                          {others.map((other) => (
-                            <p key={other.id}>
-                              <em>{other.label}</em>
-                              {other.perCut.find((entry) => entry.order === order)?.reading || '—'}
-                            </p>
-                          ))}
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    others.map((other) => (
-                      <p key={other.id}>
-                        <em>{other.label}</em>
-                        {other.line}
-                      </p>
-                    ))
-                  )}
+                  {/* 컷별 읽기를 나열하지 않는다. 갈렸다는 사실과 그것이
+                      왜 중요한지면 답하기에 충분하고, 각 관객이 뭐라고
+                      읽었는지는 위 트랙의 칸이 이미 보여 준다 — 같은 것을
+                      두 자리에 두면 읽는 자리가 흩어진다. */}
                   {finding.why_it_matters && (
                     <p className="reading-divergence-why">{finding.why_it_matters}</p>
                   )}
