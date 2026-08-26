@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import EvidenceStage from './EvidenceStage'
 import { evidenceLineFor } from './evidenceSummary'
 import './IssueInspector.css'
@@ -41,10 +41,33 @@ export default function IssueInspector({
   // 어긋난다. effect로 되돌리면 한 번 잘못 그린 뒤에 고치는 셈이라
   // 렌더 중에 판정한다.
   const [picked, setPicked] = useState({ issueId: null, lens: null })
+  const [lensTransition, setLensTransition] = useState('forward')
+  const inspectorRef = useRef(null)
   const activeLens = picked.issueId === issue?.id
     ? picked.lens
     : (issue?.origin_lens || null)
-  const setActiveLens = (lens) => setPicked({ issueId: issue?.id, lens })
+  const setActiveLens = (lens, direction = null) => {
+    if (lens === activeLens) return
+    const currentIndex = LENSES.findIndex((item) => item.id === activeLens)
+    const nextIndex = LENSES.findIndex((item) => item.id === lens)
+    setLensTransition(direction || (nextIndex > currentIndex ? 'forward' : 'back'))
+    setPicked({ issueId: issue?.id, lens })
+  }
+  const moveLens = (direction) => {
+    const currentIndex = Math.max(0, LENSES.findIndex((item) => item.id === activeLens))
+    const nextIndex = (currentIndex + direction + LENSES.length) % LENSES.length
+    setActiveLens(LENSES[nextIndex].id, direction > 0 ? 'forward' : 'back')
+  }
+  const handleLensKey = (event) => {
+    if (event.key === 'ArrowLeft') {
+      event.preventDefault()
+      moveLens(-1)
+    }
+    if (event.key === 'ArrowRight') {
+      event.preventDefault()
+      moveLens(1)
+    }
+  }
 
   if (!issue) {
     return (
@@ -80,40 +103,76 @@ export default function IssueInspector({
   const activeEntry = perspectives.find(({ lens }) => lens.id === activeLens)
   const activeDiagnosis = activeEntry?.diagnosis?.diagnosis
     || activeEntry?.check?.diagnosis
-    || origin?.diagnosis
     || null
 
   return (
-    <section className="issue-inspector" aria-label={`${issue.anchor} ${issue.title}`}>
+    <section
+      ref={inspectorRef}
+      className="issue-inspector"
+      aria-label={`${issue.anchor} ${issue.title}`}
+      tabIndex={-1}
+      onPointerDown={() => inspectorRef.current?.focus()}
+      onKeyDown={handleLensKey}
+    >
       <header className="issue-inspector-heading">
         <span>{issue.anchor}{anchorKindLabel(issue.anchor_kind) && ` · ${anchorKindLabel(issue.anchor_kind)}`}</span>
         <h3>{issue.title}</h3>
         {criterion && <p>{criterion}</p>}
       </header>
 
-      {/* 이 Issue가 걸린 컷들. 렌즈를 옮겨도 이 두 장은 그대로 있고
-          그 위의 표시만 바뀐다 — 같은 화면을 다르게 읽는다는 것이
-          화면에서 드러나야 한다. */}
-      <EvidenceStage
-        issue={issue}
-        diagnosis={activeDiagnosis}
-        shots={shots}
-        lensId={activeLens}
-        range={range}
-      />
-
-      <div className="issue-perspectives">
+      <nav className="issue-lens-deck" aria-label="이 이슈를 보는 렌즈">
         {perspectives.map(({ lens, diagnosis, check }) => {
+          const checking = check?.status === 'loading'
+          const checked = check?.status === 'ready'
+          const hasDiagnosis = Boolean(diagnosis || check?.diagnosis)
+          const hasReading = Boolean(diagnosis || check?.diagnosis || check?.reading)
+          const isActive = lens.id === activeLens
+          return (
+            <button
+              key={lens.id}
+              type="button"
+              className={`lens-${lens.id} ${isActive ? 'active' : ''} ${hasReading ? 'ready' : checking ? 'loading' : ''}`}
+              onClick={() => setActiveLens(lens.id)}
+              aria-pressed={isActive}
+            >
+              <span>{lens.mark}</span>
+              <strong>{lens.label}</strong>
+              <em>{lens.id === issue.origin_lens ? '처음 발견' : checking ? '반응 중' : hasDiagnosis ? '반응 · 수정 필요' : checked ? '반응 완료' : '반응 대기'}</em>
+            </button>
+          )
+        })}
+      </nav>
+
+      <div key={activeLens} className={`issue-lens-view lens-transition-${lensTransition}`}>
+        {/* 화면과 판단을 함께 바꾼다. 렌즈가 바뀌면 같은 Issue를 보는
+            방식 전체가 전환되고, 근거 없는 색만 남지 않는다. */}
+        <EvidenceStage
+          issue={issue}
+          diagnosis={activeDiagnosis}
+          shots={shots}
+          lensId={activeLens}
+          range={range}
+        />
+
+        <div className="issue-perspectives">
+          {perspectives.filter(({ lens }) => lens.id === activeLens).map(({ lens, diagnosis, check }) => {
           const isOrigin = lens.id === issue.origin_lens
           const checking = check?.status === 'loading'
           const checked = check?.status === 'ready'
           const checkDiagnosis = check?.diagnosis
           const visibleDiagnosis = diagnosis?.diagnosis || checkDiagnosis
+          const checkReading = check?.reading || ''
           if (!diagnosis) {
             return (
-              <section key={lens.id} className={`issue-perspective lens-${lens.id} ${lens.id === activeLens ? 'active' : ''} ${checked && checkDiagnosis ? 'checked-response' : checked ? 'checked-clear' : 'unchecked'}`}>
-                {!(checked && checkDiagnosis) && (
-                  <header><span>{checked ? '◐' : '○'}</span><strong>{lens.label}</strong></header>
+              <section key={lens.id} className={`issue-perspective lens-${lens.id} ${lens.id === activeLens ? 'active' : ''} ${checked && (checkDiagnosis || checkReading) ? 'checked-response' : checked ? 'checked-clear' : 'unchecked'}`}>
+                {!(checked && (checkDiagnosis || checkReading)) && (
+                  <header>
+                    {/* 봤지만 문제를 못 찾은 것(◌)과 아직 안 본 것(○)은
+                        다르다. 같게 표시하면 감독이 침묵을 승인으로
+                        읽는다 (LENS_TRACKS_UI.md 4장). */}
+                    <span>{checked ? '◌' : '○'}</span>
+                    <strong>{lens.label}</strong>
+                  </header>
                 )}
                 {checking ? (
                   <p>이 위치를 확인하는 중입니다.</p>
@@ -122,7 +181,7 @@ export default function IssueInspector({
                     <p>{check.error || '확인하지 못했습니다.'}</p>
                     <button type="button" onClick={() => onCheckLens?.(lens.id)}>다시 확인</button>
                   </>
-                ) : checked && checkDiagnosis ? (
+                ) : checked && (checkDiagnosis || checkReading) ? (
                   <button
                     type="button"
                     className="issue-perspective-pick"
@@ -137,8 +196,8 @@ export default function IssueInspector({
                         <span className="issue-perspective-showing">그림에 표시 중</span>
                       )}
                     </header>
-                    <p>{checkDiagnosis.diagnosis}</p>
-                    {evidenceLineFor(checkDiagnosis) && (
+                    <p>{checkDiagnosis?.diagnosis || checkReading}</p>
+                    {checkDiagnosis && evidenceLineFor(checkDiagnosis) && (
                       <p className="issue-perspective-evidence">
                         {evidenceLineFor(checkDiagnosis).label && (
                           <strong>{evidenceLineFor(checkDiagnosis).label}</strong>
@@ -148,12 +207,9 @@ export default function IssueInspector({
                     )}
                   </button>
                 ) : checked ? (
-                  <p>이 위치에서는 별도 문제를 찾지 못했습니다.</p>
+                  <p>이 관점에서는 짚을 것을 찾지 못했습니다.</p>
                 ) : (
-                  <>
-                    <p>아직 이 위치를 확인하지 않았습니다.</p>
-                    <button type="button" onClick={() => onCheckLens?.(lens.id)}>이 렌즈로 확인</button>
-                  </>
+                  <p>이 위치를 이 관점에서 확인하는 중입니다.</p>
                 )}
               </section>
             )
@@ -192,7 +248,8 @@ export default function IssueInspector({
               </button>
             </section>
           )
-        })}
+          })}
+        </div>
       </div>
 
       {/* 관계를 아직 찾는 중. 잠시 뒤 이 Issue가 옆 것과 합쳐질 수 있다. */}
