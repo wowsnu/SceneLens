@@ -1566,11 +1566,26 @@ def _build_issues(
     #    개입 지점이 다르다.
     # 3. **층위가 같아야 한다.** attribute와 shot_relation은 같은 컷을
     #    가리켜도 고치는 자리가 다르다.
+    # 같은 두 진단에 관계가 여러 개 붙을 수 있다. `agreement`(같은 결손을
+    # 짚음)와 `consequence`(하나가 다른 하나를 만듦)가 함께 나오는 식이다 —
+    # 실제로 그랬다. 그때는 **묶지 않는다**: 방향이 있다는 것 자체가 원인과
+    # 결과가 갈린다는 뜻이고, 고칠 곳은 원인 쪽 하나다. 둘을 한 카드에
+    # 넣으면 어느 쪽을 고치는 것인지 흐려진다.
+    directed_pairs = set()
+    for finding in findings:
+        if finding.type == "agreement":
+            continue
+        ids = [i for i in finding.diagnosis_ids if i in diagnosis_by_id]
+        for left, right in zip(ids, ids[1:]):
+            directed_pairs.add(frozenset((left, right)))
+
     for finding in findings:
         if finding.type != "agreement":
             continue
         ids = [i for i in finding.diagnosis_ids if i in diagnosis_by_id]
         for left, right in zip(ids, ids[1:]):
+            if frozenset((left, right)) in directed_pairs:
+                continue
             left_diagnosis = diagnosis_by_id[left][1]
             right_diagnosis = diagnosis_by_id[right][1]
             if left_diagnosis.level != right_diagnosis.level:
