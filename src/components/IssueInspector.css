@@ -821,3 +821,39 @@
   margin: 0;
   background: transparent;
 }
+
+
+/* 관객이 갈린 자리에서, 관객들이 실제로 뭐라고 읽었는가.
+   렌즈가 무엇을 볼지 정하는 근거다 (LENS_TRACKS_UI.md 7장). */
+.issue-viewer-readings {
+  display: grid;
+  gap: 6px;
+  margin: 9px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.issue-viewer-readings li {
+  padding: 7px 9px;
+  border-left: 2px solid rgba(167, 139, 250, 0.45);
+  background: rgba(167, 139, 250, 0.07);
+  color: rgba(226, 232, 240, 0.82);
+  font-size: 11.5px;
+  line-height: 1.5;
+}
+
+.issue-viewer-readings em {
+  display: block;
+  margin-bottom: 2px;
+  color: rgba(214, 198, 251, 0.9);
+  font-size: 9px;
+  font-style: normal;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+}
+
+.issue-viewer-hint {
+  margin: 9px 0 0 !important;
+  color: rgba(226, 232, 240, 0.5) !important;
+  font-size: 10.5px !important;
+}

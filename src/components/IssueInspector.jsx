@@ -145,8 +145,11 @@ export default function IssueInspector({
       .find((entry) => entry?.lens === lens.id)
     return { lens, diagnosis, check: lensChecks[lens.id] || null }
   })
+  // 관객이 짚은 자리는 먼저 발견한 렌즈가 없다. 그때 `perspectives[0]`로
+  // 떨어뜨리면 미장센이 처음 발견한 것처럼 보인다 — 아무 렌즈도 아직
+  // 보지 않았다는 것이 이 자리의 사실이다.
   const primaryPerspective = perspectives.find(({ lens }) => lens.id === issue.origin_lens)
-    || perspectives[0]
+    || (issue.from_viewer ? null : perspectives[0])
   // 처음 Issue에 포함된 렌즈와, 감독이 직접 더해 확인한 렌즈만 흐름에
   // 남긴다. 아직 참여하지 않은 렌즈를 빈 카드로 미리 늘어놓지 않는다.
   //
@@ -158,20 +161,20 @@ export default function IssueInspector({
   // 진단으로 처음부터 들어와 있던 렌즈(`addedAt`이 없다)는 감독이 부른
   // 것이 아니므로 부른 렌즈들보다 앞에 둔다.
   const joinedPerspectives = perspectives.filter(({ lens, diagnosis, check }) => (
-    lens.id !== primaryPerspective.lens.id && Boolean(diagnosis || check)
+    lens.id !== primaryPerspective?.lens.id && Boolean(diagnosis || check)
   )).sort((a, b) => (
     (a.check?.addedAt ?? 0) - (b.check?.addedAt ?? 0)
   ))
-  const visiblePerspectives = [primaryPerspective, ...joinedPerspectives]
+  const visiblePerspectives = [primaryPerspective, ...joinedPerspectives].filter(Boolean)
   const availablePerspectives = perspectives.filter(({ lens, diagnosis, check }) => (
-    lens.id !== primaryPerspective.lens.id && !diagnosis && !check
+    lens.id !== primaryPerspective?.lens.id && !diagnosis && !check
   ))
   // 새 렌즈를 부르는 일은 아직 왼쪽 증거를 바꾸지 않는다. 응답이 실제로
   // 생긴 뒤에만 그 렌즈를 눌러 같은 그림을 다른 표시로 본다.
   const addLens = (lensId) => onCheckLens?.(lensId)
   const displayLens = visiblePerspectives.some(({ lens }) => lens.id === activeLens)
     ? activeLens
-    : primaryPerspective.lens.id
+    : primaryPerspective?.lens.id || visiblePerspectives[0]?.lens.id || null
   // 같은 자리에 걸린 다른 Issue. 두 렌즈가 같은 컷을 짚었는데 관계가
   // 잡히지 않으면 여기 남는다 — 같은 이유일 수도, 다른 이유일 수도
   // 있고 그 판단은 감독이 한다 (`LENS_TRACKS_UI.md` 3장).
@@ -312,8 +315,33 @@ export default function IssueInspector({
             관점 흐름
           </span>
       <header className="issue-inspector-heading">
-        <span>{issue.anchor}{anchorKindLabel(issue.anchor_kind) && ` · ${anchorKindLabel(issue.anchor_kind)}`}</span>
+        <span>
+          {issue.anchor}{anchorKindLabel(issue.anchor_kind) && ` · ${anchorKindLabel(issue.anchor_kind)}`}
+          {/* 렌즈가 짚은 것이 아니라 관객이 갈린 자리다. 밝히지 않으면
+              감독이 이것을 진단으로 읽는다. */}
+          {issue.from_viewer && ' · 관객이 갈린 자리'}
+        </span>
         <h3>{issue.title}</h3>
+        {issue.from_viewer && (
+          <>
+            {issue.detail && <p>{issue.detail}</p>}
+            {/* 관객들이 실제로 뭐라고 읽었는가. 렌즈가 무엇을 볼지
+                정하는 근거이므로 여기서 한 번 보인다. */}
+            {(issue.viewer_readings || []).length > 0 && (
+              <ul className="issue-viewer-readings">
+                {issue.viewer_readings.map((entry, index) => (
+                  <li key={`${entry.label}-${index}`}>
+                    <em>{entry.label}</em>
+                    {entry.line}
+                  </li>
+                ))}
+              </ul>
+            )}
+            <p className="issue-viewer-hint">
+              아직 아무 렌즈도 이 자리를 보지 않았습니다. 아래에서 골라 주세요.
+            </p>
+          </>
+        )}
       </header>
 
       <nav ref={lensStackRef} className="issue-lens-stack" aria-label="이 이슈에 참여한 렌즈">
