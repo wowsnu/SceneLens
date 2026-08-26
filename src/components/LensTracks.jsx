@@ -56,6 +56,11 @@ export default function LensTracks({
   selectedIssueId = null,
   onSelectIssue,
   onToggleLens,
+  // 관객이 갈린 자리. **진단이 아니라 근거다** — 렌즈 줄과 떨어뜨려
+  // 놓고 모양도 가른다 (LENS_TRACKS_UI.md 7·9장).
+  readingDivergences = [],
+  onSelectDivergence,
+  selectedDivergenceId = null,
   scrollRef = null,
   onScroll,
   embedded = false,
@@ -178,6 +183,39 @@ export default function LensTracks({
               </div>
             )
           })}
+
+          {/* 관객이 갈린 자리.
+
+              렌즈 줄에 섞지 않는다. 렌즈 마커는 AI가 규칙으로 짚은
+              **진단**이라 감독이 판정할 대상이지만, 이것은 실제로 읽힘이
+              갈렸다는 **현상**이다 — 판정 대상이 아니라 판정의 근거다.
+              같은 줄에 같은 모양으로 두면 그 층위 차이가 사라진다.
+
+              그래서 구분선 아래 한 칸 띄워 놓고, 점(●)이 아니라 빈
+              마름모(◇)로 그린다. 가로축은 공유하므로 어느 컷에서 갈렸는지는
+              위 진단들과 세로로 맞춰 읽힌다. */}
+          {readingDivergences.length > 0 && (
+            <div className="lens-track reading-lane">
+              <span className="lens-track-label" aria-hidden="true">관객이 갈린 자리</span>
+              <div className="lens-track-line">
+                {readingDivergences.map(({ id, position, title, anchor, conditions }) => (
+                  <button
+                    key={id}
+                    type="button"
+                    data-divergence-id={id}
+                    className={`lens-marker reading-marker-lane ${id === selectedDivergenceId ? 'selected' : ''}`}
+                    style={{ '--pos': position }}
+                    onClick={() => onSelectDivergence?.(id)}
+                    aria-pressed={id === selectedDivergenceId}
+                    title={`${anchor} · ${title}\n${(conditions || []).join(' / ')}에서 읽힘이 갈렸습니다`}
+                  >
+                    <span className="lens-marker-dot" aria-hidden="true" />
+                    <span className="lens-marker-label">{title}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
     </div>
   )
 

@@ -372,3 +372,50 @@
     transition: none;
   }
 }
+
+
+/* --- 관객이 갈린 자리 -------------------------------------------------
+   렌즈 줄과 **떨어뜨려** 놓는다. 렌즈 마커는 AI가 규칙으로 짚은 진단이라
+   감독이 판정할 대상이지만, 이것은 실제로 읽힘이 갈렸다는 현상이다 —
+   판정 대상이 아니라 판정의 근거다. 같은 줄에 같은 모양으로 두면 그
+   층위 차이가 사라진다 (LENS_TRACKS_UI.md 7장). */
+
+.lens-track.reading-lane {
+  --lens: #a78bfa;
+  margin-top: 9px;
+  padding-top: 9px;
+  /* 구분선. 위는 진단, 아래는 근거다. */
+  border-top: 1px dashed rgba(255, 255, 255, 0.12);
+}
+
+.lens-track.reading-lane .lens-track-label {
+  color: color-mix(in srgb, var(--lens), white 10%);
+  font-size: 10px;
+  font-weight: 600;
+  /* 라벨은 누르는 것이 아니다 — 렌즈처럼 껐다 켰다 하지 않는다. */
+  cursor: default;
+  opacity: 0.62;
+}
+
+/* 바탕선도 점선으로. 진단 줄과 형태부터 다르다. */
+.lens-track.reading-lane .lens-track-line::before {
+  background: none;
+  border-top: 1px dashed color-mix(in srgb, var(--lens), transparent 78%);
+  height: 0;
+}
+
+/* 마름모, 그리고 **비어 있다.** 채운 점은 진단의 것이다. */
+.reading-marker-lane .lens-marker-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 2px;
+  transform: rotate(45deg);
+  background: transparent;
+  border: 1.5px solid var(--lens);
+  box-shadow: none;
+}
+
+.reading-marker-lane:hover .lens-marker-dot,
+.reading-marker-lane.selected .lens-marker-dot {
+  background: color-mix(in srgb, var(--lens), transparent 55%);
+}

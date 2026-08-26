@@ -4083,7 +4083,11 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
   }
 
   const viewerReadings = useMemo(() => viewerReport?.readings || [], [viewerReport])
-  const allViewerReadingConditions = [...VIEWER_READING_CONDITIONS, ...customReadingConditions]
+  // 아래 memo의 입력이다. 매 렌더 새 배열이면 그 memo가 늘 다시 돈다.
+  const allViewerReadingConditions = useMemo(
+    () => [...VIEWER_READING_CONDITIONS, ...customReadingConditions],
+    [customReadingConditions],
+  )
   // 수정 항목은 더 이상 목록으로 미리 늘어놓지 않는다. 감독이 트랙에서
   // 자리를 고르고, Workbench에서 그 관객의 읽기를 확인한 뒤에만 수정
   // 도구가 열린다 (LENS_TRACKS_UI.md 4장 — Inspect 화면에서는 고치지
@@ -4179,6 +4183,35 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
     ))
     return [...divergences, ...reviewPoints]
   }, [viewerReport, viewerReadings, scene?.id, activeScene, branch?.id, activeBranch])
+
+  // 갈림을 연출 트랙에도 올린다. **진단이 아니라 근거로** 올라간다 —
+  // 렌즈 줄과 떨어진 자리에 다른 모양으로 그려진다 (LensTracks의
+  // `reading-lane`). 감독이 연출을 보다가 "여기서 실제로 읽힘이 갈렸다"를
+  // 같은 가로축에서 볼 수 있어야, 그 진단이 관객에게 어떻게 닿는지 잇는다.
+  //
+  // 갈림만 올린다. 한 관객만 걸린 review_point는 갈린 것이 아니므로
+  // 여기 두면 "갈렸다"는 이 줄의 뜻이 흐려진다.
+  const readingLaneMarkers = useMemo(() => (
+    readingFindings
+      .filter((finding) => finding.kind === 'diverge')
+      .map((finding) => {
+        const orders = finding.panelOrders || []
+        if (orders.length === 0) return null
+        const first = orders[0] - 1
+        const last = orders[orders.length - 1] - 1
+        return {
+          id: finding.id,
+          // 트랙의 마커와 같은 계산이다 — 컷 인덱스 기준의 실수.
+          position: orders.length > 1 ? (first + last) / 2 : first,
+          title: finding.title,
+          anchor: finding.anchor,
+          conditions: (finding.conditions || []).map((conditionId) => (
+            allViewerReadingConditions.find((item) => item.id === conditionId)?.title || conditionId
+          )),
+        }
+      })
+      .filter(Boolean)
+  ), [readingFindings, allViewerReadingConditions])
 
   const selectedReadingFinding = readingFindings.find((entry) => (
     entry.id === selectedReadingFindingId
@@ -6071,6 +6104,24 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
                     loading={multiReviewLoading}
                     relating={Boolean(multiReviewRun.relating)}
                     scrollRef={reviewSequenceScrollRef}
+                    /* 갈림은 진단이 아니라 근거다. 렌즈 줄과 떨어진
+                       자리에 다른 모양으로 놓인다 (문서 7장). */
+                    readingDivergences={readingLaneMarkers}
+                    selectedDivergenceId={selectedReadingFindingId}
+                    onSelectDivergence={(findingId) => {
+                      // 누르면 읽힘 검토로 건너가 그 자리를 편다. 여기서
+                      // 관객 읽기를 다시 그리지 않는다 — 그 화면이 이미
+                      // 그 일을 하고, 두 벌로 두면 같은 것이 갈린다.
+                      const finding = readingFindings.find((entry) => entry.id === findingId)
+                      if (!finding) return
+                      setSelectedReadingFindingId(findingId)
+                      setSelectedReadingStep({
+                        condition: finding.conditions?.[0],
+                        order: finding.panelOrders?.[0],
+                      })
+                      setViewerPanelOrder(finding.panelOrders?.[0] ?? null)
+                      selectReviewMode('viewer')
+                    }}
                     onSelectIssue={selectTrackIssue}
                     onToggleLens={(lensId) => setActiveTrackLenses((current) => {
                       const next = new Set(current)
