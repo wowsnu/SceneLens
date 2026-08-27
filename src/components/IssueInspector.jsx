@@ -26,7 +26,7 @@ export default function IssueInspector({
   issue,
   issues = [],
   diagnosesById,
-  comparisons = [],
+  relations = [],
   lensChecks = {},
   shots = [],
   range = null,
@@ -36,7 +36,6 @@ export default function IssueInspector({
   mainLensQuestion = null,
   onAnswerMainLensQuestion,
   answeringMainLensQuestion = false,
-  onRevise,
   revisionWorkspace = null,
   // 두 컷 사이에 펼칠 편집기와, 지금 무슨 조작인지·어느 컷이 빠지는지.
   // 편집 렌즈의 구조 변경은 여기서만 자리를 얻는다.
@@ -58,7 +57,9 @@ export default function IssueInspector({
   // 검토 방향마다 따로 담는다. 하나로 두면 다른 칸을 건드리는 순간 먼저
   // 쓴 내용이 지워진다 — 오른쪽에 여러 렌즈의 방향이 함께 놓일 수 있다.
   const [questionAnswers, setQuestionAnswers] = useState({})
-  const [comparisonOpen, setComparisonOpen] = useState({ issueId: null, open: false })
+  const [relationOpen, setRelationOpen] = useState({ issueId: null, relationKey: null })
+  const [relationViewOpened, setRelationViewOpened] = useState({ issueId: null, open: false })
+  const [overviewOpened, setOverviewOpened] = useState({ issueId: null, open: false })
   const activeLens = picked.issueId === issue?.id
     ? picked.lens
     : (issue?.origin_lens || null)
@@ -175,6 +176,25 @@ export default function IssueInspector({
   const displayLens = visiblePerspectives.some(({ lens }) => lens.id === activeLens)
     ? activeLens
     : primaryPerspective?.lens.id || visiblePerspectives[0]?.lens.id || null
+  const isOverviewOpened = overviewOpened.issueId === issue.id && overviewOpened.open
+  // 목록은 "누가 참여했는지"를 빠르게 훑는 자리다. 진단이 없는 렌즈의
+  // 빈 상태까지 나열하지 않아, 분석 전문을 세 번 복제한 화면이 되지 않는다.
+  const overviewEntries = visiblePerspectives.map(({ lens, diagnosis, check }) => {
+    // 처음 분석 결과는 `{ lens, diagnosis: { diagnosis: '…' } }`로 한 겹
+    // 감싸져 있고, 추가 검토 결과는 바로 diagnosis 객체다. 객체를 JSX에
+    // 넣으면 렌더가 멈추므로 최종 문장만 정상화한다.
+    const reading = diagnosis?.diagnosis?.diagnosis
+      || check?.diagnosis?.diagnosis
+      || check?.reading
+      || ''
+    return {
+      lens,
+      reading: typeof reading === 'string' ? reading : '',
+      stance: diagnosis?.stance || check?.stance || (diagnosis || check?.diagnosis ? 'change' : check?.status === 'ready' ? 'keep' : 'different'),
+      loading: check?.status === 'loading' || (lens.id === issue.origin_lens && answeringMainLensQuestion),
+      clear: check?.status === 'ready' && !diagnosis && !check?.diagnosis && !check?.reading,
+    }
+  })
   // 같은 자리에 걸린 다른 Issue. 두 렌즈가 같은 컷을 짚었는데 관계가
   // 잡히지 않으면 여기 남는다 — 같은 이유일 수도, 다른 이유일 수도
   // 있고 그 판단은 감독이 한다 (`LENS_TRACKS_UI.md` 3장).
@@ -210,16 +230,52 @@ export default function IssueInspector({
     setQuestionAnswers({})
   }
   const issueDiagnosisIds = new Set(issue.diagnosis_ids || [])
-  const comparison = comparisons.find((item) => (
-    (item.diagnosis_ids || []).some((id) => issueDiagnosisIds.has(id))
-  )) || null
+  const relatedRelations = relations.filter((relation) => (
+    (relation.diagnosis_ids || []).some((id) => issueDiagnosisIds.has(id))
+  ))
+  // 선택 Issue를 처음 짚은 Lens가 그래프의 중심이다. 다른 Lens는 이
+  // 판단과 어떤 관계를 맺는지 위·아래 가지로 붙는다.
+  const relationCenterLens = LENSES.find((lens) => lens.id === issue.origin_lens)
+    || primaryPerspective.lens
+  const relationLanes = relatedRelations.map((relation) => {
+    const connected = (relation.lenses || []).filter((lensId) => lensId !== relationCenterLens.id)
+    const otherLens = LENSES.find((lens) => lens.id === connected[0])
+      || LENSES.find((lens) => lens.id !== relationCenterLens.id && (relation.lenses || []).includes(lens.id))
+    return otherLens ? { relation, otherLens } : null
+  }).filter(Boolean)
+  const relationBranches = [
+    { nodeX: 40, nodeY: 94, labelX: 76, labelY: 62, path: 'M130 27 Q88 52 40 94' },
+    { nodeX: 220, nodeY: 94, labelX: 184, labelY: 62, path: 'M130 27 Q172 52 220 94' },
+  ]
   const comparedLensCount = visiblePerspectives.filter(({ diagnosis, check }) => (
     Boolean(diagnosis) || check?.status === 'ready'
   )).length
-  const isComparisonOpen = comparisonOpen.issueId === issue.id && comparisonOpen.open
-  const openComparison = () => {
-    setComparisonOpen({ issueId: issue.id, open: true })
-    if (!comparison) onCompare?.()
+  const relationKeyOf = (relation) => `${relation.type}:${(relation.diagnosis_ids || []).join(':')}`
+  const openRelationView = () => {
+    setRelationViewOpened({ issueId: issue.id, open: true })
+    if (relatedRelations.length === 0) onCompare?.()
+  }
+  const isRelationViewOpened = relationViewOpened.issueId === issue.id && relationViewOpened.open
+  // 렌즈별 보기는 이 Issue의 근거만 더 읽는 자리다. 범위 전체의 네 층위
+  // 판정이나 수정 실행을 끌어오지 않는다 — 그것들은 이 Issue 바깥의 판단을
+  // 섞거나 `수정하기` 흐름을 중복시킨다.
+  const rationaleFor = (diagnosis) => {
+    if (!diagnosis || !(diagnosis.criterion || diagnosis.evidence?.length || diagnosis.theory_basis)) return null
+    return (
+      <details className="issue-lens-rationale">
+        <summary>이 판단의 근거</summary>
+        <div>
+          {diagnosis.criterion && <p><em>이 Lens의 기준</em>{diagnosis.criterion}</p>}
+          {diagnosis.evidence?.length > 0 && (
+            <div>
+              <em>화면에서 본 것</em>
+              <ul>{diagnosis.evidence.map((evidence) => <li key={evidence}>{evidence}</li>)}</ul>
+            </div>
+          )}
+          {diagnosis.theory_basis && <p><em>참고한 책과 핵심 근거</em>{diagnosis.theory_basis}</p>}
+        </div>
+      </details>
+    )
   }
   // 오른쪽 관점 흐름의 길이는 왼쪽의 판단 위치를 밀면 안 된다. 활성
   // 렌즈의 설명은 EvidenceStage와 같은 왼쪽 칸 안에 두어, 사진 바로
@@ -252,6 +308,7 @@ export default function IssueInspector({
                           {checkDiagnosis && evidenceLineFor(checkDiagnosis) && <p className="issue-perspective-evidence"><em>근거</em>{evidenceLineFor(checkDiagnosis).label && <strong>{evidenceLineFor(checkDiagnosis).label}</strong>}<span>{evidenceLineFor(checkDiagnosis).detail}</span></p>}
                         </button>
                       ) : checked ? <p>이 관점에서는 짚을 것을 찾지 못했습니다.</p> : null}
+                {checkDiagnosis && rationaleFor(checkDiagnosis)}
               </section>
             )
           }
@@ -263,11 +320,40 @@ export default function IssueInspector({
                 <p className="issue-observation">{visibleDiagnosis.diagnosis}</p>
                 {line && <p className="issue-perspective-evidence"><em>근거</em>{line.label && <strong>{line.label}</strong>}<span>{line.detail}</span></p>}
               </button>
+              {rationaleFor(visibleDiagnosis)}
             </section>
           )
         })}
       </div>
     </div>
+  )
+  // 모아 보기는 오른쪽 흐름의 축소판이 아니다. 하나의 큰 증거 사진 아래에
+  // 참여 Lens의 판단을 세로로 놓아, 같은 장면을 두고 무엇을 다르게 읽었는지
+  // 한 번에 비교한다. 한 항목을 누르면 다시 그 Lens의 상세 읽기로 들어간다.
+  const overviewReading = !revisionWorkspace && (
+    <section className="issue-lens-overview issue-lens-overview-on-canvas" aria-label="참여 Lens 판단 모아 보기">
+      <span className="issue-lens-overview-label">이 장면을 본 판단</span>
+      {overviewEntries.map(({ lens, reading, stance, loading, clear }) => (
+        <button
+          key={lens.id}
+          type="button"
+          className={`issue-lens-overview-item lens-${lens.id}`}
+          onClick={() => {
+            setActiveLens(lens.id)
+            setOverviewOpened({ issueId: issue.id, open: false })
+          }}
+        >
+          <b>{lens.mark}</b>
+          <strong>{lens.label}</strong>
+          <em className={`issue-lens-stance stance-${stance}`}>
+            {stance === 'keep' ? '현재 유지' : stance === 'different' ? '다른 concern' : '수정 필요'}
+          </em>
+          <span>
+            {loading ? '검토 중…' : clear ? '이 관점에서는 별도 문제를 찾지 못했습니다.' : reading || '판단을 기다리는 중입니다.'}
+          </span>
+        </button>
+      ))}
+    </section>
   )
 
   return (
@@ -301,7 +387,7 @@ export default function IssueInspector({
                 seamOperation={seamOperation}
                 removingPanel={removingPanel}
               />
-              {activeLensReading}
+              {isOverviewOpened ? overviewReading : activeLensReading}
               {revisionWorkspace && (
                 <div className="issue-revision-stage issue-revision-stage-under">
                   {revisionWorkspace}
@@ -311,9 +397,30 @@ export default function IssueInspector({
           )}
 
         <aside className="issue-cross-lens" aria-label="이 이슈의 렌즈 흐름">
-          <span className="issue-cross-lens-label">
-            관점 흐름
-          </span>
+          <div className="issue-cross-lens-heading">
+            <span className="issue-cross-lens-label">관점 흐름</span>
+            {visiblePerspectives.length >= 2 && (
+              <div className="issue-view-switch" aria-label="Lens 판단 보기 방식">
+                <button
+                  type="button"
+                  className={!isOverviewOpened ? 'active' : ''}
+                  aria-pressed={!isOverviewOpened}
+                onClick={() => setOverviewOpened({ issueId: issue.id, open: false })}
+              >
+                  렌즈별
+                </button>
+                <button
+                  type="button"
+                  className={isOverviewOpened ? 'active' : ''}
+                  aria-pressed={isOverviewOpened}
+                  onClick={() => setOverviewOpened({ issueId: issue.id, open: true })}
+                >
+                  <i className="issue-overview-icon" aria-hidden="true"><b /><b /><b /></i>
+                  모아 보기
+                </button>
+              </div>
+            )}
+          </div>
       <header className="issue-inspector-heading">
         <span>
           {issue.anchor}{anchorKindLabel(issue.anchor_kind) && ` · ${anchorKindLabel(issue.anchor_kind)}`}
@@ -344,6 +451,7 @@ export default function IssueInspector({
         )}
       </header>
 
+      {!isOverviewOpened && (
       <nav ref={lensStackRef} className="issue-lens-stack" aria-label="이 이슈에 참여한 렌즈">
         <span className="issue-lens-glass" style={glassStyle} aria-hidden="true" />
         {visiblePerspectives.map(({ lens, diagnosis, check }, index) => {
@@ -368,12 +476,9 @@ export default function IssueInspector({
                 : checked
                   ? '◌ 이상 없음'
                   : '확인 중'
-          // 이 렌즈가 실제로 짚은 진단. 처음 발견한 렌즈면 그 진단이고,
-          // 뒤늦게 참여한 렌즈면 확인 결과의 것이다. 있어야 수정할 수 있다.
-          const reviseTarget = diagnosis?.diagnosis || check?.diagnosis || null
           return (
-            // 버튼 안에 버튼을 넣을 수 없어 바깥은 div다. 렌즈를 고르는
-            // 일과 그 판단을 고치는 일이 한 줄에 나란히 있다.
+            // 렌즈별 흐름은 판단을 고르는 자리다. 실제 수정은 별도
+            // `수정하기`에서만 시작해 판단·개입을 섞지 않는다.
             <div
               key={lens.id}
               className={`issue-lens-slot lens-${lens.id} ${index === 0 ? 'primary' : 'added'} ${isActive ? 'active' : ''} ${hasDiagnosis || agreesWithIssue ? 'ready' : checking || rechecking ? 'loading' : ''}`}
@@ -388,19 +493,11 @@ export default function IssueInspector({
                 <strong>{lens.label}</strong>
                 <em>{rechecking && <i className="issue-lens-spinner" aria-hidden="true" />}{state}</em>
               </button>
-              {reviseTarget && (
-                <button
-                  type="button"
-                  className="issue-lens-revise"
-                  onClick={() => onRevise?.({ lens: lens.id, diagnosis: reviseTarget }, issue)}
-                >
-                  직접 수정
-                </button>
-              )}
             </div>
           )
         })}
       </nav>
+      )}
 
       {availablePerspectives.length > 0 && (
         <section className="issue-lens-additions" aria-label="다른 렌즈로 검토하기">
@@ -416,39 +513,94 @@ export default function IssueInspector({
       )}
 
       {comparedLensCount >= 2 && (
-        <section className="issue-perspective-comparison" aria-label="관점 비교">
+        <section className="issue-perspective-comparison" aria-label="관계 보기">
           <button
             type="button"
             className="issue-perspective-comparison-trigger"
-            onClick={openComparison}
+            onClick={openRelationView}
             disabled={relating}
           >
-            {relating ? '관점 비교 중…' : isComparisonOpen ? '관점 비교' : '관점 비교하기'}
+            {relating ? '관계 정리 중…' : relatedRelations.length > 0 ? '관계 보기' : '관계 보기'}
           </button>
-          {isComparisonOpen && comparison && (
-            <>
-              <div className="issue-perspective-comparison-common">
-                <strong>공통</strong>
-                <p>{comparison.common}</p>
-              </div>
-              <div className="issue-perspective-comparison-differences">
-                <strong>차이</strong>
-                <ul>
-                  {comparison.differences.map((difference) => {
-                    const lens = LENSES.find((item) => item.id === difference.lens)
-                    return (
-                      <li key={difference.lens}>
-                        <b>{lens?.label || difference.lens}</b>
-                        <span>{difference.text}</span>
-                      </li>
-                    )
-                  })}
-                </ul>
-              </div>
-            </>
+          {isRelationViewOpened && relationLanes.length > 0 && (
+            <div className="issue-relation-map">
+              <svg className="issue-relation-svg" viewBox="0 0 260 112" role="img" aria-label="Lens 관계도">
+                <defs>
+                  <marker id="issue-relation-arrow" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="5" markerHeight="5" orient="auto">
+                    <path d="M0 0 L8 4 L0 8 Z" />
+                  </marker>
+                </defs>
+                <g
+                  className={`issue-relation-svg-node lens-${relationCenterLens.id}`}
+                  role="button"
+                  tabIndex="0"
+                  aria-label={`${relationCenterLens.label} Lens 판단 보기`}
+                  onClick={() => setActiveLens(relationCenterLens.id)}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter' || event.key === ' ') setActiveLens(relationCenterLens.id)
+                  }}
+                >
+                  <circle cx="130" cy="15" r="12" />
+                  <text x="130" y="19" textAnchor="middle">{relationCenterLens.mark}</text>
+                </g>
+                {relationLanes.slice(0, 2).map(({ relation, otherLens }, index) => {
+            const key = relationKeyOf(relation)
+            const open = relationOpen.issueId === issue.id && relationOpen.relationKey === key
+            const type = relation.type === 'conflict' ? 'Tension' : relation.type === 'agreement' ? 'Agreement' : 'Consequence'
+            const branch = relationBranches[index]
+            const labelWidth = type === 'Agreement' ? 66 : type === 'Tension' ? 52 : 78
+            return (
+              <g key={key} className={`issue-relation-svg-branch is-${relation.type}`}>
+                <path d={branch.path} markerEnd={relation.type === 'consequence' ? 'url(#issue-relation-arrow)' : undefined} />
+                <g
+                  className="issue-relation-svg-edge"
+                  role="button"
+                  tabIndex="0"
+                  aria-label={`${type} 관계 설명 보기`}
+                  onClick={() => setRelationOpen(open ? { issueId: issue.id, relationKey: null } : { issueId: issue.id, relationKey: key })}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter' || event.key === ' ') setRelationOpen(open ? { issueId: issue.id, relationKey: null } : { issueId: issue.id, relationKey: key })
+                  }}
+                >
+                  <rect x={branch.labelX - labelWidth / 2} y={branch.labelY - 10} width={labelWidth} height="18" rx="9" />
+                  <text x={branch.labelX} y={branch.labelY + 3} textAnchor="middle">{type}</text>
+                </g>
+                <g
+                  className={`issue-relation-svg-node lens-${otherLens.id}`}
+                  role="button"
+                  tabIndex="0"
+                  aria-label={`${otherLens.label} Lens 판단 보기`}
+                  onClick={() => setActiveLens(otherLens.id)}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter' || event.key === ' ') setActiveLens(otherLens.id)
+                  }}
+                >
+                  <circle cx={branch.nodeX} cy={branch.nodeY} r="12" />
+                  <text x={branch.nodeX} y={branch.nodeY + 4} textAnchor="middle">{otherLens.mark}</text>
+                </g>
+              </g>
+            )
+              })}
+              </svg>
+              {relationLanes.slice(0, 2).map(({ relation }) => {
+                const key = relationKeyOf(relation)
+                const open = relationOpen.issueId === issue.id && relationOpen.relationKey === key
+                if (!open) return null
+                const summaryLabel = relation.type === 'agreement'
+                  ? '함께 보는 문제'
+                  : relation.type === 'conflict'
+                    ? '갈리는 판단'
+                    : '이어지는 영향'
+                return (
+                  <div key={`${key}:summary`} className="issue-relation-summary">
+                    <strong><em>{summaryLabel}</em>{relation.summary}</strong>
+                  </div>
+                )
+              })}
+            </div>
           )}
-          {isComparisonOpen && !relating && !comparison && (
-            <p className="issue-perspective-comparison-empty">두 판단 사이에 따로 정리할 공통점은 없어요.</p>
+          {isRelationViewOpened && !relating && relatedRelations.length === 0 && (
+            <p className="issue-perspective-comparison-empty">두 Lens의 관계를 정리해 보세요.</p>
           )}
         </section>
       )}

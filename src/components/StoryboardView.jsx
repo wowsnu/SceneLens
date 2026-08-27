@@ -2802,7 +2802,7 @@ export default function StoryboardView({ onEnterReview = null }) {
       .map((panelOrder) => `S${panelOrder}`)
       .join(' · ')
     setNarrativeRequest(
-      `의도 비공개 순차 읽기 ${panelLabel}: ${interpretation}\n화면 근거: ${cues}\n이 읽힘이 생기는 서사 흐름을 검토해줘.`,
+      `의도 비공개 순차 읽기 ${panelLabel}: ${interpretation}\n화면 근거: ${cues}\n이 읽기가 생기는 서사 흐름을 검토해줘.`,
     )
     narrativeRequestRecall.resetNavigation()
     if (narrativeAnswered) clearNarrativeResult()
@@ -4524,7 +4524,7 @@ export default function StoryboardView({ onEnterReview = null }) {
               <button
                 type="button"
                 onClick={onEnterReview}
-                title="렌즈와 읽힘 관점으로 패널을 검토합니다"
+                title="렌즈와 관객 관점으로 패널을 검토합니다"
               >
                 검토로 넘어가기 →
               </button>

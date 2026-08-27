@@ -1150,7 +1150,7 @@ function SceneFactChanges({
 // 무엇을 바꿔야 하나"와 아무 상관이 없었다. 연출 검토가 AI가 낸
 // `alternatives`를 판정하게 하는 것과 구조가 달랐던 이유다.
 //
-// 대신 읽힘 검토는 **고치지 않고 묻는다.** 관객이 남긴 물음에 감독이
+// 대신 관객 검토는 **고치지 않고 묻는다.** 관객이 남긴 물음에 감독이
 // 답하면 그 답이 연출 검토의 전제로 쌓이고, 실제 수정은 거기서 한다
 // (`LENS_TRACKS_UI.md` 7장).
 
@@ -1669,7 +1669,7 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
   const [revisionWorkspace, setRevisionWorkspace] = useState(null)
   // 두 컷 사이에 펼친 편집. { operation, removingPanel, pendingEdit }
   const [seamEdit, setSeamEdit] = useState(null)
-  // 읽힘 검토도 같은 구조로 돈다 — 트랙에서 갈린 자리를 고르고, 아래
+  // 관객 검토도 같은 구조로 돈다 — 트랙에서 갈린 자리를 고르고, 아래
   // Workbench에서 관객을 갈아 끼우며 읽는다 (LENS_TRACKS_UI.md 7장).
   // 연출 쪽 `activeTrackLenses`/`selectedIssueId`와 같은 자리의 상태다.
   const [activeReadingTracks, setActiveReadingTracks] = useState(() => new Set())
@@ -1690,7 +1690,7 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
   // 않아야, "아직 안 봄"과 "봤지만 문제 없음"을 구분할 수 있다.
   const [issueLensChecks, setIssueLensChecks] = useState({})
   const reviewSequenceScrollRef = useRef(null)
-  // 읽힘 검토의 스트립과 트랙이 공유하는 스크롤. 연출 쪽과 따로 둔다 —
+  // 관객 검토의 스트립과 트랙이 공유하는 스크롤. 연출 쪽과 따로 둔다 —
   // 두 화면이 같은 ref를 쓰면 한쪽에서 옮긴 위치가 다른 쪽에 남는다.
   const readingSequenceScrollRef = useRef(null)
   const [directingQuestionDecisions, setDirectingQuestionDecisions] = useState({})
@@ -1853,6 +1853,7 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
   // 처음부터 전부 펼치면 기준 확인 자체가 길어지므로 세 명까지만 먼저 보인다.
   const [sceneBasisEditing, setSceneBasisEditing] = useState(false)
   const [sceneBasisCharactersExpanded, setSceneBasisCharactersExpanded] = useState(false)
+  const [sceneBasisImagePreview, setSceneBasisImagePreview] = useState(null)
   const [locationReferenceOpen, setLocationReferenceOpen] = useState(false)
   const [spatialEditorOpen, setSpatialEditorOpen] = useState(false)
   const [activeSpatialStageId, setActiveSpatialStageId] = useState(null)
@@ -2009,6 +2010,7 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
     const startCutId = sceneShots[activeStage?.start ?? 0]?.cutPlanItemId
     return startCutId != null ? (stageCutOrder.get(startCutId) ?? 0) : 0
   }, [sceneShots, activeStage, stageCutOrder])
+  const activeStageCutId = sceneShots[activeStage?.start ?? 0]?.cutPlanItemId || null
   // 이 구간에서 처음 바뀌는 항목들. 무엇 때문에 이 구간이 생겼는지 말해 준다.
   const stageChanges = useMemo(() => {
     if (!activeStage || activeStage.start === 0) return []
@@ -2025,7 +2027,7 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
       collect('character', character.name, character.facts)
     })
     collect('location', sceneState.location?.name || '공간', sceneState.location?.facts)
-    collect('environment', '장면 공통', sceneState.environment?.facts)
+    collect('environment', '시간', sceneState.environment?.facts)
     return found
   }, [activeStage, sceneShots, sceneState])
 
@@ -2173,7 +2175,11 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
     Object.entries(multiReviewRuns).forEach(([key, run]) => {
       if (!key.startsWith(scenePrefix)) return
       Object.entries(run?.lensResults || {}).forEach(([lens, result]) => {
-        result?.diagnoses?.forEach((diagnosis) => byId.set(diagnosis.id, { lens, diagnosis }))
+        result?.diagnoses?.forEach((diagnosis) => byId.set(diagnosis.id, {
+          lens,
+          diagnosis,
+          stance: result.stance,
+        }))
       })
     })
     return byId
@@ -2315,10 +2321,10 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
         ? [{ level: question.level, question: question.prompt, answer: decision.answer }]
         : []
     }),
-    // 읽힘 검토에서 답한 것도 같은 전제다. 감독이 확정한 창작 결정이므로
+    // 관객 검토에서 답한 것도 같은 전제다. 감독이 확정한 창작 결정이므로
     // 어느 화면에서 답했든 세 렌즈가 함께 그 위에서 본다.
     ...Object.entries(readingAnswers).map(([, entry]) => ({
-      level: `${entry.anchor} 읽힘`,
+      level: `${entry.anchor} 관객 읽기`,
       question: entry.question,
       answer: entry.answer,
     })),
@@ -2403,7 +2409,7 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
     const panelLabel = (viewerFindingHandoff.panelOrders || [viewerFindingHandoff.panelOrder])
       .map((panelOrder) => `S${panelOrder}`)
       .join(' · ')
-    const nextRequest = `의도 비공개 관객 관점 ${panelLabel}: ${interpretation}\n화면 근거: ${cues}\n이 읽힘이 생기는 이유와 조정할 방법을 검토해줘.`
+    const nextRequest = `의도 비공개 관객 관점 ${panelLabel}: ${interpretation}\n화면 근거: ${cues}\n이 읽기가 생기는 이유와 조정할 방법을 검토해줘.`
     updateLensIntent(primaryLens.id, nextRequest)
     lensRequestRecall.resetNavigation(nextRequest)
   }
@@ -2557,8 +2563,9 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
     }
   }
 
-  // Inspector의 출발점은 현재 Lens 하나다. 다른 관점은 Issue를 본 뒤
-  // 감독이 직접 더한다.
+  // 타임라인에서 켜 둔 Lens들이 이번 분석의 대상이다. 별도의 "현재 Lens"를
+  // 정하면 트랙의 on/off와 분석 대상이 어긋나므로, 하나라도 켜져 있으면
+  // 그 전부를 같은 범위에서 독립적으로 돌린다.
   const runMultiReview = async ({ answers = [], lenses = null } = {}) => {
     logEvent('review', { mode: 'multi' })
     logScaffold({ feature: 'lens', action: 'open', mode: 'multi' })
@@ -2568,16 +2575,18 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
     setFullAnalysisOpen(false)
     const scopeKey = multiReviewScopeKey
     const requestId = Date.now()
-    const requestedLenses = lenses || [{ staging: 'mise', camera: 'camera', editing: 'editing' }[primaryLens.id] || 'camera']
+    const requestedLenses = lenses || [...activeTrackLenses]
     const entries = selectedShotEntriesOf()
 
-    if (entries.length === 0 || entries.some(({ shot }) => !shot.image)) {
+    if (requestedLenses.length === 0 || entries.length === 0 || entries.some(({ shot }) => !shot.image)) {
       setMultiReviewRuns((current) => ({
         ...current,
         [scopeKey]: {
           status: 'error',
           requestId,
-          error: entries.length === 0
+          error: requestedLenses.length === 0
+            ? '타임라인에서 검토할 Lens를 하나 이상 켜 주세요.'
+            : entries.length === 0
             ? '분석할 패널을 선택해주세요.'
             : '선택 범위의 모든 패널에 이미지가 있어야 합니다.',
         },
@@ -2849,7 +2858,9 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
       [group]: {
         ...current[group],
         facts: (current[group]?.facts || []).map((fact) => (
-          fact.label === label ? { ...fact, value } : fact
+          // 사용자가 직접 채운 값은 더 이상 AI가 비워 둔 미정 항목이 아니다.
+          // open을 남기면 화면에는 값이 보여도 생성 기준에서는 빠진다.
+          fact.label === label ? { ...fact, value, open: !value } : fact
         )),
       },
     }))
@@ -2867,6 +2878,28 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
       ...character,
       ...patch,
       facts: (patch.facts || character.facts).map((fact) => ({ ...fact })),
+    })
+  }
+
+  // 시간 상태의 첫 컷 이후에 고치는 인물 상태·공간 소품은 기본값을
+  // 덮어쓰지 않고 그 상태가 시작되는 시점에 변화로 남긴다.
+  const updateSceneBasisFactAtStage = (group, label, value, characterId = null) => {
+    if (activeStage?.start > 0 && activeStageCutId && CHANGEABLE_FACT_LABELS.has(label)) {
+      addFactChange(group, label, activeStageCutId, value, { characterId })
+      return
+    }
+    updateSceneBasisFact(group, label, value)
+  }
+
+  const updateSceneBasisCharacterFactAtStage = (character, fact, value) => {
+    if (activeStage?.start > 0 && activeStageCutId && CHANGEABLE_FACT_LABELS.has(fact.label)) {
+      addFactChange('character', fact.label, activeStageCutId, value, { characterId: character.id })
+      return
+    }
+    updateSceneBasisCharacter(character, {
+      facts: character.facts.map((entry) => (
+        entry.label === fact.label ? { ...entry, value, open: !value } : entry
+      )),
     })
   }
 
@@ -3204,7 +3237,9 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
     if (match) setFlowActiveShot(Number(match[1]) - 1)
   }
 
-  const reviseTrackIssue = (entry, issue) => {
+  // Lens별 읽기에서는 바로 노출하지 않는다. 전용 `수정하기` 진입이
+  // 맡을 때까지 Workspace를 여는 배선은 보존한다.
+  const _reviseTrackIssue = (entry, issue) => {
     if (!entry) return
     // 다른 Issue로 옮기면 열려 있던 이음새 편집은 그 자리의 것이 아니다.
     setSeamEdit(null)
@@ -3358,7 +3393,7 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
       .find((entry) => entry?.lens === issue.origin_lens)
       || (issue.diagnosis_ids || []).map((diagnosisId) => diagnosesById.get(diagnosisId)).find(Boolean)
     // 갈림에는 먼저 짚은 렌즈가 없다. 관객이 읽은 것을 논점으로 준다 —
-    // "이 자리에서 읽힘이 갈렸다"가 렌즈가 이어 읽을 출발점이다.
+    // "이 자리에서 읽기가 갈렸다"가 렌즈가 이어 읽을 출발점이다.
     const viewerReading = issue.from_viewer
       ? `관객 읽기가 갈렸습니다 — ${(issue.viewer_readings || [])
         .map((entry) => `${entry.label}: ${entry.line}`).join(' / ')}`
@@ -3369,7 +3404,7 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
         mode: lens,
         panels: await buildReviewPanels(selectedShotEntriesOf()),
         intent: '',
-        // 감독이 확정한 전제를 전부 싣는다. 읽힘 검토에서 "여기는
+        // 감독이 확정한 전제를 전부 싣는다. 관객 검토에서 "여기는
         // 어떻게 읽히길 바라나요?"에 답한 것도 여기 들어 있다 —
         // 그것이 이 렌즈가 판단할 기준이므로 빠지면 안 된다
         // (`answeredDirectingQuestions`가 둘을 합쳐 둔다).
@@ -3421,6 +3456,7 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
           ...current[key],
           status: 'ready',
           diagnosis: result.diagnoses?.[0] || null,
+          stance: result.stance,
           reading: result.summary || '',
           question: response.questions?.[0] || null,
         },
@@ -3523,7 +3559,7 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
   const runViewerReflection = async () => {
     if (selectedSnapshotShots.length < 2) {
       setViewerStatus('error')
-      setViewerError('읽힘 검토는 두 컷 이상을 선택해야 합니다.')
+      setViewerError('관객 검토는 두 컷 이상을 선택해야 합니다.')
       return
     }
     const renderedShots = selectedSnapshotShots.filter((shot) => Boolean(shot.image))
@@ -3605,7 +3641,7 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
       setViewerStatus('ready')
     } catch (error) {
       setViewerStatus('error')
-      setViewerError(error.message || '읽힘 검토 결과를 불러오지 못했습니다.')
+      setViewerError(error.message || '관객 검토 결과를 불러오지 못했습니다.')
     }
   }
 
@@ -3631,7 +3667,7 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
       scope,
       shotId: target?.id || null,
       beat: target?.scriptBeat ?? 0,
-      title: finding.title || '읽힘 검토에서 가져온 해석',
+      title: finding.title || '관객 검토에서 가져온 해석',
       interpretations: finding.interpretations || [],
       visibleCues: finding.visibleCues || [],
       uncertainties: finding.uncertainties || [],
@@ -3919,7 +3955,7 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
     }
     // 값만 바꾸면 재생성 모델은 왜 그 카메라를 택했는지 알 수 없다. 제안의
     // effect는 "그래프 선의 모양과 어긋난 자리가 바로 보여요"처럼 화면에서
-    // 지켜야 할 읽힘을 말하므로, 속성 변경과 함께 생성 지시로 보낸다.
+    // 지켜야 할 읽기를 말하므로, 속성 변경과 함께 생성 지시로 보낸다.
     if (alternative.effect) changeLines.push(`directing intent: ${alternative.effect}`)
     // 샷 값으로 바뀌는 것이 없는 선택지. 어디로 보낼지는 그 진단이 이미
     // 말하고 있다 — 컷 사이의 문제는 이음새로, 컷의 존재는 합치기·나누기로
@@ -4149,7 +4185,7 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
   // 도구가 열린다 (LENS_TRACKS_UI.md 4장 — Inspect 화면에서는 고치지
   // 않는다). 도구 자체는 기존 ViewerFixCard 그대로다.
 
-  // --- 읽힘 검토를 트랙 구조로 --------------------------------------
+  // --- 관객 검토를 트랙 구조로 --------------------------------------
   //
   // 연출 검토와 같은 형태로 읽는다 (LENS_TRACKS_UI.md 7장). 행은 렌즈가
   // 아니라 읽기 조건이고, 마커는 Issue가 아니라 **divergence**다.
@@ -4191,7 +4227,7 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
   const readingFindings = useMemo(() => {
     if (!viewerReport) return []
     const scopeKey = `${scene?.id || activeScene}:${branch?.id || activeBranch}`
-    // 갈림이 먼저다. 트랙의 점은 "여기서 읽힘이 갈렸다"를 말한다.
+    // 갈림이 먼저다. 트랙의 점은 "여기서 읽기가 갈렸다"를 말한다.
     const divergences = (viewerReport.comparison?.divergences || []).map((divergence, index) => {
       const anchor = readingAnchorOf(divergence.panel_orders)
       return {
@@ -4202,7 +4238,7 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
         panelOrders: divergence.panel_orders,
         // 트랙 마커에 적히는 짧은 이름. 갈린 근거를 그대로 쓴다 —
         // 새 문장을 만들지 않는다.
-        title: divergence.shared_cues?.[0] || '읽힘이 갈림',
+        title: divergence.shared_cues?.[0] || '읽기가 갈림',
         why_it_matters: divergence.why_it_matters || '',
         conditions: divergence.readings.map((entry) => entry.condition_id),
         // 조건별로 뭐라고 읽었는가. Workbench의 오른쪽 흐름이 이걸 쌓는다.
@@ -4242,7 +4278,7 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
 
   // 갈림을 연출 트랙에도 올린다. **진단이 아니라 근거로** 올라간다 —
   // 렌즈 줄과 떨어진 자리에 다른 모양으로 그려진다 (LensTracks의
-  // `reading-lane`). 감독이 연출을 보다가 "여기서 실제로 읽힘이 갈렸다"를
+  // `reading-lane`). 감독이 연출을 보다가 "여기서 실제로 읽기가 갈렸다"를
   // 같은 가로축에서 볼 수 있어야, 그 진단이 관객에게 어떻게 닿는지 잇는다.
   //
   // 갈림만 올린다. 한 관객만 걸린 review_point는 갈린 것이 아니므로
@@ -4625,11 +4661,60 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
     </section>
   ) : null
 
-  // 컷을 판단하는 화면과, 그 컷들이 공유하는 기준을 보는 화면은 목적이 다르다.
-  // 장면 기준은 값을 그 자리에서 고친다. 기준을 보다가 다시 다른 렌즈로
-  // 보내면 맥락이 끊기고, 어느 쪽의 값이 생성에 쓰이는지도 헷갈린다.
+  // 장면 기준도 연출·관객 검토와 같은 표면에서 시작한다. 다만 여기의 트랙은
+  // 문제를 찾는 레일이 아니라, 이 장면 안에서 공통 기준이 언제 바뀌는지
+  // 직접 고르는 조작이다. 기존 sceneState의 fact.changes를 그대로 읽는다.
   const sceneBasisPane = (
-    <section className="scene-basis-pane" aria-label="장면 기준">
+    <section className="multi-review-preview scene-basis-pane" aria-label="장면 기준">
+      <section className="reading-review-sequence scene-basis-sequence" aria-label="장면 스토리보드와 상태 구간">
+        <div className="reading-review-sequence-controls">
+          <span>스토리보드</span>
+          <strong>{sceneState.title || '현재 장면'}</strong>
+          <small>이 장면 {sceneShots.length}컷</small>
+        </div>
+        <div className="reading-review-shared-scroll scene-basis-shared-scroll">
+          <StoryboardStripLane
+            embedded
+            shots={sceneShots}
+            selectedShotIndex={activeStage?.start ?? 0}
+            highlightRange={{ from: 0, to: Math.max(sceneShots.length - 1, 0) }}
+            onSelectShot={(index) => {
+              const stage = [...spatialStages]
+                .reverse()
+                .find((entry) => entry.start <= index)
+              setActiveSpatialStageId(stage?.id || null)
+            }}
+          />
+          <div
+            className="scene-basis-stage-track"
+            style={{ '--scene-track-columns': sceneShots.length }}
+            aria-label="장면 상태 구간"
+          >
+            <span className="scene-basis-stage-label">장면 상태</span>
+            {sceneShots.map((shot, index) => {
+              const stage = [...spatialStages]
+                .reverse()
+                .find((entry) => entry.start <= index)
+              const startsHere = stage?.start === index
+              const isActive = stage?.id === activeStage?.id
+              return (
+                <button
+                  key={shot.id}
+                  type="button"
+                  className={`${isActive ? 'is-active' : ''}${startsHere ? ' is-start' : ''}`}
+                  aria-pressed={isActive}
+                  onClick={() => setActiveSpatialStageId(stage?.id || null)}
+                  title={stage?.label || `S${sceneNumberFrom + index}의 장면 기준`}
+                >
+                  {startsHere ? stage.label : ''}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      </section>
+
+      <div className="scene-basis-content">
       <header className="scene-basis-heading">
         <div>
           <span>장면 기준</span>
@@ -4646,6 +4731,21 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
         </button>
       </header>
 
+      <p className="scene-basis-stage-context">
+        <strong>{activeStage?.label || 'S1'}</strong> 시간 상태를 보고 있습니다.
+        인물과 공간의 값은 이 상태부터 적용됩니다.
+      </p>
+      {stageChanges.length > 0 && (
+        <ul className="scene-basis-stage-changes" aria-label="이 시간 상태에서 달라진 기준">
+          {stageChanges.map((change) => (
+            <li key={`${change.group}-${change.owner}-${change.label}`}>
+              <span>{change.owner} · {change.label}</span>
+              <strong>{change.value}</strong>
+            </li>
+          ))}
+        </ul>
+      )}
+
       <div className="scene-basis-grid">
         <section className="scene-basis-section" aria-label="인물 기준">
           <header>
@@ -4656,7 +4756,14 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
             {(sceneBasisCharactersExpanded ? sceneState.characters : sceneState.characters.slice(0, 3)).map((character) => (
               <article key={character.id} className="scene-basis-character">
                 {character.image ? (
-                  <img src={character.image} alt={`${character.name} 레퍼런스`} />
+                  <button
+                    type="button"
+                    className="scene-basis-image-button"
+                    onClick={() => setSceneBasisImagePreview({ src: character.image, alt: `${character.name} 레퍼런스` })}
+                    aria-label={`${character.name} 레퍼런스 크게 보기`}
+                  >
+                    <img src={character.image} alt="" />
+                  </button>
                 ) : (
                   <span className="scene-basis-image-placeholder" aria-hidden="true">인물</span>
                 )}
@@ -4684,22 +4791,19 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
                     </>
                   )}
                   <dl>
-                    {character.facts.map((fact) => (
-                      <div key={fact.label} className={fact.open ? 'open' : ''}>
-                        <dt>{fact.label}</dt>
+                    {character.facts.map((fact) => {
+                      const stageFact = resolveFactsAtStage([fact])[0]
+                      return <div key={fact.label} className={stageFact.open ? 'open' : ''}>
+                        <dt>{stageFact.label}</dt>
                         {sceneBasisEditing ? (
                           <dd><input
-                            value={fact.value}
-                            aria-label={`${character.name} ${fact.label}`}
-                            onChange={(event) => updateSceneBasisCharacter(character, {
-                              facts: character.facts.map((entry) => (
-                                entry.label === fact.label ? { ...entry, value: event.target.value } : entry
-                              )),
-                            })}
+                            value={stageFact.value}
+                            aria-label={`${character.name} ${stageFact.label}`}
+                            onChange={(event) => updateSceneBasisCharacterFactAtStage(character, fact, event.target.value)}
                           /></dd>
-                        ) : <dd>{fact.value || '확인 필요'}</dd>}
+                        ) : <dd>{stageFact.value || '확인 필요'}</dd>}
                       </div>
-                    ))}
+                    })}
                   </dl>
                   {sceneBasisEditing && (
                     <button
@@ -4734,7 +4838,14 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
           <header><span>공간</span></header>
           <article className="scene-basis-location">
             {sceneState.location.image ? (
-              <img src={sceneState.location.image} alt={`${sceneState.location.name} 레퍼런스`} />
+              <button
+                type="button"
+                className="scene-basis-image-button scene-basis-location-image-button"
+                onClick={() => setSceneBasisImagePreview({ src: sceneState.location.image, alt: `${sceneState.location.name} 레퍼런스` })}
+                aria-label={`${sceneState.location.name} 레퍼런스 크게 보기`}
+              >
+                <img src={sceneState.location.image} alt="" />
+              </button>
             ) : (
               <span className="scene-basis-image-placeholder" aria-hidden="true">공간</span>
             )}
@@ -4749,18 +4860,19 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
                 />
               ) : <strong>{sceneState.location.name || '공간 미정'}</strong>}
               <dl>
-                {sceneState.location.facts.map((fact) => (
-                  <div key={fact.label} className={fact.open ? 'open' : ''}>
-                    <dt>{fact.label}</dt>
+                {sceneState.location.facts.map((fact) => {
+                  const stageFact = resolveFactsAtStage([fact])[0]
+                  return <div key={fact.label} className={stageFact.open ? 'open' : ''}>
+                    <dt>{stageFact.label}</dt>
                     {sceneBasisEditing ? (
                       <dd><input
-                        value={fact.value}
-                        aria-label={`공간 ${fact.label}`}
-                        onChange={(event) => updateSceneBasisFact('location', fact.label, event.target.value)}
+                        value={stageFact.value}
+                        aria-label={`공간 ${stageFact.label}`}
+                        onChange={(event) => updateSceneBasisFactAtStage('location', fact.label, event.target.value)}
                       /></dd>
-                    ) : <dd>{fact.value || '확인 필요'}</dd>}
+                    ) : <dd>{stageFact.value || '확인 필요'}</dd>}
                   </div>
-                ))}
+                })}
               </dl>
               {sceneBasisEditing && (
                 <button
@@ -4778,25 +4890,52 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
           </article>
         </section>
 
-        <section className="scene-basis-section scene-basis-environment" aria-label="장면 공통 기준">
-          <header><span>장면 공통</span></header>
+        <section className="scene-basis-section scene-basis-environment" aria-label="시간 기준">
+          <header><span>시간</span></header>
           <dl>
             {sceneState.environment.facts.map((fact) => (
               <div key={fact.label} className={fact.open ? 'open' : ''}>
-                <dt>{fact.label}</dt>
+                <dt>기본 시간</dt>
                 {sceneBasisEditing ? (
                   <dd><input
                     value={fact.value}
-                    aria-label={`장면 공통 ${fact.label}`}
+                    aria-label={`시간 ${fact.label}`}
                     onChange={(event) => updateSceneBasisFact('environment', fact.label, event.target.value)}
                   /></dd>
                 ) : <dd>{fact.value || '확인 필요'}</dd>}
+                <SceneFactChanges
+                  fact={fact}
+                  group="environment"
+                  shots={sceneShots}
+                  onAdd={setChangeDraft}
+                  onRemove={removeFactChange}
+                  disabled={!sceneBasisEditing}
+                  draft={draftFor('environment', fact.label)}
+                  onDraftChange={setChangeDraft}
+                  onDraftCancel={() => setChangeDraft(null)}
+                  onDraftSave={saveChangeDraft}
+                />
               </div>
             ))}
           </dl>
         </section>
       </div>
-      <p className="scene-basis-note">여기 값과 레퍼런스가 이후 패널 생성의 공통 기준으로 쓰입니다.</p>
+      <p className="scene-basis-note">위 상태 구간을 누르면 그 시점의 기준을 확인합니다. 여기 값과 레퍼런스는 이후 패널 생성의 공통 기준으로 쓰입니다.</p>
+      </div>
+      {sceneBasisImagePreview && (
+        <div
+          className="scene-basis-image-preview"
+          role="dialog"
+          aria-modal="true"
+          aria-label={sceneBasisImagePreview.alt}
+          onClick={() => setSceneBasisImagePreview(null)}
+        >
+          <div className="scene-basis-image-preview-card" onClick={(event) => event.stopPropagation()}>
+            <img src={sceneBasisImagePreview.src} alt={sceneBasisImagePreview.alt} />
+            <button type="button" onClick={() => setSceneBasisImagePreview(null)}>닫기</button>
+          </div>
+        </div>
+      )}
     </section>
   )
 
@@ -4892,7 +5031,7 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
     </div>
   ) : (
     <div className="review-bar-scope">
-      <span>{reviewMode === 'viewer' ? '읽힘 검토 범위' : '검토 대상'}</span>
+      <span>{reviewMode === 'viewer' ? '관객 검토 범위' : '검토 대상'}</span>
       <strong>
         {scopeSelectionFrom != null
           ? scopeSelectionFrom === scopeSelectionTo
@@ -4937,7 +5076,7 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
       {scopeRowNeeded && (
         <div className="scope-panel-row">
           <div className="scope-panel-copy">
-            <span>{reviewMode === 'viewer' ? '읽힘 검토 범위' : '검토 대상'}</span>
+            <span>{reviewMode === 'viewer' ? '관객 검토 범위' : '검토 대상'}</span>
             <strong>
               {scopeSelectionFrom != null
                 ? scopeSelectionFrom === scopeSelectionTo
@@ -5025,16 +5164,16 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
 
   return (
     <div className="decision-board">
-      {/* 읽힘 검토도 연출 검토처럼 범위 도구를 자기 표면 안에 둔다.
+      {/* 관객 검토도 연출 검토처럼 범위 도구를 자기 표면 안에 둔다.
           위에 따로 띄우면 보드 전체 폭을 가로지르는 줄이 하나 더 생기고,
           검토 범위가 이 줄과 아래 스트립 두 자리에 나온다. */}
-      {reviewMode !== 'multi' && reviewMode !== 'viewer' && scopePanel}
+      {reviewMode !== 'multi' && reviewMode !== 'viewer' && reviewMode !== 'scene' && scopePanel}
 
-      {/* 읽힘 검토도 연출 검토와 같은 표면이다. `review-surface`가 왼쪽
+      {/* 관객 검토도 연출 검토와 같은 표면이다. `review-surface`가 왼쪽
           스토리보드 칸을 접고 검토면에 폭을 다 준다 — 스토리보드는 그
           안의 스트립으로 이미 있으므로, 왼쪽에 또 두면 같은 것이 두 자리에
           나오고 한쪽은 빈 채로 남는다. */}
-      <div className={`decision-board-main view-${boardView} ${(reviewMode === 'multi' || reviewMode === 'viewer') ? 'review-surface' : ''}`}>
+      <div className={`decision-board-main view-${boardView} ${(reviewMode === 'multi' || reviewMode === 'viewer' || reviewMode === 'scene') ? 'review-surface' : ''}`}>
         <section className="decision-board-storyboard" aria-label="Storyboard scope">
           <SceneOverview
             shotPreview={storyboardShotPreview}
@@ -5044,7 +5183,7 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
             selectableScopeShotIds={scopeSelectableShotIds}
             onScopeShotSelect={selectScopeShot}
             sequencePreview={editingSequencePreview}
-            /* 읽힘 검토에서는 이 칸 자체가 접힌다(`review-surface`).
+            /* 관객 검토에서는 이 칸 자체가 접힌다(`review-surface`).
                스토리보드는 검토면 안의 스트립이 맡는다. */
             viewerFocusShotIndex={null}
             lensFocusShotIndex={reviewMode === 'viewer' ? null : lensFocusedShotIndex}
@@ -5071,7 +5210,7 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
                 aria-pressed={reviewMode === 'viewer'}
                 disabled={shots.length < 2}
               >
-                읽힘 검토
+                관객 검토
               </button>
               <button
                 type="button"
@@ -5135,10 +5274,10 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
               </div>
               {viewerFindingHandoff
                 && ({ mise: 'staging', camera: 'camera', editing: 'editing' }[viewerFindingHandoff.route] === primaryLens.id) && (
-                <section className="viewer-handoff-card" aria-label="읽힘 검토에서 가져온 문제">
+                <section className="viewer-handoff-card" aria-label="관객 검토에서 가져온 문제">
                   <header>
-                    <span>읽힘 검토 · {(viewerFindingHandoff.panelOrders || [viewerFindingHandoff.panelOrder]).map((panelOrder) => `S${panelOrder}`).join(' · ')}</span>
-                    <button type="button" onClick={clearViewerFindingHandoff} aria-label="읽힘 검토 카드 닫기">×</button>
+                    <span>관객 검토 · {(viewerFindingHandoff.panelOrders || [viewerFindingHandoff.panelOrder]).map((panelOrder) => `S${panelOrder}`).join(' · ')}</span>
+                    <button type="button" onClick={clearViewerFindingHandoff} aria-label="관객 검토 카드 닫기">×</button>
                   </header>
                   <strong>{viewerFindingHandoff.interpretations?.[0] || viewerFindingHandoff.title}</strong>
                   <p><em>시각적 근거</em>{viewerFindingHandoff.visibleCues?.join(' · ') || '특정 근거 없음'}</p>
@@ -6195,7 +6334,7 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
                        자리에 다른 모양으로 놓인다 (문서 7장). */
                     readingDivergences={readingLaneMarkers}
                     selectedDivergenceId={selectedReadingFindingId}
-                    /* 여기는 연출 검토다. 누르면 읽힘 검토로 건너가지
+                    /* 여기는 연출 검토다. 누르면 관객 검토로 건너가지
                        않고, 그 갈림을 **세 렌즈가 보고 진단한다** —
                        갈림은 진단이 아니라 근거이므로, 화면에서 무엇이
                        그렇게 만들었는지는 렌즈가 짚어야 한다. */
@@ -6252,7 +6391,7 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
                   issue={revisionWorkspace?.issue || readingIssue || selectedTrackIssue}
                   issues={trackIssues}
                   diagnosesById={diagnosesById}
-                  comparisons={multiReviewRuns[(revisionWorkspace?.issue || selectedTrackIssue)?.sourceScopeKey]?.comparisons || []}
+                  relations={multiReviewRuns[(revisionWorkspace?.issue || selectedTrackIssue)?.sourceScopeKey]?.commonFindings || []}
                   lensChecks={selectedIssueLensChecks}
                   shots={shots}
                   /* 범위를 정해 검토 중이면 앞뒤 컷도 그 안에서만
@@ -6270,7 +6409,6 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
                     answers: [...answeredDirectingQuestions, ...newAnswers],
                   })}
                   answeringMainLensQuestion={multiReviewLoading}
-                  onRevise={reviseTrackIssue}
                   /* 삽입·나누기·합치기·빼기는 두 컷 **사이**의 일이다.
                      GridView로 넘기지 않고 그 자리에 펼친다. 도구는 격자가
                      쓰던 것과 같은 것이다 (11장). */

@@ -6,7 +6,7 @@
   border: 1px solid rgba(255, 255, 255, 0.11);
   border-radius: 9px;
   background: rgba(8, 8, 10, 0.42);
-  overflow: hidden;
+  overflow: visible;
 }
 
 .issue-inspector.empty {
@@ -29,7 +29,7 @@
   grid-template-columns: minmax(0, 1fr) minmax(236px, 0.46fr);
   align-items: start;
   min-width: 0;
-  overflow: hidden;
+  overflow: visible;
   background: linear-gradient(90deg, rgba(255, 255, 255, 0.012), rgba(255, 255, 255, 0.025));
 }
 
@@ -151,15 +151,58 @@
   content: '';
 }
 
+.issue-cross-lens-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
 .issue-cross-lens-label {
   display: block;
-  margin-bottom: 12px;
   color: rgba(226, 232, 240, 0.48);
   font-size: 9px;
   font-weight: 800;
   letter-spacing: 0.09em;
   text-transform: uppercase;
 }
+
+.issue-view-switch {
+  display: inline-flex;
+  flex: none;
+  overflow: hidden;
+  border: 1px solid rgba(226, 232, 240, 0.16);
+  border-radius: 5px;
+}
+
+.issue-view-switch button {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 22px;
+  padding: 3px 6px;
+  border: 0;
+  border-left: 1px solid rgba(226, 232, 240, 0.11);
+  background: rgba(255, 255, 255, 0.018);
+  color: rgba(226, 232, 240, 0.48);
+  font: inherit;
+  font-size: 9px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.issue-view-switch button:first-child { border-left: 0; }
+.issue-view-switch button:hover { color: rgba(248, 250, 252, 0.84); }
+.issue-view-switch button.active { background: rgba(216, 170, 98, 0.15); color: #f0cb91; }
+.issue-view-switch button:focus-visible { position: relative; z-index: 1; outline: 1px solid #e9c58d; outline-offset: -1px; }
+
+/* 일반 메뉴 아이콘이 아니라, 세 Lens의 판단을 쌓아 본다는 표시다. */
+.issue-overview-icon { display: grid; gap: 2px; width: 8px; }
+.issue-overview-icon b { display: block; height: 1.5px; border-radius: 999px; background: currentColor; }
+.issue-overview-icon b:nth-child(1) { color: var(--camera-lens); }
+.issue-overview-icon b:nth-child(2) { color: var(--mise-lens); }
+.issue-overview-icon b:nth-child(3) { color: var(--editing-lens); }
 
 .issue-inspector-heading {
   padding: 15px 15px 14px;
@@ -198,6 +241,68 @@
   margin-top: 12px;
   padding-left: 12px;
 }
+
+/* 한 번에 훑는 목록은 오른쪽 흐름의 대체가 아니라, 큰 증거 사진 바로
+   아래에 붙는다. 각 판단의 첫 문장만 세로로 두고, 근거·수정 버튼·질문은
+   다시 반복하지 않는다. */
+.issue-lens-overview {
+  display: grid;
+  gap: 7px;
+  margin: 12px 12px 0;
+  padding: 11px 12px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 7px;
+  background: rgba(4, 5, 7, 0.34);
+}
+
+.issue-lens-overview-label {
+  color: rgba(226, 232, 240, 0.46);
+  font-size: 9px;
+  font-weight: 850;
+  letter-spacing: .08em;
+}
+
+.issue-lens-overview-item {
+  --lens: var(--text-muted);
+  display: grid;
+  grid-template-columns: 13px auto auto minmax(0, 1fr);
+  align-items: start;
+  gap: 6px;
+  width: 100%;
+  padding: 9px 8px;
+  border: 1px solid color-mix(in srgb, var(--lens), transparent 74%);
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--lens), transparent 94%);
+  color: rgba(226, 232, 240, 0.76);
+  font: inherit;
+  font-size: 10px;
+  line-height: 1.42;
+  text-align: left;
+  cursor: pointer;
+}
+
+.issue-lens-overview-item:hover { background: color-mix(in srgb, var(--lens), transparent 87%); }
+.issue-lens-overview-item:focus-visible { outline: 2px solid var(--lens); outline-offset: 2px; }
+.issue-lens-overview-item.lens-mise { --lens: var(--mise-lens); }
+.issue-lens-overview-item.lens-camera { --lens: var(--camera-lens); }
+.issue-lens-overview-item.lens-editing { --lens: var(--editing-lens); }
+.issue-lens-overview-item b { color: var(--lens); font-size: 10px; }
+.issue-lens-overview-item strong { color: color-mix(in srgb, var(--lens), white 35%); font-size: 10px; }
+.issue-lens-stance {
+  padding: 1px 4px;
+  border-radius: 3px;
+  background: rgba(226, 232, 240, 0.08);
+  color: rgba(226, 232, 240, 0.7);
+  font-size: 8px;
+  font-style: normal;
+  font-weight: 850;
+  letter-spacing: .02em;
+  white-space: nowrap;
+}
+.issue-lens-stance.stance-change { background: color-mix(in srgb, var(--lens), transparent 82%); color: color-mix(in srgb, var(--lens), white 28%); }
+.issue-lens-stance.stance-keep { color: #cbd5e1; }
+.issue-lens-stance.stance-different { color: #fcd34d; }
+.issue-lens-overview-item span { min-width: 0; color: rgba(226, 232, 240, 0.68); }
 
 /* 카드의 배경이 아니라, 관점 흐름선 위에서 움직이는 작은 광학 렌즈다.
    비친 빛·가장자리·안쪽 그림자를 분리해 유리의 두께가 느껴지게 한다. */
@@ -290,26 +395,6 @@
   cursor: pointer;
 }
 
-/* 이 렌즈의 판단을 고치러 간다. 고르는 일과 구분되게 오른쪽 끝에 둔다. */
-.issue-lens-revise {
-  flex: none;
-  align-self: center;
-  padding: 3px 8px;
-  border: 1px solid color-mix(in srgb, var(--lens), transparent 58%);
-  border-radius: 999px;
-  background: transparent;
-  color: color-mix(in srgb, var(--lens), white 30%);
-  font: inherit;
-  font-size: 9.5px;
-  font-weight: 800;
-  white-space: nowrap;
-  cursor: pointer;
-}
-
-.issue-lens-revise:hover {
-  background: color-mix(in srgb, var(--lens), transparent 82%);
-}
-
 .issue-lens-slot.lens-mise { --lens: var(--mise-lens); }
 .issue-lens-slot.lens-camera { --lens: var(--camera-lens); }
 .issue-lens-slot.lens-editing { --lens: var(--editing-lens); }
@@ -351,7 +436,7 @@
   to { transform: translateX(0); }
 }
 .issue-lens-pick:focus-visible,
-.issue-lens-revise:focus-visible { outline: 2px solid var(--lens); outline-offset: 2px; }
+.issue-lens-pick:focus-visible { outline: 2px solid var(--lens); outline-offset: 2px; }
 
 /* 아직 이 Issue에 포함되지 않은 렌즈는 카드로 미리 늘어놓지 않는다.
    감독이 눌러 실제로 확인을 요청할 때만 위 흐름에 한 칸이 생긴다. */
@@ -446,6 +531,33 @@
 .issue-perspective-comparison li b { color: #e9c58d; font-weight: 800; }
 .issue-perspective-comparison li span { color: rgba(226, 232, 240, 0.78); }
 .issue-perspective-comparison-empty { color: rgba(226, 232, 240, 0.58) !important; }
+
+/* 노드·선·edge 이름을 하나의 SVG 좌표계에서 그린다. CSS 좌표로 따로
+   얹으면 패널 폭마다 어긋나거나 잘린다. */
+.issue-relation-map { display: grid; gap: 7px; min-width: 0; margin-top: 2px; }
+.issue-relation-svg { display: block; width: min(100%, 255px); height: auto; margin: 0 auto; overflow: visible; }
+.issue-relation-svg defs marker path { fill: #bfdbfe; }
+.issue-relation-svg-branch > path { fill: none; stroke: rgba(226, 232, 240, 0.38); stroke-width: 1.6; stroke-linecap: round; }
+.issue-relation-svg-branch.is-agreement > path { stroke: rgba(110, 231, 183, 0.74); }
+.issue-relation-svg-branch.is-conflict > path { stroke: rgba(252, 211, 77, 0.76); stroke-dasharray: 3 3; }
+.issue-relation-svg-branch.is-consequence > path { stroke: rgba(147, 197, 253, 0.8); }
+.issue-relation-svg-node { cursor: pointer; outline: none; }
+.issue-relation-svg-node circle { fill: #18212f; stroke: var(--relation-lens, #94a3b8); stroke-width: 1.5; }
+.issue-relation-svg-node text { fill: rgba(248, 250, 252, 0.94); font-size: 10px; font-weight: 850; pointer-events: none; }
+.issue-relation-svg-node.lens-mise { --relation-lens: var(--mise-lens); }
+.issue-relation-svg-node.lens-camera { --relation-lens: var(--camera-lens); }
+.issue-relation-svg-node.lens-editing { --relation-lens: var(--editing-lens); }
+.issue-relation-svg-edge { cursor: pointer; outline: none; }
+.issue-relation-svg-edge rect { fill: #14171c; stroke: none; }
+.issue-relation-svg-edge text { fill: rgba(248, 250, 252, 0.88); font-size: 9px; font-weight: 850; pointer-events: none; }
+.issue-relation-svg-branch.is-agreement .issue-relation-svg-edge text { fill: #a7f3d0; }
+.issue-relation-svg-branch.is-conflict .issue-relation-svg-edge text { fill: #fcd34d; }
+.issue-relation-svg-branch.is-consequence .issue-relation-svg-edge text { fill: #bfdbfe; }
+.issue-relation-svg-node:focus circle,
+.issue-relation-svg-edge:focus rect { filter: brightness(1.28); }
+.issue-relation-summary { padding: 7px 8px; border-left: 2px solid rgba(226, 232, 240, 0.35); background: rgba(8, 8, 10, 0.62); color: rgba(226, 232, 240, 0.78) !important; font-size: 10px !important; line-height: 1.45; }
+.issue-relation-summary > strong { display: grid; gap: 2px; color: rgba(248, 250, 252, 0.88); font-size: 10px; font-weight: 650; }
+.issue-relation-summary > strong em { color: rgba(226, 232, 240, 0.48); font-size: 8.5px; font-style: normal; font-weight: 850; letter-spacing: .06em; }
 
 /* 자유 메모를 요구하지 않는다. 처음 발견한 렌즈가 화면만으로 확정하지
    못한 검토 방향이 있을 때만, 감독의 확인을 받아 다시 읽는다. */
@@ -745,6 +857,42 @@
   letter-spacing: 0.06em;
   text-transform: uppercase;
 }
+
+/* 모아 보기보다 한 단계 깊게 읽는 렌즈별 상세. Issue 밖의 전체 분석을
+   가져오지 않고, 지금 진단이 어떤 기준과 화면 근거에서 나왔는지만 연다. */
+.issue-lens-rationale {
+  margin-top: 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.09);
+}
+
+.issue-lens-rationale > summary {
+  padding: 8px 0;
+  color: rgba(226, 232, 240, 0.7);
+  font-size: 10px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.issue-lens-rationale > div {
+  display: grid;
+  gap: 8px;
+  padding: 0 0 10px;
+  color: rgba(226, 232, 240, 0.76);
+  font-size: 11px;
+  line-height: 1.55;
+}
+
+.issue-lens-rationale p { display: grid; gap: 2px; margin: 0; }
+.issue-lens-rationale em {
+  color: rgba(226, 232, 240, 0.42);
+  font-size: 8.5px;
+  font-style: normal;
+  font-weight: 850;
+  letter-spacing: .07em;
+}
+.issue-lens-rationale > div > div { display: grid; gap: 3px; }
+.issue-lens-rationale ul { display: grid; gap: 3px; margin: 0; padding-left: 14px; }
+.issue-lens-rationale li::marker { color: var(--lens); }
 
 /* --- 같은 자리의 다른 검토 ------------------------------------------- */
 

@@ -222,7 +222,7 @@
   background: rgba(15, 23, 42, .42);
 }
 
-/* 읽힘 검토에서는 그림은 참조만 하고, 아래의 읽기·조건 카드가 실제 작업
+/* 관객 검토에서는 그림은 참조만 하고, 아래의 읽기·조건 카드가 실제 작업
    공간이 된다. 이미지가 남는 높이를 모두 먹거나 자체 스크롤을 만들지 않는다. */
 .scene-overview.compact.has-viewer-reading .scene-overview-body {
   flex: 0 0 auto;

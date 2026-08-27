@@ -1056,7 +1056,7 @@ const CORRIDOR_SCENE_STATE = {
     ],
   },
   environment: {
-    name: '장면 공통',
+    name: '시간',
     facts: [
       // 서버의 ENVIRONMENT_LABELS와 같은 이름을 쓴다.
       // 화풍은 여기 두지 않는다 — `표현 스타일`이 그림으로 정한다.
@@ -1249,7 +1249,7 @@ const EMPTY_SCENE_STATE = {
   description: '대본에서 인물과 공간을 읽은 뒤 표시됩니다.',
   characters: [],
   location: { name: '', facts: [] },
-  environment: { name: '장면 공통', facts: [] },
+  environment: { name: '시간', facts: [] },
 }
 
 // 작품 전체의 인물 기준. 씬이 아니라 여기 산다 — 하린은 실험실에서도
@@ -1283,7 +1283,7 @@ const SCENE_STATE = {
     ],
   },
   environment: {
-    name: '장면 공통',
+    name: '시간',
     facts: [
       // 항목 이름은 서버(scene_state.py의 ENVIRONMENT_LABELS)와 같아야 한다.
       // 화풍은 여기 두지 않는다 — `표현 스타일`이 그림으로 정한다.
@@ -1491,10 +1491,10 @@ export const layoutToImage = (elements = [], size = 768) => {
   return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`
 }
 
-// --- 공간 단계: 배치가 달라지는 구간 -------------------------------------
+// --- 시간 상태: 장면이 달라지는 구간 -------------------------------------
 //
-// 씬 상태의 모든 변화 시작점을 하나의 공간 단계로 합친다. 인물의 상태와
-// 조명 변화가 같은 컷에서 시작하면, 그 컷부터는 같은 2D 배치를 고른다.
+// 시간만 장면 상태의 경계를 만든다. 인물과 공간은 선택한 시간 상태 안에서
+// 바뀌는 값이지, 독자적으로 새 구간을 늘리는 축이 아니다.
 //
 // 스토어에 두는 이유: 단계를 만드는 것은 Decision Board지만, 그 결과를
 // 읽어야 하는 것은 패널 생성이다. 컴포넌트 안에 두면 생성이 못 읽어
@@ -1503,11 +1503,7 @@ export const layoutToImage = (elements = [], size = 768) => {
 // 그때 라벨을 첨자로 만들면 Scene 2의 첫 구간이 `S1`로 나오는데, 감독이
 // 보는 컷 번호는 S16이다. numberFrom으로 보정한다.
 export const spatialStagesFor = (sceneState, shots, sceneId, numberFrom = 1) => {
-  const factGroups = [
-    ...(sceneState?.characters || []).flatMap((character) => character.facts || []),
-    ...(sceneState?.location?.facts || []),
-    ...(sceneState?.environment?.facts || []),
-  ]
+  const factGroups = sceneState?.environment?.facts || []
   const starts = new Set([0])
   factGroups.forEach((fact) => {
     ;(fact.changes || []).forEach((change) => {
@@ -4704,12 +4700,12 @@ const useStore = create((set, get) => ({
   layoutMode: 'unified', // 'unified' | 'maximized'
   maximizedPanel: 'left', // 사이트 진입은 서사/스토리보드 구성 화면에서 시작한다.
   setMaximizedPanel: (panel) => set({ maximizedPanel: panel }),
-  // Viewer에서 발견한 읽힘을 작업 화면까지 들고 간다. 이동 후에도 어떤
+  // Viewer에서 발견한 읽기를 작업 화면까지 들고 간다. 이동 후에도 어떤
   // 패널의 어떤 근거 때문에 왔는지 잃지 않게 하는 짧은 handoff다.
   viewerFindingHandoff: null,
   setViewerFindingHandoff: (finding) => set({ viewerFindingHandoff: finding }),
   clearViewerFindingHandoff: () => set({ viewerFindingHandoff: null }),
-  // Viewer의 읽힘과 제작자 판단을 분리해 둔다. Viewer를 닫거나 다시
+  // Viewer의 읽기와 제작자 판단을 분리해 둔다. Viewer를 닫거나 다시
   // 분석해도, 같은 씬·브랜치·컷 범위에 남긴 결정과 메모는 유지된다.
   viewerDecisions: {},
   saveViewerDecision: (decisionId, changes) => set((state) => ({

@@ -714,6 +714,9 @@ class DirectingLevelAssessment(BaseModel):
 
 
 class DirectingLensResult(BaseModel):
+    # Lens가 이 범위(또는 focus Issue)에 대해 내린 기본 방향. 관계보다 먼저
+    # 보여 주는 값이라, 다른 Lens의 결론을 흉내 내지 않고 자기 기준으로 답한다.
+    stance: Literal["change", "keep", "different"] = "change"
     summary: str
     level_assessments: List[DirectingLevelAssessment] = Field(min_length=4, max_length=4)
     diagnoses: List[DirectingDiagnosis] = Field(default_factory=list, max_length=4)

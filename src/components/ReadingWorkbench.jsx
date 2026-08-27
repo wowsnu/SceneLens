@@ -3,7 +3,7 @@ import ReadingStage from './ReadingStage'
 import './ReadingWorkbench.css'
 
 /**
- * 읽힘 검토의 Workbench — **고른 칸의 그림을 크게 보는 자리**.
+ * 관객 검토의 Workbench — **고른 칸의 그림을 크게 보는 자리**.
  *
  * 순차 읽기 자체는 위 트랙이 맡는다 (`LENS_TRACKS_UI.md` 7장). 칸에 문장과
  * 느낌이 다 들어가므로, 여기서 그것을 한 번 더 늘어놓지 않는다 — 같은 말이
@@ -150,7 +150,7 @@ export default function ReadingWorkbench({
 
   if (!step) {
     return (
-      <section className="reading-workbench empty" aria-label="선택한 읽힘">
+      <section className="reading-workbench empty" aria-label="선택한 관객 읽기">
         <p>트랙에서 읽기 칸을 누르면 그 컷을 크게 놓고 확인할 수 있습니다.</p>
       </section>
     )
@@ -178,7 +178,7 @@ export default function ReadingWorkbench({
 
   // 이 갈림이 걸친 컷들. 이음새면 둘이다.
   //
-  // 갈림은 컷 하나가 아니라 구간에서 일어나는데, 컷마다 읽힘이 다르다.
+  // 갈림은 컷 하나가 아니라 구간에서 일어나는데, 컷마다 읽기가 다르다.
   // 그것을 한 문장으로 뭉뚱그리면 감독은 무엇에 답하는지 알 수 없다 —
   // 답은 갈림 하나에 하나지만, **답하기 전에 컷별로 무엇이 갈렸는지는
   // 보여야** 그 한 문장을 제대로 쓸 수 있다.
@@ -204,7 +204,7 @@ export default function ReadingWorkbench({
             {/* 갈렸는지 아닌지를 여기서 먼저 말한다. 침묵을 "문제 없음"으로
                 읽지 않게 한다 (`design_goal.md` DG1 P2). */}
             {finding ? (
-              <em className="diverged">여기서 읽힘이 갈렸습니다</em>
+              <em className="diverged">여기서 읽기가 갈렸습니다</em>
             ) : (
               <em>이 자리는 갈리지 않았습니다</em>
             )}
@@ -274,7 +274,7 @@ export default function ReadingWorkbench({
                   <ReadingAnswer
                     finding={finding}
                     /* 답은 갈림 하나에 하나다. 그 하나가 어느 자리를
-                       덮는지 밝혀야, 컷별로 다른 읽힘을 감안해 쓴다. */
+                       덮는지 밝혀야, 컷별로 다른 읽기을 감안해 쓴다. */
                     scopeLabel={spannedOrders.length > 1
                       ? `S${spannedOrders[0]}–S${spannedOrders[spannedOrders.length - 1]}`
                       : `S${spannedOrders[0]}`}

@@ -51,7 +51,9 @@ export function toSceneState(data, heading = '', cutIds = []) {
       facts: facts(data.location.facts),
     },
     environment: {
-      name: '장면 공통',
+      // API 호환성 때문에 environment 키는 유지하지만, 장면 기준의 세 축은
+      // 시간 · 인물 · 공간이다.
+      name: '시간',
       facts: normalizedEnvironmentFacts,
     },
   }

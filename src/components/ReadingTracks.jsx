@@ -2,16 +2,16 @@ import { useCallback, useEffect, useMemo, useRef } from 'react'
 import './ReadingTracks.css'
 
 /**
- * Reading Tracks — 읽힘 검토의 트랙.
+ * Reading Tracks — 관객 검토의 트랙.
  *
  * 연출 검토의 Lens Tracks와 같은 구조다 (`LENS_TRACKS_UI.md` 3장). 다른
  * 것은 **행이 무엇인가**뿐이다:
  *
  *   연출 — 행은 렌즈(미장센·촬영·편집), 마커는 Issue
- *   읽힘 — 행은 읽기 조건(관객), 마커는 **divergence**
+ *   관객 — 행은 읽기 조건(관객), 마커는 **divergence**
  *
  * 그러므로 수직 정렬이 말하는 것도 다르다. 연출에서는 "여러 관점이 같은
- * 현상에 연결되어 있다"였고, 여기서는 **"이 자리에서 읽힘이 갈렸다"**이다.
+ * 현상에 연결되어 있다"였고, 여기서는 **"이 자리에서 읽기가 갈렸다"**이다.
  * 설명이 아니라 배치가 그것을 말한다는 점은 같다.
  *
  * 마커는 divergence만 찍는다. 한 조건만 걸린 review_point까지 같은 트랙에
@@ -19,7 +19,7 @@ import './ReadingTracks.css'
  * review_point는 divergence가 없는 자리에서만 보조 마커로 남는다.
  */
 
-// 앵커 문자열에서 컷 위치를 읽는다. 읽힘 쪽 앵커는 `panel_orders`에서
+// 앵커 문자열에서 컷 위치를 읽는다. 관객 쪽 앵커는 `panel_orders`에서
 // 만들어지므로 `S2` 또는 `S2→S3` 두 형태뿐이다.
 const parseAnchor = (anchor) => {
   if (!anchor) return []
@@ -165,7 +165,7 @@ export default function ReadingTracks({
   const tracks = (
     <div className="reading-tracks-body">
       {/* 여러 조건이 갈린 자리를 잇는 세로선. 마커보다 아래 깔려서
-          "이 자리에서 읽힘이 갈렸다"만 말한다. */}
+          "이 자리에서 읽기가 갈렸다"만 말한다. */}
       <div className="reading-tracks-stacks" aria-hidden="true">
         {stackedFindings.map(({ finding, position }) => (
           <span
@@ -286,7 +286,7 @@ export default function ReadingTracks({
       )}
       {!loading && hasRead && findings.length === 0 && (
         <p className="reading-tracks-status">
-          이 관객들 사이에서는 읽힘이 갈린 자리를 찾지 못했습니다.
+          이 관객들 사이에서는 읽기가 갈린 자리를 찾지 못했습니다.
         </p>
       )}
     </section>

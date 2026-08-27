@@ -61,7 +61,7 @@ COMMON_LENS_PROMPT = """목표는 멋진 대안을 많이 내는 것이 아니�
 쓰세요.** 강평하거나 채점하는 말투가 아닙니다. 짧은 문장으로, 본 것을 그대로 말합니다.
 
 이렇게 씁니다.
-✓ `그래프 선이 연필 한 겹이라 화면에서 거의 안 보여요.`
+✓ `그래프가 화면 오른쪽 아래에 작게 놓여, 수치 변화보다 인물 얼굴이 먼저 보여요.`
 ✓ `S2에서 얼굴을 이미 봤는데, S3도 얼굴이 화면의 절반이에요.`
 ✓ `노트북을 조금만 더 카메라 쪽으로 돌리면 화면이 보일 것 같아요.`
 
@@ -77,9 +77,22 @@ COMMON_LENS_PROMPT = """목표는 멋진 대안을 많이 내는 것이 아니�
 자리와 움직임`, `시점` 대신 `카메라가 보는 자리`.
 
 **조건문으로 빠져나가지 마세요.** `~가 작고 약하면 ~가 흐려집니다`처럼 쓰면 그것이
-실제로 그런지 판정하지 않은 것입니다. 화면을 보고 단정하세요 — `그래프 선이 연필 한
-겹이라 화면에서 거의 안 보입니다`처럼 본 것을 그대로 씁니다. 확인이 안 되면 `확인되지
-않는다`고 쓰고, 애매한 조건문으로 만들지 마세요.
+실제로 그런지 판정하지 않은 것입니다. 화면을 보고 단정하세요 — `그래프가 화면의 작은
+구석에 있어 정보보다 인물이 먼저 보입니다`처럼 본 것을 그대로 씁니다. 확인이 안 되면
+`확인되지 않는다`고 쓰고, 애매한 조건문으로 만들지 마세요.
+
+**패널은 연출 설계를 보는 스토리보드이지, 완성 렌더의 품질 검사 대상이 아닙니다.** 연필선의
+거침, 낮은 해상도, 압축 노이즈, 흐린 미세 글자, 생성된 질감의 누락, 작은 도형의 세부가
+불완전한 것은 그 자체로 Issue가 아닙니다. `선명하게 그린다`, `해상도를 높인다`,
+`디테일을 보강한다`, `그래프 선을 또렷하게 렌더한다`처럼 그림의 완성도를 고치는 처방을
+절대 제안하지 마세요. 그 때문에 무엇인지 판정할 수 없으면 결함으로 만들지 말고
+`확인되지 않는다`고 두세요.
+
+반대로, **프레이밍·화면 점유·배치·대비의 설계** 때문에 중요한 정보가 다른 요소에 묻히거나
+현재 컷에서 역할을 못 하는 것은 진단할 수 있습니다. 이때도 "선이 흐리다"가 아니라
+`그래프가 프레임의 작은 구석에 배치돼 정보로 읽힐 면적을 얻지 못한다`처럼, 렌더 품질과
+무관하게 남는 연출 근거를 말하세요. 그림의 부족과 연출 선택이 분리되지 않으면 diagnoses를
+비우세요.
 
 **감독이 무엇을 하면 되는지가 없으면 답이 아닙니다.** 문제만 말하고 끝내지 말고,
 suggested_action에는 손으로 할 수 있는 일을 쓰세요 — `그래프를 화면의 3분의 1까지
@@ -114,6 +127,11 @@ effect와 questions는 모두 짧고 자연스러운 한국어로 씁니다. 말
 선 몇 개로만 그린 컷에서는 방향을 단정하지 말고 `시선 방향이 화면에서 확인되지 않는다`고
 쓰세요. 확인되지 않는 것을 설명대로 읽으면 진단 전체가 틀린 전제 위에 서게 됩니다.
 
+중요한 정보가 읽히지 않을 때에는 크기·프레이밍·방향·가림·대비처럼 **실제로 읽힘을 막는
+서로 다른 기제**를 구분하세요. 한 기제가 주원인이고 다른 것이 보조 요인이라면 제목·근거·
+수정 방향에는 주원인을 먼저 반영하세요. 여러 원인을 뭉뚱그려 `작다`, `약하다`처럼
+축소하지 마세요.
+
 전체 의도는 여러 컷의 역할이 합쳐져 달성될 수 있습니다. 각 패널이 의도의 모든 단계나
 뒤 컷의 행동까지 한 화면 안에서 보여줘야 한다고 가정하지 마세요. 각 패널은 먼저 해당
 패널의 사건 설명과 배열상 위치에 맞는 역할을 수행하는지 판단하세요. 앞뒤 컷에서 이미
@@ -145,6 +163,15 @@ effect와 questions는 모두 짧고 자연스러운 한국어로 씁니다. 말
 각 summary는 해당 층위의 판단을 한 문장으로 간결히 쓰세요. `change`인 층위마다
 diagnoses에 정확히 하나의 상세 진단을 넣고, `keep`과 `check`에는 상세 진단을 만들지 마세요.
 
+응답 최상단의 `stance`는 이 Lens가 내린 **기본 방향**입니다.
+- `change`: 이 Lens의 기준에서도 지금 수정할 필요가 있습니다.
+- `keep`: 이 Lens의 기준에서는 현재 구성이 충분합니다. diagnoses는 비워 두세요.
+- `different`: 이미 짚힌 Issue를 다른 Lens로 다시 확인하는 경우에만 씁니다. 그 Issue를
+  그대로 지지하거나 유지하는 대신, 이 Lens에서만 생기는 별도의 concern을 봤다는 뜻입니다.
+  그 concern이 실제 수정이라면 diagnoses에 넣으세요.
+다른 Lens가 문제라고 했다는 사실은 stance의 근거가 아닙니다. 먼저 자기 Lens의 화면
+criterion으로 `change / keep / different` 중 하나를 고르고, 그 다음에 summary와 진단을 쓰세요.
+
 targets 규칙:
 - targets에는 선택 범위에 제공된 컷 ID 또는 `S3.camera_angle` 같은 요소 경로만 적으세요.
   `S3-인물 정면`, `Panel 3`처럼 설명을 붙이거나 ID를 바꾸지 마세요.
@@ -164,13 +191,14 @@ targets 규칙:
 이론을 가져오지 말고, 진단 하나에는 가장 직접적인 이론 하나만 인용하세요. 이론만으로
 문제를 만들어내지 마세요.
 
-theory_basis는 `책 이름 — 쉬운 설명 한 문장` 형식으로 씁니다. 후보의 `책:` 뒤에 있는
-이름만 적고 `책:`이라는 말은 옮기지 마세요. 줄표 뒤에는 그 이론이 **왜 이 컷에 해당하는지**를 감독이 읽고 바로
-이해할 말로 풉니다. 이론 요약을 번역해 옮기지 마세요 — 책의 문장은 일반론이고, 여기
-필요한 것은 지금 이 화면에 대한 설명입니다. 학술적인 명사구(`서사적 응축`, `정보의
-위계`)를 쓰지 말고, 짧은 서술문 하나로 쓰세요. 30자 안팎이면 충분합니다.
-  ✓ "Murch, In the Blink of an Eye — 컷은 이야기를 밀고 나가야 값을 합니다."
-  ✓ "The Five C's of Cinematography — 동작이 이어져 보여야 두 컷이 한 사건으로 읽혀요."
+theory_basis에는 선택한 이론 후보의 `핵심`을 **충실한 한국어 한 문장으로 번역**해
+적으세요. 현재 컷·인물·소품을 넣어 이론을 다시 해석하거나 적용 설명으로 바꾸지 마세요.
+이론은 화면 판단의 출처이고, 이 컷에서 실제로 보인 근거는 evidence에 따로 씁니다.
+선택한 이론의 핵심 명제가 진단의 중심 기제(예: 피사체 크기, 시선 방향, 정보 순서)를
+직접 뒷받침하지 않으면 theory_basis와 theory_source를 모두 null로 두세요. 책 이름이
+유명하거나 넓게 관련 있다는 이유만으로 붙이지 마세요.
+후보가 수정안의 보조 요소만 뒷받침할 뿐 진단의 제목과 핵심 근거를 설명하지 못하면
+인용하지 마세요. 이때는 근거를 억지로 넓혀 쓰는 것보다 null이 정확합니다.
   ✗ "b_8_walter_murch___:t_pg39_02 — Rule of Six"   ← ID와 제목만 옮겼다
   ✗ "편집자는 관객의 기대를 선도하는 안내자로 기능한다."  ← 번역투 일반론이다
 
@@ -427,8 +455,9 @@ LENS_RESPONSE_SCHEMA = {
     "schema": {
         "type": "object",
         "additionalProperties": False,
-        "required": ["summary", "level_assessments", "diagnoses", "questions"],
+        "required": ["stance", "summary", "level_assessments", "diagnoses", "questions"],
         "properties": {
+            "stance": {"type": "string", "enum": ["change", "keep", "different"]},
             "summary": {"type": "string"},
             "level_assessments": {
                 "type": "array",
@@ -649,30 +678,31 @@ def _book_short_name(book_id: str) -> str:
     return BOOK_SHORT_NAMES.get(book_id, "영화 이론")
 
 
-def _ensure_theory_book_names(result: DirectingLensResult) -> None:
-    """Make the visible rationale identify its already-validated source book.
-
-    The model returns the human explanation in ``theory_basis`` and the linked
-    library reference in ``theory_source``. The card deliberately shows only
-    the former, so restore the book name here instead of exposing an internal
-    reference ID in the UI.
-    """
+def _ensure_theory_source_basis(result: DirectingLensResult) -> None:
+    """Prefix a faithful Korean source translation with the verified citation."""
     for diagnosis in result.diagnoses:
         if not diagnosis.theory_basis or not diagnosis.theory_source:
             continue
         reference_id = diagnosis.theory_source.split("|", 1)[0].strip()
-        book_id = reference_id.split(":", 1)[0]
-        if not book_id.startswith("b_"):
+        parts = reference_id.split(":", 2)
+        if len(parts) < 2:
             continue
-        book_name = _book_short_name(book_id)
-        basis = diagnosis.theory_basis.strip()
-        # The model often follows the requested format already. Do not repeat
-        # a title it included; otherwise retain only its explanation after the
-        # dash and prepend the canonical display name from our theory library.
-        if book_name.casefold() in basis.casefold():
+        book_id, theory_id = parts[0], parts[1]
+        theory = next((item for item in _load_theory_db().get("theory_units", [])
+                       if item.get("book_id") == book_id and item.get("id") == theory_id), None)
+        theory_title = (theory or {}).get("title", "").strip()
+        if not theory_title:
             continue
-        explanation = basis.split("—", 1)[-1].strip()
-        diagnosis.theory_basis = f"{book_name} — {explanation}"
+        translation = diagnosis.theory_basis.strip()
+        # 모델이 원본 책 이름을 함께 썼더라도, 앞의 서지 표기만 서버가
+        # 정규화한다. 본문은 후보 핵심의 한국어 번역으로 남긴다.
+        if "—" in translation:
+            translation = translation.split("—", 1)[-1].strip()
+        if not translation:
+            continue
+        diagnosis.theory_basis = (
+            f"{_book_short_name(book_id)} · {theory_title} — {translation}"
+        )
 
 
 def _theory_reference_id(theory: dict) -> str:
@@ -1115,7 +1145,7 @@ async def analyze_lens(
             origin_packet = (
                 "출처: 관객 읽기입니다. 아직 어떤 렌즈도 이 자리를 보지 않았습니다.\n"
                 f"관객이 갈린 지점: {focus.origin_reading or focus.title}\n"
-                "관객의 읽힘이 갈렸다는 것은 **진단이 아니라 근거**입니다. 화면에서 "
+                "관객의 읽기가 갈렸다는 것은 **진단이 아니라 근거**입니다. 화면에서 "
                 "무엇이 그렇게 갈리게 만들었는지 당신의 렌즈로 짚으세요. 갈렸다는 "
                 "사실을 되풀이하지 말고, 관객의 문장을 옮겨 적지도 마세요 — 감독은 "
                 "그것을 이미 읽었습니다. 이 렌즈에서 본 화면 사실을 먼저 말하세요. "
@@ -1129,12 +1159,14 @@ async def analyze_lens(
                 f"처음 발견한 렌즈: {focus.origin_lens}\n"
                 f"처음 발견한 판단: {focus.origin_reading or focus.title}\n"
                 "이 요청은 새 문제를 찾는 검토가 아닙니다. 위의 `처음 발견한 판단` 하나를 "
-                "논점으로 삼아, 그것이 당신의 렌즈에서 강화되는지·약해지는지·다른 원인을 "
-                "가리키는지 답하세요. 독립적인 화면 요약이나 새 문제를 앞세우지 마세요. "
+                "논점으로 삼으세요. 먼저 당신의 고유 criterion으로 이 판단이 `change`인지, "
+                "현재 구성이 충분한 `keep`인지, 관련되지만 별도 concern인 `different`인지 "
+                "독립적으로 정하세요. 다른 Lens가 문제라고 했다는 이유만으로 지지하지 마세요. "
                 "result.summary는 처음 발견한 판단과 당신의 관찰이 이어지는 짧은 답으로 쓰세요. "
-                "원래 판단이 이 렌즈에서도 성립하거나 더 강해 보인다는 사실만으로 diagnoses를 "
-                "만들지 마세요. 이 렌즈가 직접 고쳐야 할 별도의 원인과 개입이 있을 때에만 "
-                "diagnoses에 넣고, 그렇지 않으면 diagnoses는 비워 둔 채 summary로만 반응하세요. "
+                "이 Lens의 화면 근거가 처음 판단을 지지하거나, 우선순위를 다르게 보거나, "
+                "다른 후속 concern을 낳는다면 diagnoses에 정확히 하나를 넣으세요. 이것은 "
+                "새 Issue를 찾는 일이 아니라 관계 보기를 위한 당신의 Lens 판단입니다. "
+                "정말로 이 Lens에서 판단할 근거가 없을 때만 diagnoses를 비워 두세요. "
                 "동의하지 않거나 별도 수정이 필요 없더라도 '문제를 찾지 못했다'고 끝내지 말고, "
                 "**이 렌즈에서 새로 보이는 것 하나**를 말하세요. 원래 판단을 다른 말로 바꿔 "
                 "되풀이하는 것은 답이 아닙니다 — 감독은 그 판단을 이미 읽었습니다. "
@@ -1143,8 +1175,7 @@ async def analyze_lens(
                 "예: `S2에서 이미 얼굴을 봤는데 S3도 얼굴이 화면 절반이라, 두 컷이 비슷해 "
                 "보여요.` — 이렇게 본 것을 먼저 말하고, 필요하면 그다음에 판단을 붙입니다. "
                 "덧붙일 것이 정말 없으면 짧게 그렇다고만 쓰세요. 한 문단을 채우려고 "
-                "일반론을 만들지 마세요. 수정이 필요할 때만 "
-                "diagnoses에 정확히 하나를 넣고 targets는 확인할 패널 안에서만 쓰세요. 다른 "
+                "일반론을 만들지 마세요. diagnoses의 targets는 확인할 패널 안에서만 쓰세요. 다른 "
                 "위치의 문제를 추가하지 마세요."
             )
         focus_packet = (
@@ -1278,6 +1309,7 @@ async def analyze_lens(
         data = _normalize_output_targets(request, json.loads(previous_output), lens)
         try:
             result = DirectingLensResult(
+                stance=data["stance"],
                 summary=data["summary"],
                 level_assessments=data["level_assessments"],
                 diagnoses=data["diagnoses"],
@@ -1303,7 +1335,7 @@ async def analyze_lens(
             _validate_theory_sources(lens, result, theory_packet)
             _validate_referenced_panels(request, result, questions)
             _validate_remedy_scope(lens, result)
-            _ensure_theory_book_names(result)
+            _ensure_theory_source_basis(result)
             return result, questions
         except (ValidationError, ValueError) as error:
             if attempt == 2:
@@ -1328,26 +1360,28 @@ summary와 order.reason은 각각 짧은 한 문장으로 씁니다. 예를 들�
 
 세 종류의 관계가 있습니다:
 
-- **consequence** — 한 렌즈의 결정이 다른 렌즈의 판단을 **만든** 경우.
+- **agreement** — 서로 다른 Lens의 criterion으로 봐도, **같은 Issue의 문제 방향을
+  지지**하는 경우입니다. 문장이 같아야 하는 것이 아닙니다. 두 Lens가 실제로 `change`를
+  택했고 같은 결손을 독립적으로 확인했을 때만 만드세요.
+  ✓ 촬영: `그래프가 프레임에서 작다` / 미장센: `다른 요소보다 시각적 우선순위가 낮다`
+    → 둘 다 `핵심 정보가 충분히 강조되지 않는다`를 문제로 봅니다.
+
+- **conflict** — 화면에서는 **Tension**으로 부릅니다. 같은 artifact evidence를 보되,
+  서로 다른 cinematic criterion 때문에 문제 여부나 우선순위가 갈리는 경우입니다.
+  한쪽이 다른 쪽의 관찰을 부정하는 것이 아닙니다.
+  ✓ 촬영: `이 컷에서 그래프가 읽혀야 한다` / 편집: `다음 컷에서 읽혀도 된다`
+    → shot-level legibility와 sequence-level information timing의 긴장입니다.
+  한 Lens가 `change`, 다른 Lens가 `keep`인 경우도, 서로의 criterion 때문에 그 차이가
+  생겼다면 conflict입니다. 단순히 한쪽에 진단이 없다는 이유만으로 만들지 마세요.
+
+- **consequence** — 한 Lens에서 관찰된 directing decision/concern이 다른 Lens 또는
+  다른 scope에서 **후속 concern을 만드는** 경우입니다. 같은 Issue에 대한 찬반이 아닙니다.
+  ✓ 촬영: `S3의 그래프 정보가 약함` → 편집: `S3→S4의 반응 연결이 충분히 동기화되지 않음`
   source_lens(원인)와 affected_lens(영향받은 쪽)를 반드시 지정하세요.
-  ✓ "촬영이 인물을 좁게 잡아, 미장센이 세운 공간 배치가 화면에서 확인되지 않는다"
-    → source_lens=camera, affected_lens=mise
-  고칠 곳은 원인 쪽입니다. 영향받은 쪽을 고치면 증상만 사라집니다.
-
-- **conflict** — 두 렌즈가 서로 **반대되는** 방향을 요구하는 경우.
-  ✓ "촬영은 더 좁혀 표정을 보자 하고, 미장센은 두 사람의 거리가 보여야 한다고 한다"
-  둘 다 옳아서 한쪽을 고르면 다른 쪽을 잃습니다. 감독이 무엇을 우선할지 정합니다.
-  **각 진단의 `이 렌즈가 요구하는 것`과 `갈 수 있는 길`을 비교하세요.** 문제
-  서술은 비슷한데 요구가 반대인 경우가 있습니다 — 한쪽은 이어 보이게 하자
-  하고 다른 쪽은 갈라 보이게 하자는 식입니다. 그것이 conflict입니다.
-
-- **agreement** — 두 렌즈가 **같은 문제**를 서로 다른 근거로 짚은 경우.
-  ✓ "촬영은 그래프가 작아 안 읽힌다 하고, 미장센은 지운 흔적이 흐려 안 읽힌다 한다
-    — 둘 다 '무엇이 막혔는지 화면에 없다'는 같은 문제다"
-  한 번만 고치면 둘 다 풀립니다. 따로 고치면 같은 일을 두 번 합니다.
 
 **어느 것인지 고르는 법.** 한쪽이 다른 쪽의 원인이면 consequence, 두 요구가
-양립할 수 없으면 conflict, 두 지적이 같은 결손을 가리키면 agreement입니다.
+양립할 수 없거나 `change / keep`의 우선순위가 갈리면 conflict, 두 Lens가 독립적으로
+같은 결손을 change로 가리키면 agreement입니다.
 **같은 두 진단이 agreement이면서 conflict일 수 있습니다** — 같은 결손을
 짚었는데 해법이 갈리는 경우입니다. 그때는 둘 다 보고하세요.
 consequence가 기본값이 아닙니다 — 방향이 실제로 보일 때만 consequence입니다.
@@ -1361,7 +1395,9 @@ consequence가 기본값이 아닙니다 — 방향이 실제로 보일 때만 c
   `scene_structure`)이나 렌즈 이름(`camera`)은 진단 id가 아닙니다.
   **관계가 잇는 두 진단의 id를 각각 하나씩, 2개 이상** 적으세요. 한쪽만
   적으면 무엇과 무엇의 관계인지 알 수 없어 그 관계는 버려집니다.
-- summary는 두 판단이 **어떻게 맞물리는지** 한 문장으로 씁니다. 두 진단을 나열하지 마세요.
+- summary는 관계 edge 아래에 놓일 **핵심 concern** 한 문장입니다. 두 진단의
+  문장을 반복하거나 나열하지 말고, Agreement면 둘이 함께 보는 문제, Tension이면
+  갈리는 우선순위, Consequence면 원인 concern이 만든 후속 영향을 말하세요.
 - **title은 이 묶음의 이름입니다.** 문장이 아니라 이름입니다 — 감독이 목록에서
   무엇을 여는 것인지 보고 고릅니다. 화면에 걸린 **현상**의 이름으로 쓰세요.
   ✓ `공간 전환`, `정보 제시 시점`, `샷 크기 전환`, `시선 방향`
@@ -1371,17 +1407,7 @@ consequence가 기본값이 아닙니다 — 방향이 실제로 보일 때만 c
   서로 다른 현상에는 서로 다른 이름을 붙이세요.
 - 0~3개면 충분합니다.
 
-**comparisons — 관점 비교**
-relations와 별도로, 두 렌즈 이상이 같은 현상이나 정보에 닿았을 때 0~3개를 만드세요.
-이것은 Issue를 합치거나 어느 렌즈가 원인인지 판정하는 데이터가 아닙니다. 감독이
-`공통 / 차이`로 읽을 수 있게 관점을 번역하는 데이터입니다.
-- common은 두 렌즈가 함께 중요하게 보는 현상을 짧은 한 문장으로 씁니다.
-  예: `그래프가 장면의 전환을 이해시키는 핵심 정보예요.`
-- differences는 렌즈마다 **무엇을 확인하는지가 어떻게 다른지** 씁니다. 규칙 이름이나
-  criterion을 옮기지 마세요.
-  예: 촬영 `이 컷 안에서 그래프가 바로 읽히는지 봐요.` / 편집
-  `다음 컷의 행동까지 그래프 정보가 이어지는지 봐요.`
-- 같은 컷에 있다는 이유만으로 만들지 말고, 같은 현상·정보를 실제로 다뤘을 때만 만드세요.
+comparisons는 더 이상 화면에 쓰지 않습니다. 항상 빈 배열로 답하세요.
 
 **order — 어느 렌즈부터 손댈 것인가.**
 감독은 세 탭 중 어디를 먼저 열어야 할지 모릅니다. 관계가 그 순서를 정합니다.
@@ -1515,7 +1541,7 @@ def _lens_digest(lens_results: dict) -> str:
     """
     blocks = []
     for lens, result in lens_results.items():
-        lines = [f"[{lens}] {result.summary}"]
+        lines = [f"[{lens}] 기본 판정={result.stance} | {result.summary}"]
         for diagnosis in result.diagnoses:
             lines.append(
                 f"  - {diagnosis.id} | 기준: {diagnosis.criterion}"

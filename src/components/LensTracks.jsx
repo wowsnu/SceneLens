@@ -187,7 +187,7 @@ export default function LensTracks({
           {/* 관객이 갈린 자리.
 
               렌즈 줄에 섞지 않는다. 렌즈 마커는 AI가 규칙으로 짚은
-              **진단**이라 감독이 판정할 대상이지만, 이것은 실제로 읽힘이
+              **진단**이라 감독이 판정할 대상이지만, 이것은 실제로 읽기가
               갈렸다는 **현상**이다 — 판정 대상이 아니라 판정의 근거다.
               같은 줄에 같은 모양으로 두면 그 층위 차이가 사라진다.
 
@@ -213,7 +213,7 @@ export default function LensTracks({
                     aria-pressed={id === selectedDivergenceId}
                     title={[
                       `${anchor} · ${anchorKind === 'seam' ? '이음새' : '컷'} · ${title}`,
-                      `${(conditions || []).join(' / ')}에서 읽힘이 갈렸습니다`,
+                      `${(conditions || []).join(' / ')}에서 읽기가 갈렸습니다`,
                       '눌러서 이 자리를 검토 범위로',
                     ].join('\n')}
                   >

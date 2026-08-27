@@ -1151,6 +1151,44 @@
   line-height: 1.5;
 }
 
+.scene-basis-stage-context {
+  margin: -3px 0 1px;
+  color: rgba(167, 243, 208, 0.68);
+  font-size: 10px;
+  line-height: 1.4;
+}
+
+.scene-basis-stage-context strong {
+  color: #b7f7d9;
+  font-weight: 850;
+}
+
+.scene-basis-stage-changes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin: -1px 0 1px;
+  padding: 0;
+  list-style: none;
+}
+
+.scene-basis-stage-changes li {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 5px;
+  padding: 4px 6px;
+  border: 1px solid rgba(110, 231, 183, 0.17);
+  border-radius: 4px;
+  background: rgba(16, 185, 129, 0.08);
+  color: rgba(187, 247, 208, 0.72);
+  font-size: 9px;
+}
+
+.scene-basis-stage-changes strong {
+  color: rgba(240, 253, 244, 0.94);
+  font-size: 9.5px;
+}
+
 .scene-basis-heading button {
   flex: 0 0 auto;
   min-height: 31px;
@@ -1213,7 +1251,7 @@
 
 .scene-basis-characters {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(195px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(215px, 1fr));
   gap: 8px;
 }
 
@@ -1232,16 +1270,51 @@
   background: rgba(0, 0, 0, 0.12);
 }
 
-.scene-basis-character > img,
-.scene-basis-location > img,
+.scene-basis-image-button,
 .scene-basis-image-placeholder {
   flex: 0 0 48px;
   width: 48px;
   height: 58px;
+  padding: 0;
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 6px;
-  object-fit: cover;
   background: rgba(15, 23, 42, 0.68);
+}
+
+.scene-basis-image-button {
+  position: relative;
+  overflow: hidden;
+  cursor: zoom-in;
+}
+
+.scene-basis-image-button::after {
+  content: '확대';
+  position: absolute;
+  right: 3px;
+  bottom: 3px;
+  padding: 2px 3px;
+  border-radius: 3px;
+  background: rgba(2, 6, 23, 0.74);
+  color: rgba(240, 253, 244, 0.86);
+  font-size: 7px;
+  font-weight: 800;
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+
+.scene-basis-image-button:hover::after,
+.scene-basis-image-button:focus-visible::after { opacity: 1; }
+
+.scene-basis-image-button:focus-visible {
+  outline: 2px solid rgba(110, 231, 183, 0.8);
+  outline-offset: 2px;
+}
+
+.scene-basis-image-button > img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .scene-basis-image-placeholder {
@@ -1252,10 +1325,52 @@
   font-weight: 800;
 }
 
-.scene-basis-location > img,
+.scene-basis-location-image-button,
 .scene-basis-location > .scene-basis-image-placeholder {
   width: 64px;
   flex-basis: 64px;
+}
+
+.scene-basis-image-preview {
+  position: fixed;
+  z-index: 50;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 28px;
+  background: rgba(2, 6, 23, 0.78);
+  backdrop-filter: blur(4px);
+}
+
+.scene-basis-image-preview-card {
+  display: grid;
+  justify-items: end;
+  gap: 8px;
+  max-width: min(900px, 92vw);
+  max-height: 90vh;
+}
+
+.scene-basis-image-preview-card img {
+  display: block;
+  max-width: 100%;
+  max-height: calc(90vh - 42px);
+  border: 1px solid rgba(255, 255, 255, 0.17);
+  border-radius: 8px;
+  background: #0f172a;
+  object-fit: contain;
+}
+
+.scene-basis-image-preview-card button {
+  min-height: 30px;
+  padding: 0 11px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 5px;
+  background: rgba(15, 23, 42, 0.9);
+  color: rgba(248, 250, 252, 0.9);
+  font: inherit;
+  font-size: 10px;
+  font-weight: 800;
+  cursor: pointer;
 }
 
 .scene-basis-character > div,
@@ -1355,14 +1470,114 @@
   color: #fde68a;
 }
 
+/* 한 기준 안에 상태 변화가 있으면, 값 행과 타임라인을 같은 가로줄에
+   억지로 넣지 않는다. 시간·인물·공간 모두 "기본값 → 어느 컷부터 변화"라는
+   같은 문법으로 읽히게 한다. */
+.scene-basis-pane dl > div:has(> .mise-fact-timeline) {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  align-items: center;
+  gap: 5px 8px;
+}
+
+.scene-basis-pane dl > div:has(> .mise-fact-timeline) > .mise-fact-timeline {
+  grid-column: 1 / -1;
+  width: 100%;
+}
+
+.scene-basis-pane .mise-fact-timeline:not(.is-empty) {
+  margin-top: 4px;
+  padding: 8px 9px 9px;
+  border: 1px solid rgba(110, 231, 183, 0.14);
+  border-radius: 6px;
+  background: rgba(2, 16, 10, 0.34);
+}
+
+.scene-basis-pane .mise-fact-timeline.is-empty {
+  justify-items: start;
+  padding: 6px 0 0;
+  border: 0;
+  border-top: 1px solid rgba(126, 200, 160, 0.16);
+  border-radius: 0;
+  background: transparent;
+}
+
 .scene-basis-environment {
   grid-column: 1 / -1;
 }
 
 .scene-basis-environment > dl {
-  grid-template-columns: repeat(auto-fit, minmax(155px, 1fr));
-  gap: 7px 12px;
+  display: block;
   margin-top: 0;
+}
+
+/* 시간은 값 하나와 그 안에서의 변화가 한 묶음이다. 공용 미장센 폼을
+   기존 fact 한 줄에 끼우면 입력칸과 저장 버튼이 옆으로 눌린다. 이 화면에서는
+   기본값을 첫 줄에, `다음 상태` 편집기를 그 아래 전체 폭으로 분리한다. */
+.scene-basis-environment > dl > div {
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr);
+  align-items: center;
+  gap: 6px 10px;
+}
+
+.scene-basis-environment > dl > div > .mise-fact-timeline {
+  grid-column: 1 / -1;
+  width: 100%;
+  margin-top: 4px;
+  padding: 8px 9px 9px;
+  border: 1px solid rgba(110, 231, 183, 0.14);
+  border-radius: 6px;
+  background: rgba(2, 16, 10, 0.34);
+}
+
+.scene-basis-environment .mise-fact-timeline.is-empty {
+  justify-items: start;
+  padding: 6px 0 0;
+  border: 0;
+  border-top: 1px solid rgba(126, 200, 160, 0.16);
+  border-radius: 0;
+  background: transparent;
+}
+
+.scene-basis-environment .mise-change-inline {
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 7px;
+  align-items: end;
+  padding-top: 4px;
+}
+
+.scene-basis-environment .mise-change-inline > label {
+  min-height: 29px;
+  padding: 0 7px;
+  border: 1px solid rgba(110, 231, 183, 0.2);
+  border-radius: 5px;
+  background: rgba(2, 16, 10, 0.5);
+}
+
+.scene-basis-environment .mise-change-inline select,
+.scene-basis-environment .mise-change-inline input {
+  min-height: 29px;
+  border-color: rgba(110, 231, 183, 0.25);
+  background: rgba(2, 16, 10, 0.64);
+}
+
+.scene-basis-environment .mise-change-inline > input,
+.scene-basis-environment .mise-change-inline > div {
+  grid-column: 1 / -1;
+}
+
+.scene-basis-environment .mise-change-inline > div {
+  justify-content: flex-end;
+}
+
+.scene-basis-environment .mise-change-inline > div > button.mise-change-save {
+  width: auto;
+  margin-top: 0;
+  padding: 5px 12px;
+  border-color: rgba(110, 231, 183, 0.5);
+  background: rgba(16, 185, 129, 0.17);
+  color: #d7fbe8;
 }
 
 .scene-basis-note {
@@ -1401,6 +1616,99 @@
 .scene-basis-more-characters {
   display: block;
   margin: 9px auto 0;
+}
+
+/* 장면 기준도 다른 검토처럼 `스토리보드 → 트랙 → 아래 내용` 순서다.
+   기존 카드들을 없애지 않고, 무엇이 어느 컷부터 달라지는지를 먼저 고르게
+   해서 카드가 선택한 장면 구간의 상세가 되게 한다. */
+.scene-basis-pane {
+  gap: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+.scene-basis-content {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+}
+
+.scene-basis-sequence {
+  border-top: 0;
+}
+
+.scene-basis-sequence .reading-review-sequence-controls > strong {
+  color: #9af0ca;
+}
+
+.scene-basis-sequence .reading-review-sequence-controls > small {
+  margin-left: auto;
+  color: rgba(226, 232, 240, 0.48);
+  font-size: 10px;
+  font-weight: 750;
+}
+
+.scene-basis-shared-scroll {
+  padding-bottom: 9px;
+}
+
+.scene-basis-stage-track {
+  --scene-track-cell: 168px;
+  display: grid;
+  grid-template-columns: 132px repeat(var(--scene-track-columns), var(--scene-track-cell));
+  min-width: calc(132px + var(--scene-track-columns) * var(--scene-track-cell));
+  min-height: 34px;
+  margin-top: 5px;
+  border-top: 1px solid rgba(110, 231, 183, 0.12);
+}
+
+.scene-basis-stage-label {
+  display: flex;
+  align-items: center;
+  padding-left: 9px;
+  color: rgba(154, 240, 202, 0.65);
+  font-size: 10px;
+  font-weight: 850;
+  letter-spacing: 0.05em;
+}
+
+.scene-basis-stage-track button {
+  position: relative;
+  min-width: 0;
+  padding: 0 8px;
+  border: 0;
+  border-left: 1px solid rgba(110, 231, 183, 0.1);
+  background: rgba(16, 185, 129, 0.025);
+  color: rgba(226, 232, 240, 0.46);
+  font: inherit;
+  font-size: 10px;
+  font-weight: 750;
+  line-height: 1;
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+}
+
+.scene-basis-stage-track button.is-start::before {
+  content: '';
+  position: absolute;
+  top: 5px;
+  bottom: 5px;
+  left: -1px;
+  width: 2px;
+  border-radius: 999px;
+  background: rgba(110, 231, 183, 0.82);
+}
+
+.scene-basis-stage-track button.is-active {
+  background: rgba(16, 185, 129, 0.11);
+  color: #d1fae5;
+}
+
+.scene-basis-stage-track button:hover {
+  background: rgba(16, 185, 129, 0.17);
 }
 
 /* 다관점 검토는 검토 방식 다음에 곧바로 시퀀스를 보여 준다. 대상 선택은
@@ -8035,7 +8343,7 @@ button.active .lens-glass::after {
   color: rgba(248, 250, 252, 0.98);
 }
 
-/* --- 읽힘 검토 표면 ---------------------------------------------------
+/* --- 관객 검토 표면 ---------------------------------------------------
    연출 검토(`.multi-review-preview`)와 같은 형태로 둔다
    (LENS_TRACKS_UI.md 7장). 스토리보드 + 트랙이 위, Workbench가 아래다. */
 
@@ -8189,3 +8497,4 @@ button.active .lens-glass::after {
   font-size: 11px;
   line-height: 1.5;
 }
+.multi-review-full-analysis { display: none; }
