@@ -1504,6 +1504,7 @@ export const layoutToImage = (elements = [], size = 768) => {
 // 보는 컷 번호는 S16이다. numberFrom으로 보정한다.
 export const spatialStagesFor = (sceneState, shots, sceneId, numberFrom = 1) => {
   const factGroups = sceneState?.environment?.facts || []
+  const timeFact = factGroups.find((fact) => fact.label === '시간')
   const starts = new Set([0])
   factGroups.forEach((fact) => {
     ;(fact.changes || []).forEach((change) => {
@@ -1518,10 +1519,16 @@ export const spatialStagesFor = (sceneState, shots, sceneId, numberFrom = 1) => 
     const cutId = start === 0 ? 'initial' : shots[start]?.cutPlanItemId || `shot-${start}`
     const from = start + numberFrom
     const to = end + numberFrom
+    const time = (timeFact?.changes || [])
+      .map((change) => ({ ...change, index: shots.findIndex((shot) => shot.cutPlanItemId === change.cutId) }))
+      .filter((change) => change.index >= 0 && change.index <= start)
+      .sort((left, right) => left.index - right.index)
+      .at(-1)?.value || timeFact?.value || ''
     return {
       id: `${sceneId || 'scene'}:${cutId}`,
       start,
       label: from === to ? `S${from}` : `S${from}–S${to}`,
+      time,
     }
   })
 }

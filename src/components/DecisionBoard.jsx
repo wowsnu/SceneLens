@@ -4720,9 +4720,9 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
                   className={`${isActive ? 'is-active' : ''}${startsHere ? ' is-start' : ''}`}
                   aria-pressed={isActive}
                   onClick={() => setActiveSpatialStageId(stage?.id || null)}
-                  title={stage?.label || `S${sceneNumberFrom + index}의 장면 기준`}
+                  title={stage?.time ? `${stage.label} · ${stage.time}` : (stage?.label || `S${sceneNumberFrom + index}의 장면 기준`)}
                 >
-                  {startsHere ? stage.label : ''}
+                  {startsHere ? <><span>{stage.label}</span><em>{stage.time || '시간 미정'}</em></> : ''}
                 </button>
               )
             })}
@@ -4748,7 +4748,7 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
       </header>
 
       <p className="scene-basis-stage-context">
-        <strong>{activeStage?.label || 'S1'}</strong> 시간 상태를 보고 있습니다.
+        <strong>{activeStage?.label || 'S1'} · {activeStage?.time || '시간 미정'}</strong> 시간 상태를 보고 있습니다.
         인물과 공간의 값은 이 상태부터 적용됩니다.
       </p>
       {stageChanges.length > 0 && (

@@ -1725,6 +1725,30 @@
   background: rgba(110, 231, 183, 0.82);
 }
 
+.scene-basis-stage-track button.is-start {
+  display: grid;
+  align-content: center;
+  gap: 2px;
+}
+
+.scene-basis-stage-track button.is-start > span {
+  color: inherit;
+  font-size: 9px;
+}
+
+.scene-basis-stage-track button.is-start > em {
+  overflow: hidden;
+  color: rgba(167, 243, 208, 0.7);
+  font-size: 8.5px;
+  font-style: normal;
+  font-weight: 750;
+  text-overflow: ellipsis;
+}
+
+.scene-basis-stage-track button.is-active > em {
+  color: rgba(209, 250, 229, 0.88);
+}
+
 .scene-basis-stage-track button.is-active {
   background: rgba(16, 185, 129, 0.11);
   color: #d1fae5;
