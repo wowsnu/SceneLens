@@ -4514,7 +4514,7 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
   function renderInitialReadingChoices() {
     return (
       <div className="viewer-initial-reading-choices" role="group" aria-label="추가 읽기 조건">
-        <span>읽는 방식</span>
+        <span>기본 관객</span>
         {VIEWER_READING_CONDITIONS.map((condition) => {
           const selected = selectedReadingConditionIds.includes(condition.id)
           return (
@@ -4550,6 +4550,25 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
         <div className="reading-review-sequence-controls" aria-label="스토리보드 이동">
           <span>스토리보드</span>
           {scopeSummary}
+          {/* 조건은 실행 버튼과 같은 흐름에 두되, 평소에는 한 단계 접어
+              두어 실행 바가 버튼 목록으로 늘어나지 않게 한다. */}
+          <details className="reading-condition-depth">
+            <summary>
+              <span>관객 구성</span>
+              <strong>{selectedReadingConditionIds.length}명 선택</strong>
+              <em>변경</em>
+            </summary>
+            <div className="reading-condition-depth-menu">
+              {renderInitialReadingChoices()}
+              <details className="viewer-more-perspectives">
+                <summary>
+                  <div><strong>관객 직접 만들기</strong></div>
+                  <em>선택</em>
+                </summary>
+                {renderViewerConditionPicker()}
+              </details>
+            </div>
+          </details>
           {/* 실행 버튼은 바 안에 둔다. 연출 검토의 `분석하기`와 같은
               자리다 — 범위를 보면서 바로 돌린다. */}
           <button
@@ -4565,7 +4584,7 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
               ? '읽는 중…'
               : viewerReport
                 ? '다시 읽기'
-                : `${selectedReadingConditionIds.length}명으로 읽기`}
+                : `${selectedReadingConditionIds.length}명 관객으로 읽기`}
           </button>
         </div>
 
@@ -4622,26 +4641,14 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
         </div>
       </section>
 
-      {/* 읽는 방식 고르기. 연출 검토의 `검토 의도`가 바 안에 접혀 있는
-          것과 같은 자리다. */}
-      <section className="reading-conditions-bar" aria-label="읽는 방식">
-        {renderInitialReadingChoices()}
-        {/* 직접 만든 읽기 조건도 그대로 쓴다. 기존 기능을 화면만 바꾸면서
-            빠뜨리지 않는다 (LENS_TRACKS_UI.md 11장). */}
-        <details className="viewer-more-perspectives">
-          <summary>
-            <div><strong>관객 직접 만들기</strong></div>
-            <em>선택</em>
-          </summary>
-          {renderViewerConditionPicker()}
-        </details>
+      <div className="reading-condition-feedback" aria-live="polite">
         {selectedReadingConditionIds.length < 2 && (
           <p className="viewer-reflection-hint">
             관객이 하나면 견줄 상대가 없어 갈린 자리가 나오지 않습니다. 하나 더 골라 주세요.
           </p>
         )}
         {viewerError && <p className="viewer-error">{viewerError}</p>}
-      </section>
+      </div>
 
       {/* ③ Workbench. 트랙과 같이 결과가 없어도 자리를 지킨다. */}
       {viewerReport && (

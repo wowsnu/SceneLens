@@ -8456,9 +8456,107 @@ button.active .lens-glass::after {
 
 .reading-run-button:disabled { opacity: 0.45; cursor: default; }
 
-/* 읽는 방식 고르기. 연출 검토의 `검토 의도`가 바 아래 접혀 있는 것과
-   같은 자리다. */
-.reading-conditions-bar {
+/* 읽기 조건은 실행 버튼 바로 앞에서 고른다. "몇 명으로 읽기"가 선택한
+   조건의 결과라서, 아래 별도 설정 줄에 두면 둘의 관계가 끊긴다. */
+.reading-condition-depth {
+  position: relative;
+  flex: 0 0 auto;
+}
+
+.reading-condition-depth > summary {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 25px;
+  padding: 0 8px;
+  border: 1px solid rgba(167, 139, 250, 0.28);
+  border-radius: 6px;
+  background: rgba(167, 139, 250, 0.06);
+  color: rgba(221, 214, 254, 0.84);
+  font-size: 9.5px;
+  cursor: pointer;
+  list-style: none;
+}
+
+.reading-condition-depth > summary::-webkit-details-marker { display: none; }
+.reading-condition-depth > summary > strong { color: #ede9fe; font-size: 9.5px; }
+.reading-condition-depth > summary > em { color: rgba(196, 181, 253, 0.65); font-size: 8.5px; font-style: normal; }
+.reading-condition-depth[open] > summary { border-color: rgba(167, 139, 250, 0.58); background: rgba(109, 40, 217, 0.13); }
+
+.reading-condition-depth .viewer-initial-reading-choices {
+  position: static;
+  z-index: auto;
+  display: grid;
+  min-width: 0;
+  gap: 5px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.reading-condition-depth-menu {
+  position: absolute;
+  z-index: 3;
+  top: calc(100% + 5px);
+  right: 0;
+  display: grid;
+  width: min(680px, calc(100vw - 32px));
+  min-width: 360px;
+  max-width: calc(100vw - 32px);
+  box-sizing: border-box;
+  gap: 8px;
+  padding: 8px;
+  border: 1px solid rgba(167, 139, 250, 0.3);
+  border-radius: 7px;
+  background: rgba(15, 23, 42, 0.98);
+  box-shadow: 0 12px 28px rgba(2, 6, 23, 0.34);
+}
+
+.reading-condition-depth-menu .viewer-more-perspectives {
+  margin: 0;
+  border-color: rgba(167, 139, 250, 0.24);
+  background: rgba(76, 29, 149, 0.08);
+}
+
+.reading-condition-depth-menu .viewer-more-perspectives > summary {
+  padding: 8px 9px;
+}
+
+.reading-condition-depth-menu .viewer-reading-conditions {
+  max-height: min(55vh, 470px);
+  overflow-y: auto;
+}
+
+@media (max-width: 520px) {
+  .reading-condition-depth-menu {
+    right: -8px;
+    min-width: 0;
+  }
+}
+
+.reading-condition-depth .viewer-initial-reading-choices > span {
+  color: rgba(196, 181, 253, 0.66);
+  font-size: 9px;
+}
+
+.reading-condition-depth .viewer-initial-reading-choices button {
+  min-height: 27px;
+  padding: 0 8px;
+  text-align: left;
+  font-size: 9.5px;
+}
+
+.reading-review-sequence-controls .viewer-initial-reading-choices button {
+  min-height: 25px;
+  padding: 0 7px;
+  font-size: 9.5px;
+}
+
+/* 선택 조건이 부족할 때만 실행 바 아래에 짧게 안내한다. */
+.reading-condition-feedback {
   display: flex;
   flex-direction: column;
   gap: 8px;
