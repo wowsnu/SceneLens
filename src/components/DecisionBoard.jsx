@@ -2903,6 +2903,22 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
     })
   }
 
+  const renderSceneBasisCharacterFact = (character, fact) => {
+    const stageFact = resolveFactsAtStage([fact])[0]
+    return (
+      <div key={fact.label} className={stageFact.open ? 'open' : ''}>
+        <dt>{stageFact.label}</dt>
+        {sceneBasisEditing ? (
+          <dd><input
+            value={stageFact.value}
+            aria-label={`${character.name} ${stageFact.label}`}
+            onChange={(event) => updateSceneBasisCharacterFactAtStage(character, fact, event.target.value)}
+          /></dd>
+        ) : <dd>{stageFact.value || '확인 필요'}</dd>}
+      </div>
+    )
+  }
+
   const spatialLayoutForStage = useCallback((stageId) => {
     const stageIndex = spatialStages.findIndex((stage) => stage.id === stageId)
     // 새 단계는 직전 단계의 배치를 출발점으로 쓴다. 그래서 "변화"가
@@ -4780,7 +4796,7 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
                         className="scene-basis-summary-input"
                         value={character.summary || ''}
                         aria-label={`${character.name} 역할`}
-                        placeholder="역할·외형"
+                        placeholder="역할"
                         onChange={(event) => updateSceneBasisCharacter(character, { summary: event.target.value })}
                       />
                     </>
@@ -4790,21 +4806,22 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
                       {character.summary && <p>{character.summary}</p>}
                     </>
                   )}
-                  <dl>
-                    {character.facts.map((fact) => {
-                      const stageFact = resolveFactsAtStage([fact])[0]
-                      return <div key={fact.label} className={stageFact.open ? 'open' : ''}>
-                        <dt>{stageFact.label}</dt>
-                        {sceneBasisEditing ? (
-                          <dd><input
-                            value={stageFact.value}
-                            aria-label={`${character.name} ${stageFact.label}`}
-                            onChange={(event) => updateSceneBasisCharacterFactAtStage(character, fact, event.target.value)}
-                          /></dd>
-                        ) : <dd>{stageFact.value || '확인 필요'}</dd>}
-                      </div>
-                    })}
-                  </dl>
+                  <div className="scene-basis-character-group">
+                    <span>공통 기준</span>
+                    <dl>
+                      {character.facts
+                        .filter((fact) => fact.label !== '상태')
+                        .map((fact) => renderSceneBasisCharacterFact(character, fact))}
+                    </dl>
+                  </div>
+                  <div className="scene-basis-character-group scene-basis-character-state">
+                    <span>이 시간 상태</span>
+                    <dl>
+                      {character.facts
+                        .filter((fact) => fact.label === '상태')
+                        .map((fact) => renderSceneBasisCharacterFact(character, fact))}
+                    </dl>
+                  </div>
                   {sceneBasisEditing && (
                     <button
                       type="button"

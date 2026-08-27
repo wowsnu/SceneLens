@@ -1433,6 +1433,29 @@
   line-height: 1.35;
 }
 
+.scene-basis-character-group {
+  margin-top: 7px;
+}
+
+.scene-basis-character-group > span {
+  display: block;
+  margin-bottom: 2px;
+  color: rgba(148, 163, 184, 0.68);
+  font-size: 8.5px;
+  font-weight: 850;
+  letter-spacing: 0.04em;
+}
+
+.scene-basis-character-state {
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px solid rgba(110, 231, 183, 0.13);
+}
+
+.scene-basis-character-state > span {
+  color: rgba(150, 220, 185, 0.8);
+}
+
 .scene-basis-pane dl {
   display: grid;
   gap: 3px;

@@ -1258,7 +1258,7 @@ const DEMO_CAST = [
   {
     id: 'cast-하린',
     name: '하린',
-    summary: '20대 중반 · 대학원생',
+    summary: '대학원생',
     image: '/img/lab_discovery_cu.png',
     facts: [
       // 생김새는 고정, `상태`만 씬 안에서 변한다 (scene_state.py의 두 갈래).
