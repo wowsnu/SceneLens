@@ -1373,19 +1373,30 @@ summary와 order.reason은 각각 짧은 한 문장으로 씁니다. 예를 들�
     → shot-level legibility와 sequence-level information timing의 긴장입니다.
   한 Lens가 `change`, 다른 Lens가 `keep`인 경우도, 서로의 criterion 때문에 그 차이가
   생겼다면 conflict입니다. 단순히 한쪽에 진단이 없다는 이유만으로 만들지 마세요.
+  **한 Lens가 `change`를 냈더라도, 다른 Lens의 criterion으로 보면 지금 화면이
+  이미 그 Lens의 목적을 충족한다면 conflict로 만드세요.** 그 Lens는 "이 문제는
+  꼭 바꾸지 않아도 된다"는 입장을 대변하는 것입니다 — 감독이 change 한쪽 말만
+  듣지 않고, 유지하는 근거도 함께 보고 판정할 수 있어야 합니다. summary에는
+  갈리는 우선순위와 함께 **유지해도 되는 이유**를 담으세요.
+  ✓ 편집: `S3의 반응이 약해 컷을 더해야 한다` / 촬영: `S3의 프레이밍이 이미
+    반응을 담고 있어 컷을 더하면 리듬이 늘어진다` → 편집은 change, 촬영은 keep
+    쪽이지만 둘 다 화면 근거가 있는 Tension입니다.
 
 - **consequence** — 한 Lens에서 관찰된 directing decision/concern이 다른 Lens 또는
   다른 scope에서 **후속 concern을 만드는** 경우입니다. 같은 Issue에 대한 찬반이 아닙니다.
   ✓ 촬영: `S3의 그래프 정보가 약함` → 편집: `S3→S4의 반응 연결이 충분히 동기화되지 않음`
   source_lens(원인)와 affected_lens(영향받은 쪽)를 반드시 지정하세요.
 
-**어느 것인지 고르는 법.** 한쪽이 다른 쪽의 원인이면 consequence, 두 요구가
+**어느 것인지 고르는 법.** 한쪽이 다른 쪽의 명확한 원인이면 consequence, 두 요구가
 양립할 수 없거나 `change / keep`의 우선순위가 갈리면 conflict, 두 Lens가 독립적으로
 같은 결손을 change로 가리키면 agreement입니다.
 **같은 두 진단이 agreement이면서 conflict일 수 있습니다** — 같은 결손을
 짚었는데 해법이 갈리는 경우입니다. 그때는 둘 다 보고하세요.
-consequence가 기본값이 아닙니다 — 방향이 실제로 보일 때만 consequence입니다.
-어느 쪽이 원인인지 말할 수 없다면 conflict나 agreement입니다.
+consequence가 기본값이 아닙니다 — 원인·결과 방향이 화면에서 분명히 보일 때만
+consequence입니다. 어느 쪽이 원인인지 단언할 수 없다면 conflict입니다.
+**두 Lens의 판단이 갈릴 때 기본은 conflict(Tension)입니다.** 한 Lens가 바꾸자고
+할 때 다른 Lens가 유지해도 되는 근거를 가지고 있다면, 그 긴장을 감추지 말고
+Tension으로 드러내세요 — 감독이 두 입장을 다 보고 고를 수 있어야 합니다.
 
 규칙:
 - **없으면 빈 배열입니다.** 렌즈들이 서로 다른 것을 봤다면 관계가 없는 것이 정상입니다.
