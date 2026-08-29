@@ -5559,38 +5559,15 @@
    끊긴 나열이 아니라 한 줄로 이어진다는 것을 알 수 있다. */
 .sb-panel-grid-seam.is-horizontal::before { display: none; }
 
-/* S3→S4처럼 줄을 넘는 연결. 오른쪽 끝 카드 중심에서 내려와 이음새
-   버튼을 지나 다음 줄 왼쪽 카드 중심으로 들어간다. */
+/* S3→S4처럼 줄을 넘는 연결. 카드 사이를 선으로 잇지 않는다 — 카드
+   번호가 이미 순서대로 붙어 있고 버튼 라벨도 방향을 말하므로, 선은
+   화면만 복잡하게 만든다(가로 이음새 점선을 뺀 것과 같은 이유).
+   바 높이는 버튼 하나 들어갈 정도로만 잡는다. */
 .sb-panel-grid-row-seam {
   position: relative;
   grid-column: 1 / -1;
-  min-height: 84px;
+  min-height: 46px;
 }
-
-/* 세로·가로·세로를 각각 border로 나눠 그으면 점선의 위상이 구간마다
-   따로 시작해 꺾이는 지점에서 끊겨 보인다 — border-left와 border-top은
-   같은 dash 패턴이라도 각자 자기 변의 시작점부터 점을 찍기 때문이다.
-   하나의 SVG path(꺾은선 하나)로 그어야 점선이 코너를 넘어 이어진다.
-   viewBox를 0~100 백분율로 두고 카드 중심 x좌표(1/6, 5/6 → 16.667,
-   83.333)를 그대로 좌표로 써서, 격자 폭이 바뀌어도 카드 중심을
-   따라간다. stroke-width는 non-scaling-stroke로 고정해 preserveAspectRatio
-   ="none"에 의한 세로 방향 확대에 굵기가 늘어나지 않게 한다. */
-.sb-panel-grid-row-seam-path {
-  position: absolute;
-  z-index: 0;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  overflow: visible;
-}
-.sb-panel-grid-row-seam-path path {
-  stroke: rgba(216, 180, 254, 0.55);
-  stroke-width: 2;
-  stroke-dasharray: 5 5;
-}
-
-/* 줄 끝의 S3에서 점선 바로 내려오고, 반대편 끝은 S4로 다시 이어진다.
-   가운데의 이음새 버튼은 경로를 가리지 않도록 선 위에만 떠 있다. */
 
 .sb-panel-grid-seam-trigger {
   position: relative;

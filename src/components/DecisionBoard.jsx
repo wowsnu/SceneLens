@@ -2162,7 +2162,13 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
           requestId,
           // id도 run별로 갈라 둔다. 그대로 두면 서로 다른 이슈가 같은 id를
           // 가져, 하나를 고르면 엉뚱한 것이 함께 켜진다.
-          issue: { ...issue, id: `${key}::${issue.id}`, sourceScopeKey: key },
+          //
+          // 원본 issue.id만으로는 부족하다 — 백엔드가 렌즈마다 0부터 다시
+          // 매기는 로컬 인덱스(`issue-0`, `issue-1`…)를 쓰므로, 같은 범위
+          // (run)에서 미장센의 issue-1과 촬영의 issue-1이 `${key}::${issue.id}`로
+          // 합쳐지면 똑같은 id가 된다. identityKey는 anchor·lenses·title까지
+          // 섞은 값이라 같은 run 안에서도 서로 다른 이슈를 갈라 준다.
+          issue: { ...issue, id: `${key}::${identityKey}`, sourceScopeKey: key },
         })
       })
     })

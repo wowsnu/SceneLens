@@ -209,6 +209,26 @@
   background: color-mix(in srgb, var(--lens), transparent 92%);
 }
 
+/* 이음새 칸은 S3 슬롯(index 0)이 아니라 S4 슬롯(index 1) 안에 있다.
+   그 슬롯은 사진을 가운데로 모으려고 justify-content: center를 쓰는데
+   (일반 원형 화살표를 위한 규칙, 위 .evidence-frame-slot 참고), 이음새
+   칸도 같은 규칙을 물려받으면 사진과 한 덩어리로 뭉쳐 슬롯 한가운데
+   (=화면에서는 더 오른쪽)에 놓인다. 여기서만 왼쪽 정렬로 바꿔, 이음새
+   칸이 슬롯 왼쪽 끝 — 즉 실제 두 사진이 맞닿는 지점 — 에 붙게 한다.
+   사진(.evidence-frame, flex:1)은 그대로 남은 공간을 차지하므로 폭은
+   바뀌지 않는다. */
+.evidence-frame-slot-has-seam {
+  justify-content: flex-start;
+}
+
+/* 이음새 박스는 S4 슬롯 안에서 시작하므로, 그대로 두면 박스의 중심이
+   두 컷의 경계보다 박스 폭의 절반만큼 오른쪽으로 밀린다. 흐름의 폭은
+   유지한 채 화면에서만 반 폭 왼쪽으로 옮겨, 점선 박스의 중심을 실제
+   S3–S4 사이에 맞춘다. */
+.evidence-frame-slot-has-seam .evidence-seam-arrow {
+  transform: translateX(-25%);
+}
+
 .evidence-seam-arrow small {
   margin: 0;
   color: color-mix(in srgb, var(--lens), white 18%);

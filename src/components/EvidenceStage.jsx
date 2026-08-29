@@ -154,6 +154,7 @@ export default function EvidenceStage({
               className={[
                 'evidence-frame-slot',
                 `evidence-frame-${role}`,
+                isSeam && !seamOpen && 'evidence-frame-slot-has-seam',
                 seamOpen && 'evidence-frame-slot-seam-open',
                 isRemoving && 'evidence-frame-removing',
               ].filter(Boolean).join(' ')}
@@ -172,12 +173,18 @@ export default function EvidenceStage({
                 ) : (
                   <span className={`evidence-arrow ${isSeam ? 'evidence-seam-arrow' : ''}`} aria-hidden="true">
                     {/* 이음새면 어느 사이인지 적는다. `이음새`만 있으면
-                        어느 자리를 고치는 것인지 카드 제목을 다시 봐야 한다. */}
-                    {isSeam && <small>{issue?.anchor || '이음새'}</small>}
-                    {/* 이어지는 두 컷일 때만 화살표다. `·`로 묶인 앵커는
-                        나란하지 않은 별개의 컷들이라, 화살표를 그리면
-                        있지도 않은 순서를 말하게 된다. */}
-                    {followsSequence ? '→' : '·'}
+                        어느 자리를 고치는 것인지 카드 제목을 다시 봐야 한다.
+                        라벨 자체가 `S3→S4`처럼 화살표를 담고 있으므로, 그
+                        아래에 또 화살표를 그리면 같은 방향을 두 번 말하는
+                        것이다 — 이음새일 때는 라벨만 남긴다. */}
+                    {isSeam ? (
+                      <small>{issue?.anchor || '이음새'}</small>
+                    ) : (
+                      // 이어지는 두 컷일 때만 화살표다. `·`로 묶인 앵커는
+                      // 나란하지 않은 별개의 컷들이라, 화살표를 그리면
+                      // 있지도 않은 순서를 말하게 된다.
+                      followsSequence ? '→' : '·'
+                    )}
                   </span>
                 )
               )}

@@ -4111,24 +4111,10 @@ export default function StoryboardView({ onEnterReview = null }) {
                   return [
                     card,
                     <div className={`sb-panel-grid-seam sb-panel-grid-row-seam${seamMarked ? ' is-marked' : ''}${seamOpen ? ' is-open' : ''}`} key={`row-seam-${shot.id}`}>
-                      {/* 세로·가로·세로 세 구간을 각각 border로 그으면 점선의
-                      위상이 구간마다 따로 시작해 코너에서 끊겨 보인다. 하나의
-                      SVG path로 그려야 점선이 꺾이는 지점을 넘어 이어진다.
-                      viewBox를 0~100 백분율로 잡아 카드 중심(1/6, 5/6)을
-                      그대로 좌표로 쓴다 — 격자 폭이 바뀌어도 같은 비율을
-                      유지한다. */}
-                      <svg
-                        className="sb-panel-grid-row-seam-path"
-                        aria-hidden="true"
-                        viewBox="0 0 100 100"
-                        preserveAspectRatio="none"
-                      >
-                        <path
-                          d="M 83.333 0 V 50 H 16.667 V 100"
-                          fill="none"
-                          vectorEffect="non-scaling-stroke"
-                        />
-                      </svg>
+                      {/* 카드 사이를 선으로 잇지 않는다. 카드 번호가 이미
+                      순서대로 붙어 있고 버튼 라벨도 `S3 → S4`로 방향을
+                      말하므로, 선은 정보량 대비 화면만 복잡하게 만든다
+                      (가로 이음새를 뺀 것과 같은 이유). */}
                       <button
                         type="button"
                         className="sb-panel-grid-seam-trigger"
