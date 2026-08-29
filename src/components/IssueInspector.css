@@ -395,6 +395,28 @@
   cursor: pointer;
 }
 
+/* 이 렌즈의 판단을 고치러 간다. 고르는 일과 구분되게 오른쪽 끝에 둔다. */
+.issue-lens-revise {
+  flex: none;
+  align-self: center;
+  padding: 3px 8px;
+  border: 1px solid color-mix(in srgb, var(--lens), transparent 58%);
+  border-radius: 999px;
+  background: transparent;
+  color: color-mix(in srgb, var(--lens), white 30%);
+  font: inherit;
+  font-size: 9.5px;
+  font-weight: 800;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.issue-lens-revise:hover {
+  background: color-mix(in srgb, var(--lens), transparent 82%);
+}
+
+.issue-lens-revise:focus-visible { outline: 2px solid var(--lens); outline-offset: 2px; }
+
 .issue-lens-slot.lens-mise { --lens: var(--mise-lens); }
 .issue-lens-slot.lens-camera { --lens: var(--camera-lens); }
 .issue-lens-slot.lens-editing { --lens: var(--editing-lens); }
@@ -414,6 +436,19 @@
 }
 .issue-lens-slot.ready { opacity: 0.92; }
 .issue-lens-slot.loading .issue-lens-pick > em { color: color-mix(in srgb, var(--lens), white 10%); }
+/* stance가 different(이 Issue에 동의하는 대신, 이 Lens만의 별도
+   관심사를 봤다는 백엔드 신호)면 렌즈 고유색 대신 앰버로 표시한다.
+   렌즈 색은 이미 "누가 말했는가"를 나타내므로, 그것과 별개로 "이
+   렌즈는 같은 방향이 아니다"를 한눈에 알아채려면 다른 색 축이
+   필요하다 — 초록/파랑/빨강 사이에서 튀는 색을 쓴다. */
+.issue-lens-slot.different {
+  opacity: 1;
+  border-color: color-mix(in srgb, #f59e0b, transparent 40%);
+  background: color-mix(in srgb, #f59e0b, transparent 90%);
+}
+.issue-lens-slot.different .issue-lens-pick > em {
+  color: color-mix(in srgb, #f59e0b, white 20%);
+}
 .issue-lens-slot.active {
   border-color: color-mix(in srgb, var(--lens), transparent 28%);
   background: color-mix(in srgb, var(--lens), transparent 86%);
@@ -548,8 +583,18 @@
 .issue-relation-svg-node.lens-camera { --relation-lens: var(--camera-lens); }
 .issue-relation-svg-node.lens-editing { --relation-lens: var(--editing-lens); }
 .issue-relation-svg-edge { cursor: pointer; outline: none; }
-.issue-relation-svg-edge rect { fill: #14171c; stroke: none; }
-.issue-relation-svg-edge text { fill: rgba(248, 250, 252, 0.88); font-size: 9px; font-weight: 850; pointer-events: none; }
+.issue-relation-svg-edge rect { fill: transparent; stroke: none; }
+.issue-relation-svg-edge text {
+  fill: rgba(248, 250, 252, 0.88);
+  font-size: 9px;
+  font-weight: 850;
+  pointer-events: none;
+  /* 라벨 배경으로 선을 가리지 않고, 글자만 살짝 띄워 읽기 쉽게 한다. */
+  paint-order: stroke fill;
+  stroke: #14171c;
+  stroke-width: 2.5px;
+  stroke-linejoin: round;
+}
 .issue-relation-svg-branch.is-agreement .issue-relation-svg-edge text { fill: #a7f3d0; }
 .issue-relation-svg-branch.is-conflict .issue-relation-svg-edge text { fill: #fcd34d; }
 .issue-relation-svg-branch.is-consequence .issue-relation-svg-edge text { fill: #bfdbfe; }
@@ -685,6 +730,18 @@
 .issue-perspective header > span { color: var(--lens); font-size: 11px; }
 .issue-perspective header strong { color: color-mix(in srgb, var(--lens), white 20%); font-size: 11px; }
 .issue-perspective header em { color: rgba(226, 232, 240, 0.38); font-size: 9px; font-style: normal; }
+
+/* stance가 different인 카드. 렌즈 색(--lens)은 "누가 말했는가"만
+   가리키므로, "이 판단이 Issue에 동의하는 게 아니라 이 Lens만의
+   별도 관심사"라는 것은 색을 아예 바꿔서 알려야 지나치면서 놓치지
+   않는다. */
+.issue-perspective-pick.is-different-take header > span,
+.issue-perspective-pick.is-different-take header em {
+  color: #f59e0b;
+}
+.issue-perspective-pick.is-different-take header em {
+  font-weight: 700;
+}
 
 .issue-perspective > p {
   margin: 8px 0 0;

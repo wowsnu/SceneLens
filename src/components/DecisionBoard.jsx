@@ -18,6 +18,7 @@ import SpatialMap from './SpatialMap'
 import LensTracks from './LensTracks'
 import StoryboardStripLane from './StoryboardStripLane'
 import IssueInspector from './IssueInspector'
+import { panelIndexOf } from './evidenceSummary'
 import ReadingTracks from './ReadingTracks'
 import ReadingWorkbench from './ReadingWorkbench'
 import RevisionWorkspace from './RevisionWorkspace'
@@ -1714,6 +1715,7 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
   // 수정본을 받기 직전의 문장. 이것이 없으면 고쳐진 문장만 남아, 감독은
   // 무엇이 달라졌는지 기억에 기대어 판정하게 된다.
   const [promptBefore, setPromptBefore] = useState({})
+  const promptRewriteRequestRef = useRef(0)
   const [selectedOptionIds, setSelectedOptionIds] = useState([])
   const [cameraPreview, setCameraPreview] = useState(null)
   const [cameraApplyHistory, setCameraApplyHistory] = useState([])
@@ -2119,9 +2121,43 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
     const reported = (run?.issues || []).length > 0
       ? run.issues
       : fallbackIssuesFromLensResults(run?.lensResults)
+    // 일부 렌즈 응답은 Issue를 먼저 만들면서 diagnosis_ids를 비워 보낼 수
+    // 있다. 이 경우 트랙에는 마커가 생기지만 Inspector가 본문을 찾지
+    // 못한다. 같은 응답의 lensResults에서 해당 렌즈 진단을 연결해, 늦게
+    // 도착한 편집 Issue도 내용이 비지 않게 보정한다.
+    //
+    // `diagnosis_ids`가 채워져 있어도 안심할 수 없다 — 백엔드가 Issue의
+    // diagnosis_ids와 lensResults의 실제 diagnosis.id를 다른 이름 규칙
+    // (예: `editing-s2-s3-function-overlap` vs `editing-s3-shot-function`)
+    // 으로 보낸 사례가 실측됐다. 이때는 값이 있으니 위 조건에 걸려
+    // 보정을 건너뛰고, Inspector가 diagnosesById에서 아무것도 못 찾아
+    // "처음 발견"이라고는 뜨는데 본문이 완전히 비는 결과가 된다.
+    // 존재만으로 믿지 않고, 실제로 lensResults 안에서 찾아지는지까지
+    // 확인해야 한다.
+    const allDiagnosisIds = new Set(
+      Object.values(run?.lensResults || {}).flatMap((result) => (
+        (result?.diagnoses || []).map((diagnosis) => diagnosis.id)
+      )),
+    )
+    const hydrated = reported.map((issue) => {
+      const hasResolvableDiagnosisIds = (issue.diagnosis_ids || [])
+        .some((id) => allDiagnosisIds.has(id))
+      if (hasResolvableDiagnosisIds || !issue.lenses?.length) return issue
+      const candidates = issue.lenses.flatMap((lens) => (
+        run?.lensResults?.[lens]?.diagnoses || []
+      ))
+      const matching = candidates.filter((diagnosis) => (
+        diagnosis.title === issue.title
+        || (diagnosis.targets || []).some((target) => issue.anchor?.includes(target.split('.', 1)[0]))
+      ))
+      const diagnoses = matching.length > 0 ? matching : candidates.slice(0, 1)
+      return diagnoses.length > 0
+        ? { ...issue, diagnosis_ids: diagnoses.map((diagnosis) => diagnosis.id) }
+        : issue
+    })
     // 다시 보는 중이라 새 결과가 아직 없으면 지난 결과를 보여 준다.
     // 트랙이 비면 보고 있던 Inspector까지 닫힌다.
-    return reported.length > 0 ? reported : (run?.carriedIssues || [])
+    return hydrated.length > 0 ? hydrated : (run?.carriedIssues || [])
   }, [])
 
   // 트랙에는 이 씬에서 지금까지 발견한 이슈를 전부 놓는다. 검토는 범위를
@@ -2168,7 +2204,18 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
           // (run)에서 미장센의 issue-1과 촬영의 issue-1이 `${key}::${issue.id}`로
           // 합쳐지면 똑같은 id가 된다. identityKey는 anchor·lenses·title까지
           // 섞은 값이라 같은 run 안에서도 서로 다른 이슈를 갈라 준다.
-          issue: { ...issue, id: `${key}::${identityKey}`, sourceScopeKey: key },
+          //
+          // diagnosis_ids도 같은 이유로 `${key}::` 접두사를 붙여 둔다.
+          // diagnosesById가 이제 그 접두사로 네임스페이스를 나눠 저장하므로,
+          // 여기서 원본 id를 그대로 두면 서로 다른 run의 진단을 찾아오지
+          // 못하거나(키가 안 맞음) 엉뚱한 run의 진단을 찾아온다(키가
+          // 우연히 겹침).
+          issue: {
+            ...issue,
+            id: `${key}::${identityKey}`,
+            diagnosis_ids: (issue.diagnosis_ids || []).map((diagnosisId) => `${key}::${diagnosisId}`),
+            sourceScopeKey: key,
+          },
         })
       })
     })
@@ -2181,7 +2228,17 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
     Object.entries(multiReviewRuns).forEach(([key, run]) => {
       if (!key.startsWith(scenePrefix)) return
       Object.entries(run?.lensResults || {}).forEach(([lens, result]) => {
-        result?.diagnoses?.forEach((diagnosis) => byId.set(diagnosis.id, {
+        // 원본 diagnosis.id 하나만 키로 쓰면 trackIssues와 같은 문제가
+        // 생긴다 — 백엔드가 렌즈마다 0부터 다시 매기는 로컬 인덱스를
+        // 쓰므로, 서로 다른 run(예: S2 단일 검토와 S1–S4 range 검토)의
+        // 진단이 같은 id를 재사용할 수 있다. 그러면 나중 run이 먼저
+        // run의 항목을 덮어써, Issue가 가리키는 diagnosis_ids로 찾아온
+        // 결과가 엉뚱한 렌즈의 진단이 되거나(lens 불일치로 매칭 실패)
+        // 아예 없는 것처럼 보인다 — "처음 발견"이라고는 뜨는데 본문이
+        // 빈 채로 남는 것이 이 증상이다. run key로 네임스페이스를 나눠
+        // 저장하고, 아래에서 trackIssues의 diagnosis_ids도 같은 접두사로
+        // 다시 써서 둘이 계속 맞물리게 한다.
+        result?.diagnoses?.forEach((diagnosis) => byId.set(`${key}::${diagnosis.id}`, {
           lens,
           diagnosis,
           stance: result.stance,
@@ -3265,6 +3322,33 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
     if (!entry) return
     // 다른 Issue로 옮기면 열려 있던 이음새 편집은 그 자리의 것이 아니다.
     setSeamEdit(null)
+    // 수정안 프롬프트는 해당 RevisionWorkspace에서 임시로 만든 초안이다.
+    // 같은 진단을 다시 열었을 때 이전 초안이 "새 수정안"처럼 보이지 않게
+    // 직접 수정 진입 시 정리한다. 현재 컷의 원문 프롬프트는 Workspace가
+    // 직접 수정 패널을 열 때 다시 읽어 채운다.
+    promptRewriteRequestRef.current += 1
+    setPromptRewriting(null)
+    const diagnosisId = entry.diagnosis?.id
+    if (diagnosisId) {
+      setPromptDrafts((current) => {
+        if (!(diagnosisId in current)) return current
+        const next = { ...current }
+        delete next[diagnosisId]
+        return next
+      })
+      setPromptRewriteNotes((current) => {
+        if (!(diagnosisId in current)) return current
+        const next = { ...current }
+        delete next[diagnosisId]
+        return next
+      })
+      setPromptBefore((current) => {
+        if (!(diagnosisId in current)) return current
+        const next = { ...current }
+        delete next[diagnosisId]
+        return next
+      })
+    }
     setRevisionWorkspace({
       issue,
       diagnosis: { ...entry.diagnosis, lens: entry.lens },
@@ -3407,6 +3491,20 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
     )).map((target) => target.split('.', 1)[0]))]
     const fallbackPanelIds = issue.anchor?.match(/S\d+/g) || []
     const focusPanelIds = panelIds.length > 0 ? panelIds : fallbackPanelIds
+    // 이 Issue를 "다른 렌즈로 검토하기"로 부르면, 그 렌즈가 볼 그림에는
+    // 최소한 이 Issue의 대상(S3→S4라면 S3와 S4)이 들어 있어야 한다.
+    // 지금 화면의 검토 범위(scope)만 보내면, 감독이 S3 한 컷만 보는
+    // 중에 이음새 Issue를 다른 렌즈로 불렀을 때 그 렌즈는 S4를 아예
+    // 못 받아 "이 컷 하나로는 판단할 수 없다"고 답한다 — 버튼을
+    // 눌렀는데 판단 자체가 성립하지 않는 것이다.
+    const scopedEntries = selectedShotEntriesOf()
+    const scopedIndexes = new Set(scopedEntries.map((entry) => entry.shotIndex))
+    const missingFocusEntries = focusPanelIds
+      .map((panelId) => panelIndexOf(panelId, shots))
+      .filter((index) => index >= 0 && index < shots.length && !scopedIndexes.has(index))
+      .map((shotIndex) => ({ shot: shots[shotIndex], shotIndex }))
+    const reviewShotEntries = [...scopedEntries, ...missingFocusEntries]
+      .sort((a, b) => a.shotIndex - b.shotIndex)
     const criterion = (issue.diagnosis_ids || [])
       .map((diagnosisId) => diagnosesById.get(diagnosisId)?.diagnosis.criterion)
       .find(Boolean) || issue.detail || ''
@@ -3424,7 +3522,7 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
     try {
       const response = await requestDirectingReview({
         mode: lens,
-        panels: await buildReviewPanels(selectedShotEntriesOf()),
+        panels: await buildReviewPanels(reviewShotEntries),
         intent: '',
         // 감독이 확정한 전제를 전부 싣는다. 관객 검토에서 "여기는
         // 어떻게 읽히길 바라나요?"에 답한 것도 여기 들어 있다 —
@@ -3462,11 +3560,47 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
         // 갈림에서 부른 경우 이 범위를 아직 검토한 적이 없을 수 있다.
         // 그때 결과를 버리면 렌즈가 답했는데 화면에 아무것도 안 뜬다.
         const run = current[issue.sourceScopeKey] || { status: 'ready', requestId: Date.now() }
+        // 이 렌즈를 다시 부르면 lensResults[lens]가 통째로 새 결과로
+        // 바뀐다. 모델이 매번 diagnosis id를 자유 형식으로 새로 짓기
+        // 때문에(`editing-s2-s3-function-overlap` → `editing-s3-shot-
+        // function`처럼), 트랙에 이미 떠 있던 이슈가 옛 id를 diagnosis_ids
+        // 에 담고 있으면 그 참조가 끊긴다 — "처음 발견"은 뜨는데 본문이
+        // 비는 증상이 이것이다. 이 렌즈가 걸린 기존 이슈마다, 새
+        // result.diagnoses 중 이 이슈와 실제로 맞는 것(제목 또는 anchor
+        // 겹침)을 다시 찾아 diagnosis_ids를 갱신한다 — issuesOfRun의
+        // hydration 보정과 같은 기준이다.
+        const nextDiagnoses = result.diagnoses || []
+        // run.issues는 백엔드가 준 원본 형태라 diagnosis_ids도 접두사
+        // 없는 원본 id다 — diagnosesById(트랙용으로 `${runKey}::`를
+        // 붙여 저장한 맵)와는 키 형식이 달라 직접 비교할 수 없다. 이
+        // 렌즈가 이전에 낸 id 목록은 아직 갱신 전인 run.lensResults[lens]
+        // (옛 결과)에서 그대로 얻는다.
+        const staleLensIds = new Set(
+          (run.lensResults?.[lens]?.diagnoses || []).map((diagnosis) => diagnosis.id),
+        )
+        const relinkedIssues = (run.issues || []).map((existingIssue) => {
+          if (!existingIssue.lenses?.includes(lens)) return existingIssue
+          const matching = nextDiagnoses.filter((diagnosis) => (
+            diagnosis.title === existingIssue.title
+            || (diagnosis.targets || []).some((target) => (
+              existingIssue.anchor?.includes(target.split('.', 1)[0])
+            ))
+          ))
+          if (matching.length === 0) return existingIssue
+          const otherLensIds = (existingIssue.diagnosis_ids || []).filter((id) => (
+            !staleLensIds.has(id)
+          ))
+          return {
+            ...existingIssue,
+            diagnosis_ids: [...otherLensIds, ...matching.map((diagnosis) => diagnosis.id)],
+          }
+        })
         return {
           ...current,
           [issue.sourceScopeKey]: {
             ...run,
             lensResults: { ...(run.lensResults || {}), [lens]: result },
+            issues: relinkedIssues,
           },
         }
       })
@@ -3890,6 +4024,8 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
     // 고치기 전 문장을 **지금** 잡아 둔다. 응답이 온 뒤에 넣으면 기다리는
     // 동안 비교할 것이 없고, 실패하면 아예 남지 않는다.
     setPromptBefore((before) => ({ ...before, [diagnosis.id]: current.effective }))
+    const requestToken = promptRewriteRequestRef.current + 1
+    promptRewriteRequestRef.current = requestToken
     setPromptRewriting(diagnosis.id)
     try {
       const { rewritePrompt } = await import('../services/api')
@@ -3904,7 +4040,9 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
       // 한 줄로 옮길 수 없는 방향이면 모델이 바꿀 것을 찾지 못한다. 이때
       // `무엇을 바꿨다`는 설명만 뜨면 바뀐 줄 알고 넘어가게 된다.
       const unchanged = result.prompt.trim() === current.effective.trim()
+      if (promptRewriteRequestRef.current !== requestToken) return
       setPromptDrafts((draft) => ({ ...draft, [diagnosis.id]: result.prompt }))
+      if (promptRewriteRequestRef.current !== requestToken) return
       setPromptRewriteNotes((notes) => ({
         ...notes,
         [diagnosis.id]: unchanged
@@ -3916,12 +4054,13 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
       // 비교할 원문까지 사라지면 무엇이 그대로인지 확인할 수 없다.
     } catch (error) {
       // 실패해도 편집기는 열린 채로 둔다. 감독이 직접 고칠 수 있다.
+      if (promptRewriteRequestRef.current !== requestToken) return
       setPromptRewriteNotes((notes) => ({
         ...notes,
         [diagnosis.id]: `AI 호출 실패 · ${error.message}`,
       }))
     } finally {
-      setPromptRewriting(null)
+      if (promptRewriteRequestRef.current === requestToken) setPromptRewriting(null)
     }
   }
 
@@ -4021,8 +4160,8 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
     })
   }
 
-  // 촬영의 직접 수정은 작업 공간을 떠나지 않는다. 추천안의 맥락과 바로
-  // 위 현재/변화된 사진을 보며 기본 샷 값과 프롬프트를 함께 고친다.
+  // 미장센·촬영의 직접 수정은 작업 공간을 떠나지 않는다. 추천안의 맥락과
+  // 바로 위 현재/변화된 사진을 보며 기본 샷 값과 프롬프트를 함께 고친다.
   const applyDirectCameraEdit = (diagnosis, draft) => {
     const targetCut = cutForDiagnosis(diagnosis)
     if (!targetCut || !draft) return
@@ -4055,11 +4194,11 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
       promptOverride: targetCut.promptOverride || '',
     }
     updateCutPlanItem(targetCut.id, changes)
-    if (!beginPanelRegeneration(`${diagnosis.id}::camera-direct`, targetCut.id, before)) return
+    if (!beginPanelRegeneration(`${diagnosis.id}::${diagnosis.lens || 'shot'}-direct`, targetCut.id, before)) return
     routeDiagnosisTool('regenerate', diagnosis, null, { changes: changeLines })
     logEvent('edit', {
-      source: 'diagnosis-camera-direct',
-      lens: 'camera',
+      source: `diagnosis-${diagnosis.lens || 'shot'}-direct`,
+      lens: diagnosis.lens || 'camera',
       level: normalizeLevel(diagnosis.level),
     })
   }
@@ -6430,6 +6569,7 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
                   range={scopeMode === 'range' ? { from: scopeFrom, to: scopeTo } : null}
                   relating={Boolean(multiReviewRuns[(revisionWorkspace?.issue || selectedTrackIssue)?.sourceScopeKey]?.relating)}
                   onCheckLens={checkSelectedIssueLens}
+                  onRevise={_reviseTrackIssue}
                   onCompare={() => runRelateReview((revisionWorkspace?.issue || selectedTrackIssue)?.sourceScopeKey)}
                   mainLensQuestion={selectedIssueMainLensQuestion}
                   /* 답은 이 렌즈만의 것이 아니다. 감독이 확정한 창작 결정이므로
@@ -6507,17 +6647,6 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
                   onDirectCameraEdit={(draft) => applyDirectCameraEdit(
                     revisionWorkspace.diagnosis, draft,
                   )}
-                  onOpenLens={() => {
-                    // 도구를 여기 다시 만들지 않는다. 그 렌즈의 상세
-                    // 화면에 적용·재생성·되돌리기가 이미 있다.
-                    const lensId = revisionWorkspace.diagnosis.lens === 'mise'
-                      ? 'staging'
-                      : revisionWorkspace.diagnosis.lens
-                    logScaffold({ feature: 'lens', action: 'open', lens: lensId })
-                    setRevisionWorkspace(null)
-                    setFullAnalysisOpen(true)
-                    selectReviewMode(lensId)
-                  }}
                   onPrepare={(alternative) => {
                     // 미장센·촬영의 문장형 추천안은 실행 전에 먼저 프롬프트
                     // 초안으로 열어 사용자가 직접 만진다. 편집은 아래

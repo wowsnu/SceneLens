@@ -14,6 +14,17 @@
  * 나와야 한다 — text first (문서 4장).
  */
 
+// 패널 id(`S3`, 또는 shot.id)를 shots 배열의 인덱스로 바꾼다.
+// EvidenceStage(근거 표시)와 DecisionBoard(다른 렌즈로 검토하기가
+// Issue의 anchor를 검토 범위에 포함시키는 계산) 둘 다 같은 변환이
+// 필요해서 공유 유틸로 둔다 — 컴포넌트 파일에 두면 Fast refresh가
+// 컴포넌트 외의 export를 허용하지 않는다.
+export const panelIndexOf = (panelId, shots) => {
+  const match = /^S(\d+)$/.exec(panelId)
+  if (match) return Number(match[1]) - 1
+  return shots.findIndex((shot) => String(shot?.id) === panelId)
+}
+
 /**
  * 근거 하나를 `{ label, detail }`로 만든다.
  * label은 무엇에 관한 것인지, detail은 화면에서 무엇을 확인했는지.

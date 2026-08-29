@@ -1527,6 +1527,8 @@
 
 .scene-basis-environment {
   grid-column: 1 / -1;
+  /* 장면을 읽을 때는 먼저 언제인지 확정한 뒤 인물·공간을 해석한다. */
+  order: -1;
 }
 
 .scene-basis-environment > dl {

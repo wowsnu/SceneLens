@@ -1,4 +1,4 @@
-import { overlaysFor, panelsOf, hasOverlay } from './evidenceSummary'
+import { overlaysFor, panelsOf, hasOverlay, panelIndexOf } from './evidenceSummary'
 import './EvidenceStage.css'
 
 /**
@@ -23,12 +23,6 @@ const SEAM_OP_LABELS = {
   merge: '두 컷 합치기',
   delete: '컷 빼기',
   seam: '이음새 조정',
-}
-
-const panelIndexOf = (panelId, shots) => {
-  const match = /^S(\d+)$/.exec(panelId)
-  if (match) return Number(match[1]) - 1
-  return shots.findIndex((shot) => String(shot?.id) === panelId)
 }
 
 // Issue가 무엇을 가리키는지에 따라, 같은 스토리보드를 최소 단위로 다시

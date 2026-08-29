@@ -53,7 +53,7 @@ const seamAction = (alternative) => (
 
 export default function RevisionWorkspace({
   issue, issues = [], shotCount = 0, diagnosis, cut = null,
-  onBack, onChoose, onPrepare, onKeep, onOpenLens, onClose,
+  onBack, onChoose, onPrepare, onKeep, onClose,
   promptDraft, promptNote, promptBefore = '', rewriting, generating, onPromptChange, onClosePrompt, onSavePrompt, onRevertPrompt,
   revisionPending, revisionImage, onAccept, onReject,
   // 생성이 시작되면 컷 표는 먼저 제안 값으로 바뀐다. 하지만 감독이
@@ -80,7 +80,7 @@ export default function RevisionWorkspace({
   const [cameraDirectDraft, setCameraDirectDraft] = useState(null)
   const [editingDirectEditing, setEditingDirectEditing] = useState(false)
   const changes = (diagnosis?.alternatives || []).filter((item) => item.kind === 'change')
-  const isCameraLens = diagnosis?.lens === 'camera'
+  const isShotEditLens = diagnosis?.lens === 'camera' || diagnosis?.lens === 'mise'
   const isEditingLens = diagnosis?.lens === 'editing'
   const isPatchAlternative = (alternative) => fieldChangesOf(
     alternative, cut, revisionPending ? revisionBefore : null,
@@ -272,8 +272,8 @@ export default function RevisionWorkspace({
       )}
 
       {!seamEditor && <section className="revision-workspace-options">
-        {isCameraLens && cameraDirectDraft && (
-          <section className="revision-camera-direct-edit" aria-label="촬영 직접 수정">
+        {isShotEditLens && cameraDirectDraft && (
+          <section className="revision-camera-direct-edit" aria-label="직접 수정">
             <span>직접 수정</span>
             <p>이 컷의 샷 크기, 앵글과 프롬프트를 여기서 바로 고칩니다.</p>
             <div className="revision-camera-direct-fields">
@@ -334,7 +334,7 @@ export default function RevisionWorkspace({
             {/* 컷 값이 바뀌는 수정안이면 `기존 → 바뀜`을 그대로 적는다.
                 문장만으로는 무엇이 달라지는지 알 수 없다 (기존 Decision
                 Card가 하던 방식). */}
-            {isCameraLens ? (
+            {isShotEditLens ? (
               <dl className="directing-alternative-patch">
                 {fieldChangesOf(alternative, cut, revisionPending ? revisionBefore : null).map(([label, from, to]) => (
                   <div key={label}>
@@ -348,7 +348,7 @@ export default function RevisionWorkspace({
                 {label} {from || '미정'} → {to}
               </span>
             ))}
-            {isCameraLens && isPatchAlternative(alternative) ? (
+            {isShotEditLens && isPatchAlternative(alternative) ? (
               <button
                 type="button"
                 className="revision-alternative-apply"
@@ -395,10 +395,11 @@ export default function RevisionWorkspace({
             )}
           </article>
         )) : <p>바로 적용할 수정안은 없습니다. 직접 수정 방향을 정해 주세요.</p>}
+        {diagnosis?.lens === 'mise' && selected == null && promptDraft != null && renderPrompt()}
         {/* 촬영의 값 변경은 각 수정안 카드에 이미 `현재 → 변경값`으로
             보인다. 여기서 한 번 더 영향 카드로 반복하지 않는다. 이 블록은
             컷 수·순서처럼 구조적으로 번지는 수정에만 의미가 있다. */}
-        {!isCameraLens && impact && (
+        {!isShotEditLens && impact && (
           <div className="revision-impact" aria-live="polite">
             <span>이 수정이 바꾸는 것</span>
             {impact.lines.length > 0 && (
@@ -426,11 +427,9 @@ export default function RevisionWorkspace({
         )}
 
 
-        {/* 렌즈마다 실행하는 자리가 이미 따로 있다 — 미장센은 수정 문안의
-            `이 문안으로 수정안 보기`, 촬영은 카드의 `적용하고 생성하기`,
-            편집은 두 컷 사이의 이음새 편집기다. 여기 공용 실행 버튼을
-            두면 같은 일에 경로가 둘이 되고, 어느 것이 무엇을 하는지
-            갈린다. */}
+        {/* 렌즈별 직접 수정은 모두 이 작업면 안에서 시작한다. 미장센은
+            프롬프트 문장을, 촬영은 샷 값과 프롬프트를, 편집은 이음새 구조를
+            바로 고친다. */}
         {seamEditing && (
           <p className="revision-seam-open-note">
             두 컷 사이에서 고치는 중입니다. 위 이음새 자리에서 확인하고 실행하세요.
@@ -466,15 +465,11 @@ export default function RevisionWorkspace({
       {!applied && (
         <footer className="revision-verdict">
           <button type="button" onClick={onKeep}>현재 유지</button>
-          {isCameraLens ? (
+          {isShotEditLens ? (
             <button type="button" onClick={openCameraDirectEdit}>직접 수정</button>
           ) : isEditingLens ? (
             <button type="button" onClick={() => setEditingDirectEditing((open) => !open)}>직접 수정</button>
-          ) : onOpenLens && (
-            <button type="button" onClick={onOpenLens}>
-              {`${LENS_NAMES[diagnosis.lens] || '이 렌즈'}에서 직접 수정`}
-            </button>
-          )}
+          ) : null}
         </footer>
       )}
     </section>

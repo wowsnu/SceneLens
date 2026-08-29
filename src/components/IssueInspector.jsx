@@ -32,6 +32,7 @@ export default function IssueInspector({
   range = null,
   relating = false,
   onCheckLens,
+  onRevise,
   onCompare,
   mainLensQuestion = null,
   onAnswerMainLensQuestion,
@@ -229,9 +230,16 @@ export default function IssueInspector({
     })))
     setQuestionAnswers({})
   }
-  const issueDiagnosisIds = new Set(issue.diagnosis_ids || [])
+  // issue.diagnosis_ids는 이제 `${runKey}::원본id` 형태다(DecisionBoard가
+  // 여러 run의 진단을 diagnosesById에서 구분해 저장하려고 붙인 접두사).
+  // relations(commonFindings)는 항상 issue와 같은 run(sourceScopeKey)
+  // 것만 넘어오고, 그 안의 diagnosis_ids는 백엔드가 준 원본 id 그대로다
+  // — 접두사가 없다. 그대로 비교하면 형식이 달라 항상 실패하므로,
+  // 마지막 `::` 뒤 원본 id만 떼어 비교한다.
+  const rawDiagnosisId = (id) => id?.split('::').pop()
+  const issueDiagnosisIds = new Set((issue.diagnosis_ids || []).map(rawDiagnosisId))
   const relatedRelations = relations.filter((relation) => (
-    (relation.diagnosis_ids || []).some((id) => issueDiagnosisIds.has(id))
+    (relation.diagnosis_ids || []).some((id) => issueDiagnosisIds.has(rawDiagnosisId(id)))
   ))
   // 선택 Issue를 처음 짚은 Lens가 그래프의 중심이다. 다른 Lens는 이
   // 판단과 어떤 관계를 맺는지 위·아래 가지로 붙는다.
@@ -243,9 +251,19 @@ export default function IssueInspector({
       || LENSES.find((lens) => lens.id !== relationCenterLens.id && (relation.lenses || []).includes(lens.id))
     return otherLens ? { relation, otherLens } : null
   }).filter(Boolean)
+  // 중심(130, 30, r=12)에서 좌우 노드(46/214, 96, r=12)로 뻗는 두
+  // 변이 좌우 완전히 대칭이어야 화살표 각도가 자연스럽다. 곡선
+  // 제어점을 눈대중 값으로 두면(예전 값) 두 변의 곡률이 미묘하게
+  // 달라 한쪽만 더 휘어 보인다 — 직선으로 두고 원 반지름만큼 뗀
+  // 시작·끝점을 계산해서 화살표가 정확히 원 테두리에 닿게 한다.
+  // 라벨은 두 변이 만나는 꼭짓점(중심 노드) 바로 아래가 아니라, 그
+  // 변을 62% 내려간 지점 — 자식 노드에 더 가까운 쪽에 둔다. 꼭짓점
+  // 근처는 두 변의 라벨이 몰려 겹치는 자리라, Agreement/Consequence
+  // 처럼 폭이 다른 라벨도 안전하게 벌어지려면 꼭짓점에서 충분히
+  // 떨어뜨려야 한다.
   const relationBranches = [
-    { nodeX: 40, nodeY: 94, labelX: 76, labelY: 62, path: 'M130 27 Q88 52 40 94' },
-    { nodeX: 220, nodeY: 94, labelX: 184, labelY: 62, path: 'M130 27 Q172 52 220 94' },
+    { nodeX: 46, nodeY: 96, labelX: 80, labelY: 69, path: 'M120.6 37.4 L55.4 88.6' },
+    { nodeX: 214, nodeY: 96, labelX: 180, labelY: 69, path: 'M139.4 37.4 L204.6 88.6' },
   ]
   const comparedLensCount = visiblePerspectives.filter(({ diagnosis, check }) => (
     Boolean(diagnosis) || check?.status === 'ready'
@@ -462,6 +480,19 @@ export default function IssueInspector({
           // 다른 렌즈가 기존 Issue를 강화하는 summary를 남길 수 있다. 이는
           // 이 렌즈가 diagnosis로 문제를 등록한 것은 아니지만, `이상 없음`도 아니다.
           const agreesWithIssue = Boolean(!diagnosis && !check?.diagnosis && check?.reading)
+          // stance는 백엔드가 이 Lens의 기본 방향을 직접 말한 값이다
+          // (change/keep/different). `different`는 "이 Issue에 동의하는
+          // 게 아니라, 이 Lens만의 기준에서 별도 관심사를 봤다"는 뜻 —
+          // hasDiagnosis 하나로만 보면 동의든 별개 관점이든 전부 같은
+          // "문제를 짚음"으로 뭉개져, 렌즈마다 같은 방향으로만 갈리는
+          // 것처럼 읽힌다. 여기서 갈라야 관점이 실제로 다르다는 것이
+          // 카드 목록에서부터 보인다.
+          const hasDifferentTake = check?.stance === 'different'
+          const reviseTarget = diagnosis?.diagnosis || check?.diagnosis || null
+          // "다르게 봄"에도 아래 버튼 유무가 갈린다 — 구체적 수정 진단을
+          // 냈으면(reviseTarget) 그 자리에서 바로 고칠 수 있고, 관찰만
+          // 남겼으면(reading만) 그럴 수 없다. 문구가 같으면 감독이
+          // 카드를 열어 봐야 어느 쪽인지 안다 — 목록에서부터 구분한다.
           const isActive = lens.id === displayLens
           const state = rechecking
             ? '다시 검토 중'
@@ -469,19 +500,21 @@ export default function IssueInspector({
             ? '● 처음 발견'
             : checking
               ? '◌ 확인 중'
-              : hasDiagnosis
-                ? '◐ 이 렌즈도 문제를 짚음'
-                : agreesWithIssue
-                  ? '◐ 이 문제에 동의'
-                : checked
-                  ? '◌ 이상 없음'
-                  : '확인 중'
+              : hasDifferentTake
+                ? (reviseTarget ? '◆ 다르게 봄 · 수정 필요' : '◆ 다르게 봄 · 참고할 점')
+                : hasDiagnosis
+                  ? '◐ 이 렌즈도 문제를 짚음'
+                  : agreesWithIssue
+                    ? '◐ 이 문제에 동의'
+                  : checked
+                    ? '◌ 이상 없음'
+                    : '확인 중'
           return (
             // 렌즈별 흐름은 판단을 고르는 자리다. 실제 수정은 별도
             // `수정하기`에서만 시작해 판단·개입을 섞지 않는다.
             <div
               key={lens.id}
-              className={`issue-lens-slot lens-${lens.id} ${index === 0 ? 'primary' : 'added'} ${isActive ? 'active' : ''} ${hasDiagnosis || agreesWithIssue ? 'ready' : checking || rechecking ? 'loading' : ''}`}
+              className={`issue-lens-slot lens-${lens.id} ${index === 0 ? 'primary' : 'added'} ${isActive ? 'active' : ''} ${hasDifferentTake ? 'different' : hasDiagnosis || agreesWithIssue ? 'ready' : checking || rechecking ? 'loading' : ''}`}
             >
               <button
                 type="button"
@@ -493,6 +526,15 @@ export default function IssueInspector({
                 <strong>{lens.label}</strong>
                 <em>{rechecking && <i className="issue-lens-spinner" aria-hidden="true" />}{state}</em>
               </button>
+              {reviseTarget && (
+                <button
+                  type="button"
+                  className="issue-lens-revise"
+                  onClick={() => onRevise?.({ lens: lens.id, diagnosis: reviseTarget }, issue)}
+                >
+                  수정하기
+                </button>
+              )}
             </div>
           )
         })}
@@ -524,9 +566,12 @@ export default function IssueInspector({
           </button>
           {isRelationViewOpened && relationLanes.length > 0 && (
             <div className="issue-relation-map">
-              <svg className="issue-relation-svg" viewBox="0 0 260 112" role="img" aria-label="Lens 관계도">
+              <svg className="issue-relation-svg" viewBox="0 0 260 116" role="img" aria-label="Lens 관계도">
                 <defs>
                   <marker id="issue-relation-arrow" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="5" markerHeight="5" orient="auto">
+                    <path d="M0 0 L8 4 L0 8 Z" />
+                  </marker>
+                  <marker id="issue-relation-arrow-start" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
                     <path d="M0 0 L8 4 L0 8 Z" />
                   </marker>
                 </defs>
@@ -540,8 +585,8 @@ export default function IssueInspector({
                     if (event.key === 'Enter' || event.key === ' ') setActiveLens(relationCenterLens.id)
                   }}
                 >
-                  <circle cx="130" cy="15" r="12" />
-                  <text x="130" y="19" textAnchor="middle">{relationCenterLens.mark}</text>
+                  <circle cx="130" cy="30" r="12" />
+                  <text x="130" y="34" textAnchor="middle">{relationCenterLens.mark}</text>
                 </g>
                 {relationLanes.slice(0, 2).map(({ relation, otherLens }, index) => {
             const key = relationKeyOf(relation)
@@ -549,9 +594,18 @@ export default function IssueInspector({
             const type = relation.type === 'conflict' ? 'Tension' : relation.type === 'agreement' ? 'Agreement' : 'Consequence'
             const branch = relationBranches[index]
             const labelWidth = type === 'Agreement' ? 66 : type === 'Tension' ? 52 : 78
+            const isConsequence = relation.type === 'consequence'
+            const sourceIsCenter = relation.source_lens === relationCenterLens.id
+            const hasKnownSource = Boolean(relation.source_lens)
+            const markerStart = !isConsequence || (hasKnownSource && !sourceIsCenter)
+            const markerEnd = !isConsequence || !hasKnownSource || sourceIsCenter
             return (
               <g key={key} className={`issue-relation-svg-branch is-${relation.type}`}>
-                <path d={branch.path} markerEnd={relation.type === 'consequence' ? 'url(#issue-relation-arrow)' : undefined} />
+                <path
+                  d={branch.path}
+                  markerStart={markerStart ? 'url(#issue-relation-arrow-start)' : undefined}
+                  markerEnd={markerEnd ? 'url(#issue-relation-arrow)' : undefined}
+                />
                 <g
                   className="issue-relation-svg-edge"
                   role="button"
@@ -586,14 +640,22 @@ export default function IssueInspector({
                 const key = relationKeyOf(relation)
                 const open = relationOpen.issueId === issue.id && relationOpen.relationKey === key
                 if (!open) return null
+                const sourceLabel = LENSES.find((lens) => lens.id === relation.source_lens)?.label
+                const affectedLabel = LENSES.find((lens) => lens.id === relation.affected_lens)?.label
+                const isConsequence = relation.type === 'consequence'
                 const summaryLabel = relation.type === 'agreement'
                   ? '함께 보는 문제'
                   : relation.type === 'conflict'
                     ? '갈리는 판단'
-                    : '이어지는 영향'
+                    : isConsequence && sourceLabel && affectedLabel
+                      ? `${sourceLabel} → ${affectedLabel}`
+                      : '이어지는 영향'
+                const summaryText = isConsequence && sourceLabel && affectedLabel
+                  ? `${sourceLabel}에서 발견한 문제가 ${affectedLabel}의 판단으로 이어집니다. ${relation.summary}`
+                  : relation.summary
                 return (
                   <div key={`${key}:summary`} className="issue-relation-summary">
-                    <strong><em>{summaryLabel}</em>{relation.summary}</strong>
+                    <strong><em>{summaryLabel}</em>{summaryText}</strong>
                   </div>
                 )
               })}
@@ -672,7 +734,7 @@ export default function IssueInspector({
                   <>
                     <button
                       type="button"
-                      className="issue-perspective-pick"
+                      className={`issue-perspective-pick${check?.stance === 'different' ? ' is-different-take' : ''}`}
                       onClick={() => setActiveLens(lens.id)}
                       aria-pressed={lens.id === displayLens}
                       title={lens.id === displayLens
@@ -682,8 +744,19 @@ export default function IssueInspector({
                         : `${lens.label} 관점으로 보기`}
                     >
                       <header>
-                        <span>◐</span>
+                        {/* stance가 different면 이 렌즈는 Issue에 동의하는
+                            게 아니라 자기 기준의 별도 관심사를 낸 것이다.
+                            같은 ◐로 두면 다른 방향의 판단도 "동의"로
+                            읽힌다 — 관점이 갈렸다는 것 자체가 감독에게
+                            주는 정보이므로 아이콘과 문구로 구분한다.
+                            checkDiagnosis 유무로 한 번 더 갈라, 그 자리에서
+                            고칠 수 있는 것인지 목록의 배지와 똑같이
+                            말한다 — 아래 렌즈 스택과 다른 말을 하면 안 된다. */}
+                        <span>{check?.stance === 'different' ? '◆' : '◐'}</span>
                         <strong>{lens.label}</strong>
+                        {check?.stance === 'different' && (
+                          <em>{checkDiagnosis ? '다르게 봄 · 수정 필요' : '다르게 봄 · 참고할 점'}</em>
+                        )}
                       </header>
                       <p className="issue-observation">{checkDiagnosis?.diagnosis || checkReading}</p>
                       {checkDiagnosis && evidenceLineFor(checkDiagnosis) && (
