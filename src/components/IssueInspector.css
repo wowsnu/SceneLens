@@ -572,10 +572,11 @@
 .issue-relation-map { display: grid; gap: 7px; min-width: 0; margin-top: 2px; }
 .issue-relation-svg { display: block; width: min(100%, 255px); height: auto; margin: 0 auto; overflow: visible; }
 .issue-relation-svg defs marker path { fill: #bfdbfe; }
-.issue-relation-svg-branch > path { fill: none; stroke: rgba(226, 232, 240, 0.38); stroke-width: 1.6; stroke-linecap: round; }
-.issue-relation-svg-branch.is-agreement > path { stroke: rgba(110, 231, 183, 0.74); }
-.issue-relation-svg-branch.is-conflict > path { stroke: rgba(252, 211, 77, 0.76); stroke-dasharray: 3 3; }
-.issue-relation-svg-branch.is-consequence > path { stroke: rgba(147, 197, 253, 0.8); }
+.issue-relation-svg-branch path { fill: none; stroke: rgba(226, 232, 240, 0.38); stroke-width: 1.6; stroke-linecap: round; }
+.issue-relation-svg-branch.is-agreement path:not(.issue-relation-svg-plain) { stroke: rgba(110, 231, 183, 0.74); }
+.issue-relation-svg-branch.is-conflict path:not(.issue-relation-svg-plain) { stroke: rgba(252, 211, 77, 0.76); stroke-dasharray: 3 3; }
+.issue-relation-svg-branch.is-consequence path:not(.issue-relation-svg-plain) { stroke: rgba(147, 197, 253, 0.8); }
+.issue-relation-svg-plain { stroke: rgba(226, 232, 240, 0.28); stroke-dasharray: 2 4; }
 .issue-relation-svg-node { cursor: pointer; outline: none; }
 .issue-relation-svg-node circle { fill: #18212f; stroke: var(--relation-lens, #94a3b8); stroke-width: 1.5; }
 .issue-relation-svg-node text { fill: rgba(248, 250, 252, 0.94); font-size: 10px; font-weight: 850; pointer-events: none; }

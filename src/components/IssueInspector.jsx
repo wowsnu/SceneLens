@@ -254,12 +254,29 @@ export default function IssueInspector({
   // 이때는 관계 그래프의 중심이 될 Lens가 없으므로, 임의로 하나를 꾸며
   // 내지 않고 관계 보기를 비워 둔다. 이전에는 여기서 null.lens를 읽어
   // 연출 검토 전환 전체가 크래시했다.
-  const relationLanes = relationCenterLens ? relatedRelations.map((relation) => {
-    const connected = (relation.lenses || []).filter((lensId) => lensId !== relationCenterLens.id)
-    const otherLens = LENSES.find((lens) => lens.id === connected[0])
-      || LENSES.find((lens) => lens.id !== relationCenterLens.id && (relation.lenses || []).includes(lens.id))
-    return otherLens ? { relation, otherLens } : null
-  }).filter(Boolean) : []
+  // 이 이슈를 실제로 짚은 다른 렌즈마다 가지를 하나씩 만든다. 관계
+  // 레코드가 있는 쌍만 그리면, 같은 이슈에 진단을 냈지만 원인·영향
+  // 관계까지는 기록되지 않은 렌즈(예: 촬영)가 그래프에서 통째로 빠진다
+  // (S5). 관계 레코드에만 있는 렌즈도 함께 넣는다. 관계가 여럿이면 그
+  // 렌즈 가지에 모두 매단다.
+  const relatedLensIds = new Set([
+    ...(issue.lenses || []),
+    ...visiblePerspectives
+      .filter(({ diagnosis, check }) => Boolean(diagnosis || check?.diagnosis || check?.reading))
+      .map(({ lens }) => lens.id),
+    ...relatedRelations.flatMap((relation) => relation.lenses || []),
+  ])
+  const relationLanes = relationCenterLens
+    ? LENSES
+      .filter((lens) => lens.id !== relationCenterLens.id && relatedLensIds.has(lens.id))
+      .map((otherLens) => ({
+        otherLens,
+        relations: relatedRelations.filter((relation) => (
+          (relation.lenses || []).includes(otherLens.id)
+          && (relation.lenses || []).includes(relationCenterLens.id)
+        )),
+      }))
+    : []
   // 중심(130, 30, r=12)에서 좌우 노드(46/214, 96, r=12)로 뻗는 두
   // 변이 좌우 완전히 대칭이어야 화살표 각도가 자연스럽다. 곡선
   // 제어점을 눈대중 값으로 두면(예전 값) 두 변의 곡률이 미묘하게
@@ -597,37 +614,60 @@ export default function IssueInspector({
                   <circle cx="130" cy="30" r="12" />
                   <text x="130" y="34" textAnchor="middle">{relationCenterLens.mark}</text>
                 </g>
-                {relationLanes.slice(0, 2).map(({ relation, otherLens }, index) => {
-            const key = relationKeyOf(relation)
-            const open = relationOpen.issueId === issue.id && relationOpen.relationKey === key
-            const type = relation.type === 'conflict' ? 'Tension' : relation.type === 'agreement' ? 'Agreement' : 'Consequence'
+                {relationLanes.slice(0, 2).map(({ otherLens, relations: laneRelations }, index) => {
             const branch = relationBranches[index]
-            const labelWidth = type === 'Agreement' ? 66 : type === 'Tension' ? 52 : 78
-            const isConsequence = relation.type === 'consequence'
-            const sourceIsCenter = relation.source_lens === relationCenterLens.id
-            const hasKnownSource = Boolean(relation.source_lens)
-            const markerStart = !isConsequence || (hasKnownSource && !sourceIsCenter)
-            const markerEnd = !isConsequence || !hasKnownSource || sourceIsCenter
             return (
-              <g key={key} className={`issue-relation-svg-branch is-${relation.type}`}>
-                <path
-                  d={branch.path}
-                  markerStart={markerStart ? 'url(#issue-relation-arrow-start)' : undefined}
-                  markerEnd={markerEnd ? 'url(#issue-relation-arrow)' : undefined}
-                />
-                <g
-                  className="issue-relation-svg-edge"
-                  role="button"
-                  tabIndex="0"
-                  aria-label={`${type} 관계 설명 보기`}
-                  onClick={() => setRelationOpen(open ? { issueId: issue.id, relationKey: null } : { issueId: issue.id, relationKey: key })}
-                  onKeyDown={(event) => {
-                    if (event.key === 'Enter' || event.key === ' ') setRelationOpen(open ? { issueId: issue.id, relationKey: null } : { issueId: issue.id, relationKey: key })
-                  }}
-                >
-                  <rect x={branch.labelX - labelWidth / 2} y={branch.labelY - 10} width={labelWidth} height="18" rx="9" />
-                  <text x={branch.labelX} y={branch.labelY + 3} textAnchor="middle">{type}</text>
-                </g>
+              <g key={otherLens.id} className={`issue-relation-svg-branch${laneRelations[0] ? ` is-${laneRelations[0].type}` : ''}`}>
+                {laneRelations.length > 0 ? laneRelations.map((relation, relIndex) => {
+                  const key = relationKeyOf(relation)
+                  const open = relationOpen.issueId === issue.id && relationOpen.relationKey === key
+                  const type = relation.type === 'conflict' ? 'Tension' : relation.type === 'agreement' ? 'Agreement' : 'Consequence'
+                  const labelWidth = type === 'Agreement' ? 66 : type === 'Tension' ? 52 : 78
+                  const isConsequence = relation.type === 'consequence'
+                  // 방향은 중심이 아니라 source_lens → affected_lens로만 정한다.
+                  // 중심이 원인·영향 어느 쪽도 아닐 수 있고, 그때 중심 기준으로
+                  // 그리면 화살표가 설명과 반대로 간다 (S5). path는 중심 →
+                  // 이 렌즈 노드 방향이므로, 이 렌즈가 원인이면 start(중심
+                  // 쪽)에, 영향이면 end(이 렌즈 쪽)에 화살촉을 둔다.
+                  // path는 중심 → 이 렌즈 노드 방향이다. 이 렌즈가 원인이면
+                  // 화살촉을 중심 쪽(start)에, 중심이 원인이면 이 렌즈 쪽(end)에
+                  // 둔다. 방향을 모르면 양쪽에 둬서 "이어짐"만 보인다.
+                  const hasDirection = Boolean(relation.source_lens && relation.affected_lens)
+                  const otherIsSource = relation.source_lens === otherLens.id
+                  const centerIsSource = relation.source_lens === relationCenterLens.id
+                  const markerStart = !isConsequence || !hasDirection || otherIsSource
+                  const markerEnd = !isConsequence || !hasDirection || centerIsSource
+                  // 관계가 여럿이면 라벨을 세로로 조금씩 띄운다.
+                  const labelY = branch.labelY + relIndex * 20
+                  return (
+                    <g key={key}>
+                      {relIndex === 0 && (
+                        <path
+                          d={branch.path}
+                          markerStart={markerStart ? 'url(#issue-relation-arrow-start)' : undefined}
+                          markerEnd={markerEnd ? 'url(#issue-relation-arrow)' : undefined}
+                        />
+                      )}
+                      <g
+                        className="issue-relation-svg-edge"
+                        role="button"
+                        tabIndex="0"
+                        aria-label={`${type} 관계 설명 보기`}
+                        onClick={() => setRelationOpen(open ? { issueId: issue.id, relationKey: null } : { issueId: issue.id, relationKey: key })}
+                        onKeyDown={(event) => {
+                          if (event.key === 'Enter' || event.key === ' ') setRelationOpen(open ? { issueId: issue.id, relationKey: null } : { issueId: issue.id, relationKey: key })
+                        }}
+                      >
+                        <rect x={branch.labelX - labelWidth / 2} y={labelY - 10} width={labelWidth} height="18" rx="9" />
+                        <text x={branch.labelX} y={labelY + 3} textAnchor="middle">{type}</text>
+                      </g>
+                    </g>
+                  )
+                }) : (
+                  // 관계 레코드는 없지만 같은 이슈를 짚은 렌즈. 방향 없는
+                  // 연결선으로 그려 이 렌즈도 관련됨을 보인다.
+                  <path className="issue-relation-svg-plain" d={branch.path} />
+                )}
                 <g
                   className={`issue-relation-svg-node lens-${otherLens.id}`}
                   role="button"
@@ -645,7 +685,7 @@ export default function IssueInspector({
             )
               })}
               </svg>
-              {relationLanes.slice(0, 2).map(({ relation }) => {
+              {relationLanes.flatMap(({ relations: laneRelations }) => laneRelations).map((relation) => {
                 const key = relationKeyOf(relation)
                 const open = relationOpen.issueId === issue.id && relationOpen.relationKey === key
                 if (!open) return null
@@ -670,7 +710,7 @@ export default function IssueInspector({
               })}
             </div>
           )}
-          {isRelationViewOpened && !relating && relatedRelations.length === 0 && (
+          {isRelationViewOpened && !relating && relatedRelations.length === 0 && relationLanes.length === 0 && (
             <p className="issue-perspective-comparison-empty">두 Lens의 관계를 정리해 보세요.</p>
           )}
         </section>
