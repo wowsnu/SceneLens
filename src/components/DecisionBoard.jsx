@@ -3128,7 +3128,10 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
     setRangeStart(from)
     setRangeEnd(to)
     setFlowActiveShot(from)
-    setViewerReport(null)
+    // 관객 읽기 결과는 지우지 않는다. 연출 검토에서 대상 범위를 좁혀도
+    // 관객이 읽은 것은 그대로 유효한 맥락이고, 연출 트랙의 `관객` 줄이
+    // 그 위에서 유지돼야 한다 (S6). 관객 검토로 다시 들어갈 때
+    // openViewerReflection이 범위가 안 맞으면 그때 새로 읽게 한다.
     setViewerPanelOrder(null)
     if (from === to) {
       setScopeMode('single')
@@ -4460,8 +4463,9 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
   // `reading-lane`). 감독이 연출을 보다가 "여기서 실제로 읽기가 갈렸다"를
   // 같은 가로축에서 볼 수 있어야, 그 진단이 관객에게 어떻게 닿는지 잇는다.
   //
-  // 갈림만 올린다. 한 관객만 걸린 review_point는 갈린 것이 아니므로
-  // 여기 두면 "갈렸다"는 이 줄의 뜻이 흐려진다.
+  // 갈림만 올린다 — 감독이 답을 다는 자리도 갈림이다(Workbench가 갈림에
+  // 대해서만 답을 받는다). 답한 갈림은 아래에서 answer를 얹어, 연출
+  // 검토로 넘어와도 답이 그 자리에 남게 한다 (S6).
   const readingLaneMarkers = useMemo(() => (
     readingFindings
       .filter((finding) => finding.kind === 'diverge')
@@ -4482,10 +4486,13 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
           conditions: (finding.conditions || []).map((conditionId) => (
             allViewerReadingConditions.find((item) => item.id === conditionId)?.title || conditionId
           )),
+          // 감독이 관객 읽힘에서 이 갈림에 답했으면 그 요약을 얹는다.
+          // 연출 검토로 넘어와도 답한 자리와 답 내용이 트랙에 남는다 (S6).
+          answer: readingAnswers[finding.id]?.answer || '',
         }
       })
       .filter(Boolean)
-  ), [readingFindings, allViewerReadingConditions])
+  ), [readingFindings, allViewerReadingConditions, readingAnswers])
 
   const selectedReadingFinding = readingFindings.find((entry) => (
     entry.id === selectedReadingFindingId
@@ -4517,9 +4524,11 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
         label: allViewerReadingConditions.find((item) => item.id === conditionId)?.title || conditionId,
         line,
       })),
+      // 감독이 관객 읽힘에서 남긴 답. 연출 검토로 넘어와도 유지된다 (S6).
+      viewer_answer: readingAnswers[finding.id]?.answer || '',
       sourceScopeKey: multiReviewScopeKey,
     }
-  }, [readingFindings, selectedReadingFindingId, allViewerReadingConditions, multiReviewScopeKey])
+  }, [readingFindings, selectedReadingFindingId, allViewerReadingConditions, multiReviewScopeKey, readingAnswers])
 
   // 트랙 행이 새로 생기면 켠다. 감독이 끈 것은 그대로 둔다 — 결과가
   // 도착할 때마다 선택이 되돌아가면 무엇을 보고 있었는지 잃는다.
@@ -6520,6 +6529,7 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
                     /* 갈림은 진단이 아니라 근거다. 렌즈 줄과 떨어진
                        자리에 다른 모양으로 놓인다 (문서 7장). */
                     readingDivergences={readingLaneMarkers}
+                    readingDone={Boolean(viewerReport)}
                     selectedDivergenceId={selectedReadingFindingId}
                     /* 여기는 연출 검토다. 누르면 관객 검토로 건너가지
                        않고, 그 갈림을 **세 렌즈가 보고 진단한다** —

@@ -254,6 +254,7 @@ export default function IssueInspector({
   // 이때는 관계 그래프의 중심이 될 Lens가 없으므로, 임의로 하나를 꾸며
   // 내지 않고 관계 보기를 비워 둔다. 이전에는 여기서 null.lens를 읽어
   // 연출 검토 전환 전체가 크래시했다.
+  //
   // 이 이슈를 실제로 짚은 다른 렌즈마다 가지를 하나씩 만든다. 관계
   // 레코드가 있는 쌍만 그리면, 같은 이슈에 진단을 냈지만 원인·영향
   // 관계까지는 기록되지 않은 렌즈(예: 촬영)가 그래프에서 통째로 빠진다
@@ -488,8 +489,18 @@ export default function IssueInspector({
                 ))}
               </ul>
             )}
+            {/* 감독이 관객 읽힘에서 이 갈림에 답했으면 그 답을 여기 남긴다.
+                연출 검토로 넘어와도 답이 사라지지 않는다 (S6). */}
+            {issue.viewer_answer && (
+              <p className="issue-viewer-answer">
+                <em>감독의 답</em>
+                {issue.viewer_answer}
+              </p>
+            )}
             <p className="issue-viewer-hint">
-              아직 아무 렌즈도 이 자리를 보지 않았습니다. 아래에서 골라 주세요.
+              {issue.viewer_answer
+                ? '감독의 답이 전제로 반영됩니다. 렌즈로 더 볼 수 있습니다.'
+                : '아직 아무 렌즈도 이 자리를 보지 않았습니다. 아래에서 골라 주세요.'}
             </p>
           </>
         )}

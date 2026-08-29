@@ -61,6 +61,9 @@ export default function LensTracks({
   readingDivergences = [],
   onSelectDivergence,
   selectedDivergenceId = null,
+  // 관객 읽기를 이미 한 번 돌렸는가. 갈림 마커가 없어도, 읽었다는
+  // 사실은 연출 검토에서 `관객` 줄로 보인다 (S6).
+  readingDone = false,
   scrollRef = null,
   onScroll,
   embedded = false,
@@ -194,31 +197,34 @@ export default function LensTracks({
               그래서 구분선 아래 한 칸 띄워 놓고, 점(●)이 아니라 빈
               마름모(◇)로 그린다. 가로축은 공유하므로 어느 컷에서 갈렸는지는
               위 진단들과 세로로 맞춰 읽힌다. */}
-          {readingDivergences.length > 0 && (
+          {(readingDivergences.length > 0 || readingDone) && (
             <div className="lens-track reading-lane">
               {/* 이름은 짧게. 라벨 열은 렌즈 이름(2~3자)에 맞춰져 있어
                   길면 두 줄로 접히고, 접힌 줄이 아래 상태 문구와 겹친다. */}
               <span className="lens-track-label" title="관객이 갈린 자리">관객</span>
               <div className="lens-track-line">
-                {readingDivergences.map(({ id, position, title, anchor, anchor_kind: anchorKind, conditions }) => (
+                {readingDivergences.length === 0 && readingDone && (
+                  <span className="lens-track-empty-note">관객 읽기 완료 · 갈린 자리 없음</span>
+                )}
+                {readingDivergences.map(({ id, position, title, anchor, anchor_kind: anchorKind, conditions, answer }) => (
                   <button
                     key={id}
                     type="button"
                     data-divergence-id={id}
                     /* `anchorKind`를 함께 얹어, 컷 안인지 컷 사이인지가
                        렌즈 트랙과 같은 문법으로 읽히게 한다. */
-                    className={`lens-marker reading-marker-lane ${anchorKind || 'shot'} ${id === selectedDivergenceId ? 'selected' : ''}`}
+                    className={`lens-marker reading-marker-lane ${anchorKind || 'shot'} ${id === selectedDivergenceId ? 'selected' : ''} ${answer ? 'answered' : ''}`}
                     style={{ '--pos': position }}
                     onClick={() => onSelectDivergence?.(id)}
                     aria-pressed={id === selectedDivergenceId}
                     title={[
                       `${anchor} · ${anchorKind === 'seam' ? '이음새' : '컷'} · ${title}`,
                       `${(conditions || []).join(' / ')}에서 읽기가 갈렸습니다`,
-                      '눌러서 이 자리를 검토 범위로',
+                      answer ? `감독의 답: ${answer}` : '눌러서 이 자리를 검토 범위로',
                     ].join('\n')}
                   >
                     <span className="lens-marker-dot" aria-hidden="true" />
-                    <span className="lens-marker-label">{title}</span>
+                    <span className="lens-marker-label">{answer ? `${title} · 답함` : title}</span>
                   </button>
                 ))}
               </div>
@@ -252,7 +258,9 @@ export default function LensTracks({
         <p className="lens-tracks-status">
           {readingDivergences.length > 0
             ? '렌즈가 짚은 것은 아직 없습니다. 아래는 관객이 갈린 자리입니다.'
-            : '아직 볼 것이 없습니다. 분석하면 여기에 표시됩니다.'}
+            : readingDone
+              ? '렌즈가 짚은 것은 아직 없습니다. 관객 읽기는 돌렸고, 갈린 자리는 없습니다.'
+              : '아직 볼 것이 없습니다. 분석하면 여기에 표시됩니다.'}
         </p>
       )}
     </section>

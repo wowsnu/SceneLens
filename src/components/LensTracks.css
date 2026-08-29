@@ -414,6 +414,15 @@
   height: 0;
 }
 
+/* 갈린 자리는 없지만 관객 읽기는 돌렸다는 표시. */
+.lens-track.reading-lane .lens-track-empty-note {
+  position: absolute;
+  left: 0;
+  font-size: 9.5px;
+  color: color-mix(in srgb, var(--lens), transparent 45%);
+  white-space: nowrap;
+}
+
 /* **비어 있다.** 채운 점은 진단의 것이고, 이 줄은 근거다.
    모양(원/마름모)은 렌즈 트랙과 같은 문법을 따른다 — 컷 안이면 원,
    컷 사이면 마름모. 위치만이 아니라 형태로도 어디가 갈렸는지 읽힌다. */
@@ -433,4 +442,14 @@
 .reading-marker-lane:hover .lens-marker-dot,
 .reading-marker-lane.selected .lens-marker-dot {
   background: color-mix(in srgb, var(--lens), transparent 55%);
+}
+
+/* 감독이 이미 답한 갈림. 채워 두어 "이 자리는 처리했다"가 트랙에서
+   바로 읽히게 한다 (S6). */
+.reading-marker-lane.answered .lens-marker-dot {
+  background: color-mix(in srgb, var(--lens), transparent 35%);
+  border-style: solid;
+}
+.reading-marker-lane.answered .lens-marker-label {
+  opacity: 0.75;
 }
