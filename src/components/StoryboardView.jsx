@@ -317,23 +317,30 @@ const referenceImageBase64 = async (value = '') => {
 //
 // 그림으로 고른다. 러프/디테일/실사의 차이는 글로 적어도 잘 전달되지 않고,
 // 실제로 앵커 그림이 생성에 물리므로 고르는 자리에서도 그 그림을 보여야 한다.
-function StylePresetPicker({ value, onChange, disabled = false, layout = 'row' }) {
+// noteOf: 이 표현 방식을 고르면 무엇을 해야 하는지. Panel setup에서만 쓴다 —
+// 고르기 전에 대가가 보여야 감독이 비교하고 고를 수 있다. 다른 자리에서는
+// 이미 정해진 화풍을 바꾸는 것뿐이라 안내가 필요 없다.
+function StylePresetPicker({ value, onChange, disabled = false, layout = 'row', noteOf = null }) {
   return (
     <div className={`style-preset-picker is-${layout}`} role="radiogroup" aria-label="표현 스타일">
-      {PANEL_STYLE_PRESETS.map((preset) => (
-        <button
-          type="button"
-          key={preset.id}
-          role="radio"
-          aria-checked={value === preset.id}
-          className={value === preset.id ? 'is-active' : ''}
-          disabled={disabled}
-          onClick={() => onChange(preset.id)}
-        >
-          <img src={preset.image} alt="" />
-          <span>{preset.label}</span>
-        </button>
-      ))}
+      {PANEL_STYLE_PRESETS.map((preset) => {
+        const note = noteOf ? noteOf(preset) : ''
+        return (
+          <button
+            type="button"
+            key={preset.id}
+            role="radio"
+            aria-checked={value === preset.id}
+            className={value === preset.id ? 'is-active' : ''}
+            disabled={disabled}
+            onClick={() => onChange(preset.id)}
+          >
+            <img src={preset.image} alt="" />
+            <span>{preset.label}</span>
+            {note && <em className="style-preset-note">{note}</em>}
+          </button>
+        )
+      })}
     </div>
   )
 }
@@ -1381,8 +1388,6 @@ export default function StoryboardView({ onEnterReview = null }) {
   const reopenCutPlan = useStore((s) => s.reopenCutPlan)
   const completePanelPreparation = useStore((s) => s.completePanelPreparation)
   const reopenPanelPreparation = useStore((s) => s.reopenPanelPreparation)
-  const cutPlanOrphanedShots = useStore((s) => s.cutPlanOrphanedShots)
-  const clearCutPlanOrphanWarning = useStore((s) => s.clearCutPlanOrphanWarning)
   const viewerFindingHandoff = useStore((s) => s.viewerFindingHandoff)
   const clearViewerFindingHandoff = useStore((s) => s.clearViewerFindingHandoff)
   const cutStage = useStore(selectCutStage)
@@ -1989,6 +1994,36 @@ export default function StoryboardView({ onEnterReview = null }) {
       })
   })
   const referencesReadyForPanels = missingReferenceRequirements.length === 0
+  // 아직 없는 기준 중 첫 번째로 화면을 옮긴다. 표현 방식을 고른 직후
+  // 감독이 다음에 할 일이 이것이므로, 그 자리까지 데려다 준다.
+  //
+  // 씬을 옮기는 이유: 미장센의 레퍼런스 카드는 지금 보고 있는 씬의 것만
+  // 보여 준다(visibleSceneState). 필요한 기준이 다른 씬에 있으면 카드가
+  // 화면에 없어서, 미장센을 열어 줘도 만들 것이 보이지 않는다.
+  // 이 표현 방식을 고르면 무엇이 필요해지는지. 고른 뒤에 알면 되돌려야
+  // 하므로 카드에 미리 적는다.
+  //
+  // 러프가 아닌 두 방식은 요구량이 같다(needsReferences는 rough 여부만
+  // 본다). 지금 러프를 보고 있으면 missingReferenceRequirements가 비어
+  // 있어 셀 수가 없는데, 그때는 숫자 대신 무엇이 필요한지만 말한다 —
+  // 없는 숫자를 0으로 적으면 준비할 것이 없다는 뜻이 된다.
+  const stylePresetNote = (preset) => {
+    if (preset.id === 'rough') return '기준 이미지 없이 바로'
+    if (!needsReferences) return '인물·공간 기준 이미지 필요'
+    return referencesReadyForPanels
+      ? '기준 이미지 준비됨'
+      : `기준 이미지 ${missingReferenceRequirements.length}개 필요`
+  }
+
+  const goToReferenceRequirement = () => {
+    const target = missingReferenceRequirements[0]
+    if (!target) return
+    setOpenAgent('mise')
+    // 이 플랜에서 자동으로 다른 에이전트를 열어 방금 연 미장센을 덮지
+    // 않게 한다. 감독이 직접 고른 셈이므로 자동 열기는 끝난 것으로 본다.
+    autoOpenedCutPlanAgentKey.current = cutPlan[0]?.id ?? null
+    if (typeof target.startBeat === 'number') setActiveBeat(target.startBeat)
+  }
   // 여러 컷을 함께 읽어야 보이는 문제. scriptScenes가 필요하므로 그 뒤에 둔다.
   // 지적이 어느 컷의 이야기인지. 제목이 이미 컷을 말하는 진단도 있어서
   // 그때는 두 번 적지 않는다 — 규칙 진단은 대개 제목에 컷 번호가 들어 있고,
@@ -3647,6 +3682,7 @@ export default function StoryboardView({ onEnterReview = null }) {
                     value={panelStylePreset}
                     onChange={setPanelStylePreset}
                     layout="setup"
+                    noteOf={stylePresetNote}
                   />
                 </div>
                 <footer>
@@ -3657,9 +3693,23 @@ export default function StoryboardView({ onEnterReview = null }) {
                         ? '러프 콘티는 기준 이미지 없이 구도와 흐름부터 잡습니다.'
                         : referencesReadyForPanels
                           ? '필요한 인물·공간 기준 이미지가 준비되었습니다.'
-                          : `필요한 기준 이미지 ${missingReferenceRequirements.length}개를 Mise-en-scène에서 준비하세요.`}
+                          : `이 표현 방식에는 기준 이미지 ${missingReferenceRequirements.length}개가 필요합니다.`}
                     </p>
                   </div>
+                  {/* 표현 방식을 고른 다음에 할 일이 무엇인지 화면이 직접
+                  말한다. `준비하세요`는 서술이라 감독이 오른쪽 레일을 스스로
+                  찾아 열고 카드를 하나씩 눌러야 했다. 여기서 첫 대상의 씬으로
+                  옮겨 주면, 표현 방식을 적용한 것이 곧 레퍼런스를 만들라는
+                  지시가 된다. */}
+                  {needsReferences && !referencesReadyForPanels && (
+                    <button
+                      type="button"
+                      className="panel-preparation-open-mise"
+                      onClick={goToReferenceRequirement}
+                    >
+                      인물·공간 기준 만들기 ({missingReferenceRequirements.length})
+                    </button>
+                  )}
                   <button
                     type="button"
                     className="panel-preparation-start"
@@ -3671,35 +3721,6 @@ export default function StoryboardView({ onEnterReview = null }) {
                   </button>
                 </footer>
               </section>
-            )}
-
-            {cutPlanOrphanedShots.length > 0 && isExpanded && !drawingWorkspaceOpen && (
-              <div className="cut-plan-orphan-warning" role="status">
-                <div>
-                  <strong>
-                    그림이 있는 패널 {cutPlanOrphanedShots.length}개가 컷과 연결되지 않았습니다
-                  </strong>
-                  <p>
-                    컷을 지우거나 순서를 크게 바꾸면 기존 그림이 갈 곳을 잃습니다.
-                    컷을 다시 열어 자리를 만들거나, 이대로 진행할 수 있습니다.
-                  </p>
-                </div>
-                <div className="cut-plan-orphan-actions">
-                  <button type="button" onClick={clearCutPlanOrphanWarning}>
-                    이대로 진행
-                  </button>
-                  <button
-                    type="button"
-                    className="reopen"
-                    onClick={() => {
-                      clearCutPlanOrphanWarning()
-                      reopenCutPlan()
-                    }}
-                  >
-                    컷 다시 열기
-                  </button>
-                </div>
-              </div>
             )}
 
             {showStoryboardPanels && !drawingWorkspaceOpen && (
@@ -4090,7 +4111,24 @@ export default function StoryboardView({ onEnterReview = null }) {
                   return [
                     card,
                     <div className={`sb-panel-grid-seam sb-panel-grid-row-seam${seamMarked ? ' is-marked' : ''}${seamOpen ? ' is-open' : ''}`} key={`row-seam-${shot.id}`}>
-                      <span className="sb-panel-grid-row-seam-lower" aria-hidden="true" />
+                      {/* 세로·가로·세로 세 구간을 각각 border로 그으면 점선의
+                      위상이 구간마다 따로 시작해 코너에서 끊겨 보인다. 하나의
+                      SVG path로 그려야 점선이 꺾이는 지점을 넘어 이어진다.
+                      viewBox를 0~100 백분율로 잡아 카드 중심(1/6, 5/6)을
+                      그대로 좌표로 쓴다 — 격자 폭이 바뀌어도 같은 비율을
+                      유지한다. */}
+                      <svg
+                        className="sb-panel-grid-row-seam-path"
+                        aria-hidden="true"
+                        viewBox="0 0 100 100"
+                        preserveAspectRatio="none"
+                      >
+                        <path
+                          d="M 83.333 0 V 50 H 16.667 V 100"
+                          fill="none"
+                          vectorEffect="non-scaling-stroke"
+                        />
+                      </svg>
                       <button
                         type="button"
                         className="sb-panel-grid-seam-trigger"
@@ -4613,8 +4651,12 @@ export default function StoryboardView({ onEnterReview = null }) {
 
             {/* Panel setup은 제작 설정만 다루는 독립 단계다. 여기 대본까지
               남기면 스타일을 고르는 화면 아래에 다른 작업이 붙어 보인다.
-              축소 화면·Script·Panels에서만 대본을 렌더한다. */}
-            {(!isExpanded || isScriptStage || showStoryboardPanels) && scriptSceneGroups.map((sceneGroup, sceneIndex) => {
+              축소 화면·Script에서만 대본을 렌더한다.
+              Panels에서는 안의 sb-item 목록만 걸러서는 부족하다 — SCENE
+              헤더 카드 자체가 격자·콘티 표 아래에 빈 껍데기로 남는다.
+              Panels의 씬 구분은 격자 자체(Scene 라벨)와 콘티 표 헤더가
+              이미 맡고 있으므로 이 카드가 필요 없다. */}
+            {(!isExpanded || isScriptStage) && scriptSceneGroups.map((sceneGroup, sceneIndex) => {
               const openingBeat = sceneGroup.beats[0]?.beatGroup?.beat
               const sceneCollapsed = isSceneCollapsed(openingBeat)
               const heading = sceneGroup.heading
@@ -4658,6 +4700,12 @@ export default function StoryboardView({ onEnterReview = null }) {
               const beatSuggestions = narrativeSuggestions.filter((suggestion) => suggestion.beat === beatGroup.beat)
               const inlineSuggestionTypes = new Set(['split-beat', 'insert-script-line', 'replace-script-line'])
               const nonBoundarySuggestions = beatSuggestions.filter((suggestion) => !inlineSuggestionTypes.has(suggestion.type))
+
+              // Panels 단계에서는 이 대본형 컷 목록을 그리지 않는다. 격자
+              // 보기든 콘티 표 보기든 이미 같은 패널을 보여 주므로, 함께
+              // 그리면 옛 버전의 세로 목록이 그 아래에 그대로 남아 두 번
+              // 보인다.
+              if (showStoryboardPanels) return null
 
               return (
                 <div

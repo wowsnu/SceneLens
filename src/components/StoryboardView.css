@@ -4896,6 +4896,19 @@
   opacity: 1;
 }
 
+/* 고르면 무엇을 해야 하는지. 라벨에 붙여 읽히도록 카드의 gap을 상쇄한다. */
+.style-preset-picker.is-setup > button .style-preset-note {
+  margin-top: -5px;
+  color: rgba(255, 255, 255, 0.42);
+  font-size: 11px;
+  font-style: normal;
+  line-height: 1.4;
+}
+
+.style-preset-picker.is-setup > button.is-active .style-preset-note {
+  color: rgba(242, 217, 173, 0.72);
+}
+
 .panel-preparation footer {
   display: flex;
   align-items: center;
@@ -5539,21 +5552,42 @@
   transform: translateX(-50%);
 }
 
-/* 카드 사이의 보라색 점선은 화면을 복잡하게 만들어 제거했다. 이음새
-   자체는 중앙의 이음새 버튼으로 그대로 조작한다. */
-.sb-panel-grid-seam.is-horizontal::before,
-.sb-panel-grid-row-seam::before,
-.sb-panel-grid-row-seam::after,
-.sb-panel-grid-row-seam-lower { display: none; }
+/* 가로 이음새(같은 줄 카드 사이)의 점선은 화면을 복잡하게 만들어
+   제거했다 — 그 자리는 좁아서 선과 버튼이 겹친다. 줄을 넘는 연결은
+   세로로 그릴 자리가 넉넉해 선을 살려 둔다: 오른쪽 끝 카드에서 나와
+   다음 줄 왼쪽 카드로 들어가는 흐름이 눈에 보여야, 격자가 줄 단위로
+   끊긴 나열이 아니라 한 줄로 이어진다는 것을 알 수 있다. */
+.sb-panel-grid-seam.is-horizontal::before { display: none; }
 
-/* S3→S4처럼 줄을 넘는 연결. 선을 억지로 대각선으로 긋지 않고 다음 행으로
-   넘어간다는 것을 독립된 바로 읽게 한다. */
+/* S3→S4처럼 줄을 넘는 연결. 오른쪽 끝 카드 중심에서 내려와 이음새
+   버튼을 지나 다음 줄 왼쪽 카드 중심으로 들어간다. */
 .sb-panel-grid-row-seam {
   position: relative;
   grid-column: 1 / -1;
-  min-height: 42px;
+  min-height: 84px;
 }
 
+/* 세로·가로·세로를 각각 border로 나눠 그으면 점선의 위상이 구간마다
+   따로 시작해 꺾이는 지점에서 끊겨 보인다 — border-left와 border-top은
+   같은 dash 패턴이라도 각자 자기 변의 시작점부터 점을 찍기 때문이다.
+   하나의 SVG path(꺾은선 하나)로 그어야 점선이 코너를 넘어 이어진다.
+   viewBox를 0~100 백분율로 두고 카드 중심 x좌표(1/6, 5/6 → 16.667,
+   83.333)를 그대로 좌표로 써서, 격자 폭이 바뀌어도 카드 중심을
+   따라간다. stroke-width는 non-scaling-stroke로 고정해 preserveAspectRatio
+   ="none"에 의한 세로 방향 확대에 굵기가 늘어나지 않게 한다. */
+.sb-panel-grid-row-seam-path {
+  position: absolute;
+  z-index: 0;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+.sb-panel-grid-row-seam-path path {
+  stroke: rgba(216, 180, 254, 0.55);
+  stroke-width: 2;
+  stroke-dasharray: 5 5;
+}
 
 /* 줄 끝의 S3에서 점선 바로 내려오고, 반대편 끝은 S4로 다시 이어진다.
    가운데의 이음새 버튼은 경로를 가리지 않도록 선 위에만 떠 있다. */
