@@ -759,7 +759,7 @@ export const buildCutPrompt = (cut, {
   // 자동 조립분과 사용자가 덧붙인 지시를 나눠 둔다. provenance가 갈린다.
   // 조각을 이어 붙이면 라벨 나열처럼 읽힌다. 문장으로 만든다.
   const shot = SHOT_SIZE_PHRASES[cut.shotSize] || cut.shotSize
-  const cast = (cut.characters || '').split(',').map((n) => n.trim()).filter(Boolean)
+  const cast = characterNamesOfCut(cut)
 
   // 1문장: 언제, 어디서, 어떤 크기로.
   // 샷은 촬영이 정한다. 아직 안 정했으면 그 자리를 비워 둔다 —
@@ -1325,12 +1325,27 @@ const settledFacts = (facts = [], cutIndex = null, cutOrder = null) => facts
   .filter(Boolean)
   .join(', ')
 
+// `@이름`은 본문이나 추가 프롬프트에서 화면에 등장할 인물을 명시하는
+// 문법이다. 인물 칸에 같은 이름을 다시 적지 않아도 레퍼런스·프롬프트가
+// 같은 대상을 보도록 한곳에서 해석한다.
+export const characterNamesOfCut = (cut = {}) => {
+  const declared = String(cut.characters || '')
+    .split(',')
+    .map((name) => name.trim().replace(/^@/, ''))
+    .filter(Boolean)
+  const tagged = [cut.content, cut.promptOverride]
+    .flatMap((text) => [...String(text || '').matchAll(/@([^\s@,，.。!?…]+)/g)])
+    .map((match) => match[1].trim())
+    .filter(Boolean)
+  return [...new Set([...declared, ...tagged])]
+}
+
 // 이 컷에 걸리는 씬 기준을 뽑는다. 컷에 나오는 인물만 넣는다 —
 // 씬의 모든 인물을 매 컷에 적으면 화면에 없는 사람까지 그리게 된다.
 export const selectSceneReference = (sceneState, cut, cutIndex = null, cutOrder = null) => {
   if (!sceneState || !cut) return { characters: [], location: '', environment: '' }
 
-  const cast = (cut.characters || '').split(',').map((name) => name.trim()).filter(Boolean)
+  const cast = characterNamesOfCut(cut)
   const characters = sceneState.characters
     .filter((character) => cast.some((name) => name.includes(character.name) || character.name.includes(name)))
     .map((character) => ({
@@ -1992,6 +2007,9 @@ const useStore = create((set, get) => ({
   // 씬마다 값을 복사해 두면 어느 것이 원본인지 알 수 없고, 기준을 고쳤을
   // 때 이미 복사된 씬은 따라오지 않는다.
   cast: [],
+  // 이야기 구조화 단계에서 읽은 인물 기준. Scene setup의 AI가 값을 비워도
+  // 사용자 대본에서 이미 확인한 이름·성별/나이·외형은 초기값으로 남긴다.
+  storyCharacters: [],
   // 컷을 가로지르는 기준. 여기를 고치면 그 씬의 모든 컷 프롬프트가 바뀐다.
   //
   // 공간·환경은 씬마다 다르므로 여기 있다. 인물은 cast에 있고, 씬은
@@ -2029,7 +2047,23 @@ const useStore = create((set, get) => ({
       // 씬을 순서대로 돌면서 인물 기준을 쌓는다. 이름이 같으면 같은 사람이다.
       const knownByName = {}
       // 작품 전체의 인물 기준. 처음 등장한 씬에서 세워진다.
-      const nextCast = []
+      const nextCast = (state.storyCharacters || [])
+        .filter((character) => character?.name)
+        .map((character) => {
+          const identity = characterIdentity(character.name)
+          const entry = {
+            id: `cast-${identity}`,
+            name: character.name,
+            summary: character.description || '',
+            facts: [
+              { label: '성별·나이', value: character.genderAge || '', open: !character.genderAge, changes: [] },
+              { label: '외형 기준', value: character.appearance || '', open: !character.appearance, changes: [] },
+              { label: '상태', value: '', open: true, changes: [] },
+            ],
+          }
+          knownByName[identity] = entry
+          return entry
+        })
 
       for (const scene of scenes) {
         // 이 씬에서 기준과 달라지는 항목만.
@@ -3276,15 +3310,6 @@ const useStore = create((set, get) => ({
   })
   },
 
-  moveCutPlanItem: (itemId, direction) => set((state) => {
-    const index = state.cutPlan.findIndex((item) => item.id === itemId)
-    const target = index + direction
-    if (index < 0 || target < 0 || target >= state.cutPlan.length) return {}
-    const next = [...state.cutPlan]
-    const [moved] = next.splice(index, 1)
-    next.splice(target, 0, moved)
-    return { cutPlan: reorderCutPlan(next) }
-  }),
   // 컷을 버린다. 되돌릴 수 없으므로 명시적 Discard에만 쓴다.
   dismissCutPlan: () => set({ cutPlan: [], cutPlanAccepted: false, panelPreparationComplete: false, cutPlanSkipped: false }),
   // 대본으로 돌아가되 컷은 보존한다. 단계 이동은 작업을 지우지 않는다.
@@ -4033,6 +4058,7 @@ const useStore = create((set, get) => ({
     return {
       ...next,
       screenplay: draft.screenplay,
+      storyCharacters: draft.characters || [],
       structureDraft: null,
       narrativeSuggestions: [],
       narrativeCheck: null,

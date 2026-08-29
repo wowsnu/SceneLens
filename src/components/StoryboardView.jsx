@@ -24,6 +24,7 @@ import useStore, {
   selectSceneStates,
   selectLayoutForCut,
   cutFindingFingerprint,
+  characterNamesOfCut,
 } from '../store/useStore'
 import FramingGlyph from './FramingGlyph'
 import './StoryboardView.css'
@@ -95,6 +96,13 @@ const layerOfCheckFinding = (finding) => {
 
 const EMPTY_SHOTS = []
 
+// textarea 자체는 일부 글자만 색칠할 수 없다. 대신 `@이름`을 입력하면
+// 바로 아래에 같은 이름을 인물 태그로 드러내, 일반 문장과 다른 지시라는
+// 것을 보이게 한다. 실제 생성에서는 characterNamesOfCut가 이 값을 읽는다.
+const mentionsIn = (text = '') => [...String(text).matchAll(/@([^\s@,，.。!?…]+)/g)]
+  .map((match) => match[1].trim())
+  .filter((name, index, names) => name && names.indexOf(name) === index)
+
 // 컷 내용을 그 자리에서 고친다. 타이핑마다 스토어를 고치면 열여덟 행이
 // 매번 다시 그려지므로, 편집 중에는 로컬에 두고 손을 뗄 때 커밋한다.
 // 커밋된 문장이 곧 그림 프롬프트의 본문이 된다 (`buildCutPrompt`).
@@ -103,6 +111,7 @@ function ConteContent({ cutId, value, onCommit }) {
   // 고친 것이 아직 안 들어갔는지 보여준다. 손을 뗄 때 저장되는데, 그
   // 사실이 화면에 없으면 고치고도 반영됐는지 알 수 없어 다시 누르게 된다.
   const dirty = draft.trim() !== value
+  const mentions = mentionsIn(draft)
   return (
     <div className={`sb-conte-content-wrap${dirty ? ' is-dirty' : ''}`}>
       <textarea
@@ -133,6 +142,11 @@ function ConteContent({ cutId, value, onCommit }) {
           el.style.height = `${el.scrollHeight}px`
         }}
       />
+      {mentions.length > 0 && (
+        <div className="sb-character-mentions" aria-label="이 컷에 지정한 인물">
+          {mentions.map((name) => <span key={name}>@{name}</span>)}
+        </div>
+      )}
       {/* 그리기를 누르면 이 문장이 먼저 반영되므로(`commitOpenContentEdits`)
         따로 저장을 누를 필요는 없다. 다만 아직 안 들어갔다는 것은
         보여야 한다. */}
@@ -1154,7 +1168,7 @@ function PanelNote({ note, onChange, editing, onEditingChange }) {
 // 부가 정보를 얹을수록 정작 그것이 안 보인다.
 function NarrativeSuggestionCard({ suggestion, onAccept, onDismiss }) {
   const KIND = {
-    'split-beat': '여기서 Moment 나누기',
+    'split-beat': '여기서 구간 나누기',
     'insert-script-line': '이 줄 다음에 추가',
     'replace-script-line': '이 줄을 바꾸기',
   }[suggestion.type] || '제안'
@@ -1193,7 +1207,6 @@ export default function StoryboardView({ onEnterReview = null }) {
   const sceneIntention = useStore((s) => s.sceneIntention)
   const setSceneIntention = useStore((s) => s.setSceneIntention)
   const splitBeat = useStore((s) => s.splitBeat)
-  const splitCut = useStore((s) => s.splitCut)
   const mergeCuts = useStore((s) => s.mergeCuts)
   const mergeBeat = useStore((s) => s.mergeBeat)
   const scene = useStore((s) => s.scenes[s.activeScene])
@@ -1444,12 +1457,6 @@ export default function StoryboardView({ onEnterReview = null }) {
   const clearCutPlanStageOverride = useStore((s) => s.clearCutPlanStageOverride)
   const cutPlanShotSizes = useStore((s) => s.cutPlanShotSizes)
   const requestShotFix = useStore((s) => s.requestShotFix)
-  const requestCutInsert = useStore((s) => s.requestCutInsert)
-  const cutInsertPending = useStore((s) => s.cutInsertPending)
-  const cutInsertProposal = useStore((s) => s.cutInsertProposal)
-  const cutInsertError = useStore((s) => s.cutInsertError)
-  const acceptCutInsert = useStore((s) => s.acceptCutInsert)
-  const rejectCutInsert = useStore((s) => s.rejectCutInsert)
   const shotFixPending = useStore((s) => s.shotFixPending)
   const shotFixProposal = useStore((s) => s.shotFixProposal)
   const shotFixError = useStore((s) => s.shotFixError)
@@ -1480,13 +1487,13 @@ export default function StoryboardView({ onEnterReview = null }) {
   const miseCheckPending = useStore((s) => s.miseCheckPending)
   const miseCheckError = useStore((s) => s.miseCheckError)
   const updateCutPlanItem = useStore((s) => s.updateCutPlanItem)
+  // Panels 단계의 이음새에서만 직접 새 컷을 넣을 수 있다. 컷 플랜 표는
+  // 내용 수정과 삭제만 제공한다.
   const addCutPlanItem = useStore((s) => s.addCutPlanItem)
   const removeCutPlanItem = useStore((s) => s.removeCutPlanItem)
-  const moveCutPlanItem = useStore((s) => s.moveCutPlanItem)
   const acceptCutPlan = useStore((s) => s.acceptCutPlan)
 
   const [isEditingRaw, setIsEditingRaw] = useState(false)
-  const [appliedEditingFindingIds, setAppliedEditingFindingIds] = useState(() => new Set())
   const [rawText, setRawText] = useState('')
   const [rawSceneIntention, setRawSceneIntention] = useState('')
   // 장면 전체 지시는 컷 플랜을 확인한 뒤 적용한다. 입력 중인 문장이
@@ -1537,7 +1544,6 @@ export default function StoryboardView({ onEnterReview = null }) {
   // 씬 접기. Beat와 별개 축이다 — 씬을 접으면 그 안의 Beat가 전부 숨는다.
   const [collapsedScenes, setCollapsedScenes] = useState([])
   // 프롬프트를 펼쳐 본 컷. 한 번에 하나만 연다.
-  const [expandedPromptCutId, setExpandedPromptCutId] = useState(null)
   // 표에서 고른 컷. 편집 렌즈가 이 컷을 나누거나 합친다.
   const [selectedCutId, setSelectedCutId] = useState(null)
   // 표에서 직접 고른 것인지, 진단이 짚어 보낸 것인지. 나누기·합치기는
@@ -1937,12 +1943,19 @@ export default function StoryboardView({ onEnterReview = null }) {
   // 컷에 등장하지 않는 인물까지 강제하면, 쓰이지 않는 기준 그림 때문에
   // 다음 단계가 막힌다. 반대로 공간은 해당 씬의 모든 컷이 공유하므로 필요하다.
   const missingReferenceRequirements = []
+  const pendingReferenceRequirements = []
   const referenceRequirementKeys = new Set()
   const addMissingReference = (requirement, isMissing) => {
     const { key } = requirement
     if (isMissing && !referenceRequirementKeys.has(key)) {
       referenceRequirementKeys.add(key)
       missingReferenceRequirements.push(requirement)
+    }
+  }
+  const addPendingReference = (requirement, isPending) => {
+    const { key } = requirement
+    if (isPending && !pendingReferenceRequirements.some((entry) => entry.key === key)) {
+      pendingReferenceRequirements.push(requirement)
     }
   }
   // 러프 콘티는 기준 그림을 물리지 않는다(referencesForCut). 쓰지도 않을
@@ -1966,34 +1979,41 @@ export default function StoryboardView({ onEnterReview = null }) {
     }
 
     const sceneWithSharedReferences = withSharedReferences(sceneState)
-    addMissingReference(
-      {
-        key: `location:${scriptScene?.id}`,
-        label: sceneWithSharedReferences.location?.name || '공간',
-        sceneLabel: `Scene ${scriptScene.number}`,
-        startBeat: scriptScene.startBeat,
-      },
-      !sceneWithSharedReferences.location?.image,
+    const locationRequirement = {
+      key: `location:${scriptScene?.id}`,
+      label: sceneWithSharedReferences.location?.name || '공간',
+      sceneLabel: `Scene ${scriptScene.number}`,
+      startBeat: scriptScene.startBeat,
+    }
+    addMissingReference(locationRequirement, !sceneWithSharedReferences.location?.image)
+    addPendingReference(
+      locationRequirement,
+      Boolean(referenceImagePending?.[referencePendingKey(scriptScene.id, 'location')]),
     )
 
-    const cast = (cut.characters || '').split(',').map((name) => name.trim()).filter(Boolean)
+    const cast = characterNamesOfCut(cut)
     sceneWithSharedReferences.characters
       .filter((character) => cast.some((name) => (
         name.includes(character.name) || character.name.includes(name)
       )))
       .forEach((character) => {
-        addMissingReference(
-          {
-            key: `character:${scriptScene?.id}:${character.id}`,
-            label: character.name,
-            sceneLabel: `Scene ${scriptScene.number}`,
-            startBeat: scriptScene.startBeat,
-          },
-          !character.image,
+        const characterRequirement = {
+          key: `character:${scriptScene?.id}:${character.id}`,
+          label: character.name,
+          sceneLabel: `Scene ${scriptScene.number}`,
+          startBeat: scriptScene.startBeat,
+        }
+        addMissingReference(characterRequirement, !character.image)
+        addPendingReference(
+          characterRequirement,
+          Boolean(referenceImagePending?.[referencePendingKey(scriptScene.id, 'character', character.id)]),
         )
       })
   })
-  const referencesReadyForPanels = missingReferenceRequirements.length === 0
+  const referencesReadyForPanels = (
+    missingReferenceRequirements.length === 0
+    && pendingReferenceRequirements.length === 0
+  )
   // 아직 없는 기준 중 첫 번째로 화면을 옮긴다. 표현 방식을 고른 직후
   // 감독이 다음에 할 일이 이것이므로, 그 자리까지 데려다 준다.
   //
@@ -2012,7 +2032,9 @@ export default function StoryboardView({ onEnterReview = null }) {
     if (!needsReferences) return '인물·공간 기준 이미지 필요'
     return referencesReadyForPanels
       ? '기준 이미지 준비됨'
-      : `기준 이미지 ${missingReferenceRequirements.length}개 필요`
+      : pendingReferenceRequirements.length > 0
+        ? `기준 이미지 ${pendingReferenceRequirements.length}개 생성 중`
+        : `기준 이미지 ${missingReferenceRequirements.length}개 필요`
   }
 
   const goToReferenceRequirement = () => {
@@ -2074,8 +2096,8 @@ export default function StoryboardView({ onEnterReview = null }) {
         operation: finding.operation,
         layer: layerOfCheckFinding(finding),
         title: ruleLabelOf(finding, '편집'),
-        // 무엇이 문제인지만. suggestedAction까지 붙이면 두 문장이 한 줄에
-        // 들어가 카드가 길어지고, 조치는 아래 버튼이 이미 말한다.
+        // finding은 문제, suggestedAction은 판단 근거다. 해결책은 이 단계에서
+        // 만들지 않으므로 둘을 카드에 함께 남긴다.
         detail: finding.finding,
         suggestedAction: finding.suggestedAction,
         cutIds: finding.cutIds,
@@ -2083,7 +2105,7 @@ export default function StoryboardView({ onEnterReview = null }) {
           && finding.checkedFingerprint !== cutFindingFingerprint(cutPlan, finding.cutIds),
       })),
   ]
-  const visibleEditingFindings = editingFindings.filter((finding) => !appliedEditingFindingIds.has(finding.id))
+  const visibleEditingFindings = editingFindings
   const cameraFindings = (cameraCheck?.findings || [])
     .filter((finding) => finding.cutIds?.length > 0)
     .map((finding) => ({
@@ -2142,7 +2164,7 @@ export default function StoryboardView({ onEnterReview = null }) {
   const referencesForCut = (cut, layoutImage = null, stylePreset = 'rough', previousImage = null) => {
     const scene = withSharedReferences(sceneStateForCut(cut))
     if (!scene || !cut) return []
-    const cast = (cut.characters || '').split(',').map((n) => n.trim()).filter(Boolean)
+    const cast = characterNamesOfCut(cut)
     // 이름이 정확히 같은 인물을 먼저 찾는다. 부분 일치만 쓰면 이름이 서로
     // 포함될 때 화면에 없는 인물까지 딸려 들어간다 — `하린` 컷에 `하린
     // 엄마`가, `수` 컷에 `수현`과 `철수`가 물린다. 컷에 한 명인데 기준
@@ -2954,7 +2976,6 @@ export default function StoryboardView({ onEnterReview = null }) {
     setCutSelectedFromTable(false)
     // 펼쳐 둔 프롬프트가 있으면 닫는다. 그 자리에 긴 칸이 열려 있으면
     // 짚어준 컷이 화면 밖으로 밀린다.
-    setExpandedPromptCutId(null)
     if (logInteraction) {
       logScaffold({ feature: 'diagnosis', action: 'accept', target: cutId, lens: 'editing' })
     }
@@ -3058,7 +3079,7 @@ export default function StoryboardView({ onEnterReview = null }) {
       narrativeRequest: (
         `${stage === 'script' ? '대본' : '컷'} 구성 점검에서 이런 지적이 나왔습니다: ${finding.finding}\n`
         + `${finding.suggestedAction}\n`
-        + '이 Moment의 대본에서 무엇을 더하거나 고치면 되는지 제안해 주세요.'
+        + '이 구간의 대본에서 무엇을 더하거나 고치면 되는지 제안해 주세요.'
       ),
     })
     // 제안은 대본 줄 옆에 뜬다. 그 Beat가 보여야 판정할 수 있다.
@@ -3223,7 +3244,7 @@ export default function StoryboardView({ onEnterReview = null }) {
                     onClick={handleUploadScript}
                     disabled={!rawText.trim() || structurePending}
                   >
-                      {structurePending ? '나누는 중…' : '씬·Moment로 나누기'}
+                      {structurePending ? '나누는 중…' : '씬·구간으로 나누기'}
                   </button>
                 </div>
               </div>
@@ -3238,9 +3259,9 @@ export default function StoryboardView({ onEnterReview = null }) {
                   <div>
                     {/* 'Mock'을 늘 붙여 두면 모델이 답했을 때도 규칙 기반인
                       것처럼 읽힌다. 실제로 떨어졌을 때만 밝힌다. */}
-                    <span>씬·Moment 구조{structureError ? ' · 규칙 기반' : ''}</span>
+                    <span>씬·구간 구조{structureError ? ' · 규칙 기반' : ''}</span>
                     <strong>
-                      씬 {structureDraft.sceneCount}개 · Moment {structureDraft.beatCount}개로 나눴습니다
+                      씬 {structureDraft.sceneCount}개 · 구간 {structureDraft.beatCount}개로 나눴습니다
                     </strong>
                     <p>
                       {structureDraft.filledCount > 0
@@ -3276,12 +3297,18 @@ export default function StoryboardView({ onEnterReview = null }) {
                           <>
                             {startsBeat && (
                               <div className="structure-draft-beat">
-                                Moment {String(element.beat + 1).padStart(2, '0')}
+                                구간 {String(element.beat + 1).padStart(2, '0')}
                               </div>
                             )}
                             {/* AI가 채운 줄은 구분해 보인다. 사용자가 자기가
                               쓰지 않은 것을 알아볼 수 있어야 한다. */}
-                            <p className={element.filled ? 'is-filled' : ''}>
+                            <p
+                              className={element.filled ? 'is-filled' : ''}
+                              title={element.sourceEvidence?.length
+                                ? `원문 근거: ${element.sourceEvidence.join(' · ')}`
+                                : undefined}
+                            >
+                              {element.filled && <span className="structure-filled-badge">AI 보강</span>}
                               {element.text}
                             </p>
                           </>
@@ -3430,12 +3457,12 @@ export default function StoryboardView({ onEnterReview = null }) {
                                     aria-expanded={!collapsed}
                                   >
                                     <span className="cut-plan-beat-caret">{collapsed ? '▸' : '▾'}</span>
-                                    Moment {String(group.beat + 1).padStart(2, '0')}
+                                    구간 {String(group.beat + 1).padStart(2, '0')}
                                     <em>{group.items.length} cuts</em>
                                   </button>
                                 </th>
                               </tr>
-                              {!collapsed && group.items.map(({ item, index }) => {
+                              {!collapsed && group.items.map(({ item }) => {
                                 const needsReview = reviewCutIds.has(item.id)
                                 return (
                                   <Fragment key={item.id}>
@@ -3531,44 +3558,6 @@ export default function StoryboardView({ onEnterReview = null }) {
                                         <div className="cut-plan-row-tools" onClick={(event) => event.stopPropagation()}>
                                           <button
                                             type="button"
-                                            className={expandedPromptCutId === item.id ? 'active' : ''}
-                                            onClick={() => setExpandedPromptCutId(
-                                              expandedPromptCutId === item.id ? null : item.id,
-                                            )}
-                                            aria-label="Show prompt"
-                                            aria-expanded={expandedPromptCutId === item.id}
-                                            title="프롬프트 보기"
-                                          >
-                                            P
-                                          </button>
-                                          <button
-                                            type="button"
-                                            onClick={() => moveCutPlanItem(item.id, -1)}
-                                            disabled={index === 0}
-                                            aria-label="Move cut up"
-                                            title="위로"
-                                          >
-                                            ↑
-                                          </button>
-                                          <button
-                                            type="button"
-                                            onClick={() => moveCutPlanItem(item.id, 1)}
-                                            disabled={index === cutPlan.length - 1}
-                                            aria-label="Move cut down"
-                                            title="아래로"
-                                          >
-                                            ↓
-                                          </button>
-                                          <button
-                                            type="button"
-                                            onClick={() => addCutPlanItem(item.id, item.beat)}
-                                            aria-label="Add cut after"
-                                            title="아래에 컷 추가"
-                                          >
-                                            +
-                                          </button>
-                                          <button
-                                            type="button"
                                             onClick={() => removeCutPlanItem(item.id)}
                                             disabled={cutPlan.length === 1}
                                             aria-label="Remove cut"
@@ -3579,70 +3568,6 @@ export default function StoryboardView({ onEnterReview = null }) {
                                         </div>
                                       </td>
                                     </tr>
-                                    {expandedPromptCutId === item.id && (() => {
-                                      const prompt = buildCutPrompt(item, {
-                                        sceneIntention,
-                                        sceneNote: scenePromptNote,
-                                        declarations,
-                                        sceneState: sceneStateForCut(item),
-                                        seam: seamBefore(item.id),
-                                        cutIndex: index,
-                                        cutOrder,
-                                      })
-                                      return (
-                                        <tr className="cut-plan-prompt-row">
-                                          <td colSpan={8}>
-                                            <div className="cut-plan-prompt">
-                                              <div className="cut-plan-prompt-auto">
-                                                <span>
-                                                  {prompt.isEdited ? '프롬프트 · User' : '컷에서 조립됨 · AI'}
-                                                  {prompt.isEdited && (
-                                                    <button
-                                                      type="button"
-                                                      className="cut-plan-prompt-revert"
-                                                      onClick={() => updateCutPlanItem(item.id, {
-                                                        promptOverride: '',
-                                                      })}
-                                                      title="컷에서 다시 조립"
-                                                    >
-                                                      되돌리기
-                                                    </button>
-                                                  )}
-                                                </span>
-                                                {/* 바로 고칠 수 있게 둔다. 고치면 이 컷의
-                                        프롬프트 출처가 User로 바뀐다. */}
-                                                <textarea
-                                                  className="cut-plan-prompt-input"
-                                                  value={prompt.effective}
-                                                  rows={3}
-                                                  onChange={(event) => updateCutPlanItem(item.id, {
-                                                    promptOverride: event.target.value,
-                                                  })}
-                                                  onBlur={(event) => {
-                                                    // 편집을 마쳤을 때 한 번만 남긴다.
-                                                    if (!event.target.value.trim()) return
-                                                    logEdit({ level: 'element', target: item.id, action: 'prompt' })
-                                                  }}
-                                                  placeholder="컷 내용이 비어 있습니다."
-                                                  aria-label={`Cut ${item.order} prompt`}
-                                                />
-                                                {prompt.isEdited && (
-                                                  <p className="cut-plan-prompt-original">
-                                                    컷 기준: {prompt.auto}
-                                                  </p>
-                                                )}
-                                              </div>
-                                              {prompt.shared && (
-                                                <div className="cut-plan-prompt-shared">
-                                                  <span>장면 공통</span>
-                                                  <p>{prompt.shared}</p>
-                                                </div>
-                                              )}
-                                            </div>
-                                          </td>
-                                        </tr>
-                                      )
-                                    })()}
                                   </Fragment>
                                 )
                               })}
@@ -3655,9 +3580,6 @@ export default function StoryboardView({ onEnterReview = null }) {
                 </div>
 
                 <footer className="cut-plan-footer">
-                  <button type="button" onClick={() => addCutPlanItem(null, activeBeat)}>
-                    + Add cut
-                  </button>
                   {/* AI 출처 전체를 미확인으로 세면 사용자가 표 18행을 전부
                     검사해야 한다고 느낀다. 실제 예외만 센다. */}
                   <span>
@@ -3693,7 +3615,9 @@ export default function StoryboardView({ onEnterReview = null }) {
                         ? '러프 콘티는 기준 이미지 없이 구도와 흐름부터 잡습니다.'
                         : referencesReadyForPanels
                           ? '필요한 인물·공간 기준 이미지가 준비되었습니다.'
-                          : `이 표현 방식에는 기준 이미지 ${missingReferenceRequirements.length}개가 필요합니다.`}
+                          : pendingReferenceRequirements.length > 0
+                            ? `기준 이미지 ${pendingReferenceRequirements.length}개를 생성 중입니다.`
+                            : `이 표현 방식에는 기준 이미지 ${missingReferenceRequirements.length}개가 필요합니다.`}
                     </p>
                   </div>
                   {/* 표현 방식을 고른 다음에 할 일이 무엇인지 화면이 직접
@@ -3701,7 +3625,7 @@ export default function StoryboardView({ onEnterReview = null }) {
                   찾아 열고 카드를 하나씩 눌러야 했다. 여기서 첫 대상의 씬으로
                   옮겨 주면, 표현 방식을 적용한 것이 곧 레퍼런스를 만들라는
                   지시가 된다. */}
-                  {needsReferences && !referencesReadyForPanels && (
+                  {needsReferences && missingReferenceRequirements.length > 0 && (
                     <button
                       type="button"
                       className="panel-preparation-open-mise"
@@ -4676,7 +4600,7 @@ export default function StoryboardView({ onEnterReview = null }) {
                     ) : (
                       <strong>{heading?.text || `장면 ${sceneIndex + 1}`}</strong>
                     )}
-                    <em>{isScriptStage ? `${sceneLineCount}줄` : `${sceneGroup.beats.length} Moments`}</em>
+                    <em>{isScriptStage ? `${sceneLineCount}줄` : `${sceneGroup.beats.length}개 구간`}</em>
                   </header>
                   {!sceneCollapsed && sceneGroup.beats.map(({ beatGroup, index: i }) => {
               // 접힌 씬의 Beat는 그리지 않는다. 씬을 여는 Beat는 남겨야
@@ -4749,7 +4673,7 @@ export default function StoryboardView({ onEnterReview = null }) {
                       띄우지 않고 여기로 모은다. */}
                         {!isScriptStage && beats.length > 1 && (
                           <div className="sb-beat-label">
-                            <span>Moment {String(beatGroup.beat + 1).padStart(2, '0')}</span>
+                            <span>구간 {String(beatGroup.beat + 1).padStart(2, '0')}</span>
                             <em>{beatGroup.elements.length} lines</em>
                             {isScriptStage && (
                               <div className="sb-beat-tools">
@@ -4770,9 +4694,9 @@ export default function StoryboardView({ onEnterReview = null }) {
                                     event.stopPropagation()
                                     handleAddBeatAfter(beatGroup)
                                   }}
-                                  title="이 Moment 다음에 새 Moment 추가"
+                                  title="이 구간 다음에 새 구간 추가"
                                 >
-                                  + Moment
+                                  + 구간
                                 </button>
                                 {/* 첫 Beat에는 위로 합칠 대상이 없다. 그 자리에
                               맨 앞에 Beat를 넣는 길을 둔다. */}
@@ -4783,9 +4707,9 @@ export default function StoryboardView({ onEnterReview = null }) {
                                       event.stopPropagation()
                                       handleAddBeatAtStart()
                                     }}
-                                    title="이 Moment 앞에 새 Moment 추가"
+                                    title="이 구간 앞에 새 구간 추가"
                                   >
-                                    ↑ Moment
+                                    ↑ 구간
                                   </button>
                                 )}
                                 {i > 0 && (
@@ -4795,7 +4719,7 @@ export default function StoryboardView({ onEnterReview = null }) {
                                       event.stopPropagation()
                                       mergeBeat(beatGroup.elements[0].globalIdx)
                                     }}
-                                    title="위 Moment와 합치기"
+                                    title="위 구간과 합치기"
                                   >
                                     ↑ 합치기
                                   </button>
@@ -4854,7 +4778,7 @@ export default function StoryboardView({ onEnterReview = null }) {
                                     }}
                                     title="Split here"
                                   >
-                                    + Split Moment
+                                    + 구간 나누기
                                   </button>
                                 )}
                               </div>
@@ -5309,7 +5233,7 @@ export default function StoryboardView({ onEnterReview = null }) {
                           rows={3}
                         />
                         <div>
-                          <span>{`${activeScriptSceneTitle} · ${activeScriptSceneBeatCount} Moments`}</span>
+                          <span>{`${activeScriptSceneTitle} · ${activeScriptSceneBeatCount}개 구간`}</span>
                           <button
                             type="button"
                             disabled={!narrativeRequest.trim() || narrativePending}
@@ -5352,7 +5276,7 @@ export default function StoryboardView({ onEnterReview = null }) {
                             {/* 문장 안에 strong을 쓰지 않는다 — 이 블록의
                         strong은 display:block이라 줄이 끊긴다. */}
                             <p>
-                              현재 Scene 전체를 보고 답합니다. 특정 Moment를 언급하거나,
+                              현재 Scene 전체를 보고 답합니다. 특정 구간을 언급하거나,
                               “뒷부분이 급하다”처럼 Scene의 흐름을 두고 말해도 됩니다.
                             </p>
                           </div>
@@ -5925,67 +5849,11 @@ export default function StoryboardView({ onEnterReview = null }) {
                           <p className="rail-check-summary">걸리는 것이 없습니다.</p>
                         )}
 
-                      {/* DG2 P1의 병합·분할. 지금까지 Panels에만 있었는데,
-                      컷 구성을 바꾸는 일은 컷 플랜에서 하는 것이 맞다.
-                      컷을 고르기 전 안내 문구는 두지 않는다 — 아무것도
-                      할 수 없는 상태에서 자리만 차지한다. */}
-                      {selectedCutId && cutSelectedFromTable && (() => {
-                        const index = cutPlan.findIndex((cut) => cut.id === selectedCutId)
-                        const cut = cutPlan[index]
-                        const next = cutPlan[index + 1]
-                        if (!cut) return null
-                        return (
-                          <div className="rail-cut-edit">
-                            <strong>컷 {cut.beat + 1}-{cut.beatOrder}</strong>
-                            <p>{cut.content}</p>
-                            <div>
-                              <button
-                                type="button"
-                                onClick={() => splitCut(cut.id)}
-                              >
-                                나누기
-                              </button>
-                              <button
-                                type="button"
-                                disabled={!next || next.beat !== cut.beat}
-                                title={next && next.beat === cut.beat
-                                  ? `컷 ${next.beat + 1}-${next.beatOrder}와 합칩니다`
-                                  : '같은 Moment의 다음 컷이 없습니다'}
-                                onClick={() => mergeCuts(cut.id)}
-                              >
-                                다음 컷과 합치기
-                              </button>
-                            </div>
-                          </div>
-                        )
-                      })()}
-
-                      {/* onGoTo는 컷을 골라 두는 쪽을 쓴다 — 위의 나누기·합치기가
-                      고른 컷에 걸리므로, beat만 옮기면 짚어준 자리에 도착해도
-                      고칠 것이 열리지 않는다. */}
                       <DiagnosisList
                         findings={visibleEditingFindings}
                         emptyLabel="지금 이음새에서 걸리는 것이 없습니다."
                         onGoTo={goToFindingCut}
                         cutLabelOf={cutLabelOf}
-                        onRequestInsert={requestCutInsert}
-                        insertPending={cutInsertPending}
-                        insertProposal={cutInsertProposal}
-                        insertError={cutInsertError}
-                        onAcceptInsert={() => {
-                          const findingId = cutInsertProposal?.findingId
-                          acceptCutInsert()
-                          if (findingId) setAppliedEditingFindingIds((current) => new Set([...current, findingId]))
-                        }}
-                        onRejectInsert={rejectCutInsert}
-                        onApplyEdit={(finding) => {
-                          const firstCutId = finding.cutIds?.[0]
-                          if (!firstCutId) return
-                          if (finding.operation === 'split') splitCut(firstCutId)
-                          if (finding.operation === 'merge') mergeCuts(firstCutId)
-                          if (finding.operation === 'delete') deleteCut(firstCutId)
-                          setAppliedEditingFindingIds((current) => new Set([...current, finding.id]))
-                        }}
                       />
                     </div>
                   )}
@@ -6002,7 +5870,7 @@ export default function StoryboardView({ onEnterReview = null }) {
                 {cutStage === 'script' && needsStructure ? (
                   <>
                     <p>
-                      아직 이야기 한 덩어리입니다. 씬과 Moment로 나누면 그
+                      아직 이야기 한 덩어리입니다. 씬과 구간으로 나누면 그
                       단위로 컷을 정할 수 있습니다.
                     </p>
                     <button
@@ -6011,7 +5879,7 @@ export default function StoryboardView({ onEnterReview = null }) {
                       onClick={requestStoryStructure}
                       disabled={structurePending}
                     >
-                      {structurePending ? '나누는 중…' : '씬·Moment로 나누기'}
+                      {structurePending ? '나누는 중…' : '씬·구간으로 나누기'}
                     </button>
                   </>
                 ) : cutStage === 'script' ? (
@@ -6083,7 +5951,7 @@ export default function StoryboardView({ onEnterReview = null }) {
                 ) : (
                   <>
                     <p>
-                      Moment {activeBeat + 1}을(를) 보고 있습니다. 이 Moment의 행동과
+                      구간 {activeBeat + 1}을(를) 보고 있습니다. 이 구간의 행동과
                       대사를 조금씩 고쳐 나가세요.
                     </p>
                   </>

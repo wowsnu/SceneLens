@@ -18,7 +18,13 @@ export function toStructureDraft(data, story = '') {
       entry.lines.forEach((line) => {
         // filled는 AI가 채운 줄이라는 표시다. 사용자가 자기가 쓰지 않은
         // 것을 알아보고 지울 수 있어야 한다 (DG1 P2).
-        screenplay.push({ type: 'action', text: line.text, beat, filled: line.filled })
+        screenplay.push({
+          type: 'action',
+          text: line.text,
+          beat,
+          filled: line.filled,
+          sourceEvidence: line.source_evidence || [],
+        })
       })
     })
     beat += 1
@@ -32,5 +38,13 @@ export function toStructureDraft(data, story = '') {
     sourceCount: story.split(/(?<=[.!?。])\s+/).filter((s) => s.trim()).length,
     // AI가 채운 줄 수. 사용자가 검토할 분량을 미리 안다.
     filledCount: screenplay.filter((line) => line.filled).length,
+    // Scene setup은 이 값을 초기 인물 기준으로 쓴다. 구조화에서 이미 읽은
+    // 성별·나이·외형을 다음 분석 호출에서 잃지 않는다.
+    characters: (data.characters || []).map((character) => ({
+      name: character.name,
+      genderAge: character.gender_age || '',
+      appearance: character.appearance || '',
+      description: character.description || '',
+    })),
   }
 }

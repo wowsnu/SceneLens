@@ -164,7 +164,10 @@ async def generate_panel(request: PanelImageRequest) -> PanelImageResponse:
         parts.append(
             "For continuity only, the previous panel showed: "
             f"{request.previous} "
-            "Match its place, lighting and drawing style. "
+            "Match its place, lighting, drawing style, screen direction and the "
+            "relative left/right positions of continuing characters. Do not reverse "
+            "the direction of travel or the camera side unless this panel explicitly "
+            "asks for that change. "
             "Do NOT draw the previous panel's action, and do NOT include anyone "
             "who appeared in it unless this panel names them."
         )

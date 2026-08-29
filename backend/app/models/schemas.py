@@ -432,6 +432,12 @@ class StoryStructureRequest(BaseModel):
 class StoryLine(BaseModel):
     text: str                               # 화면에서 볼 수 있는 사건 하나
     filled: bool = False                    # AI가 채운 줄인가. 사용자는 알아야 한다.
+    # 이 화면 행동의 근거가 된 원문 조각. 원문의 소품·문구·선택·결말이
+    # 구조화 과정에서 빠지지 않았는지 사용자가 대조할 수 있게 남긴다.
+    source_evidence: List[str] = []
+    characters: List[str] = []              # 이 화면 행동에 등장하는 인물/역할
+    shot_size: str = "Medium Shot"          # baseline 카드의 기본 샷 크기
+    perspective: str = "Eye Level"          # baseline 카드의 기본 시점/앵글
 
 class StoryBeat(BaseModel):
     lines: List[StoryLine]
@@ -440,8 +446,15 @@ class StoryScene(BaseModel):
     heading: str                            # "관제실, 밤"
     beats: List[StoryBeat]
 
+class StoryCharacter(BaseModel):
+    name: str
+    gender_age: str = ""
+    appearance: str = ""
+    description: str = ""
+
 class StoryStructureResponse(BaseModel):
     scenes: List[StoryScene]
+    characters: List[StoryCharacter] = []
 
 
 # --- Directing review: 패널 → 다관점 피드백 -------------------------------
@@ -1000,9 +1013,9 @@ class NarrativeCheckFinding(BaseModel):
     # 대본 점검에서 이 지적이 걸린 줄 번호(0부터).
     line_indexes: List[int] = []
     finding: str
-    # 무엇을 하면 되는가. 대본을 고칠지 컷을 더할지가 여기서 갈린다.
+    # 편집 점검은 해결책을 지시하지 않는다. 문제를 읽을 때의 화면 근거다.
     suggested_action: str
-    operation: Literal["keep", "split", "merge", "insert", "delete"] = "keep"
+    operation: Literal["keep"] = "keep"
 
 
 class NarrativeCheckResponse(BaseModel):
@@ -1066,7 +1079,7 @@ class ReferenceImageRequest(BaseModel):
     style_preset: Literal["rough", "detailed", "photoreal"] = "rough"
     # 기준 그림을 만들 모델. 패널과 같은 것을 쓸 수 있어야 한다 — 여기서만
     # 다른 모델로 그리면 화풍이 그 지점에서 갈린다.
-    model: Literal["gpt-image-1", "gpt-image-2"] = "gpt-image-1"
+    model: Literal["gpt-image-1", "gpt-image-2"] = "gpt-image-2"
 
 class ReferenceImageResponse(BaseModel):
     image: str      # base64 PNG
@@ -1222,7 +1235,7 @@ class PanelImageRequest(BaseModel):
     # 고른 한 가지가 화면에서 무엇을 바꾸는지 볼 수 없다.
     changes: List[str] = []
     # 생성 전에 고른 모델. 제공자 자동 감지보다 사용자 선택을 우선한다.
-    model: Literal["gpt-image-1", "gpt-image-2", "flux-2-klein"] = "gpt-image-1"
+    model: Literal["gpt-image-1", "gpt-image-2", "flux-2-klein"] = "gpt-image-2"
 
 
 class PanelImageResponse(BaseModel):

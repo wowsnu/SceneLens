@@ -4190,6 +4190,19 @@
   color: rgba(255, 255, 255, 0.62);
 }
 
+.structure-filled-badge {
+  display: inline-block;
+  margin-right: 7px;
+  padding: 2px 5px;
+  border-radius: 3px;
+  color: rgba(168, 230, 189, 0.96);
+  background: rgba(126, 200, 160, 0.13);
+  font-size: 9px;
+  font-weight: 760;
+  letter-spacing: 0.04em;
+  vertical-align: 1px;
+}
+
 /* 렌즈가 직접 실행하는 동작. 진단과 구분되게 둔다. */
 .rail-lens-primary {
   /* 리드 문장을 없앤 뒤로 이 버튼이 본문의 첫 요소다. 위 여백을 스스로
@@ -6205,6 +6218,26 @@
 
 .sb-conte-content::placeholder {
   color: rgba(255, 255, 255, 0.25);
+}
+
+/* 본문에 쓴 @인물명은 생성에 물리는 명시적 인물 지시다. 일반 텍스트와
+   구분되도록 바로 아래에 색 태그로 다시 보여 준다. */
+.sb-character-mentions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 3px 6px 0;
+}
+
+.sb-character-mentions span {
+  padding: 2px 6px;
+  border: 1px solid rgba(56, 189, 248, 0.46);
+  border-radius: 999px;
+  background: rgba(14, 116, 144, 0.2);
+  color: #7dd3fc;
+  font-size: 11px;
+  font-weight: 750;
+  line-height: 1.2;
 }
 
 .sb-conte-framing {
