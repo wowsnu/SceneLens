@@ -1405,14 +1405,22 @@ consequence입니다. 어느 쪽이 원인인지 단언할 수 없다면 conflic
 할 때 다른 Lens가 유지해도 되는 근거를 가지고 있다면, 그 긴장을 감추지 말고
 Tension으로 드러내세요 — 감독이 두 입장을 다 보고 고를 수 있어야 합니다.
 
+**관계는 진단 쌍이 아니라 Lens 판정 쌍에서 봅니다.** 한 Lens가 `change`(진단
+있음)이고 다른 Lens가 `keep`(진단 없음, summary만)이어도, 그 두 판정과 근거를
+나란히 놓고 관계를 정하세요. `keep` Lens의 summary가 `change` Lens와 **같은
+화면 자리**를 두고 "이 criterion으로는 지금도 충분하다"고 말한다면 Tension입니다.
+서로 다른 자리를 본 것이면 관계가 아니니 빈 배열로 두세요 — stance가 갈린다는
+사실만으로 억지로 Tension을 만들지 마세요. 판정과 그 근거 내용을 함께 봐야 합니다.
+
 규칙:
 - **없으면 빈 배열입니다.** 렌즈들이 서로 다른 것을 봤다면 관계가 없는 것이 정상입니다.
   억지로 엮지 마세요.
+- **lenses에는 이 관계가 잇는 두 Lens를 적습니다.** 이것이 관계의 축입니다.
 - **diagnosis_ids는 위 목록의 `- ` 뒤에 적힌 진단 id를 그대로 옮겨 적습니다.**
   `mise-s4-s5-spatial-link`처럼 생긴 문자열입니다. 층위 이름(`shot_relation`,
   `scene_structure`)이나 렌즈 이름(`camera`)은 진단 id가 아닙니다.
-  **관계가 잇는 두 진단의 id를 각각 하나씩, 2개 이상** 적으세요. 한쪽만
-  적으면 무엇과 무엇의 관계인지 알 수 없어 그 관계는 버려집니다.
+  **진단을 낸 Lens의 id만** 적으세요 — `keep` Lens는 진단이 없으니 여기 없습니다.
+  두 Lens 다 `change`면 두 id를, 한쪽만 `change`면 그 하나만 적습니다.
 - summary는 관계 edge 아래에 놓일 **핵심 concern** 한 문장입니다. 두 진단의
   문장을 반복하거나 나열하지 말고, Agreement면 둘이 함께 보는 문제, Tension이면
   갈리는 우선순위, Consequence면 원인 concern이 만든 후속 영향을 말하세요.
@@ -1495,16 +1503,20 @@ CROSS_LENS_SCHEMA = {
                         # 요약(summary)은 문장이고 이것은 이름이다.
                         "title": {"type": "string"},
                         "summary": {"type": "string"},
+                        # 이 관계가 잇는 두 렌즈. **관계의 축이다** — 진단이
+                        # 없어도(한쪽이 keep) 렌즈 둘이면 관계를 낼 수 있다.
                         "lenses": {
                             "type": "array",
+                            "minItems": 2,
                             "items": {"type": "string", "enum": ["mise", "camera", "editing", "narrative"]},
                         },
                         # 위 목록에 `- ` 다음에 나온 진단 id를 그대로 옮긴다.
-                        # 층위 이름(shot_relation 등)이나 렌즈 이름이 아니다 —
-                        # 실제로 그렇게 채워 관계가 통째로 버려진 적이 있다.
+                        # 층위 이름(shot_relation 등)이나 렌즈 이름이 아니다.
+                        # 진단을 낸 렌즈의 것만 적으세요 — keep 렌즈는 진단이
+                        # 없으므로 여기 없습니다. 한쪽 렌즈만 진단을 냈으면
+                        # 그 하나만, 둘 다 냈으면 둘 다 적습니다.
                         "diagnosis_ids": {
                             "type": "array",
-                            "minItems": 2,
                             "items": {"type": "string"},
                         },
                         # consequence가 아니면 null.
@@ -1773,6 +1785,12 @@ def _build_issues(
             if lens not in lenses:
                 lenses.append(lens)
         related = relations_of.get(root, [])
+        # 관계에 얽혔지만 진단은 없는 렌즈(keep 판정)도 이 Issue의
+        # 참여 렌즈다. Inspector에서 유지 의견으로 보여야 한다.
+        for finding in related:
+            for lens in finding.lenses:
+                if lens not in lenses:
+                    lenses.append(lens)
 
         # origin: 관계가 있으면 그쪽 판단을 따르고, 없으면 유일한 렌즈다.
         origin = None
@@ -1958,15 +1976,24 @@ async def _relate_lenses(
                     f"{relation.get('type')} gained {other[0]} "
                     f"(진단이 둘뿐이라 짝이 자명)"
                 )
-        if len(ids) < 2:
+        # 관계의 축은 렌즈 쌍이다. 두 렌즈가 모두 이번 검토에 참여했으면
+        # 관계가 성립한다 — 한쪽이 keep이라 진단이 없어도, 그 판정과 다른
+        # 렌즈 판정 사이의 conflict는 감독이 봐야 한다.
+        rel_lenses = [
+            lens for lens in (relation.get("lenses") or [])
+            if lens in lens_results
+        ]
+        # 자리는 진단의 targets에서 나온다. 진단이 하나도 없으면 마커를
+        # 어디 둘지 알 수 없으므로, 그때만 버린다.
+        if len(set(rel_lenses)) < 2 or not ids:
             # 버린 것을 남긴다. 조용히 버리면 화면에서 '관계 없음'과
             # 구분되지 않아, 모델이 못 찾은 것인지 우리가 버린 것인지
             # 알 수 없다.
             dropped += 1
             print(
-                f"[directing-review] relation dropped (unknown diagnosis id): "
-                f"type={relation.get('type')} ids={relation.get('diagnosis_ids')} "
-                f"known={sorted(known_ids)}"
+                f"[directing-review] relation dropped: "
+                f"type={relation.get('type')} lenses={relation.get('lenses')} "
+                f"ids={relation.get('diagnosis_ids')} known={sorted(known_ids)}"
             )
             continue
 
@@ -1978,7 +2005,7 @@ async def _relate_lenses(
                 type=relation["type"],
                 title=(relation.get("title") or "").strip(),
                 summary=relation["summary"],
-                lenses=relation["lenses"],
+                lenses=rel_lenses,
                 diagnosis_ids=ids,
                 source_lens=relation.get("source_lens"),
                 affected_lens=relation.get("affected_lens"),

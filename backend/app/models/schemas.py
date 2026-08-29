@@ -775,8 +775,13 @@ class DirectingCommonFinding(BaseModel):
     # 같은 자리에 관계가 둘 이상일 때 감독은 이 이름으로 구별해 고른다.
     title: str = ""
     summary: str
+    # 관계의 축은 렌즈 판정 쌍이다. 두 렌즈가 있으면 관계가 성립한다 —
+    # 한쪽이 keep이라 진단이 없어도, 그 판정과 다른 렌즈의 판정 사이의
+    # 관계(특히 conflict)는 감독이 봐야 한다.
     lenses: List[DirectingLens] = Field(min_length=2)
-    diagnosis_ids: List[str] = Field(min_length=2)
+    # 수정 라우팅에 쓴다. 진단을 낸 렌즈의 것만 담기며, keep 렌즈만
+    # 얽힌 관계에서는 하나이거나 비어 있을 수 있다.
+    diagnosis_ids: List[str] = Field(default_factory=list)
     # --- 아래 셋은 서버가 채운다. 모델에게 묻지 않는다 ---------------
     # 이 Issue가 걸리는 자리. 진단들의 targets에서 계산한다.
     # 트랙에서 마커가 놓이는 가로 위치이자, Inspector의 `Where`다.
