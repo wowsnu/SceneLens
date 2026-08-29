@@ -449,6 +449,14 @@
 .issue-lens-slot.different .issue-lens-pick > em {
   color: color-mix(in srgb, #f59e0b, white 20%);
 }
+/* stance가 keep(이 렌즈 기준으로는 지금도 괜찮다는 유지 의견)이면
+   차분한 회색으로 둔다 — 문제를 짚은 것도, 동의한 것도 아니다. */
+.issue-lens-slot.holds {
+  opacity: 1;
+  border-color: rgba(148, 163, 184, 0.32);
+  background: rgba(148, 163, 184, 0.08);
+}
+.issue-lens-slot.holds .issue-lens-pick > em { color: #cbd5e1; }
 .issue-lens-slot.active {
   border-color: color-mix(in srgb, var(--lens), transparent 28%);
   background: color-mix(in srgb, var(--lens), transparent 86%);

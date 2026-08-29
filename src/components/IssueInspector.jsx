@@ -505,7 +505,6 @@ export default function IssueInspector({
           const hasDiagnosis = Boolean(diagnosis || check?.diagnosis)
           // 다른 렌즈가 기존 Issue를 강화하는 summary를 남길 수 있다. 이는
           // 이 렌즈가 diagnosis로 문제를 등록한 것은 아니지만, `이상 없음`도 아니다.
-          const agreesWithIssue = Boolean(!diagnosis && !check?.diagnosis && check?.reading)
           // stance는 백엔드가 이 Lens의 기본 방향을 직접 말한 값이다
           // (change/keep/different). `different`는 "이 Issue에 동의하는
           // 게 아니라, 이 Lens만의 기준에서 별도 관심사를 봤다"는 뜻 —
@@ -514,6 +513,13 @@ export default function IssueInspector({
           // 것처럼 읽힌다. 여기서 갈라야 관점이 실제로 다르다는 것이
           // 카드 목록에서부터 보인다.
           const hasDifferentTake = check?.stance === 'different'
+          // 진단은 없지만 요약은 남긴 렌즈. stance로 갈린다 — `keep`은
+          // "이 문제는 바꾸지 않아도 된다"는 유지 의견이고, 그 외(change)는
+          // 이 문제 방향에 동의하는 것이다. keep을 '동의'로 뭉개면 감독이
+          // 유지 근거를 change 편으로 잘못 읽는다.
+          const readingOnly = Boolean(!diagnosis && !check?.diagnosis && check?.reading)
+          const holdsForKeep = readingOnly && !hasDifferentTake && check?.stance === 'keep'
+          const agreesWithIssue = readingOnly && !hasDifferentTake && !holdsForKeep
           const reviseTarget = diagnosis?.diagnosis || check?.diagnosis || null
           // "다르게 봄"에도 아래 버튼 유무가 갈린다 — 구체적 수정 진단을
           // 냈으면(reviseTarget) 그 자리에서 바로 고칠 수 있고, 관찰만
@@ -530,6 +536,8 @@ export default function IssueInspector({
                 ? (reviseTarget ? '◆ 다르게 봄 · 수정 필요' : '◆ 다르게 봄 · 참고할 점')
                 : hasDiagnosis
                   ? '◐ 이 렌즈도 문제를 짚음'
+                  : holdsForKeep
+                    ? '◐ 유지 의견 · 안 바꿔도 됨'
                   : agreesWithIssue
                     ? '◐ 이 문제에 동의'
                   : checked
@@ -540,7 +548,7 @@ export default function IssueInspector({
             // `수정하기`에서만 시작해 판단·개입을 섞지 않는다.
             <div
               key={lens.id}
-              className={`issue-lens-slot lens-${lens.id} ${index === 0 ? 'primary' : 'added'} ${isActive ? 'active' : ''} ${hasDifferentTake ? 'different' : hasDiagnosis || agreesWithIssue ? 'ready' : checking || rechecking ? 'loading' : ''}`}
+              className={`issue-lens-slot lens-${lens.id} ${index === 0 ? 'primary' : 'added'} ${isActive ? 'active' : ''} ${hasDifferentTake ? 'different' : holdsForKeep ? 'holds' : hasDiagnosis || agreesWithIssue ? 'ready' : checking || rechecking ? 'loading' : ''}`}
             >
               <button
                 type="button"
@@ -803,8 +811,10 @@ export default function IssueInspector({
                             말한다 — 아래 렌즈 스택과 다른 말을 하면 안 된다. */}
                         <span>{check?.stance === 'different' ? '◆' : '◐'}</span>
                         <strong>{lens.label}</strong>
-                        {check?.stance === 'different' && (
+                        {check?.stance === 'different' ? (
                           <em>{checkDiagnosis ? '다르게 봄 · 수정 필요' : '다르게 봄 · 참고할 점'}</em>
+                        ) : (!checkDiagnosis && check?.stance === 'keep') && (
+                          <em>유지 의견 · 안 바꿔도 됨</em>
                         )}
                       </header>
                       <p className="issue-observation">{checkDiagnosis?.diagnosis || checkReading}</p>
