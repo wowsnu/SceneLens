@@ -165,7 +165,11 @@ diagnoses에 정확히 하나의 상세 진단을 넣고, `keep`과 `check`에�
 
 응답 최상단의 `stance`는 이 Lens가 내린 **기본 방향**입니다.
 - `change`: 이 Lens의 기준에서도 지금 수정할 필요가 있습니다.
-- `keep`: 이 Lens의 기준에서는 현재 구성이 충분합니다. diagnoses는 비워 두세요.
+- `keep`: **이 Lens의 criterion으로 보면 지금 구성이 이미 충분하다**는 적극적 판단입니다.
+  단순히 "잘 모르겠다"나 "이 Lens 소관이 아니다"가 아닙니다 — 다른 Lens가 바꾸자고
+  해도, 이 Lens 기준에서는 현재 화면이 그 목적을 이미 달성하고 있어 **바꿀 필요가
+  없다**고 말하는 것입니다. summary에 그렇게 보는 화면 근거를 한 문장으로 쓰세요.
+  diagnoses는 비워 두세요.
 - `different`: 이미 짚힌 Issue를 다른 Lens로 다시 확인하는 경우에만 씁니다. 그 Issue를
   그대로 지지하거나 유지하는 대신, 이 Lens에서만 생기는 별도의 concern을 봤다는 뜻입니다.
   그 concern이 실제 수정이라면 diagnoses에 넣으세요.
@@ -1160,8 +1164,11 @@ async def analyze_lens(
                 f"처음 발견한 판단: {focus.origin_reading or focus.title}\n"
                 "이 요청은 새 문제를 찾는 검토가 아닙니다. 위의 `처음 발견한 판단` 하나를 "
                 "논점으로 삼으세요. 먼저 당신의 고유 criterion으로 이 판단이 `change`인지, "
-                "현재 구성이 충분한 `keep`인지, 관련되지만 별도 concern인 `different`인지 "
-                "독립적으로 정하세요. 다른 Lens가 문제라고 했다는 이유만으로 지지하지 마세요. "
+                "이 Lens 기준으로는 지금도 충분해 바꿀 필요가 없다는 `keep`인지, "
+                "관련되지만 별도 concern인 `different`인지 독립적으로 정하세요. "
+                "다른 Lens가 문제라고 했다는 이유만으로 지지하지 마세요. `keep`이면 왜 "
+                "이 Lens 기준으로는 현재 화면이 충분한지 summary에 분명히 쓰세요 — "
+                "감독은 바꾸자는 쪽 말만 듣지 않고 유지 근거도 함께 봅니다. "
                 "result.summary는 처음 발견한 판단과 당신의 관찰이 이어지는 짧은 답으로 쓰세요. "
                 "이 Lens의 화면 근거가 처음 판단을 지지하거나, 우선순위를 다르게 보거나, "
                 "다른 후속 concern을 낳는다면 diagnoses에 정확히 하나를 넣으세요. 이것은 "
