@@ -535,7 +535,7 @@ export default function IssueInspector({
               : hasDifferentTake
                 ? (reviseTarget ? '◆ 다르게 봄 · 수정 필요' : '◆ 다르게 봄 · 참고할 점')
                 : hasDiagnosis
-                  ? '◐ 이 렌즈도 문제를 짚음'
+                  ? '◐ 이 렌즈도 고칠 곳을 봄'
                   : holdsForKeep
                     ? '◐ 유지 의견 · 안 바꿔도 됨'
                   : agreesWithIssue
