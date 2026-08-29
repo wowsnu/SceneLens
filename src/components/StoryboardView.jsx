@@ -68,6 +68,15 @@ const ruleLabelOf = (finding, fallback) => (
   || fallback
 )
 
+// 점검 지적 하나를 가리키는 안정적인 id. ruleId만으로는 같은 규칙이 두 줄에
+// 걸리면 겹치므로 걸린 위치까지 섞는다. 제안을 적용하면 이 id를 해결로
+// 옮겨 지적 카드를 숨긴다 (S4).
+const narrativeFindingId = (finding) => [
+  finding?.ruleId || 'rule',
+  (finding?.lineIndexes || []).join(','),
+  (finding?.cutIds || []).join(','),
+].join('|')
+
 // AI 점검이 짚은 규칙이 어느 층위의 문제인가. 이것이 없으면 전부
 // '컷 구성'으로 뜬다 — 순서 문제도, 크기 문제도.
 //
@@ -1235,6 +1244,9 @@ export default function StoryboardView({ onEnterReview = null }) {
   const requestNarrativeSuggestions = useStore((s) => s.requestNarrativeSuggestions)
   const requestNarrativeCheck = useStore((s) => s.requestNarrativeCheck)
   const narrativeCheck = useStore((s) => s.narrativeCheck)
+  const resolvedNarrativeFindingIds = useStore((s) => s.resolvedNarrativeFindingIds)
+  const pendingSuggestionFindingId = useStore((s) => s.pendingSuggestionFindingId)
+  const resolveNarrativeFinding = useStore((s) => s.resolveNarrativeFinding)
   // 지금 펼쳐 둔 지적. 누른 것만 대본에 표시된다.
   const [openFindingId, setOpenFindingId] = useState(null)
   // 패널을 격자로 모아 본다. 컷 하나씩만 보면 이어지는지 알 수 없다 —
@@ -2084,6 +2096,8 @@ export default function StoryboardView({ onEnterReview = null }) {
   const editingFindings = [
     ...seamFindings,
     ...(narrativeCheck?.stage === 'cutplan' ? narrativeCheck.findings : [])
+      // 제안을 적용해 해결로 표시한 지적은 뺀다 (S4).
+      .filter((finding) => !resolvedNarrativeFindingIds.includes(narrativeFindingId(finding)))
       // 촬영 판단은 Cinematography rail에서만 보인다. 이전 요청 결과가
       // 남아 있어도 Editing에서 샷 크기 처방으로 이어지면 안 된다.
       .filter((finding) => finding.ruleId !== 'camera-information-selection')
@@ -2705,6 +2719,10 @@ export default function StoryboardView({ onEnterReview = null }) {
           : element
       )))
     }
+    // 이 제안이 점검 지적에서 왔다면 그 지적도 해결로 옮겨 카드를 숨긴다.
+    // 나머지 제안은 계속 버린다 — 적용으로 줄 인덱스가 밀려 이어 적용하면
+    // 엉뚱한 줄에 붙는다. 같은 제안을 두 번 적용할 수 없다 (S4).
+    if (pendingSuggestionFindingId) resolveNarrativeFinding(pendingSuggestionFindingId)
     clearNarrativeSuggestions()
   }
 
@@ -2771,7 +2789,16 @@ export default function StoryboardView({ onEnterReview = null }) {
   const renderNarrativeCheck = (stage) => {
     const isScript = stage === 'script'
     // 다른 단계에서 받은 결과가 남아 있으면 지금 화면의 것이 아니다.
-    const result = narrativeCheck?.stage === stage ? narrativeCheck : null
+    const rawResult = narrativeCheck?.stage === stage ? narrativeCheck : null
+    // 제안을 적용해 해결로 표시한 지적은 목록에서 뺀다 (S4).
+    const result = rawResult
+      ? {
+        ...rawResult,
+        findings: rawResult.findings.filter(
+          (finding) => !resolvedNarrativeFindingIds.includes(narrativeFindingId(finding)),
+        ),
+      }
+      : null
     return (
       <div className="narrative-rail-check">
         <button
@@ -3076,6 +3103,8 @@ export default function StoryboardView({ onEnterReview = null }) {
     })
     requestNarrativeSuggestions({
       beat,
+      // 이 제안이 어느 지적에서 왔는지. 적용하면 그 지적도 해결로 친다 (S4).
+      fromFindingId: narrativeFindingId(finding),
       narrativeRequest: (
         `${stage === 'script' ? '대본' : '컷'} 구성 점검에서 이런 지적이 나왔습니다: ${finding.finding}\n`
         + `${finding.suggestedAction}\n`

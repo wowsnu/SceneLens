@@ -3284,18 +3284,19 @@ const useStore = create((set, get) => ({
       delete nextSeams[seamKeyFor(firstShot.id)]
     }
 
-    // 나눈 안을 받았으면 두 컷을 다 다시 그린다. 앞 컷은 내용이 줄었으므로
-    // 옛 그림이 더는 그 컷을 담고 있지 않고, 뒤 컷은 그림이 아직 없다.
-    // 앞 컷의 옛 그림은 줄어든 내용과 맞지 않는다. 남겨 두면 새 그림이 올
-    // 때까지 감독이 옛 그림을 그 컷으로 읽는다.
+    // 한 컷을 나누면 두 컷 모두 새 컷이다. 앞 컷은 내용이 줄어 옛 그림이
+    // 더는 그 컷을 담지 않고, 뒤 컷은 그림이 없다. 나눈 안을 받았든(parts)
+    // 그냥 나눴든 결과는 같으므로, draft 편집 중이 아니면 두 컷의 옛 그림을
+    // 함께 비우고 둘 다 pending으로 다시 그린다 (S4).
     const panelDraftImages = { ...(state.panelDraftImages || {}) }
-    if ((parts?.first?.content || draft) && firstShot) delete panelDraftImages[firstShot.id]
+    if (!draft && firstShot) delete panelDraftImages[firstShot.id]
+    if (!draft && secondShot) delete panelDraftImages[secondShot.id]
     return {
       ...next,
       cutPlan: nextCutPlan,
       seams: nextSeams,
       panelDraftImages,
-      ...(parts?.first?.content && firstShot && !draft ? {
+      ...(firstShot && !draft ? {
         panelToolRequest: {
           id: `panel-tool-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
           // 두 컷을 순서대로 그린다. 앞 컷을 먼저 그려야 뒤 컷이 그것을
@@ -3777,7 +3778,9 @@ const useStore = create((set, get) => ({
   clearNarrativeResult: () => set({ narrativeAnswered: false }),
   // 하나를 수락하면 나머지 제안은 버린다. 남은 것들의 인덱스가 이미
   // 무효라, 이어서 수락하면 엉뚱한 줄에 적용된다.
-  clearNarrativeSuggestions: () => set({ narrativeSuggestions: [], narrativeAnswered: false }),
+  clearNarrativeSuggestions: () => set({
+    narrativeSuggestions: [], narrativeAnswered: false, pendingSuggestionFindingId: null,
+  }),
   // 컷 플랜 점검. 서사가 먼저 짚는다 — 감독이 요청을 쓰지 않아도 된다.
   //
   // 서사는 세 렌즈와 나란한 네 번째가 아니라 그 위에 있다. 미장센·촬영·
@@ -3808,6 +3811,9 @@ const useStore = create((set, get) => ({
       narrativeCheckError: null,
       narrativeCheck: null,
       narrativeCheckStale: false,
+      // 새 점검은 새 지적 목록이다. 지난 회차에서 해결로 표시한 것은
+      // 여기서 놓는다 (S4).
+      resolvedNarrativeFindingIds: [],
     })
     try {
       const { checkNarrative } = await import('../services/api.js')
@@ -3906,6 +3912,15 @@ const useStore = create((set, get) => ({
       set({ miseCheckPending: false, miseCheckError: error.message })
     }
   },
+  // 점검 지적에서 넘어온 제안을 적용하면 그 지적도 해결로 친다. 어느
+  // 지적에서 왔는지 들고 있다가 accept 때 이 id를 resolved로 옮긴다 (S4).
+  resolvedNarrativeFindingIds: [],
+  pendingSuggestionFindingId: null,
+  resolveNarrativeFinding: (findingId) => set((state) => (
+    findingId && !state.resolvedNarrativeFindingIds.includes(findingId)
+      ? { resolvedNarrativeFindingIds: [...state.resolvedNarrativeFindingIds, findingId] }
+      : {}
+  )),
   requestNarrativeSuggestions: async (input = {}) => {
     const state = get()
     const requestKey = state.narrativeSuggestionRequestKey + 1
@@ -3924,6 +3939,7 @@ const useStore = create((set, get) => ({
       narrativePending: true,
       narrativeError: null,
       narrativeAnswered: false,
+      pendingSuggestionFindingId: input.fromFindingId || null,
     })
 
     const scene = state.scenes[state.activeScene]

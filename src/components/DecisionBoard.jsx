@@ -1667,6 +1667,19 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
   // 겹쳐 보는 자리다. 선택한 Issue가 곧 현재 focus다.
   const [activeTrackLenses, setActiveTrackLenses] = useState(() => new Set(['mise', 'camera', 'editing']))
   const [selectedIssueId, setSelectedIssueId] = useState(null)
+  // 수정안을 적용한 Issue. 재검토를 기다리지 않고 목록에서 바로 뺀다 —
+  // 이미 고친 것을 다시 판정하게 두면 안 된다 (S4). 재검토가 새 결과를
+  // 가져오면 그 회차 Issue는 새 id라 자연히 다시 보인다.
+  const [resolvedTrackIssueIds, setResolvedTrackIssueIds] = useState(() => new Set())
+  const resolveTrackIssue = useCallback((issueId) => {
+    if (!issueId) return
+    setResolvedTrackIssueIds((current) => {
+      if (current.has(issueId)) return current
+      const next = new Set(current)
+      next.add(issueId)
+      return next
+    })
+  }, [])
   const [revisionWorkspace, setRevisionWorkspace] = useState(null)
   // 두 컷 사이에 펼친 편집. { operation, removingPanel, pendingEdit }
   const [seamEdit, setSeamEdit] = useState(null)
@@ -2219,8 +2232,10 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
         })
       })
     })
-    return [...newest.values()].map((entry) => entry.issue)
-  }, [multiReviewRuns, scenePrefix, issuesOfRun])
+    return [...newest.values()]
+      .map((entry) => entry.issue)
+      .filter((issue) => !resolvedTrackIssueIds.has(issue.id))
+  }, [multiReviewRuns, scenePrefix, issuesOfRun, resolvedTrackIssueIds])
   // 진단도 트랙과 같은 범위를 덮어야 한다. 현재 run만 담으면 다른 범위에서
   // 발견한 이슈를 열었을 때 근거가 비어 '진단 없음'으로 보인다.
   const diagnosesById = useMemo(() => {
@@ -2636,6 +2651,9 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
     // 새 분석 결과는 먼저 '확인할 것'만 보인다. 사용자가 열기 전에는
     // 전체 분석이 지난 상태를 이어 받아 펼쳐지지 않게 한다.
     setFullAnalysisOpen(false)
+    // 재검토는 새 지적 목록이다. 지난 회차에서 적용으로 숨긴 Issue id는
+    // 여기서 놓는다 — 새 회차 Issue는 새 id라 그대로 다시 보인다 (S4).
+    setResolvedTrackIssueIds(new Set())
     const scopeKey = multiReviewScopeKey
     const requestId = Date.now()
     const requestedLenses = lenses || [...activeTrackLenses]
@@ -6611,6 +6629,8 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
                           verdict: 'applied',
                           lens: revisionWorkspace?.diagnosis?.lens,
                         })
+                        // 구조 변경도 적용이다. 이 Issue를 목록에서 뺀다 (S4).
+                        resolveTrackIssue(revisionWorkspace?.issue?.id)
                         setRevisionWorkspace((current) => (
                           current ? { ...current, applied: true } : current
                         ))
@@ -6675,6 +6695,9 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
                     // (`onSeamEdit`), 여기서 다시 열거나 다른 화면으로
                     // 넘기지 않는다 — 그러면 같은 조작에 창이 둘이 된다.
                     if (seamEdit) return
+                    // 삭제는 여기서 바로 적용된다. 이음새로 넘어가는
+                    // 조작은 그 편집기의 onDone이 같은 처리를 한다 (S4).
+                    if (action === 'delete') resolveTrackIssue(revisionWorkspace.issue?.id)
                     routeDiagnosisTool(action, revisionWorkspace.diagnosis, alternative)
                     setRevisionWorkspace(null)
                   }}
@@ -6697,6 +6720,9 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
                       verdict: 'applied',
                       lens: revisionWorkspace.diagnosis.lens,
                     })
+                    // 적용한 Issue는 목록에서 바로 뺀다. 재검토를 기다리지
+                    // 않고, 같은 것을 두 번 판정하지 않게 한다 (S4).
+                    resolveTrackIssue(revisionWorkspace.issue?.id)
                     // 닫지 않는다. 고친 화면을 다른 렌즈가 어떻게 읽는지
                     // 다시 보는 것까지가 한 흐름이다 (Reappraise).
                     setRevisionWorkspace((current) => (
