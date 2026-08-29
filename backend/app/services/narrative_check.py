@@ -199,6 +199,10 @@ async def check_narrative(request: NarrativeCheckRequest) -> NarrativeCheckRespo
                 parts.append(f"역할: {cut.purpose}")
             if cut.characters:
                 parts.append(f"인물: {cut.characters}")
+            if cut.place:
+                parts.append(f"장소: {cut.place}")
+            if cut.time:
+                parts.append(f"시간: {cut.time}")
             # 크기가 내용과 맞는지 보려면 지금 값이 있어야 한다.
             parts.append(f"샷: {cut.shot_size or '미정'}")
             body.append("  " + " | ".join(parts))
@@ -220,6 +224,8 @@ async def check_narrative(request: NarrativeCheckRequest) -> NarrativeCheckRespo
             if rule.id in (
                 {"camera-information-selection"}
                 if request.lens == "camera"
+                else {"mise-functional-elements", "mise-relational-blocking", "mise-spatial-continuity"}
+                if request.lens == "mise"
                 else {"editing-shot-function", "editing-information-order"}
             )
         ]

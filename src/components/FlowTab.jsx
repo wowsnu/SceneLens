@@ -612,7 +612,7 @@ export function CardView() {
                 <span className="flow-chip">{current.cir.motionHint}</span>
               )}
             </div>
-            <div className="flow-card-beat">Beat {current.scriptBeat ?? '—'}</div>
+            <div className="flow-card-beat">Moment {current.scriptBeat ?? '—'}</div>
           </div>
 
           {shots.length > 1 && (

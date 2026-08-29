@@ -5,7 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 from contextlib import asynccontextmanager
 
-from app.routes import cut_plan, directing_review, prompt_rewrite, scene_state, seam_design, seam_insert, seam_merge, seam_split, shot_design, shot_fix, panel_image, reference_image, space_layout, fill_shot, image_gen, narrative, overlay, segment, sketch, story, strategy, viewer
+from app.routes import cut_plan, directing_review, prompt_rewrite, scene_state, seam_design, seam_insert, seam_merge, seam_split, shot_design, shot_fix, panel_image, reference_image, space_layout, fill_shot, image_gen, narrative, overlay, segment, sketch, story, strategy, viewer, study_export
 from app.services.strategy_engine import warmup_theory_cache
 
 load_dotenv()
@@ -51,7 +51,9 @@ app.add_middleware(
         "http://127.0.0.1:5175",
         *[origin.strip() for origin in os.getenv("CORS_ORIGINS", "").split(",") if origin.strip()],
     ],
-    allow_origin_regex=r"https://.*\.vercel\.app|http://.*:517[3-5]",
+    # Vite가 이미 사용 중인 포트를 피해 5176 등으로 올라갈 수 있다.
+    # 로컬 개발 서버의 포트만 넓게 허용하고, 배포 환경은 Vercel로 제한한다.
+    allow_origin_regex=r"https://.*\.vercel\.app|http://(localhost|127\.0\.0\.1):\d+",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -88,6 +90,7 @@ app.include_router(seam_insert.router, prefix="/api")
 app.include_router(seam_split.router, prefix="/api")
 app.include_router(seam_merge.router, prefix="/api")
 app.include_router(directing_review.router, prefix="/api")
+app.include_router(study_export.router, prefix="/api")
 
 if __name__ == "__main__":
     import uvicorn

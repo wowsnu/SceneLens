@@ -1372,6 +1372,113 @@
   font-size: 14px;
 }
 
+/* 삽입은 문장 두 칸을 비교하는 일이 아니라, 앞뒤 패널 사이에 실제로
+   들어갈 한 장을 만드는 일이다. 가운데 빈 패널에 프롬프트를 바로 쓴다. */
+.grid-insert-preview {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(170px, 1.15fr) minmax(0, 1fr);
+  gap: 11px;
+  align-items: start;
+}
+
+.grid-insert-neighbor,
+.grid-insert-new-panel {
+  min-width: 0;
+}
+
+.grid-insert-neighbor > span,
+.grid-insert-new-panel > span {
+  display: block;
+  margin-bottom: 6px;
+  color: rgba(255, 255, 255, 0.42);
+  font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: .05em;
+}
+
+.grid-insert-neighbor-frame,
+.grid-insert-new-frame {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.grid-insert-neighbor-frame {
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.grid-insert-neighbor-frame img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.grid-insert-neighbor-frame > p,
+.grid-insert-neighbor > p {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.54);
+  font-size: 10px;
+  line-height: 1.45;
+}
+
+.grid-insert-neighbor-frame > p {
+  display: grid;
+  height: 100%;
+  padding: 10px;
+  place-items: center;
+  text-align: center;
+}
+
+.grid-insert-neighbor > p {
+  display: -webkit-box;
+  margin-top: 6px;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 5;
+  overflow: hidden;
+}
+
+.grid-insert-new-frame {
+  display: flex;
+  flex-direction: column;
+  padding: 10px;
+  border: 1px dashed rgba(196, 150, 210, 0.62);
+  background: rgba(196, 150, 210, 0.055);
+}
+
+.grid-insert-new-frame > em {
+  margin-bottom: 7px;
+  color: rgba(221, 214, 254, 0.68);
+  font-size: 8.5px;
+  font-style: normal;
+  font-weight: 850;
+  letter-spacing: .11em;
+}
+
+.grid-insert-new-frame textarea {
+  flex: 1;
+  width: 100%;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.9);
+  font: inherit;
+  font-size: 12px;
+  line-height: 1.48;
+  resize: none;
+}
+
+.grid-insert-new-frame textarea::placeholder { color: rgba(221, 214, 254, 0.42); }
+.grid-insert-preview + .grid-edit-candidates .grid-edit-candidate strong { font-size: 14px; }
+
+@media (max-width: 640px) {
+  .grid-insert-preview { grid-template-columns: 1fr; }
+  .grid-insert-neighbor { display: none; }
+}
+
 /* 함께 바뀌는 것. 요청한 변경과 구분해 보여준다. */
 .grid-edit-effects {
   display: flex;
@@ -1477,7 +1584,7 @@
   display: block;
   width: 100%;
   margin-bottom: 6px;
-  padding: 8px 10px;
+  padding: 11px 12px;
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 6px;
   background: rgba(255, 255, 255, 0.02);
@@ -1499,15 +1606,21 @@
 .grid-edit-candidate strong {
   display: block;
   color: rgba(255, 255, 255, 0.9);
-  font-size: 11.5px;
-  line-height: 1.45;
+  font-size: 13px;
+  line-height: 1.5;
 }
 
 .grid-edit-candidate em {
-  display: block;
-  margin-top: 3px;
-  color: rgba(186, 220, 234, 0.8);
-  font-size: 10px;
+  display: inline-flex;
+  align-items: center;
+  min-height: 19px;
+  margin-top: 7px;
+  padding: 0 7px;
+  border-radius: 999px;
+  background: rgba(150, 190, 210, 0.1);
+  color: rgba(186, 220, 234, 0.9);
+  font-size: 9.5px;
+  font-weight: 750;
   font-style: normal;
 }
 

@@ -46,6 +46,10 @@ const NARRATIVE_RULE_LABELS = {
   // 컷 플랜 — 촬영이 보는 하나. 크기가 내용을 담는지는 그림 없이도
   // 판단할 수 있고, 그린 뒤에 알면 다시 그려야 한다.
   'camera-information-selection': '이 크기로 보일까요',
+  // 컷 플랜 — 미장센이 텍스트 근거로 보는 세 가지.
+  'mise-functional-elements': '필요한 요소가 빠졌어요',
+  'mise-relational-blocking': '인물 관계가 안 잡혀요',
+  'mise-spatial-continuity': '배치와 동선이 안 이어져요',
 }
 
 // 같은 규칙이라도 제안하는 조치가 반대면 묻는 말도 반대여야 한다.
@@ -101,38 +105,38 @@ function ConteContent({ cutId, value, onCommit }) {
   const dirty = draft.trim() !== value
   return (
     <div className={`sb-conte-content-wrap${dirty ? ' is-dirty' : ''}`}>
-    <textarea
-      className="sb-conte-content"
-      /* 그리기 직전에 아직 커밋되지 않은 칸을 찾아내기 위한 표시다.
-         편집 중인 문장은 blur 전까지 로컬에만 있어서, 고치자마자 재생성을
-         누르면 옛 문장으로 그려질 수 있다 — 그 창을 없앤다
-         (`commitOpenContentEdits`). */
-      data-conte-content={cutId}
-      data-conte-committed={value}
-      value={draft}
-      rows={1}
-      placeholder="이 컷에서 무슨 일이 일어나는가"
-      onClick={(event) => event.stopPropagation()}
-      onChange={(event) => setDraft(event.target.value)}
-      onBlur={() => onCommit(draft.trim())}
-      onKeyDown={(event) => {
-        // Escape는 되돌린다. 잘못 고쳤을 때 원문으로 돌아갈 길이 있어야 한다.
-        if (event.key === 'Escape') {
-          setDraft(value)
-          event.currentTarget.blur()
-        }
-      }}
-      ref={(el) => {
-        // 내용만큼 늘린다. 스크롤바가 생기면 문장 뒷부분이 표에서 사라진다.
-        if (!el) return
-        el.style.height = 'auto'
-        el.style.height = `${el.scrollHeight}px`
-      }}
-    />
-    {/* 그리기를 누르면 이 문장이 먼저 반영되므로(`commitOpenContentEdits`)
+      <textarea
+        className="sb-conte-content"
+        /* 그리기 직전에 아직 커밋되지 않은 칸을 찾아내기 위한 표시다.
+           편집 중인 문장은 blur 전까지 로컬에만 있어서, 고치자마자 재생성을
+           누르면 옛 문장으로 그려질 수 있다 — 그 창을 없앤다
+           (`commitOpenContentEdits`). */
+        data-conte-content={cutId}
+        data-conte-committed={value}
+        value={draft}
+        rows={1}
+        placeholder="이 컷에서 무슨 일이 일어나는가"
+        onClick={(event) => event.stopPropagation()}
+        onChange={(event) => setDraft(event.target.value)}
+        onBlur={() => onCommit(draft.trim())}
+        onKeyDown={(event) => {
+          // Escape는 되돌린다. 잘못 고쳤을 때 원문으로 돌아갈 길이 있어야 한다.
+          if (event.key === 'Escape') {
+            setDraft(value)
+            event.currentTarget.blur()
+          }
+        }}
+        ref={(el) => {
+          // 내용만큼 늘린다. 스크롤바가 생기면 문장 뒷부분이 표에서 사라진다.
+          if (!el) return
+          el.style.height = 'auto'
+          el.style.height = `${el.scrollHeight}px`
+        }}
+      />
+      {/* 그리기를 누르면 이 문장이 먼저 반영되므로(`commitOpenContentEdits`)
         따로 저장을 누를 필요는 없다. 다만 아직 안 들어갔다는 것은
         보여야 한다. */}
-    {dirty && <span className="sb-conte-content-dirty">고친 내용 · 그리면 반영됩니다</span>}
+      {dirty && <span className="sb-conte-content-dirty">고친 내용 · 그리면 반영됩니다</span>}
     </div>
   )
 }
@@ -339,6 +343,9 @@ function SceneFactRow({
   // 인물 항목만 쓴다. 이 씬에서만 달라지게 하거나, 기준으로 되돌린다.
   onScopedCommit = null, onRevert = null,
 }) {
+  // 데이터 키는 기존 `상태`를 유지한다. 변화 구간과 프롬프트가 이 키를
+  // 참조하므로, 화면에서만 현재 시점의 값이라는 뜻을 분명히 한다.
+  const displayLabel = fact.label === '상태' ? '현재 상태' : fact.label
   const [draft, setDraft] = useState(fact.value || '')
   // 대본을 다시 읽으면 화면 값도 따라가야 한다. 렌더 중에 맞추면 effect가
   // 한 번 더 도는 것을 피할 수 있다.
@@ -370,7 +377,7 @@ function SceneFactRow({
   return (
     <div className="rail-scene-fact-block">
       <label className={`rail-scene-fact${fact.open ? ' is-open' : ''}`}>
-        <span>{fact.label}</span>
+        <span>{displayLabel}</span>
         <input
           type="text"
           value={draft}
@@ -390,7 +397,7 @@ function SceneFactRow({
             className="rail-scene-fact-add"
             onClick={addChange}
             title="이 컷부터 값이 바뀝니다"
-            aria-label={`${fact.label} 변화 추가`}
+            aria-label={`${displayLabel} 변화 추가`}
           >
             +
           </button>
@@ -650,7 +657,7 @@ function DiagnosisList({
 
 function ScriptLineEditor({
   element, index, onChange, onChangeType, onInsertAfter, onRemove, canRemove, showTools,
-  autoFocus, focusCaret, onFocused, onMoveFocus, flagged, filled,
+  showTypeControl = true, autoFocus, focusCaret, onFocused, onMoveFocus, flagged, filled,
 }) {
   const textareaRef = useRef(null)
 
@@ -678,7 +685,7 @@ function ScriptLineEditor({
 
   return (
     <div className="script-line-editor" onClick={(event) => event.stopPropagation()}>
-      {showTools && (
+      {showTools && showTypeControl && (
         <select
           className="script-line-type"
           value={element.type}
@@ -1140,7 +1147,7 @@ function PanelNote({ note, onChange, editing, onEditingChange }) {
 // 부가 정보를 얹을수록 정작 그것이 안 보인다.
 function NarrativeSuggestionCard({ suggestion, onAccept, onDismiss }) {
   const KIND = {
-    'split-beat': '여기서 Beat 나누기',
+    'split-beat': '여기서 Moment 나누기',
     'insert-script-line': '이 줄 다음에 추가',
     'replace-script-line': '이 줄을 바꾸기',
   }[suggestion.type] || '제안'
@@ -1189,6 +1196,7 @@ export default function StoryboardView({ onEnterReview = null }) {
   const selectBeat = useStore((s) => s.selectBeat)
   const activeBeat = useStore((s) => s.activeBeat)
   const removeShot = useStore((s) => s.flowRemoveShot)
+  const updateSeam = useStore((s) => s.updateSeam)
   const maximizedPanel = useStore((s) => s.maximizedPanel)
   const storyboardPanelsVisible = useStore((s) => s.storyboardPanelsVisible)
   const setCenterTab = useStore((s) => s.setCenterTab)
@@ -1209,11 +1217,157 @@ export default function StoryboardView({ onEnterReview = null }) {
   const narrativeCheck = useStore((s) => s.narrativeCheck)
   // 지금 펼쳐 둔 지적. 누른 것만 대본에 표시된다.
   const [openFindingId, setOpenFindingId] = useState(null)
-  const [stylePickerOpen, setStylePickerOpen] = useState(false)
   // 패널을 격자로 모아 본다. 컷 하나씩만 보면 이어지는지 알 수 없다 —
   // 스토리보드는 한 장을 잘 그리는 일이 아니라 이어지는 것을 보는 일이라
   // 이 쪽이 기본이다. 대본과 나란히 보려면 버튼으로 돌아간다.
   const [panelGridView, setPanelGridView] = useState(true)
+  // Panels의 한눈에 보기에서도 컷 사이를 직접 조작한다. 검토 화면까지
+  // 가야만 이음새를 만들 수 있으면, 패널을 배열하는 단계에서 관계를
+  // 결정할 수 없다.
+  const [openPanelSeamId, setOpenPanelSeamId] = useState(null)
+  const [pendingPanelEdit, setPendingPanelEdit] = useState(null)
+  // Panels에서 구조를 바꾼 직후에는 되돌릴 길을 남긴다. 합치기·삭제는
+  // 여러 컷과 이음새를 함께 바꾸므로 단순히 화면만 되돌려서는 안 된다.
+  const [lastPanelStructureChange, setLastPanelStructureChange] = useState(null)
+  const [aiInsertPendingCutId, setAiInsertPendingCutId] = useState(null)
+  const [aiInsertCandidatesMap, setAiInsertCandidatesMap] = useState({})
+  const [aiInsertErrorMap, setAiInsertErrorMap] = useState({})
+
+  const handleRequestAiInsert = async (cutItem) => {
+    if (!cutItem) return
+    setAiInsertPendingCutId(cutItem.id)
+    setAiInsertErrorMap((prev) => ({ ...prev, [cutItem.id]: null }))
+    try {
+      const { suggestSeamInsert } = await import('../services/api')
+
+      // 1. 대본 전체 (씬 헤딩 + 대본 내용 포함)
+      const scriptText = screenplay
+        .map((el) => (el.type === 'scene-heading' ? `[장면] ${el.text}` : el.text))
+        .filter(Boolean)
+        .join('\n')
+
+      // 2. cutPlan 상에서 현재 컷(cutItem)의 정확한 위치 파악
+      const cutIndex = cutPlan.findIndex((item) => item.id === cutItem.id)
+      const prevCut = cutIndex > 0 ? cutPlan[cutIndex - 1] : null
+      const nextCut = cutIndex >= 0 && cutIndex < cutPlan.length - 1 ? cutPlan[cutIndex + 1] : null
+
+      // 3. 앞/뒤 샷 (이미지 및 패널 정보)
+      const prevShot = prevCut ? flowShots.find((s) => s.cutPlanItemId === prevCut.id) : null
+      const nextShot = nextCut ? flowShots.find((s) => s.cutPlanItemId === nextCut.id) : null
+
+      // 4. 이음새(생략된 정보)
+      const seam = prevShot ? seams[seamKeyFor(prevShot.id)] : null
+
+      // 5. 컷의 풍부한 상세 정보(샷 크기, 앵글, 장소, 인물, 내용 등) 조립
+      const getCutDescription = (cItem) => {
+        if (!cItem) return ''
+        const infoParts = []
+        if (cItem.shotSize) infoParts.push(cItem.shotSize)
+        if (cItem.angle && cItem.angle !== 'Eye level') infoParts.push(cItem.angle)
+        if (cItem.place) infoParts.push(cItem.place)
+        if (cItem.characters) infoParts.push(`인물: ${cItem.characters}`)
+
+        const mainText = cItem.promptOverride?.trim() || cItem.content?.trim() || ''
+        const prefix = infoParts.length ? `[${infoParts.join(' · ')}] ` : ''
+        return `${prefix}${mainText}`.trim()
+      }
+
+      const beforeContent = getCutDescription(prevCut)
+      const afterContent = getCutDescription(nextCut)
+
+      const candidates = await suggestSeamInsert({
+        beforeContent: beforeContent || (prevCut ? '앞 컷 내용 미정' : '첫 컷 전 (없음)'),
+        beforePurpose: prevCut?.purpose || '',
+        afterContent: afterContent || (nextCut ? '뒤 컷 내용 미정' : '마지막 컷 뒤 (없음)'),
+        afterPurpose: nextCut?.purpose || '',
+        elision: seam?.elision || '',
+        script: scriptText,
+        beforeImage: prevShot?.image || null,
+        afterImage: nextShot?.image || null,
+      })
+      setAiInsertCandidatesMap((prev) => ({ ...prev, [cutItem.id]: candidates }))
+    } catch (error) {
+      setAiInsertErrorMap((prev) => ({ ...prev, [cutItem.id]: error.message || 'AI 제안을 불러오지 못했습니다.' }))
+    } finally {
+      setAiInsertPendingCutId(null)
+    }
+  }
+
+  // 나눈 두 컷의 문장을 채운다. 나누기는 앞 칸에 원본을 그대로 두고
+  // 시작하므로, 어디서 끊을지 막막하면 이걸로 묻는다. 앞뒤 컷을 함께
+  // 보내는 이유는 어디서 끊는 것이 자연스러운지가 이웃에 달려 있기
+  // 때문이다.
+  const handleSplitSuggestion = async (cutItem, shot, shotIdx) => {
+    if (!cutItem) return
+    // 나눈 짝을 찾는다. 나누기가 만든 뒤 컷은 바로 다음 칸이다.
+    const partnerShot = flowShots[shotIdx + 1]
+    const partnerCut = partnerShot
+      ? cutPlan.find((item) => item.id === partnerShot.cutPlanItemId)
+      : null
+    setAiInsertPendingCutId(cutItem.id)
+    setAiInsertErrorMap((prev) => ({ ...prev, [cutItem.id]: null }))
+    try {
+      const { suggestSeamSplit } = await import('../services/api')
+      const cutAt = cutPlan.findIndex((item) => item.id === cutItem.id)
+      const scriptText = screenplay
+        .filter((element) => element.type === 'action')
+        .map((element) => element.text)
+        .join('\n')
+      const result = await suggestSeamSplit({
+        content: cutItem.content || '',
+        purpose: cutItem.purpose || '',
+        characters: cutItem.characters || '',
+        beforeContent: cutAt > 0 ? cutPlan[cutAt - 1]?.content || '' : '',
+        // 바로 뒤는 방금 나눠 만든 빈 컷이므로 그 다음 컷을 보낸다.
+        afterContent: cutPlan[cutAt + 2]?.content || '',
+        script: scriptText,
+        beforeImage: getShotVisual(flowShots[shotIdx - 1]),
+        afterImage: getShotVisual(flowShots[shotIdx + 2]),
+      })
+      if (result?.first?.content?.trim()) {
+        updateCutPlanItem(cutItem.id, { content: result.first.content.trim() })
+      }
+      if (partnerCut && result?.second?.content?.trim()) {
+        updateCutPlanItem(partnerCut.id, { content: result.second.content.trim() })
+      }
+    } catch (error) {
+      setAiInsertErrorMap((prev) => ({
+        ...prev,
+        [cutItem.id]: error.message || 'AI 제안을 불러오지 못했습니다.',
+      }))
+    } finally {
+      setAiInsertPendingCutId(null)
+    }
+  }
+
+  // 합친 컷의 문장을 다듬는다. 합치기가 만든 초안은 두 문장을 **이어붙인**
+  // 것이라 같은 동작을 두 번 말하고 있을 수 있다. 자동으로 바꾸지 않고
+  // 감독이 물을 때만 바꾸는 이유는, 손대던 문장이 예고 없이 사라지면
+  // 안 되기 때문이다.
+  const handleTidyMergedContent = async (cutItem, shot) => {
+    const source = shot?.mergedDraft
+    if (!cutItem || !source) return
+    setAiInsertPendingCutId(cutItem.id)
+    setAiInsertErrorMap((prev) => ({ ...prev, [cutItem.id]: null }))
+    try {
+      const { suggestSeamMerge } = await import('../services/api')
+      const scriptText = screenplay
+        .filter((element) => element.type === 'action')
+        .map((element) => element.text)
+        .join('\n')
+      const result = await suggestSeamMerge({ ...source, script: scriptText })
+      if (result?.content?.trim()) {
+        updateCutPlanItem(cutItem.id, { content: result.content.trim() })
+      }
+    } catch (error) {
+      setAiInsertErrorMap((prev) => ({
+        ...prev,
+        [cutItem.id]: error.message || 'AI 제안을 불러오지 못했습니다.',
+      }))
+    } finally {
+      setAiInsertPendingCutId(null)
+    }
+  }
   const narrativeCheckPending = useStore((s) => s.narrativeCheckPending)
   const narrativeCheckError = useStore((s) => s.narrativeCheckError)
   const narrativeCheckStale = useStore((s) => s.narrativeCheckStale)
@@ -1222,8 +1376,11 @@ export default function StoryboardView({ onEnterReview = null }) {
   const setPendingCanvasImage = useStore((s) => s.setPendingCanvasImage)
   const cutPlan = useStore((s) => s.cutPlan)
   const cutPlanAccepted = useStore((s) => s.cutPlanAccepted)
+  const panelPreparationComplete = useStore((s) => s.panelPreparationComplete)
   const cutPlanSkipped = useStore((s) => s.cutPlanSkipped)
   const reopenCutPlan = useStore((s) => s.reopenCutPlan)
+  const completePanelPreparation = useStore((s) => s.completePanelPreparation)
+  const reopenPanelPreparation = useStore((s) => s.reopenPanelPreparation)
   const cutPlanOrphanedShots = useStore((s) => s.cutPlanOrphanedShots)
   const clearCutPlanOrphanWarning = useStore((s) => s.clearCutPlanOrphanWarning)
   const viewerFindingHandoff = useStore((s) => s.viewerFindingHandoff)
@@ -1313,6 +1470,10 @@ export default function StoryboardView({ onEnterReview = null }) {
   const cameraCheck = useStore((s) => s.cameraCheck)
   const cameraCheckPending = useStore((s) => s.cameraCheckPending)
   const cameraCheckError = useStore((s) => s.cameraCheckError)
+  const requestMiseCheck = useStore((s) => s.requestMiseCheck)
+  const miseCheck = useStore((s) => s.miseCheck)
+  const miseCheckPending = useStore((s) => s.miseCheckPending)
+  const miseCheckError = useStore((s) => s.miseCheckError)
   const updateCutPlanItem = useStore((s) => s.updateCutPlanItem)
   const addCutPlanItem = useStore((s) => s.addCutPlanItem)
   const removeCutPlanItem = useStore((s) => s.removeCutPlanItem)
@@ -1340,6 +1501,7 @@ export default function StoryboardView({ onEnterReview = null }) {
   const [narrativeRailByStage, setNarrativeRailByStage] = useState({
     script: true,
     cutplan: true,
+    preparation: true,
   })
   const narrativeRailOpen = narrativeRailByStage[cutStage] ?? false
   const setNarrativeRailOpen = (nextValue) => setNarrativeRailByStage((current) => {
@@ -1351,6 +1513,7 @@ export default function StoryboardView({ onEnterReview = null }) {
   const [openAgentByStage, setOpenAgentByStage] = useState({
     script: 'narrative',
     cutplan: null,
+    preparation: 'mise',
   })
   const openAgent = openAgentByStage[cutStage] ?? null
   const setOpenAgent = (nextAgent) => setOpenAgentByStage((current) => ({
@@ -1411,6 +1574,7 @@ export default function StoryboardView({ onEnterReview = null }) {
   const hasScreenplay = screenplay.length > 0
   const showWriteScene = isEditingRaw || !hasScreenplay
   const isCutPlanStage = cutStage === 'cutplan' && isExpanded && !drawingWorkspaceOpen && !showWriteScene
+  const isPanelPreparationStage = cutStage === 'preparation' && isExpanded && !drawingWorkspaceOpen && !showWriteScene
   // Script 단계에서는 대본을 읽기 전용으로 두지 않고 그 자리에서 고친다.
   const isScriptStage = cutStage === 'script' && isExpanded && !drawingWorkspaceOpen && !showWriteScene
   // 단계별로 보이는 것이 다르다.
@@ -1443,6 +1607,48 @@ export default function StoryboardView({ onEnterReview = null }) {
     const index = flowShots.findIndex((shot) => shot.cutPlanItemId === cutId)
     if (index <= 0) return null
     return seams[seamKeyFor(flowShots[index - 1].id)] || null
+  }
+
+  const capturePanelStructure = (label, kind) => {
+    const state = useStore.getState()
+    setLastPanelStructureChange({
+      label, kind,
+      snapshot: {
+        cutPlan: state.cutPlan,
+        scenes: state.scenes,
+        seams: state.seams,
+        panelDraftImages: state.panelDraftImages,
+        panelToolRequest: state.panelToolRequest,
+      },
+    })
+  }
+
+  const undoPanelStructureChange = () => {
+    const snapshot = lastPanelStructureChange?.snapshot
+    if (!snapshot) return
+    useStore.setState(snapshot)
+    setLastPanelStructureChange(null)
+    setPendingPanelEdit(null)
+    setOpenPanelSeamId(null)
+  }
+
+  const mergePanelCuts = (cutId, shotIdx) => {
+    if (!cutId) return
+    capturePanelStructure('두 패널을 합쳤습니다.', 'merge')
+    mergeCuts(cutId, { draft: true })
+    setFlowActiveShot(shotIdx)
+    setOpenPanelSeamId(null)
+  }
+
+  const confirmPanelEdit = () => {
+    if (!pendingPanelEdit) return
+    const { kind, shot, cutId } = pendingPanelEdit
+    if (kind === 'delete') {
+      capturePanelStructure('패널을 삭제했습니다.', 'delete')
+      deleteCut(cutId, shot?.id)
+    }
+    setPendingPanelEdit(null)
+    setOpenPanelSeamId((current) => current === shot?.id ? null : current)
   }
 
   useEffect(() => {
@@ -1583,7 +1789,7 @@ export default function StoryboardView({ onEnterReview = null }) {
               ? '삽입한 컷 생성 중…'
               : panelToolRequest.reason === 'split'
                 ? '나눈 두 컷 생성 중…'
-            : '새 이미지 생성 중…',
+                : '새 이미지 생성 중…',
           // 값 하나를 바꿔 다시 그리는 경우에만 채워 온다. 합치기·삽입은
           // 내용 자체가 달라지는 일이라 지금 그림을 기준으로 삼으면 안 된다.
           changes: panelToolRequest.changes || [],
@@ -1629,6 +1835,29 @@ export default function StoryboardView({ onEnterReview = null }) {
     }
   })
   if (currentBeat.length > 0) beats.push({ beat: beatIdx, elements: currentBeat })
+
+  // Script 단계의 주 단위는 Beat가 아니라 Scene이다. 기존 렌더링은 Beat를
+  // 평평하게 나열해 씬 경계가 제목 한 줄로만 보였으므로, 씬 헤딩부터 다음
+  // 헤딩 전까지의 Beat를 하나의 카드로 묶는다. 데이터 구조는 그대로 둔다.
+  const scriptSceneGroups = []
+  let currentSceneGroup = null
+  beats.forEach((beatGroup, index) => {
+    const heading = beatGroup.elements.find((element) => element.type === 'scene-heading')
+    if (heading || !currentSceneGroup) {
+      currentSceneGroup = {
+        id: `script-scene-${heading?.globalIdx ?? index}`,
+        heading: heading || null,
+        beats: [],
+      }
+      scriptSceneGroups.push(currentSceneGroup)
+    }
+    currentSceneGroup.beats.push({ beatGroup, index })
+  })
+  const activeScriptSceneGroup = scriptSceneGroups.find((sceneGroup) => (
+    sceneGroup.beats.some(({ beatGroup }) => beatGroup.beat === activeBeat)
+  )) || scriptSceneGroups[0] || null
+  const activeScriptSceneTitle = activeScriptSceneGroup?.heading?.text || scene?.title || '현재 Scene'
+  const activeScriptSceneBeatCount = activeScriptSceneGroup?.beats.length || 0
 
   // 컷을 Beat별로 묶는다. index는 전체 기준이어야 이동·삭제가 맞는다.
   // 씬 헤딩도 Beat 구분도 없으면 아직 이야기 한 덩어리다.
@@ -1830,6 +2059,18 @@ export default function StoryboardView({ onEnterReview = null }) {
       detail: finding.finding,
       cutIds: finding.cutIds,
       changed: Boolean(finding.checkedFingerprint)
+      && finding.checkedFingerprint !== cutFindingFingerprint(cutPlan, finding.cutIds),
+    }))
+  const miseFindings = (miseCheck?.findings || [])
+    .filter((finding) => finding.cutIds?.length > 0)
+    .map((finding) => ({
+      id: `mise-${finding.ruleId}`,
+      type: 'staging-mismatch',
+      layer: 'shot_relation',
+      title: NARRATIVE_RULE_LABELS[finding.ruleId] || '미장센',
+      detail: finding.finding,
+      cutIds: finding.cutIds,
+      changed: Boolean(finding.checkedFingerprint)
         && finding.checkedFingerprint !== cutFindingFingerprint(cutPlan, finding.cutIds),
     }))
   // 사용자가 표 전체를 입력 양식처럼 훑지 않아도 되도록, 실제로 다시 볼
@@ -1837,6 +2078,7 @@ export default function StoryboardView({ onEnterReview = null }) {
   const reviewCutIds = new Set([
     ...visibleEditingFindings.flatMap((finding) => finding.cutIds || []),
     ...cameraFindings.flatMap((finding) => finding.cutIds || []),
+    ...(miseCheck?.findings || []).flatMap((finding) => finding.cutIds || []),
     ...cutPlan.filter((cut) => !cut.shotSize).map((cut) => cut.id),
   ])
   // 이 컷이 속한 씬의 기준. 없으면 기본값으로 떨어진다.
@@ -1856,6 +2098,9 @@ export default function StoryboardView({ onEnterReview = null }) {
       cutId: cut.id,
       label: `컷 ${cut.beat + 1}-${cut.beatOrder}`,
     }))
+  const activeSceneCuts = cutPlan.filter((cut) => (
+    sceneOfBeat(scriptScenes, cut.beat)?.id === activeSceneId
+  ))
 
   // 이 컷에 걸리는 레퍼런스 그림. 화면에 나오는 인물과 그 씬의 공간만
   // 넣는다 — 씬의 모든 인물을 매 컷에 물리면 없는 사람까지 그려진다.
@@ -2265,11 +2510,15 @@ export default function StoryboardView({ onEnterReview = null }) {
         previousImage = image
 
         if (autoAccept) {
-          // 후보를 거치지 않고 바로 굳힌다.
+          // 후보를 거치지 않고 바로 굳힌다. 구조를 바꿔 생긴 칸이었다는
+          // 표시도 여기서 지운다 — 그림이 생기면 더는 초안 칸이 아니다.
           updateFlowShotById(shot.id, {
             image,
             source: 'ai',
             isAIGenerated: true,
+            insertDraft: false,
+            mergedDraft: false,
+            splitDraft: false,
           })
         } else {
           setPanelCandidates((current) => ({
@@ -2302,6 +2551,7 @@ export default function StoryboardView({ onEnterReview = null }) {
   // 검토 화면의 `다시 그리기`가 이 참조로 부른다.
   generatePanelsRef.current = handleGeneratePanels
 
+
   const dismissPanelCandidate = (shotId) => {
     setPanelCandidates((current) => {
       const next = { ...current }
@@ -2318,6 +2568,10 @@ export default function StoryboardView({ onEnterReview = null }) {
       image: candidate.image,
       source: 'ai',
       isAIGenerated: true,
+      // 그림이 생겼으니 더는 구조 변경 직후의 초안 칸이 아니다.
+      insertDraft: false,
+      mergedDraft: false,
+      splitDraft: false,
     })
     dismissPanelCandidate(shotId)
   }
@@ -2630,9 +2884,9 @@ export default function StoryboardView({ onEnterReview = null }) {
       if (element.type !== 'scene-heading') map.push(index)
     })
     const flagged = new Set()
-    ;(finding.lineIndexes || []).forEach((position) => {
-      if (map[position] !== undefined) flagged.add(map[position])
-    })
+      ; (finding.lineIndexes || []).forEach((position) => {
+        if (map[position] !== undefined) flagged.add(map[position])
+      })
     return flagged
   })()
 
@@ -2769,7 +3023,7 @@ export default function StoryboardView({ onEnterReview = null }) {
       narrativeRequest: (
         `${stage === 'script' ? '대본' : '컷'} 구성 점검에서 이런 지적이 나왔습니다: ${finding.finding}\n`
         + `${finding.suggestedAction}\n`
-        + '이 Beat의 대본에서 무엇을 더하거나 고치면 되는지 제안해 주세요.'
+        + '이 Moment의 대본에서 무엇을 더하거나 고치면 되는지 제안해 주세요.'
       ),
     })
     // 제안은 대본 줄 옆에 뜬다. 그 Beat가 보여야 판정할 수 있다.
@@ -2824,7 +3078,7 @@ export default function StoryboardView({ onEnterReview = null }) {
                   <span className="stage-index">1</span>
                   <div>
                     <strong>Script</strong>
-                    <em>{screenplay.length} lines · {beats.length} beats</em>
+                    <em>{screenplay.length} lines · {beats.length} moments</em>
                   </div>
                 </button>
               </li>
@@ -2835,1584 +3089,1262 @@ export default function StoryboardView({ onEnterReview = null }) {
                   disabled={cutStage === 'cutplan'}
                   aria-current={cutStage === 'cutplan' ? 'step' : undefined}
                 >
-                <span className="stage-index">2</span>
-                <div>
-                  <strong>Cut plan</strong>
-                  <em>
-                    {cutPlanSkipped
-                      ? '건너뜀 · 전부 Tentative'
-                      : cutPlanAccepted
-                        ? `${cutPlan.length} cuts 확정`
-                        : cutPlan.length > 0
-                          ? `${cutPlan.length} cuts 검토 중`
-                          : '컷 분해 필요'}
-                  </em>
-                </div>
+                  <span className="stage-index">2</span>
+                  <div>
+                    <strong>Cut plan</strong>
+                    <em>
+                      {cutPlanSkipped
+                        ? '건너뜀 · 전부 Tentative'
+                        : cutPlanAccepted
+                          ? `${cutPlan.length} cuts 확정`
+                          : cutPlan.length > 0
+                            ? `${cutPlan.length} cuts 검토 중`
+                            : '컷 분해 필요'}
+                    </em>
+                  </div>
                 </button>
               </li>
-              <li className={`${cutPlanAccepted ? 'stage-active' : 'stage-locked'}${cutStage === 'panels' ? ' stage-current' : ''}`}>
+              <li className={`${cutPlanAccepted ? (panelPreparationComplete ? 'stage-done' : 'stage-active') : 'stage-locked'}${cutStage === 'preparation' ? ' stage-current' : ''}`}>
                 <button
                   type="button"
-                  onClick={acceptCutPlan}
+                  onClick={reopenPanelPreparation}
                   disabled={!cutPlanAccepted}
-                  aria-current={cutStage === 'panels' ? 'step' : undefined}
+                  aria-current={cutStage === 'preparation' ? 'step' : undefined}
                 >
                   <span className="stage-index">3</span>
                   <div>
+                    <strong>Panel setup</strong>
+                    <em>{cutPlanAccepted ? (panelPreparationComplete ? '준비 완료' : '표현 방식 · 기준 준비') : '컷 확정 후 열림'}</em>
+                  </div>
+                </button>
+              </li>
+              <li className={`${panelPreparationComplete ? 'stage-active' : 'stage-locked'}${cutStage === 'panels' ? ' stage-current' : ''}`}>
+                <button
+                  type="button"
+                  onClick={clearCutPlanStageOverride}
+                  disabled={!panelPreparationComplete || cutStage === 'panels'}
+                  aria-current={cutStage === 'panels' ? 'step' : undefined}
+                >
+                  <span className="stage-index">4</span>
+                  <div>
                     <strong>Panels</strong>
-                    <em>{cutPlanAccepted ? `${flowShots.length} panels` : '컷 확정 후 열림'}</em>
+                    <em>{panelPreparationComplete ? `${flowShots.length} panels` : '준비 후 열림'}</em>
                   </div>
                 </button>
               </li>
             </ol>
           </nav>
         )}
-      <div className="storyboard-scroll-container">
-        {/* 콘티 표는 폭을 훨씬 넓게 쓴다. 대본·컷 플랜은 읽는 화면이라
+        <div className="storyboard-scroll-container">
+          {/* 콘티 표는 폭을 훨씬 넓게 쓴다. 대본·컷 플랜은 읽는 화면이라
             한 줄이 길면 눈이 되돌아오기 힘들어 1100px로 묶지만, 콘티는
             그림·설명·샷·앵글을 나란히 놓고 비교하는 표라 열이 많다 —
             좁히면 설명 칸부터 줄어든다. */}
-        <div className={`storyboard-list-inner${
-          showStoryboardPanels && !panelGridView && !drawingWorkspaceOpen ? ' is-conte' : ''
-        }`}>
-          {showWriteScene && (
-            <div className="inline-script-editor">
-              <div className="editor-header">
-                <h3>Story</h3>
-                <p>
-                  장면을 적거나 붙여넣으세요. 완성된 대본이 아니어도 됩니다 —
-                  거친 메모나 간단한 대사도 괜찮습니다.
-                </p>
-              </div>
-              <label className="scene-intention-field">
-                <span>Scene intention <em>optional</em></span>
-                <textarea
-                  className="scene-intention-input"
-                  placeholder="예: 발견의 순간은 조용하지만 되돌릴 수 없게 느껴진다."
-                  value={rawSceneIntention}
-                  onChange={(event) => setRawSceneIntention(event.target.value)}
-                  rows={3}
-                />
-              </label>
-              <textarea
-                className="screenplay-input"
-                placeholder={'물리학과 실험실, 밤\n\n하린이 노트북 화면을 들여다본다.\n노트에 식을 적다 지운다.\n\n하린이 연필을 내려놓고 등을 기댄다.'}
-                value={rawText}
-                onChange={(e) => setRawText(e.target.value)}
-              />
-              <div className="editor-actions">
-                {!hasScreenplay && (
-                  <button
-                    type="button"
-                    className="example-btn"
-                    onClick={() => {
-                      loadExampleScreenplay()
-                      setIsEditingRaw(false)
-                    }}
-                  >
-                    예시 대본 불러오기
-                  </button>
-                )}
-                {hasScreenplay && (
-                  <button className="cancel-btn" onClick={() => setIsEditingRaw(false)}>Cancel</button>
-                )}
-                <button
-                  className="apply-btn"
-                  onClick={handleUploadScript}
-                  disabled={!rawText.trim() || structurePending}
-                >
-                  {structurePending ? '나누는 중…' : '씬·Beat로 나누기'}
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* AI가 세운 씬·비트 구조. 확인해야 적용된다 (DG1 P2:
-              생성된 제안은 판정 대상으로 둔다). */}
-          {structureDraft && cutStage === 'script' && isExpanded && !drawingWorkspaceOpen && !showWriteScene && (
-            <section className="structure-draft-review" aria-label="Scene structure draft">
-              <header>
-                <span className="script-draft-mark" aria-hidden="true">N</span>
-                <div>
-                  {/* 'Mock'을 늘 붙여 두면 모델이 답했을 때도 규칙 기반인
-                      것처럼 읽힌다. 실제로 떨어졌을 때만 밝힌다. */}
-                  <span>씬·Beat 구조{structureError ? ' · 규칙 기반' : ''}</span>
-                  <strong>
-                    씬 {structureDraft.sceneCount}개 · Beat {structureDraft.beatCount}개로 나눴습니다
-                  </strong>
+          <div className={`storyboard-list-inner${showStoryboardPanels && !panelGridView && !drawingWorkspaceOpen ? ' is-conte' : ''
+            }`}>
+            {showWriteScene && (
+              <div className="inline-script-editor">
+                <div className="editor-header">
+                  <h3>Story</h3>
                   <p>
-                    {structureDraft.filledCount > 0
-                      ? `표시된 ${structureDraft.filledCount}줄은 AI가 채운 것입니다. 확인하기 전까지 원문은 바뀌지 않습니다.`
-                      : '확인하기 전까지 원문은 바뀌지 않습니다.'}
+                    장면을 적거나 붙여넣으세요. 완성된 대본이 아니어도 됩니다 —
+                    거친 메모나 간단한 대사도 괜찮습니다.
                   </p>
-                  {/* 모델을 못 불렀으면 그 사실을 밝힌다. 규칙 기반 결과를
-                      모델이 만든 것처럼 보이게 두면 안 된다. */}
-                  {structureError && (
-                    <p className="structure-draft-fallback">
-                      AI 호출에 실패해 규칙 기반으로 나눴습니다 · {structureError}
-                    </p>
-                  )}
                 </div>
-                <div className="script-draft-actions">
-                  <button type="button" onClick={dismissStructureDraft}>Dismiss</button>
-                  <button type="button" onClick={requestStoryStructure}>Again</button>
-                  <button type="button" className="use-draft" onClick={acceptStructureDraft}>
-                    이 구조로 진행
+                <label className="scene-intention-field">
+                  <span>Scene intention <em>optional</em></span>
+                  <textarea
+                    className="scene-intention-input"
+                    placeholder="예: 발견의 순간은 조용하지만 되돌릴 수 없게 느껴진다."
+                    value={rawSceneIntention}
+                    onChange={(event) => setRawSceneIntention(event.target.value)}
+                    rows={3}
+                  />
+                </label>
+                <textarea
+                  className="screenplay-input"
+                  placeholder={'물리학과 실험실, 밤\n\n하린이 노트북 화면을 들여다본다.\n노트에 식을 적다 지운다.\n\n하린이 연필을 내려놓고 등을 기댄다.'}
+                  value={rawText}
+                  onChange={(e) => setRawText(e.target.value)}
+                />
+                <div className="editor-actions">
+                  {!hasScreenplay && (
+                    <button
+                      type="button"
+                      className="example-btn"
+                      onClick={() => {
+                        loadExampleScreenplay()
+                        setIsEditingRaw(false)
+                      }}
+                    >
+                      예시 대본 불러오기
+                    </button>
+                  )}
+                  {hasScreenplay && (
+                    <button className="cancel-btn" onClick={() => setIsEditingRaw(false)}>Cancel</button>
+                  )}
+                  <button
+                    className="apply-btn"
+                    onClick={handleUploadScript}
+                    disabled={!rawText.trim() || structurePending}
+                  >
+                      {structurePending ? '나누는 중…' : '씬·Moment로 나누기'}
                   </button>
                 </div>
-              </header>
-
-              <div className="structure-draft-body">
-                {structureDraft.screenplay.map((element, index) => {
-                  const previous = structureDraft.screenplay[index - 1]
-                  const startsBeat = !previous || previous.beat !== element.beat
-                  return (
-                    <div key={`${element.type}-${index}`}>
-                      {element.type === 'scene-heading' ? (
-                        <div className="structure-draft-scene">{element.text}</div>
-                      ) : (
-                        <>
-                          {startsBeat && (
-                            <div className="structure-draft-beat">
-                              Beat {String(element.beat + 1).padStart(2, '0')}
-                            </div>
-                          )}
-                          {/* AI가 채운 줄은 구분해 보인다. 사용자가 자기가
-                              쓰지 않은 것을 알아볼 수 있어야 한다. */}
-                          <p className={element.filled ? 'is-filled' : ''}>
-                            {element.text}
-                          </p>
-                        </>
-                      )}
-                    </div>
-                  )
-                })}
               </div>
-            </section>
-          )}
+            )}
 
-          {cutPlan.length > 0 && cutStage === 'cutplan' && isExpanded && !drawingWorkspaceOpen && (
-            <section className="cut-plan-review" aria-label="Cut plan">
-              {/* 제목 블록을 없앴다. 상단 단계 nav가 이미 `컷 플랜`을
+            {/* AI가 세운 씬·비트 구조. 확인해야 적용된다 (DG1 P2:
+              생성된 제안은 판정 대상으로 둔다). */}
+            {structureDraft && cutStage === 'script' && isExpanded && !drawingWorkspaceOpen && !showWriteScene && (
+              <section className="structure-draft-review" aria-label="Scene structure draft">
+                <header>
+                  <span className="script-draft-mark" aria-hidden="true">N</span>
+                  <div>
+                    {/* 'Mock'을 늘 붙여 두면 모델이 답했을 때도 규칙 기반인
+                      것처럼 읽힌다. 실제로 떨어졌을 때만 밝힌다. */}
+                    <span>씬·Moment 구조{structureError ? ' · 규칙 기반' : ''}</span>
+                    <strong>
+                      씬 {structureDraft.sceneCount}개 · Moment {structureDraft.beatCount}개로 나눴습니다
+                    </strong>
+                    <p>
+                      {structureDraft.filledCount > 0
+                        ? `표시된 ${structureDraft.filledCount}줄은 AI가 채운 것입니다. 확인하기 전까지 원문은 바뀌지 않습니다.`
+                        : '확인하기 전까지 원문은 바뀌지 않습니다.'}
+                    </p>
+                    {/* 모델을 못 불렀으면 그 사실을 밝힌다. 규칙 기반 결과를
+                      모델이 만든 것처럼 보이게 두면 안 된다. */}
+                    {structureError && (
+                      <p className="structure-draft-fallback">
+                        AI 호출에 실패해 규칙 기반으로 나눴습니다 · {structureError}
+                      </p>
+                    )}
+                  </div>
+                  <div className="script-draft-actions">
+                    <button type="button" onClick={dismissStructureDraft}>Dismiss</button>
+                    <button type="button" onClick={requestStoryStructure}>Again</button>
+                    <button type="button" className="use-draft" onClick={acceptStructureDraft}>
+                      이 구조로 진행
+                    </button>
+                  </div>
+                </header>
+
+                <div className="structure-draft-body">
+                  {structureDraft.screenplay.map((element, index) => {
+                    const previous = structureDraft.screenplay[index - 1]
+                    const startsBeat = !previous || previous.beat !== element.beat
+                    return (
+                      <div key={`${element.type}-${index}`}>
+                        {element.type === 'scene-heading' ? (
+                          <div className="structure-draft-scene">{element.text}</div>
+                        ) : (
+                          <>
+                            {startsBeat && (
+                              <div className="structure-draft-beat">
+                                Moment {String(element.beat + 1).padStart(2, '0')}
+                              </div>
+                            )}
+                            {/* AI가 채운 줄은 구분해 보인다. 사용자가 자기가
+                              쓰지 않은 것을 알아볼 수 있어야 한다. */}
+                            <p className={element.filled ? 'is-filled' : ''}>
+                              {element.text}
+                            </p>
+                          </>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+              </section>
+            )}
+
+            {cutPlan.length > 0 && cutStage === 'cutplan' && isExpanded && !drawingWorkspaceOpen && (
+              <section className="cut-plan-review" aria-label="Cut plan">
+                {/* 제목 블록을 없앴다. 상단 단계 nav가 이미 `컷 플랜`을
                   가리키고 있어 같은 말이 두 번 나왔다. 표만 남긴다.
                   다만 출처를 밝히는 줄은 남는다 — 규칙 기반 결과나
                   검토를 건너뛴 것을 모델이 정한 것처럼 보이게 두지 않는다. */}
-              {(cutPlanSkipped || cutPlanError) && (
-                <p className="cut-plan-origin-note">
-                  {cutPlanSkipped
-                    ? '컷 분해를 건너뛰어 자동 생성했습니다. 검토되지 않은 채 넘어갔습니다.'
-                    : `AI 호출에 실패해 규칙 기반으로 나눴습니다 · ${cutPlanError}`}
-                </p>
-              )}
+                {(cutPlanSkipped || cutPlanError) && (
+                  <p className="cut-plan-origin-note">
+                    {cutPlanSkipped
+                      ? '컷 분해를 건너뛰어 자동 생성했습니다. 검토되지 않은 채 넘어갔습니다.'
+                      : `AI 호출에 실패해 규칙 기반으로 나눴습니다 · ${cutPlanError}`}
+                  </p>
+                )}
 
-              {/* 되돌리는 쪽만 남는다. 확정은 rail 아래 `다음 단계`로
+                {/* 되돌리는 쪽만 남는다. 확정은 rail 아래 `다음 단계`로
                   옮겼다 — 대본 단계와 같은 자리에서 나가야 단계마다
                   길을 다시 찾지 않는다.
                   `장면 전체 지시`는 접었다 — 컷을 먼저 정하는 화면인데
                   입력칸이 표 위에 서 있으면 그것부터 채우게 된다.
                   값은 지워지지 않고 열면 그대로 있다. */}
-              {/* 다시 나누는 동안 이 화면에 머문다. 표는 아직 이전 것이므로
+                {/* 다시 나누는 동안 이 화면에 머문다. 표는 아직 이전 것이므로
                   무엇을 기다리는지 밝힌다 — 아니면 눌렀는데 아무 일도 없는
                   것처럼 보이고, 잠시 뒤 표가 소리 없이 바뀐다. */}
-              {cutPlanRunPending && (
-                <p className="cut-plan-rerun-note">
-                  {sceneStatePending
-                    ? '인물·공간을 읽는 중…'
-                    : cutPlanPending ? '컷을 다시 나누는 중…' : '샷을 정하는 중…'}
-                  {' '}지금 표는 이전 결과입니다.
-                </p>
-              )}
+                {cutPlanRunPending && (
+                  <p className="cut-plan-rerun-note">
+                    {sceneStatePending
+                      ? '인물·공간을 읽는 중…'
+                      : cutPlanPending ? '컷을 다시 나누는 중…' : '샷을 정하는 중…'}
+                    {' '}지금 표는 이전 결과입니다.
+                  </p>
+                )}
 
-              <div className="cut-plan-toolbar">
-                <button type="button" onClick={backToScript} disabled={cutPlanRunPending}>
-                  대본으로
-                </button>
-                <button type="button" onClick={requestCutPlan} disabled={cutPlanRunPending}>
-                  {cutPlanRunPending ? '나누는 중…' : '다시 나누기'}
-                </button>
-                <button
-                  type="button"
-                  className={`cut-plan-scene-note-toggle${sceneNoteOpen ? ' is-open' : ''}${scenePromptNote.trim() ? ' has-value' : ''}`}
-                  aria-expanded={sceneNoteOpen}
-                  onClick={() => setSceneNoteOpen((open) => !open)}
-                >
-                  장면 전체 지시
-                  {!sceneNoteOpen && scenePromptNote.trim() && <i aria-hidden="true" />}
-                </button>
-              </div>
-
-              {/* 컷을 확인한 뒤 추가하는 공통 연출 기준이다. 대본 단계의
-                  sceneIntention과 달리, 컷 분해 자체는 다시 바꾸지 않는다. */}
-              {sceneNoteOpen && (
-              <div className="cut-plan-scene-note">
-                <div className="cut-plan-scene-note-heading">
-                  <label htmlFor="scene-prompt-note">장면 전체 지시</label>
-                  <p>적용 후 다음 샷 설계와 패널 생성에 공통으로 반영됩니다.</p>
-                </div>
-                <textarea
-                  id="scene-prompt-note"
-                  value={scenePromptNoteDraft}
-                  onChange={(event) => setScenePromptNoteDraft(event.target.value)}
-                  placeholder="예: 초반에는 공간을 넓게 유지하고, 발견이 드러난 뒤에는 인물에게 가까이 붙는다."
-                />
-                <div className="cut-plan-scene-note-actions">
-                  <span>
-                    {scenePromptNoteDraft.trim() === scenePromptNote.trim()
-                      ? (scenePromptNote.trim() ? '적용됨' : '아직 장면 전체 지시가 없습니다')
-                      : '변경 사항이 아직 적용되지 않았습니다'}
-                  </span>
+                <div className="cut-plan-toolbar">
+                  <button type="button" onClick={backToScript} disabled={cutPlanRunPending}>
+                    대본으로
+                  </button>
+                  <button type="button" onClick={requestCutPlan} disabled={cutPlanRunPending}>
+                    {cutPlanRunPending ? '나누는 중…' : '다시 나누기'}
+                  </button>
                   <button
                     type="button"
-                    onClick={() => setScenePromptNote(scenePromptNoteDraft.trim())}
-                    disabled={scenePromptNoteDraft.trim() === scenePromptNote.trim()}
+                    className={`cut-plan-scene-note-toggle${sceneNoteOpen ? ' is-open' : ''}${scenePromptNote.trim() ? ' has-value' : ''}`}
+                    aria-expanded={sceneNoteOpen}
+                    onClick={() => setSceneNoteOpen((open) => !open)}
                   >
-                    지시 적용
+                    장면 전체 지시
+                    {!sceneNoteOpen && scenePromptNote.trim() && <i aria-hidden="true" />}
                   </button>
                 </div>
-              </div>
-              )}
 
-              <div className="cut-plan-table-wrap">
-                <table className="cut-plan-table">
-                  <thead>
-                    <tr>
-                      <th className="col-cut">컷</th>
-                      <th className="col-time">시간</th>
-                      <th className="col-place">장소</th>
-                      <th className="col-content">내용</th>
-                      <th className="col-purpose">중요한 것</th>
-                      <th className="col-cast">인물</th>
-                      <th className="col-shot">샷</th>
-                      <th className="col-tools" aria-label="Actions" />
-                    </tr>
-                  </thead>
-                  {cutPlanBeatGroups.map((group) => {
-                    const collapsed = collapsedCutBeats.includes(group.beat)
-                    const sceneNo = sceneNumberOf(group.beat)
-                    // 접힌 씬의 Beat는 그리지 않는다.
-                    if (isSceneCollapsed(group.beat)) return null
-                    const sceneCollapsed = collapsedScenes.includes(group.beat)
-                    return (
-                      <tbody key={group.beat} className="cut-plan-beat-group">
-                        {/* 씬이 바뀌는 Beat에 씬 경계를 그린다. 컷 표에서도
-                            어느 씬의 컷인지 보여야 한다. */}
-                        {sceneNo > 0 && (
-                          <tr className="cut-plan-scene-row">
-                            <th colSpan={8}>
-                              <button
-                                type="button"
-                                onClick={() => toggleScene(group.beat)}
-                                aria-expanded={!sceneCollapsed}
-                              >
-                                <span className="cut-plan-scene-caret">
-                                  {sceneCollapsed ? '▸' : '▾'}
-                                </span>
-                                <span>Scene {sceneNo}</span>
-                                {screenplay.find((element) => (
-                                  element.type === 'scene-heading' && element.beat === group.beat
-                                ))?.text}
-                                {sceneCollapsed && (
-                                  <em>{cutsInScene(group.beat)} cuts</em>
-                                )}
-                              </button>
-                            </th>
-                          </tr>
-                        )}
-                        {!sceneCollapsed && (
-                        <>
-                        <tr className="cut-plan-beat-row">
-                          <th colSpan={8}>
-                            <button
-                              type="button"
-                              onClick={() => toggleCutBeat(group.beat)}
-                              aria-expanded={!collapsed}
-                            >
-                              <span className="cut-plan-beat-caret">{collapsed ? '▸' : '▾'}</span>
-                              Beat {String(group.beat + 1).padStart(2, '0')}
-                              <em>{group.items.length} cuts</em>
-                            </button>
-                          </th>
-                        </tr>
-                        {!collapsed && group.items.map(({ item, index }) => {
-                        const needsReview = reviewCutIds.has(item.id)
-                        return (
-                        <Fragment key={item.id}>
-                        <tr
-                          data-cut-id={item.id}
-                          className={`provenance-row-${item.provenance.toLowerCase()}${selectedCutId === item.id ? ' selected' : ''}${needsReview ? ' needs-review' : ''}`}
-                          onClick={() => {
-                            // 진단이 짚어 보내 이미 골라져 있던 컷이면, 누른 것은
-                            // 끄려는 것이 아니라 여기서 직접 고치겠다는 뜻이다.
-                            // 그대로 토글하면 선택이 풀려 나누기·합치기가 안 열린다.
-                            const arrivedFromDiagnosis = selectedCutId === item.id && !cutSelectedFromTable
-                            setCutSelectedFromTable(true)
-                            if (!arrivedFromDiagnosis) {
-                              setSelectedCutId(selectedCutId === item.id ? null : item.id)
-                            }
-                          }}
-                        >
-                          <td className="col-cut">
-                            <span className="cut-plan-number">
-                              {item.beat + 1}-{item.beatOrder}
-                            </span>
-                            {needsReview && <span className="cut-plan-review-mark">확인</span>}
-                          </td>
-                          <td className="col-time">
-                            <div className="cut-plan-edit-control" onClick={(event) => event.stopPropagation()}>
-                            <input
-                              type="text"
-                              value={item.time}
-                              onChange={(event) => updateCutPlanItem(item.id, { time: event.target.value })}
-                              aria-label={`Cut ${item.order} time`}
-                            />
-                            </div>
-                          </td>
-                          <td className="col-place">
-                            <div className="cut-plan-edit-control" onClick={(event) => event.stopPropagation()}>
-                            <input
-                              type="text"
-                              value={item.place}
-                              onChange={(event) => updateCutPlanItem(item.id, { place: event.target.value })}
-                              aria-label={`Cut ${item.order} place`}
-                            />
-                            </div>
-                          </td>
-                          <td className="col-content">
-                            <div className="cut-plan-edit-control" onClick={(event) => event.stopPropagation()}>
-                            <input
-                              type="text"
-                              value={item.content}
-                              onChange={(event) => updateCutPlanItem(item.id, { content: event.target.value })}
-                              placeholder="이 컷에서 무엇이 일어나는가"
-                              aria-label={`Cut ${item.order} content`}
-                            />
-                            </div>
-                          </td>
-                          <td className="col-purpose">
-                            <div className="cut-plan-edit-control" onClick={(event) => event.stopPropagation()}>
-                            <input
-                              type="text"
-                              value={item.purpose}
-                              onChange={(event) => updateCutPlanItem(item.id, { purpose: event.target.value })}
-                              placeholder="이 컷이 존재하는 이유"
-                              aria-label={`Cut ${item.order} purpose`}
-                            />
-                            </div>
-                          </td>
-                          <td className="col-cast">
-                            <div className="cut-plan-edit-control" onClick={(event) => event.stopPropagation()}>
-                            <input
-                              type="text"
-                              value={item.characters}
-                              onChange={(event) => updateCutPlanItem(item.id, { characters: event.target.value })}
-                              aria-label={`Cut ${item.order} characters`}
-                            />
-                            </div>
-                          </td>
-                          <td className="col-shot">
-                            <div className="cut-plan-edit-control" onClick={(event) => event.stopPropagation()}>
-                            <select
-                              value={item.shotSize}
-                              onChange={(event) => updateCutPlanItem(item.id, { shotSize: event.target.value })}
-                              aria-label={`Cut ${item.order} shot size`}
-                            >
-                              {/* 샷은 촬영이 정한다. 빈 값이면 첫 항목이
-                                  선택돼 보여 정해진 것처럼 읽힌다. */}
-                              <option value="">미정</option>
-                              {cutPlanShotSizes.map((size) => (
-                                <option key={size} value={size}>{size}</option>
-                              ))}
-                            </select>
-                            </div>
-                          </td>
-                          <td className="col-tools">
-                            <div className="cut-plan-row-tools" onClick={(event) => event.stopPropagation()}>
-                              <button
-                                type="button"
-                                className={expandedPromptCutId === item.id ? 'active' : ''}
-                                onClick={() => setExpandedPromptCutId(
-                                  expandedPromptCutId === item.id ? null : item.id,
-                                )}
-                                aria-label="Show prompt"
-                                aria-expanded={expandedPromptCutId === item.id}
-                                title="프롬프트 보기"
-                              >
-                                P
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => moveCutPlanItem(item.id, -1)}
-                                disabled={index === 0}
-                                aria-label="Move cut up"
-                                title="위로"
-                              >
-                                ↑
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => moveCutPlanItem(item.id, 1)}
-                                disabled={index === cutPlan.length - 1}
-                                aria-label="Move cut down"
-                                title="아래로"
-                              >
-                                ↓
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => addCutPlanItem(item.id, item.beat)}
-                                aria-label="Add cut after"
-                                title="아래에 컷 추가"
-                              >
-                                +
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => removeCutPlanItem(item.id)}
-                                disabled={cutPlan.length === 1}
-                                aria-label="Remove cut"
-                                title="삭제"
-                              >
-                                ×
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                        {expandedPromptCutId === item.id && (() => {
-                          const prompt = buildCutPrompt(item, {
-                            sceneIntention,
-                            sceneNote: scenePromptNote,
-                            declarations,
-                            sceneState: sceneStateForCut(item),
-                            seam: seamBefore(item.id),
-                            cutIndex: index,
-                            cutOrder,
-                          })
-                          return (
-                            <tr className="cut-plan-prompt-row">
-                              <td colSpan={8}>
-                                <div className="cut-plan-prompt">
-                                  <div className="cut-plan-prompt-auto">
-                                    <span>
-                                      {prompt.isEdited ? '프롬프트 · User' : '컷에서 조립됨 · AI'}
-                                      {prompt.isEdited && (
-                                        <button
-                                          type="button"
-                                          className="cut-plan-prompt-revert"
-                                          onClick={() => updateCutPlanItem(item.id, {
-                                            promptOverride: '',
-                                          })}
-                                          title="컷에서 다시 조립"
-                                        >
-                                          되돌리기
-                                        </button>
-                                      )}
-                                    </span>
-                                    {/* 바로 고칠 수 있게 둔다. 고치면 이 컷의
-                                        프롬프트 출처가 User로 바뀐다. */}
-                                    <textarea
-                                      className="cut-plan-prompt-input"
-                                      value={prompt.effective}
-                                      rows={3}
-                                      onChange={(event) => updateCutPlanItem(item.id, {
-                                        promptOverride: event.target.value,
-                                      })}
-                                      onBlur={(event) => {
-                                        // 편집을 마쳤을 때 한 번만 남긴다.
-                                        if (!event.target.value.trim()) return
-                                        logEdit({ level: 'element', target: item.id, action: 'prompt' })
-                                      }}
-                                      placeholder="컷 내용이 비어 있습니다."
-                                      aria-label={`Cut ${item.order} prompt`}
-                                    />
-                                    {prompt.isEdited && (
-                                      <p className="cut-plan-prompt-original">
-                                        컷 기준: {prompt.auto}
-                                      </p>
-                                    )}
-                                  </div>
-                                  {prompt.shared && (
-                                    <div className="cut-plan-prompt-shared">
-                                      <span>장면 공통</span>
-                                      <p>{prompt.shared}</p>
-                                    </div>
-                                  )}
-                                </div>
-                              </td>
-                            </tr>
-                          )
-                        })()}
-                        </Fragment>
-                        )})}
-                        </>
-                        )}
-                      </tbody>
-                    )
-                  })}
-                </table>
-              </div>
-
-              <footer className="cut-plan-footer">
-                <button type="button" onClick={() => addCutPlanItem(null, activeBeat)}>
-                  + Add cut
-                </button>
-                {/* AI 출처 전체를 미확인으로 세면 사용자가 표 18행을 전부
-                    검사해야 한다고 느낀다. 실제 예외만 센다. */}
-                <span>
-                  {cutPlan.length} cuts
-                  {reviewCutIds.size > 0 && (
-                    <> · 확인할 것 {reviewCutIds.size}</>
-                  )}
-                </span>
-              </footer>
-            </section>
-          )}
-
-          {cutPlanOrphanedShots.length > 0 && isExpanded && !drawingWorkspaceOpen && (
-            <div className="cut-plan-orphan-warning" role="status">
-              <div>
-                <strong>
-                  그림이 있는 패널 {cutPlanOrphanedShots.length}개가 컷과 연결되지 않았습니다
-                </strong>
-                <p>
-                  컷을 지우거나 순서를 크게 바꾸면 기존 그림이 갈 곳을 잃습니다.
-                  컷을 다시 열어 자리를 만들거나, 이대로 진행할 수 있습니다.
-                </p>
-              </div>
-              <div className="cut-plan-orphan-actions">
-                <button type="button" onClick={clearCutPlanOrphanWarning}>
-                  이대로 진행
-                </button>
-                <button
-                  type="button"
-                  className="reopen"
-                  onClick={() => {
-                    clearCutPlanOrphanWarning()
-                    reopenCutPlan()
-                  }}
-                >
-                  컷 다시 열기
-                </button>
-              </div>
-            </div>
-          )}
-
-          {showStoryboardPanels && !drawingWorkspaceOpen && (
-            <section
-              className={`storyboard-generation-bar ${isExpanded ? 'expanded' : 'compact'}`}
-              aria-label="AI storyboard draft generation"
-              onClick={(event) => event.stopPropagation()}
-            >
-            <div className="generation-bar-copy">
-              {/* 패널은 실제 모델이 그린다. 'Mock' 표시가 남아 있으면
-                  진짜 그림을 가짜로 읽게 된다. */}
-              <span>AI storyboard draft</span>
-              <strong>
-                {eligibleScopeShots.length === 0
-                  ? '모든 컷에 그림이 있습니다'
-                  : `아직 그리지 않은 컷 ${eligibleScopeShots.length}개`}
-              </strong>
-              {/* 확정 직후에는 앞 아홉 장만 그린다. 남은 것이 왜 비어 있는지
-                  말해 주지 않으면 생성이 실패한 것으로 읽힌다. */}
-              <p>
-                {eligibleScopeShots.length > 0
-                  ? '먼저 앞부분을 그렸습니다. 나머지는 여기서 이어 그립니다.'
-                  : '직접 그린 그림과 불러온 이미지는 그대로 둡니다.'}
-              </p>
-            </div>
-            <div className="generation-settings">
-              <label className="generation-model-picker">
-                <span>모델</span>
-                <select
-                  value={panelImageModel}
-                  onChange={(event) => setPanelImageModel(event.target.value)}
-                  disabled={isGenerating}
-                  aria-label="이미지 생성 모델"
-                >
-                  <option value="gpt-image-1">GPT Image 1</option>
-                  <option value="gpt-image-2">GPT Image 2</option>
-                  <option value="flux-2-klein">FLUX.2 Klein (빠름)</option>
-                </select>
-              </label>
-              <div className="generation-style-picker">
-              <button
-                type="button"
-                className="generation-style-trigger"
-                onClick={() => setStylePickerOpen((open) => !open)}
-                disabled={isGenerating}
-                aria-expanded={stylePickerOpen}
-              >
-                <img src={PANEL_STYLE_PRESETS.find((preset) => preset.id === panelStylePreset)?.image} alt="" />
-                <span>{PANEL_STYLE_PRESETS.find((preset) => preset.id === panelStylePreset)?.label}</span>
-                <span aria-hidden="true">⌄</span>
-              </button>
-              {stylePickerOpen && (
-                <div className="generation-style-popover" role="dialog" aria-label="표현 스타일 선택">
-                  <p>표현 스타일</p>
-                  <div>
-                    {PANEL_STYLE_PRESETS.map((preset) => (
+                {/* 컷을 확인한 뒤 추가하는 공통 연출 기준이다. 대본 단계의
+                  sceneIntention과 달리, 컷 분해 자체는 다시 바꾸지 않는다. */}
+                {sceneNoteOpen && (
+                  <div className="cut-plan-scene-note">
+                    <div className="cut-plan-scene-note-heading">
+                      <label htmlFor="scene-prompt-note">장면 전체 지시</label>
+                      <p>적용 후 다음 샷 설계와 패널 생성에 공통으로 반영됩니다.</p>
+                    </div>
+                    <textarea
+                      id="scene-prompt-note"
+                      value={scenePromptNoteDraft}
+                      onChange={(event) => setScenePromptNoteDraft(event.target.value)}
+                      placeholder="예: 초반에는 공간을 넓게 유지하고, 발견이 드러난 뒤에는 인물에게 가까이 붙는다."
+                    />
+                    <div className="cut-plan-scene-note-actions">
+                      <span>
+                        {scenePromptNoteDraft.trim() === scenePromptNote.trim()
+                          ? (scenePromptNote.trim() ? '적용됨' : '아직 장면 전체 지시가 없습니다')
+                          : '변경 사항이 아직 적용되지 않았습니다'}
+                      </span>
                       <button
                         type="button"
-                        key={preset.id}
-                        className={panelStylePreset === preset.id ? 'active' : ''}
-                        onClick={() => {
-                          setPanelStylePreset(preset.id)
-                          setStylePickerOpen(false)
-                        }}
+                        onClick={() => setScenePromptNote(scenePromptNoteDraft.trim())}
+                        disabled={scenePromptNoteDraft.trim() === scenePromptNote.trim()}
                       >
-                        <img src={preset.image} alt="" />
-                        <span>{preset.label}</span>
+                        지시 적용
                       </button>
-                    ))}
+                    </div>
                   </div>
-                </div>
-              )}
-              </div>
-            </div>
-            <div className="generation-bar-actions">
-              {/* 전체 생성은 한 번에 나오는데 화면은 Beat마다 한 줄씩
-                  쌓아 보여 준다. 이어지는지 보려면 늘어놓고 봐야 한다. */}
-              <button
-                type="button"
-                className="generation-grid-toggle"
-                aria-pressed={panelGridView}
-                onClick={() => setPanelGridView((on) => !on)}
-                title={panelGridView ? '대본과 나란히 보기' : '패널만 격자로 모아 보기'}
-              >
-                {panelGridView ? '대본과 함께' : '한눈에 보기'}
-              </button>
-              {/* 초안은 바로 굳으므로 여기 남는 후보는 진단에서 다시 그린
-                  것뿐이다. 그 판정은 검토 화면의 `이걸로 하기 / 버리고
-                  되돌리기`가 받으므로 한 번에 승인하는 길은 두지 않는다. */}
-              <button
-                type="button"
-                className="generation-run"
-                disabled={eligibleScopeShots.length === 0 || isGenerating}
-                onClick={() => handleGeneratePanels(eligibleScopeShots, { autoAccept: true })}
-              >
-                {isGenerating ? `그리는 중… · ${generatingCount}` : (
-                  <>
-                    이어 그리기
-                    {eligibleScopeShots.length > 0 ? ` · ${eligibleScopeShots.length}` : ''}
-                  </>
                 )}
-              </button>
-            </div>
-            {/* 실패를 조용히 넘기면 왜 그림이 안 나왔는지 알 수 없다. */}
-            {panelGenError && (
-              <p className="generation-error">그림 생성 실패 · {panelGenError}</p>
+
+                <div className="cut-plan-table-wrap">
+                  <table className="cut-plan-table">
+                    <thead>
+                      <tr>
+                        <th className="col-cut">컷</th>
+                        <th className="col-time">시간</th>
+                        <th className="col-place">장소</th>
+                        <th className="col-content">내용</th>
+                        <th className="col-purpose">중요한 것</th>
+                        <th className="col-cast">인물</th>
+                        <th className="col-shot">샷</th>
+                        <th className="col-tools" aria-label="Actions" />
+                      </tr>
+                    </thead>
+                    {cutPlanBeatGroups.map((group) => {
+                      const collapsed = collapsedCutBeats.includes(group.beat)
+                      const sceneNo = sceneNumberOf(group.beat)
+                      // 접힌 씬의 Beat는 그리지 않는다.
+                      if (isSceneCollapsed(group.beat)) return null
+                      const sceneCollapsed = collapsedScenes.includes(group.beat)
+                      return (
+                        <tbody key={group.beat} className="cut-plan-beat-group">
+                          {/* 씬이 바뀌는 Beat에 씬 경계를 그린다. 컷 표에서도
+                            어느 씬의 컷인지 보여야 한다. */}
+                          {sceneNo > 0 && (
+                            <tr className="cut-plan-scene-row">
+                              <th colSpan={8}>
+                                <button
+                                  type="button"
+                                  onClick={() => toggleScene(group.beat)}
+                                  aria-expanded={!sceneCollapsed}
+                                >
+                                  <span className="cut-plan-scene-caret">
+                                    {sceneCollapsed ? '▸' : '▾'}
+                                  </span>
+                                  <span>Scene {sceneNo}</span>
+                                  {screenplay.find((element) => (
+                                    element.type === 'scene-heading' && element.beat === group.beat
+                                  ))?.text}
+                                  {sceneCollapsed && (
+                                    <em>{cutsInScene(group.beat)} cuts</em>
+                                  )}
+                                </button>
+                              </th>
+                            </tr>
+                          )}
+                          {!sceneCollapsed && (
+                            <>
+                              <tr className="cut-plan-beat-row">
+                                <th colSpan={8}>
+                                  <button
+                                    type="button"
+                                    onClick={() => toggleCutBeat(group.beat)}
+                                    aria-expanded={!collapsed}
+                                  >
+                                    <span className="cut-plan-beat-caret">{collapsed ? '▸' : '▾'}</span>
+                                    Moment {String(group.beat + 1).padStart(2, '0')}
+                                    <em>{group.items.length} cuts</em>
+                                  </button>
+                                </th>
+                              </tr>
+                              {!collapsed && group.items.map(({ item, index }) => {
+                                const needsReview = reviewCutIds.has(item.id)
+                                return (
+                                  <Fragment key={item.id}>
+                                    <tr
+                                      data-cut-id={item.id}
+                                      className={`provenance-row-${item.provenance.toLowerCase()}${selectedCutId === item.id ? ' selected' : ''}${needsReview ? ' needs-review' : ''}`}
+                                      onClick={() => {
+                                        // 진단이 짚어 보내 이미 골라져 있던 컷이면, 누른 것은
+                                        // 끄려는 것이 아니라 여기서 직접 고치겠다는 뜻이다.
+                                        // 그대로 토글하면 선택이 풀려 나누기·합치기가 안 열린다.
+                                        const arrivedFromDiagnosis = selectedCutId === item.id && !cutSelectedFromTable
+                                        setCutSelectedFromTable(true)
+                                        if (!arrivedFromDiagnosis) {
+                                          setSelectedCutId(selectedCutId === item.id ? null : item.id)
+                                        }
+                                      }}
+                                    >
+                                      <td className="col-cut">
+                                        <span className="cut-plan-number">
+                                          {item.beat + 1}-{item.beatOrder}
+                                        </span>
+                                        {needsReview && <span className="cut-plan-review-mark">확인</span>}
+                                      </td>
+                                      <td className="col-time">
+                                        <div className="cut-plan-edit-control" onClick={(event) => event.stopPropagation()}>
+                                          <input
+                                            type="text"
+                                            value={item.time}
+                                            onChange={(event) => updateCutPlanItem(item.id, { time: event.target.value })}
+                                            aria-label={`Cut ${item.order} time`}
+                                          />
+                                        </div>
+                                      </td>
+                                      <td className="col-place">
+                                        <div className="cut-plan-edit-control" onClick={(event) => event.stopPropagation()}>
+                                          <input
+                                            type="text"
+                                            value={item.place}
+                                            onChange={(event) => updateCutPlanItem(item.id, { place: event.target.value })}
+                                            aria-label={`Cut ${item.order} place`}
+                                          />
+                                        </div>
+                                      </td>
+                                      <td className="col-content">
+                                        <div className="cut-plan-edit-control" onClick={(event) => event.stopPropagation()}>
+                                          <input
+                                            type="text"
+                                            value={item.content}
+                                            onChange={(event) => updateCutPlanItem(item.id, { content: event.target.value })}
+                                            placeholder="이 컷에서 무엇이 일어나는가"
+                                            aria-label={`Cut ${item.order} content`}
+                                          />
+                                        </div>
+                                      </td>
+                                      <td className="col-purpose">
+                                        <div className="cut-plan-edit-control" onClick={(event) => event.stopPropagation()}>
+                                          <input
+                                            type="text"
+                                            value={item.purpose}
+                                            onChange={(event) => updateCutPlanItem(item.id, { purpose: event.target.value })}
+                                            placeholder="이 컷이 존재하는 이유"
+                                            aria-label={`Cut ${item.order} purpose`}
+                                          />
+                                        </div>
+                                      </td>
+                                      <td className="col-cast">
+                                        <div className="cut-plan-edit-control" onClick={(event) => event.stopPropagation()}>
+                                          <input
+                                            type="text"
+                                            value={item.characters}
+                                            onChange={(event) => updateCutPlanItem(item.id, { characters: event.target.value })}
+                                            aria-label={`Cut ${item.order} characters`}
+                                          />
+                                        </div>
+                                      </td>
+                                      <td className="col-shot">
+                                        <div className="cut-plan-edit-control" onClick={(event) => event.stopPropagation()}>
+                                          <select
+                                            value={item.shotSize}
+                                            onChange={(event) => updateCutPlanItem(item.id, { shotSize: event.target.value })}
+                                            aria-label={`Cut ${item.order} shot size`}
+                                          >
+                                            {/* 샷은 촬영이 정한다. 빈 값이면 첫 항목이
+                                  선택돼 보여 정해진 것처럼 읽힌다. */}
+                                            <option value="">미정</option>
+                                            {cutPlanShotSizes.map((size) => (
+                                              <option key={size} value={size}>{size}</option>
+                                            ))}
+                                          </select>
+                                        </div>
+                                      </td>
+                                      <td className="col-tools">
+                                        <div className="cut-plan-row-tools" onClick={(event) => event.stopPropagation()}>
+                                          <button
+                                            type="button"
+                                            className={expandedPromptCutId === item.id ? 'active' : ''}
+                                            onClick={() => setExpandedPromptCutId(
+                                              expandedPromptCutId === item.id ? null : item.id,
+                                            )}
+                                            aria-label="Show prompt"
+                                            aria-expanded={expandedPromptCutId === item.id}
+                                            title="프롬프트 보기"
+                                          >
+                                            P
+                                          </button>
+                                          <button
+                                            type="button"
+                                            onClick={() => moveCutPlanItem(item.id, -1)}
+                                            disabled={index === 0}
+                                            aria-label="Move cut up"
+                                            title="위로"
+                                          >
+                                            ↑
+                                          </button>
+                                          <button
+                                            type="button"
+                                            onClick={() => moveCutPlanItem(item.id, 1)}
+                                            disabled={index === cutPlan.length - 1}
+                                            aria-label="Move cut down"
+                                            title="아래로"
+                                          >
+                                            ↓
+                                          </button>
+                                          <button
+                                            type="button"
+                                            onClick={() => addCutPlanItem(item.id, item.beat)}
+                                            aria-label="Add cut after"
+                                            title="아래에 컷 추가"
+                                          >
+                                            +
+                                          </button>
+                                          <button
+                                            type="button"
+                                            onClick={() => removeCutPlanItem(item.id)}
+                                            disabled={cutPlan.length === 1}
+                                            aria-label="Remove cut"
+                                            title="삭제"
+                                          >
+                                            ×
+                                          </button>
+                                        </div>
+                                      </td>
+                                    </tr>
+                                    {expandedPromptCutId === item.id && (() => {
+                                      const prompt = buildCutPrompt(item, {
+                                        sceneIntention,
+                                        sceneNote: scenePromptNote,
+                                        declarations,
+                                        sceneState: sceneStateForCut(item),
+                                        seam: seamBefore(item.id),
+                                        cutIndex: index,
+                                        cutOrder,
+                                      })
+                                      return (
+                                        <tr className="cut-plan-prompt-row">
+                                          <td colSpan={8}>
+                                            <div className="cut-plan-prompt">
+                                              <div className="cut-plan-prompt-auto">
+                                                <span>
+                                                  {prompt.isEdited ? '프롬프트 · User' : '컷에서 조립됨 · AI'}
+                                                  {prompt.isEdited && (
+                                                    <button
+                                                      type="button"
+                                                      className="cut-plan-prompt-revert"
+                                                      onClick={() => updateCutPlanItem(item.id, {
+                                                        promptOverride: '',
+                                                      })}
+                                                      title="컷에서 다시 조립"
+                                                    >
+                                                      되돌리기
+                                                    </button>
+                                                  )}
+                                                </span>
+                                                {/* 바로 고칠 수 있게 둔다. 고치면 이 컷의
+                                        프롬프트 출처가 User로 바뀐다. */}
+                                                <textarea
+                                                  className="cut-plan-prompt-input"
+                                                  value={prompt.effective}
+                                                  rows={3}
+                                                  onChange={(event) => updateCutPlanItem(item.id, {
+                                                    promptOverride: event.target.value,
+                                                  })}
+                                                  onBlur={(event) => {
+                                                    // 편집을 마쳤을 때 한 번만 남긴다.
+                                                    if (!event.target.value.trim()) return
+                                                    logEdit({ level: 'element', target: item.id, action: 'prompt' })
+                                                  }}
+                                                  placeholder="컷 내용이 비어 있습니다."
+                                                  aria-label={`Cut ${item.order} prompt`}
+                                                />
+                                                {prompt.isEdited && (
+                                                  <p className="cut-plan-prompt-original">
+                                                    컷 기준: {prompt.auto}
+                                                  </p>
+                                                )}
+                                              </div>
+                                              {prompt.shared && (
+                                                <div className="cut-plan-prompt-shared">
+                                                  <span>장면 공통</span>
+                                                  <p>{prompt.shared}</p>
+                                                </div>
+                                              )}
+                                            </div>
+                                          </td>
+                                        </tr>
+                                      )
+                                    })()}
+                                  </Fragment>
+                                )
+                              })}
+                            </>
+                          )}
+                        </tbody>
+                      )
+                    })}
+                  </table>
+                </div>
+
+                <footer className="cut-plan-footer">
+                  <button type="button" onClick={() => addCutPlanItem(null, activeBeat)}>
+                    + Add cut
+                  </button>
+                  {/* AI 출처 전체를 미확인으로 세면 사용자가 표 18행을 전부
+                    검사해야 한다고 느낀다. 실제 예외만 센다. */}
+                  <span>
+                    {cutPlan.length} cuts
+                    {reviewCutIds.size > 0 && (
+                      <> · 확인할 것 {reviewCutIds.size}</>
+                    )}
+                  </span>
+                </footer>
+              </section>
             )}
 
-
-            </section>
-          )}
-
-          {/* 패널만 격자로 모은다. Beat 경계를 넘어 한 줄로 늘어놓아야
-              컷이 이어지는지 보인다 — Beat마다 끊어 두면 그 안에서만
-              비교하게 된다. */}
-          {showStoryboardPanels && panelGridView && !drawingWorkspaceOpen && (
-            <section className="sb-panel-grid" aria-label="패널 한눈에 보기">
-              {flowShots.map((shot, shotIdx) => {
-                const cut = cutPlan.find((item) => item.id === shot.cutPlanItemId)
-                // 대본과 함께 보기에서는 아직 확정하지 않은 AI 초안도 바로
-                // 보여 준다. 한눈에 보기도 같은 초안을 읽어야 두 보기의
-                // 상태가 어긋나지 않는다.
-                const candidate = panelCandidates[shot.id]
-                const displayImage = candidate?.image || getShotVisual(shot)
-                return (
+            {isPanelPreparationStage && (
+              <section className="panel-preparation" aria-label="Panel setup">
+                <header>
+                  <span>Panel setup</span>
+                  <h2>패널의 표현 방식을 정합니다</h2>
+                  <p>스타일은 미장센의 판단이 아니라, 이 보드 전체에 적용할 제작 설정입니다.</p>
+                </header>
+                <div className="panel-preparation-style">
+                  <StylePresetPicker
+                    value={panelStylePreset}
+                    onChange={setPanelStylePreset}
+                    layout="setup"
+                  />
+                </div>
+                <footer>
+                  <div>
+                    <strong>{needsReferences ? '장면 기준 이미지' : '러프 콘티'}</strong>
+                    <p>
+                      {!needsReferences
+                        ? '러프 콘티는 기준 이미지 없이 구도와 흐름부터 잡습니다.'
+                        : referencesReadyForPanels
+                          ? '필요한 인물·공간 기준 이미지가 준비되었습니다.'
+                          : `필요한 기준 이미지 ${missingReferenceRequirements.length}개를 Mise-en-scène에서 준비하세요.`}
+                    </p>
+                  </div>
                   <button
                     type="button"
-                    key={shot.id || shotIdx}
-                    className={`sb-panel-grid-item${activeShot === shotIdx ? ' is-active' : ''}${candidate ? ' has-ai-candidate' : ''}`}
-                    onClick={() => {
-                      setFlowActiveShot(shotIdx)
-                      setInspectedShotId(shot.id)
-                    }}
+                    className="panel-preparation-start"
+                    onClick={completePanelPreparation}
+                    disabled={!referencesReadyForPanels}
+                    title={referencesReadyForPanels ? undefined : '필요한 인물·공간 기준 이미지를 준비한 뒤 시작할 수 있습니다'}
                   >
-                    <span className="sb-panel-grid-order">{shotIdx + 1}</span>
-                    {displayImage
-                      ? <img src={displayImage} alt={`패널 ${shotIdx + 1}`} />
-                      : <span className="sb-panel-grid-blank">비어 있음</span>}
-                    {candidate && <span className="sb-panel-grid-candidate">AI 초안</span>}
-                    <em>{cut?.content || ''}</em>
+                    Panels 시작
                   </button>
-                )
-              })}
-            </section>
-          )}
+                </footer>
+              </section>
+            )}
 
-          {/* 絵コンテ 표. 컷이 한 행이고, 열은 `컷 번호 / 그림 / 설명 / 길이`다.
-              Beat는 열지 않는다 — Beat는 대본을 나눈 단위이지 콘티를 읽는
-              단위가 아니고, 행 사이에 끼면 컷 번호가 끊긴다. 씬은 남긴다:
-              시공간이 바뀌는 자리는 콘티에서도 경계로 읽혀야 한다. */}
-          {showStoryboardPanels && !panelGridView && !drawingWorkspaceOpen && (
-            <section className="sb-conte" aria-label="대본과 함께 보기 · 콘티 표">
-              <div className="sb-conte-head" role="row">
-                <span role="columnheader">컷</span>
-                <span role="columnheader">그림</span>
-                <span role="columnheader">설명</span>
-                {/* 샷과 앵글은 촬영이 정하는 값이다. 콘티 표에 두어야
-                    컷을 훑으면서 크기가 어떻게 흘러가는지 보인다 —
-                    한 컷씩 인스펙터를 열어 보면 그 흐름이 안 보인다. */}
-                <span role="columnheader">샷</span>
-                <span role="columnheader">앵글</span>
-                {/* 길이는 기본이 위임이다 — 비어 있는 칸은 후속 공정이
-                    정할 자리라는 뜻이지 아직 안 적었다는 뜻이 아니다
-                    (DG1 P3). 다만 감독이 정하고 싶으면 정할 수 있어야
-                    한다. 그래서 열을 지우지 않고 입력을 받는다. */}
-                <span role="columnheader" className="is-delegated">
-                  길이
-                  <em>비우면 후속 공정</em>
-                </span>
-              </div>
-
-              {conteRows.map((row) => {
-                if (row.kind === 'scene') {
-                  return (
-                    <button
-                      type="button"
-                      key={`scene-${row.beat}`}
-                      className={`sb-conte-scene${row.collapsed ? ' collapsed' : ''}`}
-                      onClick={() => toggleScene(row.beat)}
-                      aria-expanded={!row.collapsed}
-                    >
-                      <span className="sb-conte-scene-caret" aria-hidden="true">
-                        {row.collapsed ? '▸' : '▾'}
-                      </span>
-                      <span>Scene {row.number}</span>
-                      <strong>{row.text}</strong>
-                      <em>{row.cutCount} cuts</em>
-                    </button>
-                  )
-                }
-
-                const { shot, shotIdx, cut: shotCut } = row
-                const cutLabel = shotCut
-                  ? `Cut ${shotCut.order || shotIdx + 1}`
-                  : `Panel ${shotIdx + 1}`
-                const committedImage = getShotVisual(shot)
-                const candidate = panelCandidates[shot.id]
-                const displayImage = candidate?.image || committedImage
-                // 앞 컷과의 이음새. 정한 것이 있을 때만 행 사이에 끼운다 —
-                // 전부 '컷 · 연속'인 기본값까지 그리면 실제로 정한 것이 묻힌다.
-                const prevShot = shotIdx > 0 ? flowShots[shotIdx - 1] : null
-                const seamBefore2 = prevShot ? seams[seamKeyFor(prevShot.id)] : null
-                const showSeam = isSeamMarked(seamBefore2)
-                // 이 컷이 그림 밖 채널로 남긴 것 (DG1 P3).
-                const shotPrompt = shotCut
-                  ? buildCutPrompt(shotCut, {
-                    sceneIntention,
-                    sceneNote: scenePromptNote,
-                    declarations,
-                    sceneState: sceneStateForCut(shotCut),
-                    seam: seamBefore(shotCut.id),
-                    cutIndex: cutPlan.findIndex((item) => item.id === shotCut.id),
-                    cutOrder,
-                  })
-                  : null
-                const { marks: panelMarks, notes: panelNotes } = buildPanelMarks(
-                  shotPrompt?.responsibility?.offImage || [],
-                )
-                const hasArrows = (shot.arrows || []).length > 0
-                const visibleNotes = panelNotes.filter(
-                  (note) => !(note.needsArrow && hasArrows),
-                )
-
-                return (
-                  <Fragment key={shot.id || shotIdx}>
-                    {showSeam && (
-                      <div className="sb-conte-seam">
-                        <span className="sb-seam-join">
-                          {SEAM_JOINS.find((j) => j.id === seamBefore2.join)?.label}
-                        </span>
-                        {seamBefore2.elapsed !== 'continuous' && (
-                          <span className="sb-seam-elapsed">
-                            {SEAM_ELAPSED.find((e) => e.id === seamBefore2.elapsed)?.label}
-                          </span>
-                        )}
-                        {seamBefore2.elision && (
-                          <span className="sb-seam-elision">생략 · {seamBefore2.elision}</span>
-                        )}
-                      </div>
-                    )}
-                    <div
-                      data-shot-id={shot.id}
-                      className={`sb-conte-row${shotIdx === activeShot ? ' active-shot' : ''}${candidate ? ' has-ai-candidate' : ''}${inspectedShotId === shot.id ? ' inspected' : ''}`}
-                      role="row"
-                      onClick={() => {
-                        setFlowActiveShot(shotIdx)
-                        setInspectedShotId(shot.id)
-                      }}
-                    >
-                      {/* 컷 번호. 콘티에서 컷을 부르는 이름이므로 가장 왼쪽에
-                          두고, 스크롤 중에도 행의 시작을 잡아 준다. */}
-                      <div className="sb-conte-no">
-                        <span>{shotCut?.order || shotIdx + 1}</span>
-                        <button
-                          type="button"
-                          className="sb-conte-delete"
-                          disabled={flowShots.length <= 1}
-                          title={flowShots.length <= 1 ? '씬에 컷이 하나는 남아야 합니다' : `${cutLabel} 삭제`}
-                          aria-label={`${cutLabel} 삭제`}
-                          onClick={(event) => {
-                            event.stopPropagation()
-                            handleDeleteShot(shot.id, shotIdx)
-                          }}
-                        >
-                          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6M10 10v6M14 10v6" />
-                          </svg>
-                        </button>
-                      </div>
-
-                      {/* 그림. 콘티에서 가장 큰 칸이고, 손대는 일도 여기서
-                          일어난다 — 그리기·재생성·화살표·메모를 그림 위에
-                          모아 표가 버튼으로 채워지지 않게 한다. */}
-                      <div className="sb-conte-pic">
-                        {panelGenPending[shot.id] ? (
-                          <div className="sb-panel-pending">
-                            <span className="sb-pending-spinner" />
-                            <span>그리는 중…</span>
-                          </div>
-                        ) : candidate ? (
-                          <div className="sb-panel-candidate">
-                            <div className="sb-img-wrapper">
-                              <img src={displayImage} alt={`${cutLabel} AI draft`} />
-                              <span className="sb-candidate-badge">AI candidate · V{candidate.version}</span>
-                            </div>
-                            <div className="sb-candidate-actions">
-                              <button type="button" onClick={() => dismissPanelCandidate(shot.id)}>Dismiss</button>
-                              <button
-                                type="button"
-                                onClick={() => handleGeneratePanels([{ shot, shotIdx }], { includeExisting: true })}
-                              >
-                                Again
-                              </button>
-                              <button type="button" onClick={() => handleDrawOverCandidate(shot, shotIdx)}>Draw over</button>
-                              <button
-                                type="button"
-                                className="accept"
-                                onClick={() => acceptPanelCandidate(shot.id)}
-                              >
-                                Accept
-                              </button>
-                            </div>
-                          </div>
-                        ) : committedImage ? (
-                          <div className="sb-img-wrapper">
-                            <img src={displayImage} alt={cutLabel} />
-                            <PanelOverlay
-                              marks={panelMarks}
-                              arrows={shot.arrows || []}
-                              drawing={arrowDrawingShotId === shot.id}
-                              selectedArrowId={selectedArrow?.shotId === shot.id
-                                ? selectedArrow.arrowId
-                                : null}
-                              onDrawArrow={(arrow) => {
-                                setPendingArrow({ shotId: shot.id, arrow })
-                                setSelectedArrow(null)
-                                setArrowDrawingShotId(null)
-                              }}
-                              onSelectArrow={(arrowId) => {
-                                setPendingArrow(null)
-                                setSelectedArrow({ shotId: shot.id, arrowId })
-                              }}
-                            />
-                            <PanelNote
-                              note={shot.note || ''}
-                              onChange={(value) => setShotNote(shot.id, value)}
-                              editing={noteEditingShotId === shot.id}
-                              onEditingChange={(editing) => (
-                                setNoteEditingShotId(editing ? shot.id : null)
-                              )}
-                            />
-                            {/* 표를 깔끔히 두기 위해 도구는 그림 위 hover로
-                                모은다. 화살표·메모는 그리는 중일 때 계속
-                                보여야 하므로 그때는 hover가 풀려도 남긴다. */}
-                            <div className={`sb-conte-tools${arrowDrawingShotId === shot.id || noteEditingShotId === shot.id ? ' pinned' : ''}`}>
-                              <button
-                                className="sb-action-btn"
-                                onClick={(event) => {
-                                  event.stopPropagation()
-                                  handleEditShot(shotIdx, shot.scriptBeat ?? shotCut?.beat ?? 0)
-                                }}
-                              >
-                                Draw
-                              </button>
-                              <button
-                                className="sb-action-btn secondary"
-                                onClick={(event) => {
-                                  event.stopPropagation()
-                                  handleGeneratePanels([{ shot, shotIdx }], { includeExisting: true })
-                                }}
-                              >
-                                재생성
-                              </button>
-                              <button
-                                type="button"
-                                className={`sb-action-btn icon${arrowDrawingShotId === shot.id ? ' active' : ''}`}
-                                aria-pressed={arrowDrawingShotId === shot.id}
-                                title="패널 위를 끌어서 카메라 이동 방향을 표시합니다"
-                                onClick={(event) => {
-                                  event.stopPropagation()
-                                  const closing = arrowDrawingShotId === shot.id
-                                  setArrowDrawingShotId(closing ? null : shot.id)
-                                  setNoteEditingShotId(null)
-                                  setPendingArrow(null)
-                                  setSelectedArrow(null)
-                                }}
-                              >
-                                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round">
-                                  <path d="M5 12h13M13 6l6 6-6 6" />
-                                </svg>
-                                {arrowDrawingShotId === shot.id ? '그리는 중' : '카메라'}
-                              </button>
-                              <button
-                                type="button"
-                                className={`sb-action-btn icon${noteEditingShotId === shot.id ? ' active' : ''}`}
-                                aria-pressed={noteEditingShotId === shot.id}
-                                onClick={(event) => {
-                                  event.stopPropagation()
-                                  setNoteEditingShotId(
-                                    noteEditingShotId === shot.id ? null : shot.id,
-                                  )
-                                  setArrowDrawingShotId(null)
-                                  setPendingArrow(null)
-                                  setSelectedArrow(null)
-                                }}
-                              >
-                                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                                  <path d="M5 4h14v13H9l-4 3V4Z" />
-                                </svg>
-                                메모
-                              </button>
-                            </div>
-                          </div>
-                        ) : (
-                          <div className="sb-add-shot existing-empty">
-                            <span>{cutLabel}</span>
-                            <small>Choose how to start</small>
-                            <div className="sb-empty-panel-actions">
-                              <button
-                                type="button"
-                                onClick={(event) => {
-                                  event.stopPropagation()
-                                  handleEditShot(shotIdx, shot.scriptBeat ?? shotCut?.beat ?? 0)
-                                }}
-                              >
-                                Draw
-                              </button>
-                              <button
-                                type="button"
-                                onClick={(event) => {
-                                  event.stopPropagation()
-                                  handleGeneratePanels([{ shot, shotIdx }])
-                                }}
-                              >
-                                Generate
-                              </button>
-                            </div>
-                          </div>
-                        )}
-
-                        {pendingArrow?.shotId === shot.id && (
-                          <CameraMovePicker
-                            onChoose={(move) => {
-                              addShotArrow(shot.id, {
-                                ...pendingArrow.arrow,
-                                channel: 'camera-move',
-                                kind: move.id,
-                                label: move.label,
-                              })
-                              setPendingArrow(null)
-                            }}
-                            onCancel={() => setPendingArrow(null)}
-                          />
-                        )}
-                        {selectedArrow?.shotId === shot.id && (
-                          <CameraMovePicker
-                            existing
-                            onChoose={(move) => {
-                              updateShotArrow(shot.id, selectedArrow.arrowId, {
-                                channel: 'camera-move',
-                                kind: move.id,
-                                label: move.label,
-                              })
-                              setSelectedArrow(null)
-                              setArrowDrawingShotId(null)
-                            }}
-                            onDelete={() => {
-                              removeShotArrow(shot.id, selectedArrow.arrowId)
-                              setSelectedArrow(null)
-                              setArrowDrawingShotId(null)
-                            }}
-                            onCancel={() => setSelectedArrow(null)}
-                          />
-                        )}
-                      </div>
-
-                      {/* 설명. 콘티의 Action Notes 자리다. 대사·효과음 칸은
-                          두지 않는다 — 대본이 그 줄 종류를 갖지 않기로 했고
-                          (`SCRIPT_LINE_TYPES`), 빈 칸만 남으면 아직 안 적은
-                          것으로 읽힌다. */}
-                      <div className="sb-conte-caption">
-                        {shotCut?.purpose && (
-                          <span className="sb-conte-purpose">{shotCut.purpose}</span>
-                        )}
-                        {/* 컷 내용은 여기서 고친다. 이 문장이 그대로 그림
-                            프롬프트의 본문이 되므로(`buildCutPrompt`),
-                            프롬프트를 따로 열어 고치는 것보다 여기서
-                            고치고 다시 그리는 편이 짧다. */}
-                        {shotCut && (
-                          <ConteContent
-                            key={`${shotCut.id}:${shotCut.content || ''}`}
-                            cutId={shotCut.id}
-                            value={shotCut.content || ''}
-                            onCommit={(next) => (
-                              next !== (shotCut.content || '')
-                                && updateCutPlanItem(shotCut.id, { content: next })
-                            )}
-                          />
-                        )}
-                        {shot.note && <p className="sb-conte-note">{shot.note}</p>}
-                        {/* 아직 그리지 않은 그림 밖 채널만 남긴다. 이미
-                            그렸으면 화살표가 그 자리에 있으므로 한 번 더
-                            말하지 않는다. */}
-                        {visibleNotes.length > 0 && (
-                          <ul className="sb-shot-offimage-notes">
-                            {visibleNotes.map((note, index) => (
-                              <li
-                                key={`${note.element}-${index}`}
-                                className={note.needsArrow ? 'needs-arrow' : ''}
-                                title={note.needsArrow
-                                  ? '화살표 버튼을 눌러 표시하세요'
-                                  : note.element}
-                              >
-                                <em>{note.element}</em>
-                                {note.label !== note.element && <span>{note.label}</span>}
-                              </li>
-                            ))}
-                          </ul>
-                        )}
-
-                        {/* 무엇을 그림에서 정하고 무엇을 촬영에 넘길지
-                            (DG1 P3). 컷마다 매번 볼 것은 아니라 접어 두되,
-                            판정하지 않은 것이 남아 있으면 그 수를 밖에
-                            보여 준다 — 접힌 채로 잊히면 AI 가정이 그대로
-                            굳는다 (DG1 P2). */}
-                        {shotCut && (() => {
-                          const scoped = (decl) => (
-                            decl.scope === 'scene' || decl.cutId === shotCut.id
-                          )
-                          const undecided = deferredDeclarations.filter(scoped)
-                          const decided = acceptedDeclarations.filter(scoped)
-                          if (undecided.length === 0 && decided.length === 0) return null
-                          return (
-                            <details className="sb-conte-decl">
-                              <summary>
-                                <span>이미지가 정할 것</span>
-                                {undecided.length > 0 && <em>{undecided.length} 미정</em>}
-                              </summary>
-                              <ul>
-                                {[...undecided, ...decided].map((decl) => {
-                                  const isDecided = decl.status === 'Accepted'
-                                  return (
-                                    <li key={decl.id} className={isDecided ? 'is-decided' : ''}>
-                                      <div className="sb-conte-decl-head">
-                                        <strong>{decl.element}</strong>
-                                        {!isDecided && <span className="deferred-mark">미정</span>}
-                                        <button
-                                          type="button"
-                                          className="deferred-dismiss"
-                                          title={isDecided ? '선언 해제' : '이 요소는 선언하지 않는다'}
-                                          aria-label={`${decl.element} ${isDecided ? '선언 해제' : '선언하지 않음'}`}
-                                          onClick={() => rejectDeclaration(decl.id)}
-                                        >
-                                          ×
-                                        </button>
-                                      </div>
-                                      {/* 칩을 고르는 것이 곧 판정이다. AI 기본값을
-                                          그대로 두면 판정하지 않은 것으로 남는다. */}
-                                      <div className={`deferred-chips${isDecided ? '' : ' is-proposed'}`}>
-                                        {RESPONSIBILITY_LEVELS.map((level) => (
-                                          <button
-                                            key={level.id}
-                                            type="button"
-                                            className={decl.responsibility === level.id ? 'active' : ''}
-                                            title={isDecided ? level.hint : `${level.hint} · AI 제안, 눌러서 확정`}
-                                            onClick={() => decideDeclaration(decl.id, level.id)}
-                                          >
-                                            {level.label}
-                                          </button>
-                                        ))}
-                                      </div>
-                                    </li>
-                                  )
-                                })}
-                              </ul>
-                            </details>
-                          )
-                        })()}
-                      </div>
-
-                      {/* 샷·앵글. 값이 없으면 촬영이 아직 안 정한 것이다 —
-                          기본값을 채워 두면 정해진 것처럼 읽혀 촬영을
-                          부르지 않고 넘어가게 된다 (DG1 P2). */}
-                      <div
-                        className="sb-conte-framing"
-                        onClick={(event) => event.stopPropagation()}
-                      >
-                        <FramingPicker
-                          label="샷 크기"
-                          placeholder="미정"
-                          value={shotCut?.shotSize || ''}
-                          options={cutPlanShotSizes}
-                          kind="shot"
-                          disabled={!shotCut}
-                          onChange={(next) => updateCutPlanItem(shotCut.id, { shotSize: next })}
-                        />
-                      </div>
-                      <div
-                        className="sb-conte-framing"
-                        onClick={(event) => event.stopPropagation()}
-                      >
-                        <FramingPicker
-                          label="앵글"
-                          placeholder="미정"
-                          value={shotCut?.angle || ''}
-                          options={cutPlanAngles}
-                          kind="angle"
-                          disabled={!shotCut}
-                          onChange={(next) => updateCutPlanItem(shotCut.id, { angle: next })}
-                        />
-                      </div>
-
-                      {/* 길이 칸. 비워 두면 후속 공정에 넘긴 것이고(DG1 P3),
-                          적으면 그때부터 스토리보드가 정한 값이다. 둘을
-                          화면에서 갈라 둬야 빈 칸이 '아직 안 적음'으로
-                          읽히지 않는다. */}
-                      <div
-                        className={`sb-conte-dur${shotCut?.duration ? ' is-set' : ''}`}
-                        onClick={(event) => event.stopPropagation()}
-                      >
-                        <input
-                          type="text"
-                          inputMode="decimal"
-                          value={shotCut?.duration || ''}
-                          placeholder="—"
-                          aria-label={`${cutLabel} 길이`}
-                          title={shotCut?.duration
-                            ? '컷 길이. 지우면 후속 공정에 넘깁니다.'
-                            : '비어 있으면 후속 공정이 정합니다. 직접 적으려면 입력하세요.'}
-                          disabled={!shotCut}
-                          onChange={(event) => (
-                            updateCutPlanItem(shotCut.id, { duration: event.target.value })
-                          )}
-                        />
-                      </div>
-                    </div>
-                  </Fragment>
-                )
-              })}
-            </section>
-          )}
-
-          {!isCutPlanStage && !showStoryboardPanels && beats.map((beatGroup, i) => {
-            // 접힌 씬의 Beat는 그리지 않는다. 씬을 여는 Beat는 남겨야
-            // 헤더가 보이고 다시 펼 수 있다.
-            if (isSceneCollapsed(beatGroup.beat)) return null
-            const beatShots = getBeatShots(beatGroup.beat)
-            const beatSuggestions = narrativeSuggestions.filter((suggestion) => suggestion.beat === beatGroup.beat)
-            const inlineSuggestionTypes = new Set(['split-beat', 'insert-script-line', 'replace-script-line'])
-            const nonBoundarySuggestions = beatSuggestions.filter((suggestion) => !inlineSuggestionTypes.has(suggestion.type))
-
-            return (
-              <div
-                key={i}
-                data-beat={beatGroup.beat}
-                className={`sb-item ${showStoryboardPanels ? 'layout-expanded panels-matched' : isExpanded ? 'layout-script-focus' : 'layout-sidebar'} ${beatGroup.beat === activeBeat ? 'active-beat' : ''}`}
-                onClick={() => selectBeat(beatGroup.beat)}
-              >
-                {i > 0 && !isScriptStage && !showStoryboardPanels && (
+            {cutPlanOrphanedShots.length > 0 && isExpanded && !drawingWorkspaceOpen && (
+              <div className="cut-plan-orphan-warning" role="status">
+                <div>
+                  <strong>
+                    그림이 있는 패널 {cutPlanOrphanedShots.length}개가 컷과 연결되지 않았습니다
+                  </strong>
+                  <p>
+                    컷을 지우거나 순서를 크게 바꾸면 기존 그림이 갈 곳을 잃습니다.
+                    컷을 다시 열어 자리를 만들거나, 이대로 진행할 수 있습니다.
+                  </p>
+                </div>
+                <div className="cut-plan-orphan-actions">
+                  <button type="button" onClick={clearCutPlanOrphanWarning}>
+                    이대로 진행
+                  </button>
                   <button
-                    className="merge-beat-btn"
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      mergeBeat(beatGroup.elements[0].globalIdx)
+                    type="button"
+                    className="reopen"
+                    onClick={() => {
+                      clearCutPlanOrphanWarning()
+                      reopenCutPlan()
                     }}
-                    title="Merge with above"
                   >
-                    ↑ Merge
+                    컷 다시 열기
                   </button>
+                </div>
+              </div>
+            )}
+
+            {showStoryboardPanels && !drawingWorkspaceOpen && (
+              <section
+                className={`storyboard-generation-bar ${isExpanded ? 'expanded' : 'compact'}`}
+                aria-label="AI storyboard draft generation"
+                onClick={(event) => event.stopPropagation()}
+              >
+                <div className="generation-bar-copy">
+                  {/* 패널은 실제 모델이 그린다. 'Mock' 표시가 남아 있으면
+                  진짜 그림을 가짜로 읽게 된다. */}
+                  <span>AI storyboard draft</span>
+                  <strong>
+                    {eligibleScopeShots.length === 0
+                      ? '모든 컷에 그림이 있습니다'
+                      : `아직 그리지 않은 컷 ${eligibleScopeShots.length}개`}
+                  </strong>
+                  {/* 확정 직후에는 앞 아홉 장만 그린다. 남은 것이 왜 비어 있는지
+                  말해 주지 않으면 생성이 실패한 것으로 읽힌다. */}
+                  <p>
+                    {eligibleScopeShots.length > 0
+                      ? '먼저 앞부분을 그렸습니다. 나머지는 여기서 이어 그립니다.'
+                      : '직접 그린 그림과 불러온 이미지는 그대로 둡니다.'}
+                  </p>
+                </div>
+                <div className="generation-settings">
+                  <label className="generation-model-picker">
+                    <span>모델</span>
+                    <select
+                      value={panelImageModel}
+                      onChange={(event) => setPanelImageModel(event.target.value)}
+                      disabled={isGenerating}
+                      aria-label="이미지 생성 모델"
+                    >
+                      <option value="gpt-image-1">GPT Image 1</option>
+                      <option value="gpt-image-2">GPT Image 2</option>
+                      <option value="flux-2-klein">FLUX.2 Klein (빠름)</option>
+                    </select>
+                  </label>
+                </div>
+                <div className="generation-bar-actions">
+                  {/* 전체 생성은 한 번에 나오는데 화면은 Beat마다 한 줄씩
+                  쌓아 보여 준다. 이어지는지 보려면 늘어놓고 봐야 한다. */}
+                  <button
+                    type="button"
+                    className="generation-grid-toggle"
+                    aria-pressed={panelGridView}
+                    onClick={() => setPanelGridView((on) => !on)}
+                    title={panelGridView ? '대본과 나란히 보기' : '패널만 격자로 모아 보기'}
+                  >
+                    {panelGridView ? '대본과 함께' : '한눈에 보기'}
+                  </button>
+                  {/* 초안은 바로 굳으므로 여기 남는 후보는 진단에서 다시 그린
+                  것뿐이다. 그 판정은 검토 화면의 `이걸로 하기 / 버리고
+                  되돌리기`가 받으므로 한 번에 승인하는 길은 두지 않는다. */}
+                  <button
+                    type="button"
+                    className="generation-run"
+                    disabled={eligibleScopeShots.length === 0 || isGenerating}
+                    onClick={() => handleGeneratePanels(eligibleScopeShots, { autoAccept: true })}
+                  >
+                    {isGenerating ? `그리는 중… · ${generatingCount}` : (
+                      <>
+                        이어 그리기
+                        {eligibleScopeShots.length > 0 ? ` · ${eligibleScopeShots.length}` : ''}
+                      </>
+                    )}
+                  </button>
+                </div>
+                {/* 실패를 조용히 넘기면 왜 그림이 안 나왔는지 알 수 없다. */}
+                {panelGenError && (
+                  <p className="generation-error">그림 생성 실패 · {panelGenError}</p>
                 )}
 
-                <div className="sb-text-col">
-                  {/* 씬 경계. Beat보다 큰 단위이므로 위에, 더 크게 둔다 —
-                      씬은 시공간이 연속된 범위이고 Beat는 그 안의 국면이다. */}
-                  {beatGroup.elements[0]?.type === 'scene-heading' && (
-                    <button
-                      type="button"
-                      className={`sb-scene-label${collapsedScenes.includes(beatGroup.beat) ? ' collapsed' : ''}`}
-                      onClick={(event) => {
-                        event.stopPropagation()
-                        toggleScene(beatGroup.beat)
-                      }}
-                      aria-expanded={!collapsedScenes.includes(beatGroup.beat)}
-                    >
-                      <span className="sb-scene-caret" aria-hidden="true">
-                        {collapsedScenes.includes(beatGroup.beat) ? '▸' : '▾'}
-                      </span>
-                      <span>Scene {sceneNumberOf(beatGroup.beat)}</span>
-                      <strong>{beatGroup.elements[0].text}</strong>
-                      {collapsedScenes.includes(beatGroup.beat) && (
-                        <em>
-                          {showStoryboardPanels
-                            ? `${cutsInScene(beatGroup.beat)} cuts`
-                            : `${beatsInScene(beatGroup.beat)} beats`}
-                        </em>
-                      )}
-                    </button>
-                  )}
 
-                  {/* 씬을 접으면 그 씬을 여는 Beat의 본문도 함께 숨는다.
-                      헤더만 남아 다시 펼 수 있다. */}
-                  {!collapsedScenes.includes(beatGroup.beat) && !showStoryboardPanels && (
-                  <>
-                  {/* Beat 경계 표시이자 이 Beat의 조작 지점. 줄마다 버튼을
-                      띄우지 않고 여기로 모은다. */}
-                  {(beats.length > 1 || isScriptStage) && (
-                    <div className="sb-beat-label">
-                      <span>Beat {String(beatGroup.beat + 1).padStart(2, '0')}</span>
-                      <em>{beatGroup.elements.length} lines</em>
-                      {isScriptStage && (
-                        <div className="sb-beat-tools">
+              </section>
+            )}
+
+            {/* 패널만 격자로 모은다. Beat 경계를 넘어 한 줄로 늘어놓아야
+              컷이 이어지는지 보인다 — Beat마다 끊어 두면 그 안에서만
+              비교하게 된다. */}
+            {showStoryboardPanels && panelGridView && !drawingWorkspaceOpen && (
+              <section className="sb-panel-grid" aria-label="패널 한눈에 보기">
+                {lastPanelStructureChange?.kind === 'delete' && (
+                  <aside className="sb-panel-undo" role="status">
+                    <span>{lastPanelStructureChange.label}</span>
+                    <button type="button" onClick={undoPanelStructureChange}>되돌리기</button>
+                    <button type="button" aria-label="되돌리기 안내 닫기" onClick={() => setLastPanelStructureChange(null)}>×</button>
+                  </aside>
+                )}
+                {flowShots.flatMap((shot, shotIdx) => {
+                  const cut = cutPlan.find((item) => item.id === shot.cutPlanItemId)
+                  // 대본과 함께 보기에서는 아직 확정하지 않은 AI 초안도 바로
+                  // 보여 준다. 한눈에 보기도 같은 초안을 읽어야 두 보기의
+                  // 상태가 어긋나지 않는다.
+                  const candidate = panelCandidates[shot.id]
+                  const displayImage = candidate?.image || getShotVisual(shot)
+                  // 프롬프트 편집칸은 **구조를 방금 바꾼 칸**에만 연다.
+                  // 그냥 아직 안 그린 컷까지 열면 격자 전체가 입력칸으로
+                  // 뒤덮여, 컷이 어떻게 이어지는지 보러 온 화면이 폼이 된다.
+                  // 그런 컷은 `비어 있음`으로 두고 위쪽 생성 바에서 한꺼번에
+                  // 그린다 — 원래 그렇게 하던 일이다.
+                  const isInsertedBlankPanel = !displayImage && !candidate
+                    && Boolean(shot.mergedDraft || shot.splitDraft || shot.insertDraft)
+                  const isDeleting = pendingPanelEdit?.shot?.id === shot.id
+                    && pendingPanelEdit.kind === 'delete'
+                  const nextShot = flowShots[shotIdx + 1]
+                  const seam = nextShot ? seams[seamKeyFor(shot.id)] : null
+                  const seamMarked = isSeamMarked(seam)
+                  const seamOpen = openPanelSeamId === shot.id
+                  const indexInRow = shotIdx % 3
+                  const endsGridRow = indexInRow === 2
+                  const seamDirection = ' is-horizontal is-forward'
+                  const card = (
+                    <article
+                      key={shot.id || shotIdx}
+                      className={`sb-panel-grid-card${activeShot === shotIdx ? ' is-active' : ''}`}
+                    >
+                      <div
+                        role="button"
+                        tabIndex={0}
+                        className={`sb-panel-grid-item${candidate ? ' has-ai-candidate' : ''}`}
+                        onClick={() => {
+                          setFlowActiveShot(shotIdx)
+                          setInspectedShotId(shot.id)
+                        }}
+                        onKeyDown={(event) => {
+                          if (event.target !== event.currentTarget) return
+                          if (event.key !== 'Enter' && event.key !== ' ') return
+                          event.preventDefault()
+                          setFlowActiveShot(shotIdx)
+                          setInspectedShotId(shot.id)
+                        }}
+                      >
+                        <span className="sb-panel-grid-order">{shotIdx + 1}</span>
+                        {isInsertedBlankPanel ? (
+                          <div className="sb-panel-grid-insert-draft" onClick={(event) => event.stopPropagation()}>
+                            <div className="sb-panel-grid-insert-draft-head">
+                              {/* 넣어서 빈 것, 합쳐서 빈 것, 나눠서 빈 것은
+                                  다른 일이다. 같은 칸을 쓰되 무엇을 하는
+                                  중인지는 밝힌다. */}
+                              <span>
+                                {shot.mergedDraft ? '합친 패널'
+                                  : shot.splitDraft ? '나눈 패널' : '새 패널'}
+                                {/* 앞 칸에서 물어보는 중이면 뒤 칸에도 알린다.
+                                    두 칸을 함께 채우는데 한쪽만 반응하면
+                                    나머지가 멈춘 것으로 보인다. */}
+                                {shot.splitDraft === 'second'
+                                  && aiInsertPendingCutId
+                                  && aiInsertPendingCutId === flowShots[shotIdx - 1]?.cutPlanItemId
+                                  && ' · 나눌 자리 찾는 중…'}
+                              </span>
+                              {/* 무엇을 묻는지가 셋 다 다르다. 합치기는 이어붙인
+                                  두 문장에서 겹치는 부분을 지우는 일이고,
+                                  나누기는 한 문장을 어디서 끊을지 정하는 일이라
+                                  삽입 제안(넣을 것을 찾는 일)과 맞지 않는다. */}
+                              {/* 나누기의 뒤 칸에는 버튼을 두지 않는다. 앞
+                                  칸의 `나눌 자리 찾기` 하나가 두 칸을 함께
+                                  채운다. */}
+                              {shot.splitDraft !== 'second' && (
+                                <button
+                                  type="button"
+                                  className="sb-panel-grid-ai-btn"
+                                  disabled={
+                                    aiInsertPendingCutId === cut?.id
+                                    || Boolean(panelGenPending[shot.id])
+                                  }
+                                  onClick={() => {
+                                    if (shot.mergedDraft) return handleTidyMergedContent(cut, shot)
+                                    if (shot.splitDraft) return handleSplitSuggestion(cut, shot, shotIdx)
+                                    return handleRequestAiInsert(cut)
+                                  }}
+                                >
+                                  {panelGenPending[shot.id]
+                                    ? '생성 중…'
+                                    : aiInsertPendingCutId === cut?.id
+                                      ? '보는 중…'
+                                      : shot.mergedDraft ? '겹치는 부분 지우기'
+                                        : shot.splitDraft ? '나눌 자리 찾기' : 'AI에 물어보기'}
+                                </button>
+                              )}
+                            </div>
+
+                            {aiInsertCandidatesMap[cut?.id]?.length > 0 && (
+                              <div className="sb-panel-grid-ai-candidates">
+                                {aiInsertCandidatesMap[cut.id].map((candidate, cIdx) => (
+                                  <button
+                                    key={cIdx}
+                                    type="button"
+                                    className="sb-panel-grid-ai-candidate-chip"
+                                    title={candidate.purpose || candidate.content}
+                                    disabled={Boolean(panelGenPending[shot.id])}
+                                    onClick={() => {
+                                      logScaffold({
+                                        feature: 'alternative',
+                                        action: 'select',
+                                        target: cut.id,
+                                        purpose: candidate.purpose,
+                                      })
+                                      updateCutPlanItem(cut.id, {
+                                        content: candidate.content,
+                                        purpose: candidate.purpose || '',
+                                        provenance: 'AI',
+                                      })
+                                      handleGeneratePanels([{ shot, shotIdx }], {
+                                        includeExisting: true,
+                                        statusLabel: '새 이미지 생성 중…',
+                                        // 삽입·합치기로 생긴 칸이다. 양옆
+                                        // 그림을 물려야 같은 방·같은 조명으로
+                                        // 이어진다 — 글로만 "이어지게"라고
+                                        // 하면 같은 장면인지도 알 수 없다.
+                                        neighbors: true,
+                                      })
+                                    }}
+                                  >
+                                    <strong>{candidate.content}</strong>
+                                    {candidate.purpose && <em>{candidate.purpose}</em>}
+                                  </button>
+                                ))}
+                              </div>
+                            )}
+
+                            {aiInsertErrorMap[cut?.id] && (
+                              <p className="sb-panel-grid-ai-error">{aiInsertErrorMap[cut.id]}</p>
+                            )}
+
+                            <textarea
+                              value={cut?.content || ''}
+                              rows={3}
+                              placeholder="이 패널의 프롬프트를 적으세요 (또는 AI 제안 선택)"
+                              aria-label={`S${shotIdx + 1} 프롬프트`}
+                              onChange={(event) => updateCutPlanItem(cut.id, { content: event.target.value })}
+                            />
+                          </div>
+                        ) : displayImage
+                          ? <img src={displayImage} alt={`패널 ${shotIdx + 1}`} />
+                          : <span className="sb-panel-grid-blank">비어 있음</span>}
+                        {candidate && <span className="sb-panel-grid-candidate">AI 초안</span>}
+                        {/* 삭제는 그림 위 모서리의 ×다. 아래 줄에 두면 자주
+                            쓰지도 않는 버튼이 카드마다 한 줄을 차지한다.
+                            누르면 그 자리에서 한 번 더 묻는다 — 되돌릴 것이
+                            남지 않는 조작이라 한 번에 지우지 않는다. */}
+                        {flowShots.length > 1 && !isDeleting && (
                           <button
                             type="button"
-                            className={editingBeat === beatGroup.beat ? 'active' : ''}
+                            className="sb-panel-grid-remove"
+                            aria-label={`S${shotIdx + 1} 삭제`}
+                            title="이 컷 삭제"
                             onClick={(event) => {
                               event.stopPropagation()
-                              setEditingBeat(editingBeat === beatGroup.beat ? null : beatGroup.beat)
+                              setPendingPanelEdit({ kind: 'delete', shot, shotIdx, cutId: cut?.id || null })
                             }}
-                            title="줄 종류와 삭제를 표시"
                           >
-                            {editingBeat === beatGroup.beat ? '완료' : '줄 편집'}
+                            ×
                           </button>
+                        )}
+                        {!isInsertedBlankPanel && <em>{cut?.content || ''}</em>}
+                      </div>
+                      {/* 이제 이 줄에는 `그리기`와 삭제 확인만 온다. 둘 다
+                          없으면 줄 자체를 두지 않는다 — 빈 줄이 카드마다
+                          자리를 차지하면 격자가 성기게 벌어진다. */}
+                      {(isDeleting || isInsertedBlankPanel) && (
+                      <div className="sb-panel-grid-actions" aria-label={`S${shotIdx + 1} 조작`}>
+                        {isDeleting ? (
+                          <>
+                            <span className="sb-panel-grid-confirm-label">삭제할까요?</span>
+                            <button type="button" className="danger" onClick={confirmPanelEdit}>삭제</button>
+                            <button type="button" onClick={() => setPendingPanelEdit(null)}>취소</button>
+                          </>
+                        ) : (
+                          <>
+                            {isInsertedBlankPanel && (
+                              <button
+                                type="button"
+                                disabled={Boolean(panelGenPending[shot.id]) || !cut?.content?.trim()}
+                                onClick={() => {
+                                  handleGeneratePanels([{ shot, shotIdx }], {
+                                    includeExisting: true,
+                                    statusLabel: '새 이미지 생성 중…',
+                                    // 위와 같은 이유 — 이 칸은 삽입이나
+                                    // 합치기로 생긴 자리다.
+                                    neighbors: true,
+                                  })
+                                }}
+                              >
+                                {panelGenPending[shot.id] ? '생성 중…' : '생성'}
+                              </button>
+                            )}
+                            {shot.mergedDraft && lastPanelStructureChange?.kind === 'merge' && (
+                              <button type="button" onClick={undoPanelStructureChange}>되돌리기</button>
+                            )}
+                            {/* 나누기 버튼은 잠시 감춰 둔다 (2026-08-27).
+                                삽입으로 대체되는지 보는 중이다. 로직
+                                (`splitCut`, `handleSplitSuggestion`, 카드의
+                                `splitDraft` 갈래)은 그대로 두었다 — 편집 렌즈와
+                                `narrative_check`가 여전히 `split`을 제안하고,
+                                GridView·DecisionBoard의 경로도 살아 있다.
+                                되살리려면 이 블록의 주석만 풀면 된다.
+                            {cut && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  // 나누기도 확인창을 띄우지 않는다. 그 자리에서
+                                  // 컷이 둘로 갈리고, 두 패널 카드 안에서 앞뒤로
+                                  // 보낼 문장을 나눈다 — 삽입·합치기와 같은 규칙.
+                                  splitCut(cut.id, { draft: true })
+                                  setFlowActiveShot(shotIdx)
+                                }}
+                              >
+                                나누기
+                              </button>
+                            )} */}
+                          </>
+                        )}
+                      </div>
+                      )}
+                      {nextShot && !endsGridRow && (
+                        <div className={`sb-panel-grid-seam${seamDirection}${seamMarked ? ' is-marked' : ''}${seamOpen ? ' is-open' : ''}`}>
                           <button
                             type="button"
-                            onClick={(event) => {
-                              event.stopPropagation()
-                              handleAddBeatAfter(beatGroup)
-                            }}
-                            title="이 Beat 다음에 새 Beat 추가"
+                            className="sb-panel-grid-seam-trigger"
+                            aria-expanded={seamOpen}
+                            onClick={() => setOpenPanelSeamId((current) => current === shot.id ? null : shot.id)}
                           >
-                            + Beat
+                            <span aria-hidden="true">┃</span>
+                            <strong>{seamMarked ? SEAM_JOINS.find((item) => item.id === seam.join)?.label : '이음새'}</strong>
+                            <small>{seamMarked ? SEAM_ELAPSED.find((item) => item.id === seam.elapsed)?.label : `S${shotIdx + 1} → S${shotIdx + 2}`}</small>
                           </button>
-                          {/* 첫 Beat에는 위로 합칠 대상이 없다. 그 자리에
-                              맨 앞에 Beat를 넣는 길을 둔다. */}
-                          {i === 0 && (
-                            <button
-                              type="button"
-                              onClick={(event) => {
-                                event.stopPropagation()
-                                handleAddBeatAtStart()
-                              }}
-                              title="이 Beat 앞에 새 Beat 추가"
-                            >
-                              ↑ Beat
-                            </button>
-                          )}
-                          {i > 0 && (
-                            <button
-                              type="button"
-                              onClick={(event) => {
-                                event.stopPropagation()
-                                mergeBeat(beatGroup.elements[0].globalIdx)
-                              }}
-                              title="위 Beat와 합치기"
-                            >
-                              ↑ 합치기
-                            </button>
+                          {seamOpen && (
+                            <div className="sb-panel-grid-seam-editor" role="group" aria-label={`S${shotIdx + 1}과 S${shotIdx + 2} 이음새 설정`}>
+                              <span>연결</span>
+                              <div>
+                                {SEAM_JOINS.map((item) => (
+                                  <button
+                                    type="button"
+                                    key={item.id}
+                                    className={(seam?.join || 'cut') === item.id ? 'active' : ''}
+                                    title={item.hint}
+                                    onClick={() => updateSeam(shot.id, { join: item.id })}
+                                  >{item.label}</button>
+                                ))}
+                              </div>
+                              <span>시간</span>
+                              <div>
+                                {SEAM_ELAPSED.map((item) => (
+                                  <button
+                                    type="button"
+                                    key={item.id}
+                                    className={(seam?.elapsed || 'continuous') === item.id ? 'active' : ''}
+                                    title={item.hint}
+                                    onClick={() => updateSeam(shot.id, { elapsed: item.id })}
+                                  >{item.label}</button>
+                                ))}
+                              </div>
+                              {cut && nextShot?.cutPlanItemId && (
+                                <div className="sb-panel-grid-seam-structure-actions">
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      // 삽입은 별도 편집기를 열지 않는다. 이음새가
+                                      // 가리킨 바로 그 자리에 빈 패널을 만들고,
+                                      // 기본 패널 카드 안에서 프롬프트를 쓴다.
+                                      addCutPlanItem(cut.id, cut.beat)
+                                      setFlowActiveShot(shotIdx + 1)
+                                      setOpenPanelSeamId(null)
+                                    }}
+                                  >사이에 넣기</button>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      // 합치기도 별도 편집기를 열지 않는다.
+                                      // 두 컷이 그 자리에서 한 칸으로 합쳐지고,
+                                      // 합쳐진 프롬프트가 그 패널 카드 안에
+                                      // 들어간다 — 삽입과 같은 규칙이다.
+                                      mergePanelCuts(cut.id, shotIdx)
+                                    }}
+                                  >합치기</button>
+                                </div>
+                              )}
+                            </div>
                           )}
                         </div>
                       )}
-                    </div>
-                  )}
-                  {beatGroup.elements.map((el) => {
-                    const inlineSuggestions = beatSuggestions.filter((suggestion) => (
-                      (suggestion.type === 'split-beat' && suggestion.elementIndex === el.globalIdx + 1)
-                      || (suggestion.type === 'insert-script-line' && suggestion.insertAfterIndex === el.globalIdx)
-                      || (suggestion.type === 'replace-script-line' && suggestion.elementIndex === el.globalIdx)
-                    ))
+                    </article>
+                  )
 
-                    return (
-                    <div key={el.globalIdx} className="script-element-block">
-                      <div className="script-element-wrapper">
-                        {isScriptStage ? (
-                          <ScriptLineEditor
-                            element={el}
-                            index={el.globalIdx}
-                            onChange={updateScreenplayLine}
-                            onChangeType={setScreenplayLineType}
-                            onInsertAfter={handleInsertLine}
-                            onRemove={handleRemoveLine}
-                            canRemove={screenplay.length > 1}
-                            showTools={editingBeat === beatGroup.beat}
-                            autoFocus={pendingFocus?.index === el.globalIdx}
-                            focusCaret={pendingFocus?.caret}
-                            onFocused={clearPendingFocus}
-                            onMoveFocus={handleMoveFocus}
-                            filled={el.filled}
-                            flagged={flaggedLineIndexes.has(el.globalIdx)}
-                          />
-                        ) : (
-                          <div
-                            className={`sb-script-${el.type}${el.filled ? ' is-filled' : ''}${flaggedLineIndexes.has(el.globalIdx) ? ' is-flagged' : ''}`}
-                            title={el.filled ? 'AI가 채운 줄입니다' : undefined}
-                          >
-                            {el.text}
+                  if (!nextShot || !endsGridRow) return card
+                  return [
+                    card,
+                    <div className={`sb-panel-grid-seam sb-panel-grid-row-seam${seamMarked ? ' is-marked' : ''}${seamOpen ? ' is-open' : ''}`} key={`row-seam-${shot.id}`}>
+                      <span className="sb-panel-grid-row-seam-lower" aria-hidden="true" />
+                      <button
+                        type="button"
+                        className="sb-panel-grid-seam-trigger"
+                        aria-expanded={seamOpen}
+                        onClick={() => setOpenPanelSeamId((current) => current === shot.id ? null : shot.id)}
+                      >
+                        <span aria-hidden="true">↓</span>
+                        <strong>{seamMarked ? SEAM_JOINS.find((item) => item.id === seam.join)?.label : '이음새'}</strong>
+                        <small>{seamMarked ? SEAM_ELAPSED.find((item) => item.id === seam.elapsed)?.label : `S${shotIdx + 1} → S${shotIdx + 2}`}</small>
+                      </button>
+                      {seamOpen && (
+                        <div className="sb-panel-grid-seam-editor" role="group" aria-label={`S${shotIdx + 1}과 S${shotIdx + 2} 이음새 설정`}>
+                          <span>연결</span>
+                          <div>
+                            {SEAM_JOINS.map((item) => (
+                              <button type="button" key={item.id} className={(seam?.join || 'cut') === item.id ? 'active' : ''} title={item.hint} onClick={() => updateSeam(shot.id, { join: item.id })}>{item.label}</button>
+                            ))}
                           </div>
-                        )}
-                        {/* Beat 나누기는 줄 편집 모드에서만. 평소 hover마다
-                            버튼이 튀어나오면 대본 읽기를 방해한다. */}
-                        <button
-                          className={`split-beat-btn${editingBeat === beatGroup.beat ? ' always-on' : ''}`}
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            splitBeat(el.globalIdx + 1)
-                          }}
-                          title="Split here"
-                        >
-                          + Split Beat
-                        </button>
-                      </div>
-                      {inlineSuggestions.map((suggestion) => (
-                        <NarrativeSuggestionCard
-                          key={suggestion.id}
-                          suggestion={suggestion}
-                          onAccept={handleAcceptNarrativeSuggestion}
-                          onDismiss={dismissNarrativeSuggestion}
-                        />
-                      ))}
-                    </div>
-                    )
-                  })}
-                  {nonBoundarySuggestions.map((suggestion) => (
-                    <NarrativeSuggestionCard
-                      key={suggestion.id}
-                      suggestion={suggestion}
-                      onAccept={handleAcceptNarrativeSuggestion}
-                      onDismiss={dismissNarrativeSuggestion}
-                    />
-                  ))}
-                  </>
-                  )}
-                </div>
-
-                {showStoryboardPanels && (
-                  <div className="sb-img-col">
-                    <div className="sb-shot-stack">
-                      {beatShots.map(({ shot, shotIdx }) => {
-                        const shotCut = cutPlan.find((item) => item.id === shot.cutPlanItemId)
-                        const cutLabel = shotCut
-                          ? `Cut ${shotCut.order || shotIdx + 1}`
-                          : `Panel ${shotIdx + 1}`
-                        const committedImage = getShotVisual(shot)
-                        const candidate = panelCandidates[shot.id]
-                        const displayImage = candidate?.image || committedImage
-                        // 앞 패널과의 이음새. 정한 것이 있을 때만 그린다 —
-                        // 전부 '컷 · 연속'인 기본값까지 표시하면 실제로 정한
-                        // 것이 묻힌다.
-                        const prevShot = shotIdx > 0 ? flowShots[shotIdx - 1] : null
-                        const seamBefore2 = prevShot ? seams[seamKeyFor(prevShot.id)] : null
-                        const showSeam = isSeamMarked(seamBefore2)
-                        // 이 패널이 그려야 할 그림 밖 채널 (DG1 P3).
-                        const shotPrompt = shotCut
-                          ? buildCutPrompt(shotCut, {
-                            sceneIntention,
-                            sceneNote: scenePromptNote,
-                            declarations,
-                            sceneState: sceneStateForCut(shotCut),
-                            seam: seamBefore(shotCut.id),
-                            cutIndex: cutPlan.findIndex((item) => item.id === shotCut.id),
-                            cutOrder,
-                          })
-                          : null
-                        const { marks: panelMarks, notes: panelNotes } = buildPanelMarks(
-                          shotPrompt?.responsibility?.offImage || [],
-                        )
-                        // 화살표를 그렸으면 그 채널은 이미 화면에 있다.
-                        const hasArrows = (shot.arrows || []).length > 0
-                        const visibleNotes = panelNotes.filter(
-                          (note) => !(note.needsArrow && hasArrows),
-                        )
-
-                        return (
-                          <Fragment key={shot.id || shotIdx}>
-                          {showSeam && (
-                            <div className="sb-seam">
-                              <span className="sb-seam-join">
-                                {SEAM_JOINS.find((j) => j.id === seamBefore2.join)?.label}
-                              </span>
-                              {seamBefore2.elapsed !== 'continuous' && (
-                                <span className="sb-seam-elapsed">
-                                  {SEAM_ELAPSED.find((e) => e.id === seamBefore2.elapsed)?.label}
-                                </span>
-                              )}
-                              {seamBefore2.elision && (
-                                <span className="sb-seam-elision">
-                                  생략 · {seamBefore2.elision}
-                                </span>
-                              )}
+                          <span>시간</span>
+                          <div>
+                            {SEAM_ELAPSED.map((item) => (
+                              <button type="button" key={item.id} className={(seam?.elapsed || 'continuous') === item.id ? 'active' : ''} title={item.hint} onClick={() => updateSeam(shot.id, { elapsed: item.id })}>{item.label}</button>
+                            ))}
+                          </div>
+                          {cut && nextShot?.cutPlanItemId && (
+                            <div className="sb-panel-grid-seam-structure-actions">
+                              <button type="button" onClick={() => {
+                                addCutPlanItem(cut.id, cut.beat)
+                                setFlowActiveShot(shotIdx + 1)
+                                setOpenPanelSeamId(null)
+                              }}>사이에 넣기</button>
+                              <button type="button" onClick={() => {
+                                mergePanelCuts(cut.id, shotIdx)
+                              }}>합치기</button>
                             </div>
                           )}
-                          <div
-                            data-shot-id={shot.id}
-                            className={`sb-shot-card ${shotIdx === activeShot ? 'active-shot' : ''} ${candidate ? 'has-ai-candidate' : ''} ${inspectedShotId === shot.id ? 'inspected' : ''}`}
+                        </div>
+                      )}
+                    </div>,
+                  ]
+                })}
+              </section>
+            )}
+
+            {/* 絵コンテ 표. 컷이 한 행이고, 열은 `컷 번호 / 그림 / 설명 / 길이`다.
+              Beat는 열지 않는다 — Beat는 대본을 나눈 단위이지 콘티를 읽는
+              단위가 아니고, 행 사이에 끼면 컷 번호가 끊긴다. 씬은 남긴다:
+              시공간이 바뀌는 자리는 콘티에서도 경계로 읽혀야 한다. */}
+            {showStoryboardPanels && !panelGridView && !drawingWorkspaceOpen && (
+              <section className="sb-conte" aria-label="대본과 함께 보기 · 콘티 표">
+                <div className="sb-conte-head" role="row">
+                  <span role="columnheader">컷</span>
+                  <span role="columnheader">그림</span>
+                  <span role="columnheader">설명</span>
+                  {/* 샷과 앵글은 촬영이 정하는 값이다. 콘티 표에 두어야
+                    컷을 훑으면서 크기가 어떻게 흘러가는지 보인다 —
+                    한 컷씩 인스펙터를 열어 보면 그 흐름이 안 보인다. */}
+                  <span role="columnheader">샷</span>
+                  <span role="columnheader">앵글</span>
+                  {/* 길이는 기본이 위임이다 — 비어 있는 칸은 후속 공정이
+                    정할 자리라는 뜻이지 아직 안 적었다는 뜻이 아니다
+                    (DG1 P3). 다만 감독이 정하고 싶으면 정할 수 있어야
+                    한다. 그래서 열을 지우지 않고 입력을 받는다. */}
+                  <span role="columnheader" className="is-delegated">
+                    길이
+                    <em>비우면 후속 공정</em>
+                  </span>
+                </div>
+
+                {conteRows.map((row) => {
+                  if (row.kind === 'scene') {
+                    return (
+                      <button
+                        type="button"
+                        key={`scene-${row.beat}`}
+                        className={`sb-conte-scene${row.collapsed ? ' collapsed' : ''}`}
+                        onClick={() => toggleScene(row.beat)}
+                        aria-expanded={!row.collapsed}
+                      >
+                        <span className="sb-conte-scene-caret" aria-hidden="true">
+                          {row.collapsed ? '▸' : '▾'}
+                        </span>
+                        <span>Scene {row.number}</span>
+                        <strong>{row.text}</strong>
+                        <em>{row.cutCount} cuts</em>
+                      </button>
+                    )
+                  }
+
+                  const { shot, shotIdx, cut: shotCut } = row
+                  const cutLabel = shotCut
+                    ? `Cut ${shotCut.order || shotIdx + 1}`
+                    : `Panel ${shotIdx + 1}`
+                  const committedImage = getShotVisual(shot)
+                  const candidate = panelCandidates[shot.id]
+                  const displayImage = candidate?.image || committedImage
+                  // 앞 컷과의 이음새. 정한 것이 있을 때만 행 사이에 끼운다 —
+                  // 전부 '컷 · 연속'인 기본값까지 그리면 실제로 정한 것이 묻힌다.
+                  const prevShot = shotIdx > 0 ? flowShots[shotIdx - 1] : null
+                  const seamBefore2 = prevShot ? seams[seamKeyFor(prevShot.id)] : null
+                  const showSeam = isSeamMarked(seamBefore2)
+                  // 이 컷이 그림 밖 채널로 남긴 것 (DG1 P3).
+                  const shotPrompt = shotCut
+                    ? buildCutPrompt(shotCut, {
+                      sceneIntention,
+                      sceneNote: scenePromptNote,
+                      declarations,
+                      sceneState: sceneStateForCut(shotCut),
+                      seam: seamBefore(shotCut.id),
+                      cutIndex: cutPlan.findIndex((item) => item.id === shotCut.id),
+                      cutOrder,
+                    })
+                    : null
+                  const { marks: panelMarks, notes: panelNotes } = buildPanelMarks(
+                    shotPrompt?.responsibility?.offImage || [],
+                  )
+                  const hasArrows = (shot.arrows || []).length > 0
+                  const visibleNotes = panelNotes.filter(
+                    (note) => !(note.needsArrow && hasArrows),
+                  )
+
+                  return (
+                    <Fragment key={shot.id || shotIdx}>
+                      {showSeam && (
+                        <div className="sb-conte-seam">
+                          <span className="sb-seam-join">
+                            {SEAM_JOINS.find((j) => j.id === seamBefore2.join)?.label}
+                          </span>
+                          {seamBefore2.elapsed !== 'continuous' && (
+                            <span className="sb-seam-elapsed">
+                              {SEAM_ELAPSED.find((e) => e.id === seamBefore2.elapsed)?.label}
+                            </span>
+                          )}
+                          {seamBefore2.elision && (
+                            <span className="sb-seam-elision">생략 · {seamBefore2.elision}</span>
+                          )}
+                        </div>
+                      )}
+                      <div
+                        data-shot-id={shot.id}
+                        className={`sb-conte-row${shotIdx === activeShot ? ' active-shot' : ''}${candidate ? ' has-ai-candidate' : ''}${inspectedShotId === shot.id ? ' inspected' : ''}`}
+                        role="row"
+                        onClick={() => {
+                          setFlowActiveShot(shotIdx)
+                          setInspectedShotId(shot.id)
+                        }}
+                      >
+                        {/* 컷 번호. 콘티에서 컷을 부르는 이름이므로 가장 왼쪽에
+                          두고, 스크롤 중에도 행의 시작을 잡아 준다. */}
+                        <div className="sb-conte-no">
+                          <span>{shotCut?.order || shotIdx + 1}</span>
+                          <button
+                            type="button"
+                            className="sb-conte-delete"
+                            disabled={flowShots.length <= 1}
+                            title={flowShots.length <= 1 ? '씬에 컷이 하나는 남아야 합니다' : `${cutLabel} 삭제`}
+                            aria-label={`${cutLabel} 삭제`}
                             onClick={(event) => {
                               event.stopPropagation()
-                              setInspectedShotId(shot.id)
+                              handleDeleteShot(shot.id, shotIdx)
                             }}
                           >
-                            <button
-                              type="button"
-                              className="sb-shot-delete"
-                              disabled={flowShots.length <= 1}
-                              title={flowShots.length <= 1 ? 'Keep at least one shot in the scene' : `Delete ${cutLabel}`}
-                              aria-label={`Delete ${cutLabel}`}
-                              onClick={(event) => {
-                                event.stopPropagation()
-                                handleDeleteShot(shot.id, shotIdx)
-                              }}
-                            >
-                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                <path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6M10 10v6M14 10v6" />
-                              </svg>
-                            </button>
-                            {shotCut && (
-                              <header className="sb-panel-cut-context">
-                                <div>
-                                  <span>{cutLabel}</span>
-                                  {shotCut.purpose && <em>{shotCut.purpose}</em>}
-                                </div>
-                                <p>{shotCut.content}</p>
-                              </header>
-                            )}
-                            {/* 그림은 30초 넘게 걸린다. 표시가 없으면 눌린
-                                건지 알 수 없어 다시 누르게 된다. */}
-                            {panelGenPending[shot.id] ? (
-                              <div className="sb-panel-pending">
-                                <span className="sb-pending-spinner" />
-                                <span>그리는 중…</span>
-                              </div>
-                            ) : candidate ? (
-                              <div className="sb-panel-candidate">
-                                <div className="sb-img-wrapper">
-                                  <img src={displayImage} alt={`${cutLabel} AI draft`} />
-                                  <span className="sb-candidate-badge">AI candidate · V{candidate.version}</span>
-                                </div>
-                                <div className="sb-candidate-actions">
-                                  <button type="button" onClick={() => dismissPanelCandidate(shot.id)}>Dismiss</button>
-                                  <button
-                                    type="button"
-                                    onClick={() => handleGeneratePanels([{ shot, shotIdx }], { includeExisting: true })}
-                                  >
-                                    Again
-                                  </button>
-                                  <button type="button" onClick={() => handleDrawOverCandidate(shot, shotIdx)}>Draw over</button>
-                                  <button
-                                    type="button"
-                                    className="accept"
-                                    onClick={() => acceptPanelCandidate(shot.id)}
-                                  >
-                                    Accept
-                                  </button>
-                                </div>
-                              </div>
-                            ) : committedImage ? (
+                            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6M10 10v6M14 10v6" />
+                            </svg>
+                          </button>
+                        </div>
+
+                        {/* 그림. 콘티에서 가장 큰 칸이고, 손대는 일도 여기서
+                          일어난다 — 그리기·재생성·화살표·메모를 그림 위에
+                          모아 표가 버튼으로 채워지지 않게 한다. */}
+                        <div className="sb-conte-pic">
+                          {panelGenPending[shot.id] ? (
+                            <div className="sb-panel-pending">
+                              <span className="sb-pending-spinner" />
+                              <span>그리는 중…</span>
+                            </div>
+                          ) : candidate ? (
+                            <div className="sb-panel-candidate">
                               <div className="sb-img-wrapper">
-                                <img src={displayImage} alt={cutLabel} />
-                                <PanelOverlay
-                                  marks={panelMarks}
-                                  arrows={shot.arrows || []}
-                                  drawing={arrowDrawingShotId === shot.id}
-                                  selectedArrowId={selectedArrow?.shotId === shot.id
-                                    ? selectedArrow.arrowId
-                                    : null}
-                                  onDrawArrow={(arrow) => {
-                                    setPendingArrow({ shotId: shot.id, arrow })
-                                    setSelectedArrow(null)
-                                    setArrowDrawingShotId(null)
-                                  }}
-                                  onSelectArrow={(arrowId) => {
-                                    setPendingArrow(null)
-                                    setSelectedArrow({ shotId: shot.id, arrowId })
-                                  }}
-                                />
-                                <PanelNote
-                                  note={shot.note || ''}
-                                  onChange={(value) => setShotNote(shot.id, value)}
-                                  editing={noteEditingShotId === shot.id}
-                                  onEditingChange={(editing) => (
-                                    setNoteEditingShotId(editing ? shot.id : null)
-                                  )}
-                                />
-                                <div className="sb-hover-actions">
-                                  <button
-                                    className="sb-action-btn"
-                                    onClick={(e) => {
-                                      e.stopPropagation()
-                                      handleEditShot(shotIdx, beatGroup.beat)
-                                    }}
-                                  >
-                                    Draw
-                                  </button>
-                                  <button
-                                    className="sb-action-btn secondary"
-                                    onClick={(event) => {
-                                      event.stopPropagation()
-                                      handleGeneratePanels([{ shot, shotIdx }], { includeExisting: true })
-                                    }}
-                                  >
-                                    재생성
-                                  </button>
-                                </div>
+                                <img src={displayImage} alt={`${cutLabel} AI draft`} />
+                                <span className="sb-candidate-badge">AI candidate · V{candidate.version}</span>
                               </div>
-                            ) : (
-                              <div className="sb-add-shot existing-empty">
-                                <span>{cutLabel}</span>
-                                <small>Choose how to start</small>
-                                <div className="sb-empty-panel-actions">
-                                  <button
-                                    type="button"
-                                    onClick={(event) => {
-                                      event.stopPropagation()
-                                      handleEditShot(shotIdx, beatGroup.beat)
-                                    }}
-                                  >
-                                    Draw
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={(event) => {
-                                      event.stopPropagation()
-                                      handleGeneratePanels([{ shot, shotIdx }])
-                                    }}
-                                  >
-                                    Generate
-                                  </button>
-                                </div>
-                              </div>
-                            )}
-                            {/* 메타 줄은 패널을 식별하는 최소한만 남긴다.
-                                샷 사이즈·출처·프롬프트는 인스펙터에 다 있고,
-                                열두 패널마다 반복되면 그림이 안 보인다. */}
-                            <div className="sb-shot-meta">
-                              <span>{cutLabel}</span>
-                              <div className="sb-panel-tools">
-                                {/* 화살표와 메모는 책임 상태가 아니라 직접 쓰는
-                                    스토리보드 표기 도구다. 항상 보여 발견 가능하게 한다. */}
+                              <div className="sb-candidate-actions">
+                                <button type="button" onClick={() => dismissPanelCandidate(shot.id)}>Dismiss</button>
                                 <button
                                   type="button"
-                                  className={`sb-arrow-toggle${arrowDrawingShotId === shot.id ? ' active' : ''}`}
+                                  onClick={() => handleGeneratePanels([{ shot, shotIdx }], { includeExisting: true })}
+                                >
+                                  Again
+                                </button>
+                                <button type="button" onClick={() => handleDrawOverCandidate(shot, shotIdx)}>Draw over</button>
+                                <button
+                                  type="button"
+                                  className="accept"
+                                  onClick={() => acceptPanelCandidate(shot.id)}
+                                >
+                                  Accept
+                                </button>
+                              </div>
+                            </div>
+                          ) : committedImage ? (
+                            <div className="sb-img-wrapper">
+                              <img src={displayImage} alt={cutLabel} />
+                              <PanelOverlay
+                                marks={panelMarks}
+                                arrows={shot.arrows || []}
+                                drawing={arrowDrawingShotId === shot.id}
+                                selectedArrowId={selectedArrow?.shotId === shot.id
+                                  ? selectedArrow.arrowId
+                                  : null}
+                                onDrawArrow={(arrow) => {
+                                  setPendingArrow({ shotId: shot.id, arrow })
+                                  setSelectedArrow(null)
+                                  setArrowDrawingShotId(null)
+                                }}
+                                onSelectArrow={(arrowId) => {
+                                  setPendingArrow(null)
+                                  setSelectedArrow({ shotId: shot.id, arrowId })
+                                }}
+                              />
+                              <PanelNote
+                                note={shot.note || ''}
+                                onChange={(value) => setShotNote(shot.id, value)}
+                                editing={noteEditingShotId === shot.id}
+                                onEditingChange={(editing) => (
+                                  setNoteEditingShotId(editing ? shot.id : null)
+                                )}
+                              />
+                              {/* 표를 깔끔히 두기 위해 도구는 그림 위 hover로
+                                모은다. 화살표·메모는 그리는 중일 때 계속
+                                보여야 하므로 그때는 hover가 풀려도 남긴다. */}
+                              <div className={`sb-conte-tools${arrowDrawingShotId === shot.id || noteEditingShotId === shot.id ? ' pinned' : ''}`}>
+                                <button
+                                  className="sb-action-btn"
+                                  onClick={(event) => {
+                                    event.stopPropagation()
+                                    handleEditShot(shotIdx, shot.scriptBeat ?? shotCut?.beat ?? 0)
+                                  }}
+                                >
+                                  Draw
+                                </button>
+                                <button
+                                  className="sb-action-btn secondary"
+                                  onClick={(event) => {
+                                    event.stopPropagation()
+                                    handleGeneratePanels([{ shot, shotIdx }], { includeExisting: true })
+                                  }}
+                                >
+                                  재생성
+                                </button>
+                                <button
+                                  type="button"
+                                  className={`sb-action-btn icon${arrowDrawingShotId === shot.id ? ' active' : ''}`}
                                   aria-pressed={arrowDrawingShotId === shot.id}
                                   title="패널 위를 끌어서 카메라 이동 방향을 표시합니다"
                                   onClick={(event) => {
@@ -4427,11 +4359,11 @@ export default function StoryboardView({ onEnterReview = null }) {
                                   <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round">
                                     <path d="M5 12h13M13 6l6 6-6 6" />
                                   </svg>
-                                  {arrowDrawingShotId === shot.id ? '그리는 중' : '카메라 이동'}
+                                  {arrowDrawingShotId === shot.id ? '그리는 중' : '카메라'}
                                 </button>
                                 <button
                                   type="button"
-                                  className={`sb-note-toggle${noteEditingShotId === shot.id ? ' active' : ''}`}
+                                  className={`sb-action-btn icon${noteEditingShotId === shot.id ? ' active' : ''}`}
                                   aria-pressed={noteEditingShotId === shot.id}
                                   onClick={(event) => {
                                     event.stopPropagation()
@@ -4450,88 +4382,799 @@ export default function StoryboardView({ onEnterReview = null }) {
                                 </button>
                               </div>
                             </div>
+                          ) : (
+                            <div className="sb-add-shot existing-empty">
+                              <span>{cutLabel}</span>
+                              <small>Choose how to start</small>
+                              <div className="sb-empty-panel-actions">
+                                <button
+                                  type="button"
+                                  onClick={(event) => {
+                                    event.stopPropagation()
+                                    handleEditShot(shotIdx, shot.scriptBeat ?? shotCut?.beat ?? 0)
+                                  }}
+                                >
+                                  Draw
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={(event) => {
+                                    event.stopPropagation()
+                                    handleGeneratePanels([{ shot, shotIdx }])
+                                  }}
+                                >
+                                  Generate
+                                </button>
+                              </div>
+                            </div>
+                          )}
 
-                            {pendingArrow?.shotId === shot.id && (
-                              <CameraMovePicker
-                                onChoose={(move) => {
-                                  addShotArrow(shot.id, {
-                                    ...pendingArrow.arrow,
-                                    channel: 'camera-move',
-                                    kind: move.id,
-                                    label: move.label,
-                                  })
-                                  setPendingArrow(null)
-                                }}
-                                onCancel={() => setPendingArrow(null)}
-                              />
-                            )}
-                            {selectedArrow?.shotId === shot.id && (
-                              <CameraMovePicker
-                                existing
-                                onChoose={(move) => {
-                                  updateShotArrow(shot.id, selectedArrow.arrowId, {
-                                    channel: 'camera-move',
-                                    kind: move.id,
-                                    label: move.label,
-                                  })
-                                  setSelectedArrow(null)
-                                  setArrowDrawingShotId(null)
-                                }}
-                                onDelete={() => {
-                                  removeShotArrow(shot.id, selectedArrow.arrowId)
-                                  setSelectedArrow(null)
-                                  setArrowDrawingShotId(null)
-                                }}
-                                onCancel={() => setSelectedArrow(null)}
-                              />
-                            )}
+                          {pendingArrow?.shotId === shot.id && (
+                            <CameraMovePicker
+                              onChoose={(move) => {
+                                addShotArrow(shot.id, {
+                                  ...pendingArrow.arrow,
+                                  channel: 'camera-move',
+                                  kind: move.id,
+                                  label: move.label,
+                                })
+                                setPendingArrow(null)
+                              }}
+                              onCancel={() => setPendingArrow(null)}
+                            />
+                          )}
+                          {selectedArrow?.shotId === shot.id && (
+                            <CameraMovePicker
+                              existing
+                              onChoose={(move) => {
+                                updateShotArrow(shot.id, selectedArrow.arrowId, {
+                                  channel: 'camera-move',
+                                  kind: move.id,
+                                  label: move.label,
+                                })
+                                setSelectedArrow(null)
+                                setArrowDrawingShotId(null)
+                              }}
+                              onDelete={() => {
+                                removeShotArrow(shot.id, selectedArrow.arrowId)
+                                setSelectedArrow(null)
+                                setArrowDrawingShotId(null)
+                              }}
+                              onCancel={() => setSelectedArrow(null)}
+                            />
+                          )}
+                        </div>
 
-                            {/* 아직 그리지 않은 그림 밖 채널만 남긴다.
+                        {/* 설명. 콘티의 Action Notes 자리다. 대사·효과음 칸은
+                          두지 않는다 — 대본이 그 줄 종류를 갖지 않기로 했고
+                          (`SCRIPT_LINE_TYPES`), 빈 칸만 남으면 아직 안 적은
+                          것으로 읽힌다. */}
+                        <div className="sb-conte-caption">
+                          {shotCut?.purpose && (
+                            <span className="sb-conte-purpose">{shotCut.purpose}</span>
+                          )}
+                          {/* 컷 내용은 여기서 고친다. 이 문장이 그대로 그림
+                            프롬프트의 본문이 되므로(`buildCutPrompt`),
+                            프롬프트를 따로 열어 고치는 것보다 여기서
+                            고치고 다시 그리는 편이 짧다. */}
+                          {shotCut && (
+                            <ConteContent
+                              key={`${shotCut.id}:${shotCut.content || ''}`}
+                              cutId={shotCut.id}
+                              value={shotCut.content || ''}
+                              onCommit={(next) => (
+                                next !== (shotCut.content || '')
+                                && updateCutPlanItem(shotCut.id, { content: next })
+                              )}
+                            />
+                          )}
+                          {shot.note && <p className="sb-conte-note">{shot.note}</p>}
+                          {/* 아직 그리지 않은 그림 밖 채널만 남긴다. 이미
+                            그렸으면 화살표가 그 자리에 있으므로 한 번 더
+                            말하지 않는다. */}
+                          {visibleNotes.length > 0 && (
+                            <ul className="sb-shot-offimage-notes">
+                              {visibleNotes.map((note, index) => (
+                                <li
+                                  key={`${note.element}-${index}`}
+                                  className={note.needsArrow ? 'needs-arrow' : ''}
+                                  title={note.needsArrow
+                                    ? '화살표 버튼을 눌러 표시하세요'
+                                    : note.element}
+                                >
+                                  <em>{note.element}</em>
+                                  {note.label !== note.element && <span>{note.label}</span>}
+                                </li>
+                              ))}
+                            </ul>
+                          )}
+
+                          {/* 무엇을 그림에서 정하고 무엇을 촬영에 넘길지
+                            (DG1 P3). 컷마다 매번 볼 것은 아니라 접어 두되,
+                            판정하지 않은 것이 남아 있으면 그 수를 밖에
+                            보여 준다 — 접힌 채로 잊히면 AI 가정이 그대로
+                            굳는다 (DG1 P2). */}
+                          {shotCut && (() => {
+                            const scoped = (decl) => (
+                              decl.scope === 'scene' || decl.cutId === shotCut.id
+                            )
+                            const undecided = deferredDeclarations.filter(scoped)
+                            const decided = acceptedDeclarations.filter(scoped)
+                            if (undecided.length === 0 && decided.length === 0) return null
+                            return (
+                              <details className="sb-conte-decl">
+                                <summary>
+                                  <span>이미지가 정할 것</span>
+                                  {undecided.length > 0 && <em>{undecided.length} 미정</em>}
+                                </summary>
+                                <ul>
+                                  {[...undecided, ...decided].map((decl) => {
+                                    const isDecided = decl.status === 'Accepted'
+                                    return (
+                                      <li key={decl.id} className={isDecided ? 'is-decided' : ''}>
+                                        <div className="sb-conte-decl-head">
+                                          <strong>{decl.element}</strong>
+                                          {!isDecided && <span className="deferred-mark">미정</span>}
+                                          <button
+                                            type="button"
+                                            className="deferred-dismiss"
+                                            title={isDecided ? '선언 해제' : '이 요소는 선언하지 않는다'}
+                                            aria-label={`${decl.element} ${isDecided ? '선언 해제' : '선언하지 않음'}`}
+                                            onClick={() => rejectDeclaration(decl.id)}
+                                          >
+                                            ×
+                                          </button>
+                                        </div>
+                                        {/* 칩을 고르는 것이 곧 판정이다. AI 기본값을
+                                          그대로 두면 판정하지 않은 것으로 남는다. */}
+                                        <div className={`deferred-chips${isDecided ? '' : ' is-proposed'}`}>
+                                          {RESPONSIBILITY_LEVELS.map((level) => (
+                                            <button
+                                              key={level.id}
+                                              type="button"
+                                              className={decl.responsibility === level.id ? 'active' : ''}
+                                              title={isDecided ? level.hint : `${level.hint} · AI 제안, 눌러서 확정`}
+                                              onClick={() => decideDeclaration(decl.id, level.id)}
+                                            >
+                                              {level.label}
+                                            </button>
+                                          ))}
+                                        </div>
+                                      </li>
+                                    )
+                                  })}
+                                </ul>
+                              </details>
+                            )
+                          })()}
+                        </div>
+
+                        {/* 샷·앵글. 값이 없으면 촬영이 아직 안 정한 것이다 —
+                          기본값을 채워 두면 정해진 것처럼 읽혀 촬영을
+                          부르지 않고 넘어가게 된다 (DG1 P2). */}
+                        <div
+                          className="sb-conte-framing"
+                          onClick={(event) => event.stopPropagation()}
+                        >
+                          <FramingPicker
+                            label="샷 크기"
+                            placeholder="미정"
+                            value={shotCut?.shotSize || ''}
+                            options={cutPlanShotSizes}
+                            kind="shot"
+                            disabled={!shotCut}
+                            onChange={(next) => updateCutPlanItem(shotCut.id, { shotSize: next })}
+                          />
+                        </div>
+                        <div
+                          className="sb-conte-framing"
+                          onClick={(event) => event.stopPropagation()}
+                        >
+                          <FramingPicker
+                            label="앵글"
+                            placeholder="미정"
+                            value={shotCut?.angle || ''}
+                            options={cutPlanAngles}
+                            kind="angle"
+                            disabled={!shotCut}
+                            onChange={(next) => updateCutPlanItem(shotCut.id, { angle: next })}
+                          />
+                        </div>
+
+                        {/* 길이 칸. 비워 두면 후속 공정에 넘긴 것이고(DG1 P3),
+                          적으면 그때부터 스토리보드가 정한 값이다. 둘을
+                          화면에서 갈라 둬야 빈 칸이 '아직 안 적음'으로
+                          읽히지 않는다. */}
+                        <div
+                          className={`sb-conte-dur${shotCut?.duration ? ' is-set' : ''}`}
+                          onClick={(event) => event.stopPropagation()}
+                        >
+                          <input
+                            type="text"
+                            inputMode="decimal"
+                            value={shotCut?.duration || ''}
+                            placeholder="—"
+                            aria-label={`${cutLabel} 길이`}
+                            title={shotCut?.duration
+                              ? '컷 길이. 지우면 후속 공정에 넘깁니다.'
+                              : '비어 있으면 후속 공정이 정합니다. 직접 적으려면 입력하세요.'}
+                            disabled={!shotCut}
+                            onChange={(event) => (
+                              updateCutPlanItem(shotCut.id, { duration: event.target.value })
+                            )}
+                          />
+                        </div>
+                      </div>
+                    </Fragment>
+                  )
+                })}
+              </section>
+            )}
+
+            {/* Panel setup은 제작 설정만 다루는 독립 단계다. 여기 대본까지
+              남기면 스타일을 고르는 화면 아래에 다른 작업이 붙어 보인다.
+              축소 화면·Script·Panels에서만 대본을 렌더한다. */}
+            {(!isExpanded || isScriptStage || showStoryboardPanels) && scriptSceneGroups.map((sceneGroup, sceneIndex) => {
+              const openingBeat = sceneGroup.beats[0]?.beatGroup?.beat
+              const sceneCollapsed = isSceneCollapsed(openingBeat)
+              const heading = sceneGroup.heading
+              const sceneLineCount = sceneGroup.beats.reduce(
+                (count, { beatGroup }) => count + beatGroup.elements.filter((element) => element.type !== 'scene-heading').length,
+                0,
+              )
+              return (
+                <section
+                  key={sceneGroup.id}
+                  className={`script-scene-card${sceneCollapsed ? ' is-collapsed' : ''}${isScriptStage ? ' is-script-stage' : ''}`}
+                >
+                  <header className="script-scene-card-header">
+                    <button
+                      type="button"
+                      className="script-scene-toggle"
+                      onClick={() => toggleScene(openingBeat)}
+                      aria-expanded={!sceneCollapsed}
+                      aria-label={`Scene ${sceneIndex + 1} ${sceneCollapsed ? '펼치기' : '접기'}`}
+                    >
+                      {sceneCollapsed ? '▸' : '▾'}
+                    </button>
+                    <span>SCENE {sceneIndex + 1}</span>
+                    {isScriptStage && heading ? (
+                      <input
+                        value={heading.text}
+                        aria-label={`Scene ${sceneIndex + 1} 제목`}
+                        onClick={(event) => event.stopPropagation()}
+                        onChange={(event) => updateScreenplayLine(heading.globalIdx, event.target.value)}
+                      />
+                    ) : (
+                      <strong>{heading?.text || `장면 ${sceneIndex + 1}`}</strong>
+                    )}
+                    <em>{isScriptStage ? `${sceneLineCount}줄` : `${sceneGroup.beats.length} Moments`}</em>
+                  </header>
+                  {!sceneCollapsed && sceneGroup.beats.map(({ beatGroup, index: i }) => {
+              // 접힌 씬의 Beat는 그리지 않는다. 씬을 여는 Beat는 남겨야
+              // 헤더가 보이고 다시 펼 수 있다.
+              if (isSceneCollapsed(beatGroup.beat)) return null
+              const beatShots = getBeatShots(beatGroup.beat)
+              const beatSuggestions = narrativeSuggestions.filter((suggestion) => suggestion.beat === beatGroup.beat)
+              const inlineSuggestionTypes = new Set(['split-beat', 'insert-script-line', 'replace-script-line'])
+              const nonBoundarySuggestions = beatSuggestions.filter((suggestion) => !inlineSuggestionTypes.has(suggestion.type))
+
+              return (
+                <div
+                  key={i}
+                  data-beat={beatGroup.beat}
+                  className={`sb-item ${showStoryboardPanels ? 'layout-expanded panels-matched' : isExpanded ? 'layout-script-focus' : 'layout-sidebar'} ${beatGroup.beat === activeBeat ? 'active-beat' : ''}`}
+                  onClick={() => selectBeat(beatGroup.beat)}
+                >
+                  {i > 0 && !isScriptStage && !showStoryboardPanels && (
+                    <button
+                      className="merge-beat-btn"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        mergeBeat(beatGroup.elements[0].globalIdx)
+                      }}
+                      title="Merge with above"
+                    >
+                      ↑ Merge
+                    </button>
+                  )}
+
+                  <div className="sb-text-col">
+                    {/* 씬 경계. Beat보다 큰 단위이므로 위에, 더 크게 둔다 —
+                      씬은 시공간이 연속된 범위이고 Beat는 그 안의 국면이다. */}
+                    {beatGroup.elements[0]?.type === 'scene-heading' && !isScriptStage && (
+                      <button
+                        type="button"
+                        className={`sb-scene-label${collapsedScenes.includes(beatGroup.beat) ? ' collapsed' : ''}`}
+                        onClick={(event) => {
+                          event.stopPropagation()
+                          toggleScene(beatGroup.beat)
+                        }}
+                        aria-expanded={!collapsedScenes.includes(beatGroup.beat)}
+                      >
+                        <span className="sb-scene-caret" aria-hidden="true">
+                          {collapsedScenes.includes(beatGroup.beat) ? '▸' : '▾'}
+                        </span>
+                        <span>Scene {sceneNumberOf(beatGroup.beat)}</span>
+                        <strong>{beatGroup.elements[0].text}</strong>
+                        {collapsedScenes.includes(beatGroup.beat) && (
+                          <em>
+                            {showStoryboardPanels
+                              ? `${cutsInScene(beatGroup.beat)} cuts`
+                              : `${beatsInScene(beatGroup.beat)} beats`}
+                          </em>
+                        )}
+                      </button>
+                    )}
+
+                    {/* 씬을 접으면 그 씬을 여는 Beat의 본문도 함께 숨는다.
+                      헤더만 남아 다시 펼 수 있다. */}
+                    {!collapsedScenes.includes(beatGroup.beat) && !showStoryboardPanels && (
+                      <>
+                        {/* Beat 경계 표시이자 이 Beat의 조작 지점. 줄마다 버튼을
+                      띄우지 않고 여기로 모은다. */}
+                        {!isScriptStage && beats.length > 1 && (
+                          <div className="sb-beat-label">
+                            <span>Moment {String(beatGroup.beat + 1).padStart(2, '0')}</span>
+                            <em>{beatGroup.elements.length} lines</em>
+                            {isScriptStage && (
+                              <div className="sb-beat-tools">
+                                <button
+                                  type="button"
+                                  className={editingBeat === beatGroup.beat ? 'active' : ''}
+                                  onClick={(event) => {
+                                    event.stopPropagation()
+                                    setEditingBeat(editingBeat === beatGroup.beat ? null : beatGroup.beat)
+                                  }}
+                                  title="줄 종류와 삭제를 표시"
+                                >
+                                  {editingBeat === beatGroup.beat ? '완료' : '줄 편집'}
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={(event) => {
+                                    event.stopPropagation()
+                                    handleAddBeatAfter(beatGroup)
+                                  }}
+                                  title="이 Moment 다음에 새 Moment 추가"
+                                >
+                                  + Moment
+                                </button>
+                                {/* 첫 Beat에는 위로 합칠 대상이 없다. 그 자리에
+                              맨 앞에 Beat를 넣는 길을 둔다. */}
+                                {i === 0 && (
+                                  <button
+                                    type="button"
+                                    onClick={(event) => {
+                                      event.stopPropagation()
+                                      handleAddBeatAtStart()
+                                    }}
+                                    title="이 Moment 앞에 새 Moment 추가"
+                                  >
+                                    ↑ Moment
+                                  </button>
+                                )}
+                                {i > 0 && (
+                                  <button
+                                    type="button"
+                                    onClick={(event) => {
+                                      event.stopPropagation()
+                                      mergeBeat(beatGroup.elements[0].globalIdx)
+                                    }}
+                                    title="위 Moment와 합치기"
+                                  >
+                                    ↑ 합치기
+                                  </button>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        )}
+                        {(isScriptStage
+                          ? beatGroup.elements.filter((element) => element.type !== 'scene-heading')
+                          : beatGroup.elements
+                        ).map((el) => {
+                          const inlineSuggestions = beatSuggestions.filter((suggestion) => (
+                            (suggestion.type === 'split-beat' && suggestion.elementIndex === el.globalIdx + 1)
+                            || (suggestion.type === 'insert-script-line' && suggestion.insertAfterIndex === el.globalIdx)
+                            || (suggestion.type === 'replace-script-line' && suggestion.elementIndex === el.globalIdx)
+                          ))
+
+                          return (
+                            <div key={el.globalIdx} className="script-element-block">
+                              <div className="script-element-wrapper">
+                                {isScriptStage ? (
+                                  <ScriptLineEditor
+                                    element={el}
+                                    index={el.globalIdx}
+                                    onChange={updateScreenplayLine}
+                                    onChangeType={setScreenplayLineType}
+                                    onInsertAfter={handleInsertLine}
+                                    onRemove={handleRemoveLine}
+                                    canRemove={screenplay.length > 1}
+                                    showTools={isScriptStage}
+                                    showTypeControl={!isScriptStage}
+                                    autoFocus={pendingFocus?.index === el.globalIdx}
+                                    focusCaret={pendingFocus?.caret}
+                                    onFocused={clearPendingFocus}
+                                    onMoveFocus={handleMoveFocus}
+                                    filled={el.filled}
+                                    flagged={flaggedLineIndexes.has(el.globalIdx)}
+                                  />
+                                ) : (
+                                  <div
+                                    className={`sb-script-${el.type}${el.filled ? ' is-filled' : ''}${flaggedLineIndexes.has(el.globalIdx) ? ' is-flagged' : ''}`}
+                                    title={el.filled ? 'AI가 채운 줄입니다' : undefined}
+                                  >
+                                    {el.text}
+                                  </div>
+                                )}
+                                {/* Beat 나누기는 줄 편집 모드에서만. 평소 hover마다
+                            버튼이 튀어나오면 대본 읽기를 방해한다. */}
+                                {!isScriptStage && (
+                                  <button
+                                    className={`split-beat-btn${editingBeat === beatGroup.beat ? ' always-on' : ''}`}
+                                    onClick={(e) => {
+                                      e.stopPropagation()
+                                      splitBeat(el.globalIdx + 1)
+                                    }}
+                                    title="Split here"
+                                  >
+                                    + Split Moment
+                                  </button>
+                                )}
+                              </div>
+                              {inlineSuggestions.map((suggestion) => (
+                                <NarrativeSuggestionCard
+                                  key={suggestion.id}
+                                  suggestion={suggestion}
+                                  onAccept={handleAcceptNarrativeSuggestion}
+                                  onDismiss={dismissNarrativeSuggestion}
+                                />
+                              ))}
+                            </div>
+                          )
+                        })}
+                        {nonBoundarySuggestions.map((suggestion) => (
+                          <NarrativeSuggestionCard
+                            key={suggestion.id}
+                            suggestion={suggestion}
+                            onAccept={handleAcceptNarrativeSuggestion}
+                            onDismiss={dismissNarrativeSuggestion}
+                          />
+                        ))}
+                      </>
+                    )}
+                  </div>
+
+                  {showStoryboardPanels && (
+                    <div className="sb-img-col">
+                      <div className="sb-shot-stack">
+                        {beatShots.map(({ shot, shotIdx }) => {
+                          const shotCut = cutPlan.find((item) => item.id === shot.cutPlanItemId)
+                          const cutLabel = shotCut
+                            ? `Cut ${shotCut.order || shotIdx + 1}`
+                            : `Panel ${shotIdx + 1}`
+                          const committedImage = getShotVisual(shot)
+                          const candidate = panelCandidates[shot.id]
+                          const displayImage = candidate?.image || committedImage
+                          // 앞 패널과의 이음새. 정한 것이 있을 때만 그린다 —
+                          // 전부 '컷 · 연속'인 기본값까지 표시하면 실제로 정한
+                          // 것이 묻힌다.
+                          const prevShot = shotIdx > 0 ? flowShots[shotIdx - 1] : null
+                          const seamBefore2 = prevShot ? seams[seamKeyFor(prevShot.id)] : null
+                          const showSeam = isSeamMarked(seamBefore2)
+                          // 이 패널이 그려야 할 그림 밖 채널 (DG1 P3).
+                          const shotPrompt = shotCut
+                            ? buildCutPrompt(shotCut, {
+                              sceneIntention,
+                              sceneNote: scenePromptNote,
+                              declarations,
+                              sceneState: sceneStateForCut(shotCut),
+                              seam: seamBefore(shotCut.id),
+                              cutIndex: cutPlan.findIndex((item) => item.id === shotCut.id),
+                              cutOrder,
+                            })
+                            : null
+                          const { marks: panelMarks, notes: panelNotes } = buildPanelMarks(
+                            shotPrompt?.responsibility?.offImage || [],
+                          )
+                          // 화살표를 그렸으면 그 채널은 이미 화면에 있다.
+                          const hasArrows = (shot.arrows || []).length > 0
+                          const visibleNotes = panelNotes.filter(
+                            (note) => !(note.needsArrow && hasArrows),
+                          )
+
+                          return (
+                            <Fragment key={shot.id || shotIdx}>
+                              {showSeam && (
+                                <div className="sb-seam">
+                                  <span className="sb-seam-join">
+                                    {SEAM_JOINS.find((j) => j.id === seamBefore2.join)?.label}
+                                  </span>
+                                  {seamBefore2.elapsed !== 'continuous' && (
+                                    <span className="sb-seam-elapsed">
+                                      {SEAM_ELAPSED.find((e) => e.id === seamBefore2.elapsed)?.label}
+                                    </span>
+                                  )}
+                                  {seamBefore2.elision && (
+                                    <span className="sb-seam-elision">
+                                      생략 · {seamBefore2.elision}
+                                    </span>
+                                  )}
+                                </div>
+                              )}
+                              <div
+                                data-shot-id={shot.id}
+                                className={`sb-shot-card ${shotIdx === activeShot ? 'active-shot' : ''} ${candidate ? 'has-ai-candidate' : ''} ${inspectedShotId === shot.id ? 'inspected' : ''}`}
+                                onClick={(event) => {
+                                  event.stopPropagation()
+                                  setInspectedShotId(shot.id)
+                                }}
+                              >
+                                <button
+                                  type="button"
+                                  className="sb-shot-delete"
+                                  disabled={flowShots.length <= 1}
+                                  title={flowShots.length <= 1 ? 'Keep at least one shot in the scene' : `Delete ${cutLabel}`}
+                                  aria-label={`Delete ${cutLabel}`}
+                                  onClick={(event) => {
+                                    event.stopPropagation()
+                                    handleDeleteShot(shot.id, shotIdx)
+                                  }}
+                                >
+                                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6M10 10v6M14 10v6" />
+                                  </svg>
+                                </button>
+                                {shotCut && (
+                                  <header className="sb-panel-cut-context">
+                                    <div>
+                                      <span>{cutLabel}</span>
+                                      {shotCut.purpose && <em>{shotCut.purpose}</em>}
+                                    </div>
+                                    <p>{shotCut.content}</p>
+                                  </header>
+                                )}
+                                {/* 그림은 30초 넘게 걸린다. 표시가 없으면 눌린
+                                건지 알 수 없어 다시 누르게 된다. */}
+                                {panelGenPending[shot.id] ? (
+                                  <div className="sb-panel-pending">
+                                    <span className="sb-pending-spinner" />
+                                    <span>그리는 중…</span>
+                                  </div>
+                                ) : candidate ? (
+                                  <div className="sb-panel-candidate">
+                                    <div className="sb-img-wrapper">
+                                      <img src={displayImage} alt={`${cutLabel} AI draft`} />
+                                      <span className="sb-candidate-badge">AI candidate · V{candidate.version}</span>
+                                    </div>
+                                    <div className="sb-candidate-actions">
+                                      <button type="button" onClick={() => dismissPanelCandidate(shot.id)}>Dismiss</button>
+                                      <button
+                                        type="button"
+                                        onClick={() => handleGeneratePanels([{ shot, shotIdx }], { includeExisting: true })}
+                                      >
+                                        Again
+                                      </button>
+                                      <button type="button" onClick={() => handleDrawOverCandidate(shot, shotIdx)}>Draw over</button>
+                                      <button
+                                        type="button"
+                                        className="accept"
+                                        onClick={() => acceptPanelCandidate(shot.id)}
+                                      >
+                                        Accept
+                                      </button>
+                                    </div>
+                                  </div>
+                                ) : committedImage ? (
+                                  <div className="sb-img-wrapper">
+                                    <img src={displayImage} alt={cutLabel} />
+                                    <PanelOverlay
+                                      marks={panelMarks}
+                                      arrows={shot.arrows || []}
+                                      drawing={arrowDrawingShotId === shot.id}
+                                      selectedArrowId={selectedArrow?.shotId === shot.id
+                                        ? selectedArrow.arrowId
+                                        : null}
+                                      onDrawArrow={(arrow) => {
+                                        setPendingArrow({ shotId: shot.id, arrow })
+                                        setSelectedArrow(null)
+                                        setArrowDrawingShotId(null)
+                                      }}
+                                      onSelectArrow={(arrowId) => {
+                                        setPendingArrow(null)
+                                        setSelectedArrow({ shotId: shot.id, arrowId })
+                                      }}
+                                    />
+                                    <PanelNote
+                                      note={shot.note || ''}
+                                      onChange={(value) => setShotNote(shot.id, value)}
+                                      editing={noteEditingShotId === shot.id}
+                                      onEditingChange={(editing) => (
+                                        setNoteEditingShotId(editing ? shot.id : null)
+                                      )}
+                                    />
+                                    <div className="sb-hover-actions">
+                                      <button
+                                        className="sb-action-btn"
+                                        onClick={(e) => {
+                                          e.stopPropagation()
+                                          handleEditShot(shotIdx, beatGroup.beat)
+                                        }}
+                                      >
+                                        Draw
+                                      </button>
+                                      <button
+                                        className="sb-action-btn secondary"
+                                        onClick={(event) => {
+                                          event.stopPropagation()
+                                          handleGeneratePanels([{ shot, shotIdx }], { includeExisting: true })
+                                        }}
+                                      >
+                                        재생성
+                                      </button>
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <div className="sb-add-shot existing-empty">
+                                    <span>{cutLabel}</span>
+                                    <small>Choose how to start</small>
+                                    <div className="sb-empty-panel-actions">
+                                      <button
+                                        type="button"
+                                        onClick={(event) => {
+                                          event.stopPropagation()
+                                          handleEditShot(shotIdx, beatGroup.beat)
+                                        }}
+                                      >
+                                        Draw
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={(event) => {
+                                          event.stopPropagation()
+                                          handleGeneratePanels([{ shot, shotIdx }])
+                                        }}
+                                      >
+                                        Generate
+                                      </button>
+                                    </div>
+                                  </div>
+                                )}
+                                {/* 메타 줄은 패널을 식별하는 최소한만 남긴다.
+                                샷 사이즈·출처·프롬프트는 인스펙터에 다 있고,
+                                열두 패널마다 반복되면 그림이 안 보인다. */}
+                                <div className="sb-shot-meta">
+                                  <span>{cutLabel}</span>
+                                  <div className="sb-panel-tools">
+                                    {/* 화살표와 메모는 책임 상태가 아니라 직접 쓰는
+                                    스토리보드 표기 도구다. 항상 보여 발견 가능하게 한다. */}
+                                    <button
+                                      type="button"
+                                      className={`sb-arrow-toggle${arrowDrawingShotId === shot.id ? ' active' : ''}`}
+                                      aria-pressed={arrowDrawingShotId === shot.id}
+                                      title="패널 위를 끌어서 카메라 이동 방향을 표시합니다"
+                                      onClick={(event) => {
+                                        event.stopPropagation()
+                                        const closing = arrowDrawingShotId === shot.id
+                                        setArrowDrawingShotId(closing ? null : shot.id)
+                                        setNoteEditingShotId(null)
+                                        setPendingArrow(null)
+                                        setSelectedArrow(null)
+                                      }}
+                                    >
+                                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round">
+                                        <path d="M5 12h13M13 6l6 6-6 6" />
+                                      </svg>
+                                      {arrowDrawingShotId === shot.id ? '그리는 중' : '카메라 이동'}
+                                    </button>
+                                    <button
+                                      type="button"
+                                      className={`sb-note-toggle${noteEditingShotId === shot.id ? ' active' : ''}`}
+                                      aria-pressed={noteEditingShotId === shot.id}
+                                      onClick={(event) => {
+                                        event.stopPropagation()
+                                        setNoteEditingShotId(
+                                          noteEditingShotId === shot.id ? null : shot.id,
+                                        )
+                                        setArrowDrawingShotId(null)
+                                        setPendingArrow(null)
+                                        setSelectedArrow(null)
+                                      }}
+                                    >
+                                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                                        <path d="M5 4h14v13H9l-4 3V4Z" />
+                                      </svg>
+                                      메모
+                                    </button>
+                                  </div>
+                                </div>
+
+                                {pendingArrow?.shotId === shot.id && (
+                                  <CameraMovePicker
+                                    onChoose={(move) => {
+                                      addShotArrow(shot.id, {
+                                        ...pendingArrow.arrow,
+                                        channel: 'camera-move',
+                                        kind: move.id,
+                                        label: move.label,
+                                      })
+                                      setPendingArrow(null)
+                                    }}
+                                    onCancel={() => setPendingArrow(null)}
+                                  />
+                                )}
+                                {selectedArrow?.shotId === shot.id && (
+                                  <CameraMovePicker
+                                    existing
+                                    onChoose={(move) => {
+                                      updateShotArrow(shot.id, selectedArrow.arrowId, {
+                                        channel: 'camera-move',
+                                        kind: move.id,
+                                        label: move.label,
+                                      })
+                                      setSelectedArrow(null)
+                                      setArrowDrawingShotId(null)
+                                    }}
+                                    onDelete={() => {
+                                      removeShotArrow(shot.id, selectedArrow.arrowId)
+                                      setSelectedArrow(null)
+                                      setArrowDrawingShotId(null)
+                                    }}
+                                    onCancel={() => setSelectedArrow(null)}
+                                  />
+                                )}
+
+                                {/* 아직 그리지 않은 그림 밖 채널만 남긴다.
                                 이미 그렸으면 화살표가 그 자리에 있으므로
                                 칩으로 한 번 더 말하지 않는다. */}
-                            {visibleNotes.length > 0 && (
-                              <ul className="sb-shot-offimage-notes">
-                                {visibleNotes.map((note, index) => (
-                                  <li
-                                    key={`${note.element}-${index}`}
-                                    className={note.needsArrow ? 'needs-arrow' : ''}
-                                    title={note.needsArrow
-                                      ? '화살표 버튼을 눌러 표시하세요'
-                                      : note.element}
-                                  >
-                                    <em>{note.element}</em>
-                                    {note.label !== note.element && <span>{note.label}</span>}
-                                  </li>
-                                ))}
-                              </ul>
-                            )}
+                                {visibleNotes.length > 0 && (
+                                  <ul className="sb-shot-offimage-notes">
+                                    {visibleNotes.map((note, index) => (
+                                      <li
+                                        key={`${note.element}-${index}`}
+                                        className={note.needsArrow ? 'needs-arrow' : ''}
+                                        title={note.needsArrow
+                                          ? '화살표 버튼을 눌러 표시하세요'
+                                          : note.element}
+                                      >
+                                        <em>{note.element}</em>
+                                        {note.label !== note.element && <span>{note.label}</span>}
+                                      </li>
+                                    ))}
+                                  </ul>
+                                )}
 
-                          </div>
-                          </Fragment>
-                        )
-                      })}
-                      {/* 패널을 여기서 늘리지 않는다. 컷에서 나오지 않은
+                              </div>
+                            </Fragment>
+                          )
+                        })}
+                        {/* 패널을 여기서 늘리지 않는다. 컷에서 나오지 않은
                           패널은 프롬프트가 붙지 않아 생성도 못 한다.
                           컷을 더하려면 컷 플랜의 `+`를 쓴다. */}
+                      </div>
                     </div>
-                  </div>
-                )}
+                  )}
+                </div>
+              )
+            })}
+                </section>
+              )
+            })}
+            {showStoryboardPanels && !drawingWorkspaceOpen && onEnterReview && (
+              <div className="panels-review-next">
+                <button
+                  type="button"
+                  onClick={onEnterReview}
+                  title="렌즈와 관객 관점으로 패널을 검토합니다"
+                >
+                  검토로 넘어가기 →
+                </button>
               </div>
-            )
-          })}
-          {showStoryboardPanels && !drawingWorkspaceOpen && onEnterReview && (
-            <div className="panels-review-next">
-              <button
-                type="button"
-                onClick={onEnterReview}
-                title="렌즈와 관객 관점으로 패널을 검토합니다"
-              >
-                검토로 넘어가기 →
-              </button>
-            </div>
-          )}
+            )}
+          </div>
         </div>
-      </div>
       </div>
       {/* Panels에는 rail을 두지 않는다. 인스펙터와 나란히 서면 rail이 둘로
           보이고, 보드도 630px 좁아진다. 샷은 컷 플랜에서 이미 정해진다. */}
@@ -4559,804 +5202,859 @@ export default function StoryboardView({ onEnterReview = null }) {
 
           {narrativeRailOpen ? (
             <div className="rail-agents">
-            {/* 대본 단계에서만. 컷 플랜에서는 대본을 바꾸지 않으므로
+              {/* 대본 단계에서만. 컷 플랜에서는 대본을 바꾸지 않으므로
                 Script collaborator가 할 일이 없다 — 남겨 두면 컷을 보다가
                 대본을 고치게 되고, 그 단계에서 정한 컷 분해와 어긋난다.
                 컷 구성 점검은 Editing으로 옮겼다. */}
-            {cutStage === 'script' && (
-            <section className={`rail-agent rail-agent--narrative${openAgent === 'narrative' ? ' open' : ''}`}>
-              <button
-                type="button"
-                className="rail-agent-head"
-                aria-expanded={openAgent === 'narrative'}
-                onClick={() => setOpenAgent(openAgent === 'narrative' ? null : 'narrative')}
-              >
-                <span className="narrative-agent-mark" aria-hidden="true">
-                  N
-                  <i />
-                </span>
-                <div>
-                  <strong>Narrative</strong>
-                  <span>Script collaborator</span>
-                </div>
-                {narrativeSuggestions.length > 0 && (
-                  <em className="rail-agent-badge">{narrativeSuggestions.length}</em>
-                )}
-                <svg className="rail-agent-caret" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="m6 9 6 6 6-6" />
-                </svg>
-              </button>
-              {openAgent === 'narrative' && (
-              <div className="rail-agent-body">
-              {/* Scene intention은 있을 때만 보여준다. 나머지 상태는 대본의
-                  Beat 라벨과 상단 단계 표시에 이미 드러나 있다. */}
-              {sceneIntention && (
-                <section className="narrative-rail-context">
-                  <span>Scene intention</span>
-                  <p>{sceneIntention}</p>
-                </section>
-              )}
-
-              {viewerFindingHandoff?.route === 'narrative' && (
-                <section className="narrative-viewer-handoff" aria-label="순차 읽기에서 가져온 문제">
-                  <header>
-                    <span>순차 읽기 · {(viewerFindingHandoff.panelOrders || [viewerFindingHandoff.panelOrder]).map((panelOrder) => `S${panelOrder}`).join(' · ')}</span>
-                    <button type="button" onClick={clearViewerFindingHandoff} aria-label="순차 읽기 카드 닫기">×</button>
-                  </header>
-                  <strong>{viewerFindingHandoff.interpretations?.[0] || viewerFindingHandoff.title}</strong>
-                  <p><em>시각적 근거</em>{viewerFindingHandoff.visibleCues?.join(' · ') || '특정 근거 없음'}</p>
-                  <button type="button" onClick={addViewerFindingToNarrativeRequest}>
-                    요청에 담기
-                  </button>
-                </section>
-              )}
-
-              {/* 점검보다 위에 둔다. 점검이 짚어 주기 전에도 감독이 먼저
-                  물을 수 있어야 하고, 다음 단계로 넘어가는 버튼은 그 아래에
-                  두어 대본을 손볼 것이 없는지 보고 나서 누르게 한다. */}
-              <div className="narrative-rail-composer">
-                <label htmlFor="narrative-screenplay-request">Request</label>
-                <textarea
-                  id="narrative-screenplay-request"
-                  value={narrativeRequest}
-                  onChange={(event) => {
-                    setNarrativeRequest(event.target.value)
-                    narrativeRequestRecall.resetNavigation(event.target.value)
-                    // 새 요청을 쓰기 시작하면 지난 결과를 지운다. 계속 떠
-                    // 있으면 방금 쓴 요청에 대한 답으로 오해된다.
-                    if (narrativeAnswered) clearNarrativeResult()
-                  }}
-                  onKeyDown={narrativeRequestRecall.onKeyDown}
-                  placeholder="예: 이 Beat를 둘로 나누고 대사를 덜 설명적으로 바꿔줘."
-                  aria-label={`Narrative request for Beat ${activeBeat + 1}`}
-                  rows={3}
-                />
-                <div>
-                  <span>{`Beat ${activeBeat + 1} · 전체 대본`}</span>
+              {cutStage === 'script' && (
+                <section className={`rail-agent rail-agent--narrative${openAgent === 'narrative' ? ' open' : ''}`}>
                   <button
                     type="button"
-                    disabled={!narrativeRequest.trim() || narrativePending}
-                    onClick={handleNarrativeRequest}
+                    className="rail-agent-head"
+                    aria-expanded={openAgent === 'narrative'}
+                    onClick={() => setOpenAgent(openAgent === 'narrative' ? null : 'narrative')}
                   >
-                    {narrativePending ? '생각 중…' : 'Propose'}
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="m9 18 6-6-6-6" />
+                    <span className="narrative-agent-mark" aria-hidden="true">
+                      N
+                      <i />
+                    </span>
+                    <div>
+                      <strong>Narrative</strong>
+                      <span>Script collaborator</span>
+                    </div>
+                    {narrativeSuggestions.length > 0 && (
+                      <em className="rail-agent-badge">{narrativeSuggestions.length}</em>
+                    )}
+                    <svg className="rail-agent-caret" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="m6 9 6 6 6-6" />
                     </svg>
                   </button>
-                </div>
-              </div>
+                  {openAgent === 'narrative' && (
+                    <div className="rail-agent-body">
+                      {/* Scene intention은 있을 때만 보여준다. 나머지 상태는 대본의
+                  Beat 라벨과 상단 단계 표시에 이미 드러나 있다. */}
+                      {sceneIntention && (
+                        <section className="narrative-rail-context">
+                          <span>Scene intention</span>
+                          <p>{sceneIntention}</p>
+                        </section>
+                      )}
 
-              {/* Request가 감독이 묻는 쪽이면 이쪽은 서사가 먼저 짚는
-                  쪽이다. 같은 일의 두 방향이므로 붙여 둔다.
-                  컷 구성 점검은 Editing으로 갔다 — 여기는 대본만 본다. */}
-              {scriptLines.length > 0 && renderNarrativeCheck('script')}
-
-              {/* 요청을 넘긴 뒤 칸이 비므로, 무엇이 진행 중인지 여기서
-                  보인다. 아니면 아무 일도 없는 것처럼 보인다. */}
-              {narrativePending && (
-                <div className="narrative-rail-proposal-status pending">
-                  <span>…</span>
-                  <div>
-                    <strong>Beat {activeBeat + 1} 검토 중</strong>
-                    <p>요청에 맞는 제안을 찾고 있습니다.</p>
-                  </div>
-                </div>
-              )}
-
-              {/* 제안이 하나도 없으면 그 사실을 밝힌다. 요청을 보냈는데
-                  아무 반응이 없으면 고장 난 것으로 보인다. */}
-              {!narrativePending && narrativeAnswered && narrativeSuggestions.length === 0 && (
-                <div className="narrative-rail-proposal-status empty">
-                  <span>—</span>
-                  <div>
-                    <strong>여기서는 할 수 없는 요청입니다</strong>
-                    {/* 갈 곳을 실제로 가리킨다. "대본 단계"처럼 화면에
-                        없는 이름을 대면 사용자가 찾을 수 없다. */}
-                    {/* 문장 안에 strong을 쓰지 않는다 — 이 블록의
-                        strong은 display:block이라 줄이 끊긴다. */}
-                    <p>
-                      대본 전체를 보고 답합니다. 지금 Beat를 고쳐 달라고
-                      해도 되고, “뒷부분이 급하다”처럼 전체를 두고 말해도
-                      됩니다.
-                    </p>
-                  </div>
-                </div>
-              )}
-
-              {!narrativePending && narrativeSuggestions.length > 0 && (
-                <div className="narrative-rail-proposal-status">
-                  <span>{narrativeSuggestions.length}</span>
-                  <div>
-                    <strong>Proposal ready</strong>
-                    {/* 모델을 못 불렀으면 밝힌다. 규칙 기반 결과를 모델이
-                        만든 것처럼 보이게 두지 않는다. */}
-                    <p>
-                      {narrativeError
-                        ? `AI 호출 실패 · 규칙 기반 제안입니다`
-                        : '대본 안의 관련 위치에 표시했습니다.'}
-                    </p>
-                  </div>
-                </div>
-              )}
-
-
-              </div>
-              )}
-            </section>
-            )}
-
-            {/* 컷 플랜부터는 Narrative 혼자가 아니다. 촬영 구도 컬럼을
-                서사 에이전트가 정하는 것이 이상하듯, 씬 기준은 미장센이
-                세운다. 파이프라인의 `에이전트 진단·공백 질의`가 이 자리다. */}
-            {cutStage === 'cutplan' && (
-              <section className={`rail-agent${openAgent === 'mise' ? ' open' : ''}`}>
-                <button
-                  type="button"
-                  className="rail-agent-head"
-                  aria-expanded={openAgent === 'mise'}
-                  onClick={() => setOpenAgent(openAgent === 'mise' ? null : 'mise')}
-                >
-                  <span className="lens-agent-mark" aria-hidden="true">M</span>
-                  <div>
-                    <strong>Mise-en-scène</strong>
-                    <span>Scene state</span>
-                  </div>
-                  {undecidedSceneFacts > 0 && (
-                    <em className="rail-agent-badge is-open">{undecidedSceneFacts}</em>
-                  )}
-                  <svg className="rail-agent-caret" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="m6 9 6 6 6-6" />
-                  </svg>
-                </button>
-                {openAgent === 'mise' && (
-                <div className="rail-agent-body">
-                  {/* 리드 문장은 두지 않는다. 에이전트 이름과 아래 내용이
-                      이미 무엇을 하는 자리인지 말한다. */}
-                  {/* 대본에 있는 것만 읽는다. 없는 것은 지어내지 않고
-                      '미정'으로 남긴다 — 무엇이 안 정해졌는지 보여야
-                      창작자가 판정할 수 있다 (DG1 P2). */}
-                  {!hasActiveSceneState && (
-                    <button
-                      type="button"
-                      className="rail-lens-primary is-mise"
-                      onClick={requestSceneStates}
-                      disabled={sceneStatePending || screenplay.length === 0}
-                    >
-                      {sceneStatePending ? '읽는 중…' : '대본에서 인물·공간 읽기'}
-                    </button>
-                  )}
-                  {sceneStateError && (
-                    <p className="rail-lens-error">AI 호출 실패 · {sceneStateError}</p>
-                  )}
-
-                  {hasActiveSceneState ? (
-                  <>
-                  {/* 기준 이미지를 만들기 전에 씬 전체에 걸리는 표현 밀도를
-                      먼저 정한다. 레퍼런스는 여기서 만들어지므로, 밀도가
-                      Panels에서 정해지면 기준 그림이 먼저 나오고 화풍이
-                      나중에 정해지는 역순이 된다.
-
-                      글로 받던 `그림체` 칸은 없앴다. 밀도를 그림으로 고르게
-                      되면서 같은 것을 두 곳에서 정하게 됐고, 글은 앵커
-                      이미지보다 약해 어긋나면 무시되는 쪽이었다. 조명·분위기
-                      같은 지시는 `장면 지시`(scenePromptNote)로 간다. */}
-                  <div className="rail-scene-style-preset">
-                    <span>표현 스타일</span>
-                    <StylePresetPicker
-                      value={panelStylePreset}
-                      onChange={setPanelStylePreset}
-                      layout="row"
-                    />
-                  </div>
-                  {scriptScenes.length > 1 && (
-                    <div className="rail-scene-switcher" aria-label="씬 기준 선택">
-                      {scriptScenes.map((scriptScene) => (
-                        <button
-                          key={scriptScene.id}
-                          type="button"
-                          className={scriptScene.id === activeSceneId ? 'is-active' : ''}
-                          onClick={() => setActiveBeat(scriptScene.startBeat)}
-                        >
-                          Scene {scriptScene.number}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                  {/* 러프 콘티는 기준 그림이 필요 없다. 얼굴이 빈 타원이고
-                      공간이 선 몇 개인 그림에 "같은 인물로 이어지게" 할 것이
-                      없다 — 화풍은 앵커가 잡는다.
-                      디테일·실사에서만 레퍼런스를 세운다. */}
-                  {panelStylePreset === 'rough' ? (
-                    <p className="rail-scene-rough-note">
-                      러프 콘티는 기준 그림 없이 구도만 잡습니다.
-                      인물·공간 기준은 디테일 스케치부터 필요합니다.
-                    </p>
-                  ) : (
-                  <ul className="rail-scene-state">
-                    {newReferenceCharacters.map((character) => {
-                      const referenceOpen = openReferenceCards[character.id] && character.image
-                      const editKey = `${activeSceneId}:${character.id}`
-                      const referenceEditing = Boolean(editingReferenceCards[editKey])
-                      const settledSummary = character.facts
-                        .filter((fact) => fact.value)
-                        .map((fact) => fact.value)
-                        .join(' · ')
-                      const openFactCount = character.facts.filter((fact) => fact.open).length
-                      return (
-                        <li key={character.id} className={`rail-scene-reference-card${referenceOpen ? ' is-reference-open' : ' is-info-open'}`}>
-                          <div className="rail-reference-card-inner">
-                            <div
-                              className={`rail-reference-face rail-reference-info${character.image ? ' is-flippable' : ''}`}
-                              onClick={() => {
-                                if (character.image) {
-                                  setOpenReferenceCards((current) => ({ ...current, [character.id]: true }))
-                                }
-                              }}
-                              onKeyDown={(event) => {
-                                if (character.image && (event.key === 'Enter' || event.key === ' ')) {
-                                  event.preventDefault()
-                                  setOpenReferenceCards((current) => ({ ...current, [character.id]: true }))
-                                }
-                              }}
-                              role={character.image ? 'button' : undefined}
-                              tabIndex={character.image ? 0 : undefined}
-                              aria-label={character.image ? `${character.name} 레퍼런스 보기` : undefined}
-                            >
-                              <div className="rail-scene-head">
-                                <strong>{character.name}</strong>
-                                <em>{character.summary}</em>
-                                {!character.image && (
-                                  <button
-                                    type="button"
-                                    className="rail-reference-trigger"
-                                    onClick={() => generateReferenceFromCutPlan('character', character.id)}
-                                    disabled={isReferenceImagePending('character', character.id)}
-                                  >
-                                    {isReferenceImagePending('character', character.id) ? '그리는 중…' : '레퍼런스 생성'}
-                                  </button>
-                                )}
-                                {character.image && (
-                                  <button
-                                    type="button"
-                                    className="rail-reference-regenerate"
-                                    onClick={(event) => {
-                                      event.stopPropagation()
-                                      generateReferenceFromCutPlan('character', character.id)
-                                    }}
-                                    disabled={isReferenceImagePending('character', character.id)}
-                                  >
-                                    {isReferenceImagePending('character', character.id) ? '다시 그리는 중…' : '다시 생성'}
-                                  </button>
-                                )}
-                                {staleStyleLabel(character) && (
-                                  <span className="rail-reference-stale-style">
-                                    {staleStyleLabel(character)}
-                                  </span>
-                                )}
-                                <button
-                                  type="button"
-                                  className="rail-reference-edit"
-                                  onClick={(event) => {
-                                    event.stopPropagation()
-                                    setEditingReferenceCards((current) => ({
-                                      ...current,
-                                      [editKey]: !current[editKey],
-                                    }))
-                                  }}
-                                >
-                                  {referenceEditing ? '완료' : '수정'}
-                                </button>
-                              </div>
-                              {!referenceEditing && (
-                                <div className="rail-reference-summary">
-                                  <p>{settledSummary || '대본에서 확인된 외형 기준이 없습니다.'}</p>
-                                  {openFactCount > 0 && <em>{openFactCount}개 미정</em>}
-                                </div>
-                              )}
-                              {referenceEditing && character.facts.map((fact) => (
-                                <SceneFactRow
-                                  key={fact.label}
-                                  fact={fact}
-                                  // 기본은 작품 기준을 고치는 것이다 — 이 인물이
-                                  // 나오는 모든 씬이 함께 바뀐다.
-                                  onCommit={(value) => setSceneFact('character', fact.label, value, { characterId: character.id })}
-                                  onScopedCommit={(value) => setSceneFact('character', fact.label, value, { characterId: character.id, scoped: true })}
-                                  onRevert={() => clearCharacterOverride(character.id, fact.label)}
-                                />
-                              ))}
-                            </div>
-                            {character.image && (
-                              <div
-                                className="rail-reference-face rail-reference-preview"
-                                onClick={() => setOpenReferenceCards((current) => ({ ...current, [character.id]: false }))}
-                                onKeyDown={(event) => {
-                                  if (event.key === 'Enter' || event.key === ' ') {
-                                    event.preventDefault()
-                                    setOpenReferenceCards((current) => ({ ...current, [character.id]: false }))
-                                  }
-                                }}
-                                role="button"
-                                tabIndex={0}
-                                aria-label={`${character.name} 정보 카드 보기`}
-                              >
-                                <img src={character.image} alt={`${character.name} 레퍼런스`} />
-                                <button
-                                  type="button"
-                                  className="rail-reference-lightbox-trigger"
-                                  onClick={(event) => {
-                                    event.stopPropagation()
-                                    setReferenceLightbox({ src: character.image, alt: `${character.name} 레퍼런스`, cardKey: character.id })
-                                  }}
-                                >
-                                  크게 보기
-                                </button>
-                              </div>
-                            )}
-                          </div>
-                        </li>
-                      )
-                    })}
-
-                    {newReferenceLocation && (() => {
-                      const location = newReferenceLocation
-                      const referenceOpen = openReferenceCards.location && location.image
-                      const editKey = `${activeSceneId}:location`
-                      const referenceEditing = Boolean(editingReferenceCards[editKey])
-                      const settledSummary = location.facts
-                        .filter((fact) => fact.value)
-                        .map((fact) => fact.value)
-                        .join(' · ')
-                      const openFactCount = location.facts.filter((fact) => fact.open).length
-                      return (
-                        <li className={`rail-scene-reference-card${referenceOpen ? ' is-reference-open' : ' is-info-open'}`}>
-                          <div className="rail-reference-card-inner">
-                            <div
-                              className={`rail-reference-face rail-reference-info${location.image ? ' is-flippable' : ''}`}
-                              onClick={() => {
-                                if (location.image) {
-                                  setOpenReferenceCards((current) => ({ ...current, location: true }))
-                                }
-                              }}
-                              onKeyDown={(event) => {
-                                if (location.image && (event.key === 'Enter' || event.key === ' ')) {
-                                  event.preventDefault()
-                                  setOpenReferenceCards((current) => ({ ...current, location: true }))
-                                }
-                              }}
-                              role={location.image ? 'button' : undefined}
-                              tabIndex={location.image ? 0 : undefined}
-                              aria-label={location.image ? `${location.name} 레퍼런스 보기` : undefined}
-                            >
-                              <div className="rail-scene-head">
-                                <strong>{location.name}</strong><em>공간</em>
-                                {!location.image && (
-                                  <button type="button" className="rail-reference-trigger" onClick={() => generateReferenceFromCutPlan('location')} disabled={isReferenceImagePending('location')}>
-                                    {isReferenceImagePending('location') ? '그리는 중…' : '레퍼런스 생성'}
-                                  </button>
-                                )}
-                                {location.image && (
-                                  <button
-                                    type="button"
-                                    className="rail-reference-regenerate"
-                                    onClick={(event) => {
-                                      event.stopPropagation()
-                                      generateReferenceFromCutPlan('location')
-                                    }}
-                                    disabled={isReferenceImagePending('location')}
-                                  >
-                                    {isReferenceImagePending('location') ? '다시 그리는 중…' : '다시 생성'}
-                                  </button>
-                                )}
-                                {staleStyleLabel(location) && (
-                                  <span className="rail-reference-stale-style">
-                                    {staleStyleLabel(location)}
-                                  </span>
-                                )}
-                                <button
-                                  type="button"
-                                  className="rail-reference-edit"
-                                  onClick={(event) => {
-                                    event.stopPropagation()
-                                    setEditingReferenceCards((current) => ({
-                                      ...current,
-                                      [editKey]: !current[editKey],
-                                    }))
-                                  }}
-                                >
-                                  {referenceEditing ? '완료' : '수정'}
-                                </button>
-                              </div>
-                              {!referenceEditing && (
-                                <div className="rail-reference-summary">
-                                  <p>{settledSummary || '대본에서 확인된 공간 기준이 없습니다.'}</p>
-                                  {openFactCount > 0 && <em>{openFactCount}개 미정</em>}
-                                </div>
-                              )}
-                              {referenceEditing && location.facts.map((fact) => (
-                                <SceneFactRow
-                                  key={fact.label}
-                                  fact={fact}
-                                  onCommit={(value) => setSceneFact('location', fact.label, value)}
-                                />
-                              ))}
-                            </div>
-                            {location.image && (
-                              <div
-                                className="rail-reference-face rail-reference-preview is-location"
-                                onClick={() => setOpenReferenceCards((current) => ({ ...current, location: false }))}
-                                onKeyDown={(event) => {
-                                  if (event.key === 'Enter' || event.key === ' ') {
-                                    event.preventDefault()
-                                    setOpenReferenceCards((current) => ({ ...current, location: false }))
-                                  }
-                                }}
-                                role="button"
-                                tabIndex={0}
-                                aria-label={`${location.name} 정보 카드 보기`}
-                              >
-                                <img src={location.image} alt={`${location.name} 레퍼런스`} />
-                                <button
-                                  type="button"
-                                  className="rail-reference-lightbox-trigger"
-                                  onClick={(event) => {
-                                    event.stopPropagation()
-                                    setReferenceLightbox({ src: location.image, alt: `${location.name} 레퍼런스`, cardKey: 'location' })
-                                  }}
-                                >
-                                  크게 보기
-                                </button>
-                              </div>
-                            )}
-                          </div>
-                        </li>
-                      )
-                    })()}
-
-                    {visibleSceneState.environment?.facts?.length > 0 && (
-                      <li>
-                        <div className="rail-scene-head">
-                          <strong>환경</strong>
-                          <em>씬 전체</em>
-                        </div>
-                        {/* 화풍은 씬 기준 항목이 아니라 `표현 스타일`이 정한다.
-                            이 filter는 그 칸이 있던 시절에 저장된 상태를 위한
-                            것이다 — 값이 남아 있어도 목록에 다시 나타나지
-                            않게 한다. */}
-                        {visibleSceneState.environment.facts
-                          .filter((fact) => fact.label !== '그림체')
-                          .map((fact) => (
-                          <SceneFactRow
-                            key={fact.label}
-                            fact={fact}
-                            cutOptions={sceneCutOptions}
-                            onCommit={(value) => setSceneFact('environment', fact.label, value)}
-                            onAddChange={(at, value) => addFactChange('environment', fact.label, at, value)}
-                            onRemoveChange={(at) => removeFactChange('environment', fact.label, at)}
-                          />
-                        ))}
-                      </li>
-                    )}
-                  </ul>
-                  )}
-                  <button
-                    type="button"
-                    className="rail-scene-reread"
-                    onClick={requestSceneStates}
-                    disabled={sceneStatePending || screenplay.length === 0}
-                  >
-                    {sceneStatePending ? '다시 읽는 중…' : '대본에서 다시 읽기'}
-                  </button>
-                  </>
-                  ) : (
-                    <p className="rail-coverage-clear">
-                      아직 이 이야기의 미장센 기준을 읽지 않았습니다.
-                    </p>
-                  )}
-                </div>
-                )}
-              </section>
-            )}
-
-            {/* 촬영이 담당하는 값(shotSize·angle·카메라)은 이미 컷 표의
-                컬럼이다. 여기서 또 편집하지 않고, 한 컷만 봐서는 알 수 없는
-                것을 짚는다. 고치는 것은 표에서 한다 — 발견과 처분은 다르다. */}
-            {cutStage === 'cutplan' && (
-              <section className={`rail-agent${openAgent === 'camera' ? ' open' : ''}`}>
-                <button
-                  type="button"
-                  className="rail-agent-head"
-                  aria-expanded={openAgent === 'camera'}
-                  onClick={() => setOpenAgent(openAgent === 'camera' ? null : 'camera')}
-                >
-                  <span className="camera-agent-mark" aria-hidden="true">C</span>
-                  <div>
-                    <strong>Cinematography</strong>
-                    <span>Coverage</span>
-                  </div>
-                  {/* 샷 미정은 진단 카드로 내지 않는다(고칠 자리가 카드가
-                      아니라 아래 버튼이다). 대신 배지로 알린다 — 접어 두면
-                      아무 데도 안 보여서 미정인 채로 넘어가게 된다. */}
-                  {undecidedShots > 0 && (
-                    <em className="rail-agent-badge is-warn">{undecidedShots}컷 미정</em>
-                  )}
-                  <svg className="rail-agent-caret" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="m6 9 6 6 6-6" />
-                  </svg>
-                </button>
-                {openAgent === 'camera' && (
-                <div className="rail-agent-body">
-                  {/* 리드 문장은 두지 않는다. 에이전트 이름과 아래 내용이
-                      이미 무엇을 하는 자리인지 말한다. */}
-                  {/* 샷을 정하는 것이 촬영의 몫이다. 줄콘티는 컷만 나눈다. */}
-                  <button
-                    type="button"
-                    className="rail-lens-primary"
-                    onClick={requestCameraCheck}
-                    disabled={cameraCheckPending || cutPlan.length === 0}
-                  >
-                    {cameraCheckPending ? '촬영 점검 중…' : '촬영 다시 점검'}
-                  </button>
-                  {cameraCheckError && (
-                    <p className="rail-lens-error">
-                      AI 호출 실패 · {cameraCheckError}
-                    </p>
-                  )}
-                  {cameraCheck && !cameraCheckPending && cameraFindings.length === 0 && (
-                    <p className="rail-check-summary">걸리는 것이 없습니다.</p>
-                  )}
-                  {cameraFindings.length > 0 && (
-                    <DiagnosisList
-                      findings={cameraFindings}
-                      emptyLabel=""
-                      onGoTo={goToFindingCut}
-                      onRequestFix={requestShotFix}
-                      cutLabelOf={cutLabelOf}
-                      fixPending={shotFixPending}
-                      fixProposal={shotFixProposal}
-                      fixError={shotFixError}
-                      onAcceptFix={acceptShotFix}
-                      onRejectFix={rejectShotFix}
-                    />
-                  )}
-
-                </div>
-                )}
-              </section>
-            )}
-
-            {/* 컷 사이를 본다. 삽입·삭제는 표에 이미 있으므로 여기서는
-                어느 이음새에 무엇이 있는지만 짚는다. */}
-            {cutStage === 'cutplan' && (
-              <section className={`rail-agent${openAgent === 'editing' ? ' open' : ''}`}>
-                <button
-                  type="button"
-                  className="rail-agent-head"
-                  aria-expanded={openAgent === 'editing'}
-                  onClick={() => setOpenAgent(openAgent === 'editing' ? null : 'editing')}
-                >
-                  <span className="editing-agent-mark" aria-hidden="true">E</span>
-                  <div>
-                    <strong>Editing</strong>
-                    <span>Seams</span>
-                  </div>
-                  {editingFindings.length > 0 && (
-                    <em className="rail-agent-badge is-open">{editingFindings.length}</em>
-                  )}
-                  <svg className="rail-agent-caret" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="m6 9 6 6 6-6" />
-                  </svg>
-                </button>
-                {openAgent === 'editing' && (
-                <div className="rail-agent-body">
-                  {/* 리드 문장은 두지 않는다. 에이전트 이름(Editing · Seams)과
-                      아래 진단이 이미 무엇을 보는 자리인지 말한다. */}
-                  {/* 점검은 컷 플랜이 들어올 때 이미 한 번 돌았다. 이 버튼은
-                      컷을 고친 뒤 다시 보기 위한 것이다 — 그래서 `다시`다.
-                      규칙 진단과 AI 지적은 같은 종류(컷 구성의 문제)이므로
-                      목록을 나누지 않고 한 곳에 쌓는다. */}
-                  <button
-                    type="button"
-                    className="rail-lens-primary is-editing"
-                    onClick={() => requestNarrativeCheck('cutplan')}
-                    disabled={narrativeCheckPending || cutPlan.length === 0}
-                  >
-                    {narrativeCheckPending ? '컷 구성 보는 중…' : '컷 구성 다시 점검'}
-                  </button>
-                  {narrativeCheckError && (
-                    <p className="rail-lens-error">
-                      AI 호출 실패 · {narrativeCheckError}
-                    </p>
-                  )}
-                  {/* 지적이 하나도 없을 때만 점검이 돌았다는 것을 알린다.
-                      지적이 있으면 목록이 그 자체로 결과다 — 총평까지 얹으면
-                      같은 말을 두 번 읽는다. */}
-                  {narrativeCheck?.stage === 'cutplan' && !narrativeCheckPending
-                    && narrativeCheck.findings.length === 0 && (
-                    <p className="rail-check-summary">걸리는 것이 없습니다.</p>
-                  )}
-
-                  {/* DG2 P1의 병합·분할. 지금까지 Panels에만 있었는데,
-                      컷 구성을 바꾸는 일은 컷 플랜에서 하는 것이 맞다.
-                      컷을 고르기 전 안내 문구는 두지 않는다 — 아무것도
-                      할 수 없는 상태에서 자리만 차지한다. */}
-                  {selectedCutId && cutSelectedFromTable && (() => {
-                    const index = cutPlan.findIndex((cut) => cut.id === selectedCutId)
-                    const cut = cutPlan[index]
-                    const next = cutPlan[index + 1]
-                    if (!cut) return null
-                    return (
-                      <div className="rail-cut-edit">
-                        <strong>컷 {cut.beat + 1}-{cut.beatOrder}</strong>
-                        <p>{cut.content}</p>
-                        <div>
-                          <button
-                            type="button"
-                            onClick={() => splitCut(cut.id)}
-                          >
-                            나누기
+                      {viewerFindingHandoff?.route === 'narrative' && (
+                        <section className="narrative-viewer-handoff" aria-label="순차 읽기에서 가져온 문제">
+                          <header>
+                            <span>순차 읽기 · {(viewerFindingHandoff.panelOrders || [viewerFindingHandoff.panelOrder]).map((panelOrder) => `S${panelOrder}`).join(' · ')}</span>
+                            <button type="button" onClick={clearViewerFindingHandoff} aria-label="순차 읽기 카드 닫기">×</button>
+                          </header>
+                          <strong>{viewerFindingHandoff.interpretations?.[0] || viewerFindingHandoff.title}</strong>
+                          <p><em>시각적 근거</em>{viewerFindingHandoff.visibleCues?.join(' · ') || '특정 근거 없음'}</p>
+                          <button type="button" onClick={addViewerFindingToNarrativeRequest}>
+                            요청에 담기
                           </button>
+                        </section>
+                      )}
+
+                      {/* 점검보다 위에 둔다. 점검이 짚어 주기 전에도 감독이 먼저
+                  물을 수 있어야 하고, 다음 단계로 넘어가는 버튼은 그 아래에
+                  두어 대본을 손볼 것이 없는지 보고 나서 누르게 한다. */}
+                      <div className="narrative-rail-composer">
+                        <label htmlFor="narrative-screenplay-request">Request</label>
+                        <textarea
+                          id="narrative-screenplay-request"
+                          value={narrativeRequest}
+                          onChange={(event) => {
+                            setNarrativeRequest(event.target.value)
+                            narrativeRequestRecall.resetNavigation(event.target.value)
+                            // 새 요청을 쓰기 시작하면 지난 결과를 지운다. 계속 떠
+                            // 있으면 방금 쓴 요청에 대한 답으로 오해된다.
+                            if (narrativeAnswered) clearNarrativeResult()
+                          }}
+                          onKeyDown={narrativeRequestRecall.onKeyDown}
+                          placeholder="예: 이 Scene의 정보 공개 흐름이 자연스러운지 봐줘."
+                          aria-label={`Narrative request for ${activeScriptSceneTitle}`}
+                          rows={3}
+                        />
+                        <div>
+                          <span>{`${activeScriptSceneTitle} · ${activeScriptSceneBeatCount} Moments`}</span>
                           <button
                             type="button"
-                            disabled={!next || next.beat !== cut.beat}
-                            title={next && next.beat === cut.beat
-                              ? `컷 ${next.beat + 1}-${next.beatOrder}와 합칩니다`
-                              : '같은 Beat의 다음 컷이 없습니다'}
-                            onClick={() => mergeCuts(cut.id)}
+                            disabled={!narrativeRequest.trim() || narrativePending}
+                            onClick={handleNarrativeRequest}
                           >
-                            다음 컷과 합치기
+                            {narrativePending ? '생각 중…' : 'Propose'}
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="m9 18 6-6-6-6" />
+                            </svg>
                           </button>
                         </div>
                       </div>
-                    )
-                  })()}
 
-                  {/* onGoTo는 컷을 골라 두는 쪽을 쓴다 — 위의 나누기·합치기가
-                      고른 컷에 걸리므로, beat만 옮기면 짚어준 자리에 도착해도
-                      고칠 것이 열리지 않는다. */}
-                  <DiagnosisList
-                    findings={visibleEditingFindings}
-                    emptyLabel="지금 이음새에서 걸리는 것이 없습니다."
-                    onGoTo={goToFindingCut}
-                    cutLabelOf={cutLabelOf}
-                    onRequestInsert={requestCutInsert}
-                    insertPending={cutInsertPending}
-                    insertProposal={cutInsertProposal}
-                    insertError={cutInsertError}
-                    onAcceptInsert={() => {
-                      const findingId = cutInsertProposal?.findingId
-                      acceptCutInsert()
-                      if (findingId) setAppliedEditingFindingIds((current) => new Set([...current, findingId]))
-                    }}
-                    onRejectInsert={rejectCutInsert}
-                    onApplyEdit={(finding) => {
-                      const firstCutId = finding.cutIds?.[0]
-                      if (!firstCutId) return
-                      if (finding.operation === 'split') splitCut(firstCutId)
-                      if (finding.operation === 'merge') mergeCuts(firstCutId)
-                      if (finding.operation === 'delete') deleteCut(firstCutId)
-                      setAppliedEditingFindingIds((current) => new Set([...current, finding.id]))
-                    }}
-                  />
-                </div>
-                )}
-              </section>
-            )}
-            {/* 다음 단계는 에이전트 목록 밖, 레일 맨 아래에 둔다.
-                어느 에이전트를 열어 두었든 같은 자리에 있어야
-                이 단계에서 나가는 길로 읽힌다. */}
-            <section className="narrative-rail-guidance">
-              <span>다음 단계</span>
-              {/* 대본은 주어진 것에서 시작한다. 다음 단계는 컷 분해다. */}
-              {/* 이야기 한 덩어리로 들어왔으면 씬·비트부터 세운다.
-                  컷을 나누려면 그 단위가 있어야 한다. */}
-              {cutStage === 'script' && needsStructure ? (
-                <>
-                  <p>
-                    아직 이야기 한 덩어리입니다. 씬과 Beat로 나누면 그
-                    단위로 컷을 정할 수 있습니다.
-                  </p>
+                      {/* Request가 감독이 묻는 쪽이면 이쪽은 서사가 먼저 짚는
+                  쪽이다. 같은 일의 두 방향이므로 붙여 둔다.
+                  컷 구성 점검은 Editing으로 갔다 — 여기는 대본만 본다. */}
+                      {scriptLines.length > 0 && renderNarrativeCheck('script')}
+
+                      {/* 요청을 넘긴 뒤 칸이 비므로, 무엇이 진행 중인지 여기서
+                  보인다. 아니면 아무 일도 없는 것처럼 보인다. */}
+                      {narrativePending && (
+                        <div className="narrative-rail-proposal-status pending">
+                          <span>…</span>
+                          <div>
+                            <strong>{activeScriptSceneTitle} 검토 중</strong>
+                            <p>요청에 맞는 제안을 찾고 있습니다.</p>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* 제안이 하나도 없으면 그 사실을 밝힌다. 요청을 보냈는데
+                  아무 반응이 없으면 고장 난 것으로 보인다. */}
+                      {!narrativePending && narrativeAnswered && narrativeSuggestions.length === 0 && (
+                        <div className="narrative-rail-proposal-status empty">
+                          <span>—</span>
+                          <div>
+                            <strong>여기서는 할 수 없는 요청입니다</strong>
+                            {/* 갈 곳을 실제로 가리킨다. "대본 단계"처럼 화면에
+                        없는 이름을 대면 사용자가 찾을 수 없다. */}
+                            {/* 문장 안에 strong을 쓰지 않는다 — 이 블록의
+                        strong은 display:block이라 줄이 끊긴다. */}
+                            <p>
+                              현재 Scene 전체를 보고 답합니다. 특정 Moment를 언급하거나,
+                              “뒷부분이 급하다”처럼 Scene의 흐름을 두고 말해도 됩니다.
+                            </p>
+                          </div>
+                        </div>
+                      )}
+
+                      {!narrativePending && narrativeSuggestions.length > 0 && (
+                        <div className="narrative-rail-proposal-status">
+                          <span>{narrativeSuggestions.length}</span>
+                          <div>
+                            <strong>Proposal ready</strong>
+                            {/* 모델을 못 불렀으면 밝힌다. 규칙 기반 결과를 모델이
+                        만든 것처럼 보이게 두지 않는다. */}
+                            <p>
+                              {narrativeError
+                                ? `AI 호출 실패 · 규칙 기반 제안입니다`
+                                : '대본 안의 관련 위치에 표시했습니다.'}
+                            </p>
+                          </div>
+                        </div>
+                      )}
+
+
+                    </div>
+                  )}
+                </section>
+              )}
+
+              {/* 컷 플랜의 미장센은 값을 직접 관리하지 않는다. 컷들 사이에서
+                필요한 요소·관계·동선이 성립하는지 먼저 점검하고, 고칠 곳은
+                컷 표에서 고른다. */}
+              {cutStage === 'cutplan' && (
+                <section className={`rail-agent${openAgent === 'mise' ? ' open' : ''}`}>
                   <button
                     type="button"
-                    className="narrative-rail-primary"
-                    onClick={requestStoryStructure}
-                    disabled={structurePending}
+                    className="rail-agent-head"
+                    aria-expanded={openAgent === 'mise'}
+                    onClick={() => setOpenAgent(openAgent === 'mise' ? null : 'mise')}
                   >
-                    {structurePending ? '나누는 중…' : '씬·Beat로 나누기'}
+                    <span className="lens-agent-mark" aria-hidden="true">M</span>
+                    <div>
+                      <strong>Mise-en-scène</strong>
+                      <span>Staging check</span>
+                    </div>
+                    {miseFindings.length > 0 && (
+                      <em className="rail-agent-badge is-open">{miseFindings.length}</em>
+                    )}
+                    <svg className="rail-agent-caret" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="m6 9 6 6 6-6" />
+                    </svg>
                   </button>
-                </>
-              ) : cutStage === 'script' ? (
-                <>
-                  <p>
-                    {scriptHasShape
-                      ? '대본이 준비됐습니다. 그림 전에 이 장면을 몇 개의 컷으로 나눌지 정하고, 이어서 촬영이 각 컷의 샷을 정합니다.'
-                      : '아직 윤곽이 잡히기 전입니다. 위에서 대본을 손보고 나면 컷으로 나눌 수 있습니다.'}
-                  </p>
+                  {openAgent === 'mise' && (
+                    <div className="rail-agent-body">
+                      <button
+                        type="button"
+                        className="rail-lens-primary is-mise"
+                        onClick={requestMiseCheck}
+                        disabled={miseCheckPending || cutPlan.length === 0}
+                      >
+                        {miseCheckPending ? '배치 점검 중…' : '배치·동선 다시 점검'}
+                      </button>
+                      {miseCheckError && <p className="rail-lens-error">AI 호출 실패 · {miseCheckError}</p>}
+                      {miseCheck && !miseCheckPending && miseFindings.length === 0 && (
+                        <p className="rail-check-summary">걸리는 것이 없습니다.</p>
+                      )}
+                      <DiagnosisList
+                        findings={miseFindings}
+                        emptyLabel=""
+                        onGoTo={goToFindingCut}
+                        cutLabelOf={cutLabelOf}
+                      />
+                    </div>
+                  )}
+                </section>
+              )}
 
-                  {/* 나눌 것이 생긴 뒤에 뜬다. 처음부터 두면 뼈대인 채로
-                      컷부터 만들게 되고, 그림까지 간 뒤에는 고치는 비용이
-                      가장 비싸다. */}
-                  {scriptHasShape && (
+              {/* Panel setup의 미장센은 레퍼런스 준비만 맡는다. */}
+              {cutStage === 'preparation' && (
+                <section className={`rail-agent${openAgent === 'mise' ? ' open' : ''}`}>
+                  <button
+                    type="button"
+                    className="rail-agent-head"
+                    aria-expanded={openAgent === 'mise'}
+                    onClick={() => setOpenAgent(openAgent === 'mise' ? null : 'mise')}
+                  >
+                    <span className="lens-agent-mark" aria-hidden="true">M</span>
+                    <div>
+                      <strong>Mise-en-scène</strong>
+                      <span>Reference preparation</span>
+                    </div>
+                    {undecidedSceneFacts > 0 && (
+                      <em className="rail-agent-badge is-open">{undecidedSceneFacts}</em>
+                    )}
+                    <svg className="rail-agent-caret" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="m6 9 6 6 6-6" />
+                    </svg>
+                  </button>
+                  {openAgent === 'mise' && (
+                    <div className="rail-agent-body">
+                      {/* 리드 문장은 두지 않는다. 에이전트 이름과 아래 내용이
+                      이미 무엇을 하는 자리인지 말한다. */}
+                      {/* 대본에 있는 것만 읽는다. 없는 것은 지어내지 않고
+                      '미정'으로 남긴다 — 무엇이 안 정해졌는지 보여야
+                      창작자가 판정할 수 있다 (DG1 P2). */}
+                      {!hasActiveSceneState && (
+                        <button
+                          type="button"
+                          className="rail-lens-primary is-mise"
+                          onClick={requestSceneStates}
+                          disabled={sceneStatePending || screenplay.length === 0}
+                        >
+                          {sceneStatePending ? '읽는 중…' : '대본에서 인물·공간 읽기'}
+                        </button>
+                      )}
+                      {sceneStateError && (
+                        <p className="rail-lens-error">AI 호출 실패 · {sceneStateError}</p>
+                      )}
+
+                      {hasActiveSceneState ? (
+                        <>
+                          {isPanelPreparationStage && scriptScenes.length > 1 && (
+                            <div className="rail-scene-switcher" aria-label="씬 기준 선택">
+                              {scriptScenes.map((scriptScene) => (
+                                <button
+                                  key={scriptScene.id}
+                                  type="button"
+                                  className={scriptScene.id === activeSceneId ? 'is-active' : ''}
+                                  onClick={() => setActiveBeat(scriptScene.startBeat)}
+                                >
+                                  Scene {scriptScene.number}
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                          {isCutPlanStage && (
+                            <div className="mise-staging-plan">
+                              <div className="mise-staging-context">
+                                <span>현재 장면</span>
+                                <strong>{visibleSceneState.location?.name || '공간 미정'}</strong>
+                                <em>{visibleSceneState.characters.map((character) => character.name).join(' · ') || '등장 인물 미정'}</em>
+                              </div>
+                              <ol>
+                                {activeSceneCuts.map((cut) => (
+                                  <li key={cut.id}>
+                                    <strong>컷 {cut.beat + 1}-{cut.beatOrder}</strong>
+                                    <span>{cut.characters || '인물 미정'} · {cut.place || visibleSceneState.location?.name || '공간 미정'}</span>
+                                    <p>{cut.content || cut.purpose || '행동 미정'}</p>
+                                  </li>
+                                ))}
+                              </ol>
+                            </div>
+                          )}
+                          {/* Panel setup에서만 기준 그림을 준비한다. 컷 플랜에서는
+                      장면 배치와 연속성을 먼저 정하므로 표현 스타일과 무관하게
+                      인물·공간 값을 편집할 수 있어야 한다. 러프 콘티는 기준 그림이 필요 없다. 얼굴이 빈 타원이고
+                      공간이 선 몇 개인 그림에 "같은 인물로 이어지게" 할 것이
+                      없다 — 화풍은 앵커가 잡는다.
+                      디테일·실사에서만 레퍼런스를 세운다. */}
+                          {isPanelPreparationStage && panelStylePreset === 'rough' ? (
+                            <p className="rail-scene-rough-note">
+                              러프 콘티는 기준 그림 없이 구도만 잡습니다.
+                              인물·공간 기준은 디테일 스케치부터 필요합니다.
+                            </p>
+                          ) : isPanelPreparationStage ? (
+                            <ul className="rail-scene-state">
+                              {newReferenceCharacters.map((character) => {
+                                const referenceOpen = openReferenceCards[character.id] && character.image
+                                const editKey = `${activeSceneId}:${character.id}`
+                                const referenceEditing = Boolean(editingReferenceCards[editKey])
+                                const settledSummary = character.facts
+                                  .filter((fact) => fact.value)
+                                  .map((fact) => fact.value)
+                                  .join(' · ')
+                                const openFactCount = character.facts.filter((fact) => fact.open).length
+                                return (
+                                  <li key={character.id} className={`rail-scene-reference-card${isPanelPreparationStage && referenceOpen ? ' is-reference-open' : ' is-info-open'}`}>
+                                    <div className="rail-reference-card-inner">
+                                      <div
+                                        className={`rail-reference-face rail-reference-info${isPanelPreparationStage && character.image ? ' is-flippable' : ''}`}
+                                        onClick={(event) => {
+                                          // 카드 면의 빈 곳만 뒤집는다. 수정·재생성처럼
+                                          // 카드 안의 조작을 누를 때는 편집 상태를 열고
+                                          // 같은 클릭으로 레퍼런스 면까지 넘기지 않는다.
+                                          if (event.target.closest('button, input, select, textarea')) return
+                                          if (isPanelPreparationStage && character.image) {
+                                            setOpenReferenceCards((current) => ({ ...current, [character.id]: true }))
+                                          }
+                                        }}
+                                        onKeyDown={(event) => {
+                                          if (isPanelPreparationStage && character.image && (event.key === 'Enter' || event.key === ' ')) {
+                                            event.preventDefault()
+                                            setOpenReferenceCards((current) => ({ ...current, [character.id]: true }))
+                                          }
+                                        }}
+                                        role={isPanelPreparationStage && character.image ? 'button' : undefined}
+                                        tabIndex={isPanelPreparationStage && character.image ? 0 : undefined}
+                                        aria-label={isPanelPreparationStage && character.image ? `${character.name} 레퍼런스 보기` : undefined}
+                                      >
+                                        <div className="rail-scene-head">
+                                          <strong>{character.name}</strong>
+                                          <em>{character.summary}</em>
+                                          {isPanelPreparationStage && !character.image && (
+                                            <button
+                                              type="button"
+                                              className="rail-reference-trigger"
+                                              onClick={() => generateReferenceFromCutPlan('character', character.id)}
+                                              disabled={isReferenceImagePending('character', character.id)}
+                                            >
+                                              {isReferenceImagePending('character', character.id) ? '그리는 중…' : '레퍼런스 생성'}
+                                            </button>
+                                          )}
+                                          {isPanelPreparationStage && character.image && (
+                                            <button
+                                              type="button"
+                                              className="rail-reference-regenerate"
+                                              onClick={(event) => {
+                                                event.stopPropagation()
+                                                generateReferenceFromCutPlan('character', character.id)
+                                              }}
+                                              disabled={isReferenceImagePending('character', character.id)}
+                                            >
+                                              {isReferenceImagePending('character', character.id) ? '다시 그리는 중…' : '다시 생성'}
+                                            </button>
+                                          )}
+                                          {isPanelPreparationStage && staleStyleLabel(character) && (
+                                            <span className="rail-reference-stale-style">
+                                              {staleStyleLabel(character)}
+                                            </span>
+                                          )}
+                                          <button
+                                            type="button"
+                                            className="rail-reference-edit"
+                                            onClick={(event) => {
+                                              event.stopPropagation()
+                                              setEditingReferenceCards((current) => ({
+                                                ...current,
+                                                [editKey]: !current[editKey],
+                                              }))
+                                            }}
+                                          >
+                                            {referenceEditing ? '완료' : '수정'}
+                                          </button>
+                                        </div>
+                                        {!referenceEditing && (
+                                          <div className="rail-reference-summary">
+                                            <p>{settledSummary || '대본에서 확인된 외형 기준이 없습니다.'}</p>
+                                            {openFactCount > 0 && <em>{openFactCount}개 미정</em>}
+                                          </div>
+                                        )}
+                                        {referenceEditing && character.facts.map((fact) => (
+                                          <SceneFactRow
+                                            key={fact.label}
+                                            fact={fact}
+                                            // 기본은 작품 기준을 고치는 것이다 — 이 인물이
+                                            // 나오는 모든 씬이 함께 바뀐다.
+                                            onCommit={(value) => setSceneFact('character', fact.label, value, { characterId: character.id })}
+                                            onScopedCommit={(value) => setSceneFact('character', fact.label, value, { characterId: character.id, scoped: true })}
+                                            onRevert={() => clearCharacterOverride(character.id, fact.label)}
+                                          />
+                                        ))}
+                                      </div>
+                                      {isPanelPreparationStage && character.image && (
+                                        <div
+                                          className="rail-reference-face rail-reference-preview"
+                                          onClick={() => setOpenReferenceCards((current) => ({ ...current, [character.id]: false }))}
+                                          onKeyDown={(event) => {
+                                            if (event.key === 'Enter' || event.key === ' ') {
+                                              event.preventDefault()
+                                              setOpenReferenceCards((current) => ({ ...current, [character.id]: false }))
+                                            }
+                                          }}
+                                          role="button"
+                                          tabIndex={0}
+                                          aria-label={`${character.name} 정보 카드 보기`}
+                                        >
+                                          <img src={character.image} alt={`${character.name} 레퍼런스`} />
+                                          <button
+                                            type="button"
+                                            className="rail-reference-lightbox-trigger"
+                                            onClick={(event) => {
+                                              event.stopPropagation()
+                                              setReferenceLightbox({ src: character.image, alt: `${character.name} 레퍼런스`, cardKey: character.id })
+                                            }}
+                                          >
+                                            크게 보기
+                                          </button>
+                                        </div>
+                                      )}
+                                    </div>
+                                  </li>
+                                )
+                              })}
+
+                              {newReferenceLocation && (() => {
+                                const location = newReferenceLocation
+                                const referenceOpen = openReferenceCards.location && location.image
+                                const editKey = `${activeSceneId}:location`
+                                const referenceEditing = Boolean(editingReferenceCards[editKey])
+                                const settledSummary = location.facts
+                                  .filter((fact) => fact.value)
+                                  .map((fact) => fact.value)
+                                  .join(' · ')
+                                const openFactCount = location.facts.filter((fact) => fact.open).length
+                                return (
+                                  <li className={`rail-scene-reference-card${isPanelPreparationStage && referenceOpen ? ' is-reference-open' : ' is-info-open'}`}>
+                                    <div className="rail-reference-card-inner">
+                                      <div
+                                        className={`rail-reference-face rail-reference-info${isPanelPreparationStage && location.image ? ' is-flippable' : ''}`}
+                                        onClick={(event) => {
+                                          if (event.target.closest('button, input, select, textarea')) return
+                                          if (isPanelPreparationStage && location.image) {
+                                            setOpenReferenceCards((current) => ({ ...current, location: true }))
+                                          }
+                                        }}
+                                        onKeyDown={(event) => {
+                                          if (isPanelPreparationStage && location.image && (event.key === 'Enter' || event.key === ' ')) {
+                                            event.preventDefault()
+                                            setOpenReferenceCards((current) => ({ ...current, location: true }))
+                                          }
+                                        }}
+                                        role={isPanelPreparationStage && location.image ? 'button' : undefined}
+                                        tabIndex={isPanelPreparationStage && location.image ? 0 : undefined}
+                                        aria-label={isPanelPreparationStage && location.image ? `${location.name} 레퍼런스 보기` : undefined}
+                                      >
+                                        <div className="rail-scene-head">
+                                          <strong>{location.name}</strong><em>공간</em>
+                                          {isPanelPreparationStage && !location.image && (
+                                            <button type="button" className="rail-reference-trigger" onClick={() => generateReferenceFromCutPlan('location')} disabled={isReferenceImagePending('location')}>
+                                              {isReferenceImagePending('location') ? '그리는 중…' : '레퍼런스 생성'}
+                                            </button>
+                                          )}
+                                          {isPanelPreparationStage && location.image && (
+                                            <button
+                                              type="button"
+                                              className="rail-reference-regenerate"
+                                              onClick={(event) => {
+                                                event.stopPropagation()
+                                                generateReferenceFromCutPlan('location')
+                                              }}
+                                              disabled={isReferenceImagePending('location')}
+                                            >
+                                              {isReferenceImagePending('location') ? '다시 그리는 중…' : '다시 생성'}
+                                            </button>
+                                          )}
+                                          {isPanelPreparationStage && staleStyleLabel(location) && (
+                                            <span className="rail-reference-stale-style">
+                                              {staleStyleLabel(location)}
+                                            </span>
+                                          )}
+                                          <button
+                                            type="button"
+                                            className="rail-reference-edit"
+                                            onClick={(event) => {
+                                              event.stopPropagation()
+                                              setEditingReferenceCards((current) => ({
+                                                ...current,
+                                                [editKey]: !current[editKey],
+                                              }))
+                                            }}
+                                          >
+                                            {referenceEditing ? '완료' : '수정'}
+                                          </button>
+                                        </div>
+                                        {!referenceEditing && (
+                                          <div className="rail-reference-summary">
+                                            <p>{settledSummary || '대본에서 확인된 공간 기준이 없습니다.'}</p>
+                                            {openFactCount > 0 && <em>{openFactCount}개 미정</em>}
+                                          </div>
+                                        )}
+                                        {referenceEditing && location.facts.map((fact) => (
+                                          <SceneFactRow
+                                            key={fact.label}
+                                            fact={fact}
+                                            onCommit={(value) => setSceneFact('location', fact.label, value)}
+                                          />
+                                        ))}
+                                      </div>
+                                      {isPanelPreparationStage && location.image && (
+                                        <div
+                                          className="rail-reference-face rail-reference-preview is-location"
+                                          onClick={() => setOpenReferenceCards((current) => ({ ...current, location: false }))}
+                                          onKeyDown={(event) => {
+                                            if (event.key === 'Enter' || event.key === ' ') {
+                                              event.preventDefault()
+                                              setOpenReferenceCards((current) => ({ ...current, location: false }))
+                                            }
+                                          }}
+                                          role="button"
+                                          tabIndex={0}
+                                          aria-label={`${location.name} 정보 카드 보기`}
+                                        >
+                                          <img src={location.image} alt={`${location.name} 레퍼런스`} />
+                                          <button
+                                            type="button"
+                                            className="rail-reference-lightbox-trigger"
+                                            onClick={(event) => {
+                                              event.stopPropagation()
+                                              setReferenceLightbox({ src: location.image, alt: `${location.name} 레퍼런스`, cardKey: 'location' })
+                                            }}
+                                          >
+                                            크게 보기
+                                          </button>
+                                        </div>
+                                      )}
+                                    </div>
+                                  </li>
+                                )
+                              })()}
+
+                              {visibleSceneState.environment?.facts?.length > 0 && (
+                                <li>
+                                  <div className="rail-scene-head">
+                                    <strong>환경</strong>
+                                    <em>씬 전체</em>
+                                  </div>
+                                  {/* 화풍은 씬 기준 항목이 아니라 `표현 스타일`이 정한다.
+                            이 filter는 그 칸이 있던 시절에 저장된 상태를 위한
+                            것이다 — 값이 남아 있어도 목록에 다시 나타나지
+                            않게 한다. */}
+                                  {visibleSceneState.environment.facts
+                                    .filter((fact) => fact.label !== '그림체')
+                                    .map((fact) => (
+                                      <SceneFactRow
+                                        key={fact.label}
+                                        fact={fact}
+                                        cutOptions={sceneCutOptions}
+                                        onCommit={(value) => setSceneFact('environment', fact.label, value)}
+                                        onAddChange={(at, value) => addFactChange('environment', fact.label, at, value)}
+                                        onRemoveChange={(at) => removeFactChange('environment', fact.label, at)}
+                                      />
+                                    ))}
+                                </li>
+                              )}
+                            </ul>
+                          ) : null}
+                          <button
+                            type="button"
+                            className="rail-scene-reread"
+                            onClick={requestSceneStates}
+                            disabled={sceneStatePending || screenplay.length === 0}
+                          >
+                            {sceneStatePending ? '다시 읽는 중…' : '대본에서 다시 읽기'}
+                          </button>
+                        </>
+                      ) : (
+                        <p className="rail-coverage-clear">
+                          아직 이 이야기의 미장센 기준을 읽지 않았습니다.
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </section>
+              )}
+
+              {/* 촬영이 담당하는 값(shotSize·angle·카메라)은 이미 컷 표의
+                컬럼이다. 여기서 또 편집하지 않고, 한 컷만 봐서는 알 수 없는
+                것을 짚는다. 고치는 것은 표에서 한다 — 발견과 처분은 다르다. */}
+              {cutStage === 'cutplan' && (
+                <section className={`rail-agent${openAgent === 'camera' ? ' open' : ''}`}>
+                  <button
+                    type="button"
+                    className="rail-agent-head"
+                    aria-expanded={openAgent === 'camera'}
+                    onClick={() => setOpenAgent(openAgent === 'camera' ? null : 'camera')}
+                  >
+                    <span className="camera-agent-mark" aria-hidden="true">C</span>
+                    <div>
+                      <strong>Cinematography</strong>
+                      <span>Coverage</span>
+                    </div>
+                    {/* 샷 미정은 진단 카드로 내지 않는다(고칠 자리가 카드가
+                      아니라 아래 버튼이다). 대신 배지로 알린다 — 접어 두면
+                      아무 데도 안 보여서 미정인 채로 넘어가게 된다. */}
+                    {undecidedShots > 0 && (
+                      <em className="rail-agent-badge is-warn">{undecidedShots}컷 미정</em>
+                    )}
+                    <svg className="rail-agent-caret" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="m6 9 6 6 6-6" />
+                    </svg>
+                  </button>
+                  {openAgent === 'camera' && (
+                    <div className="rail-agent-body">
+                      {/* 리드 문장은 두지 않는다. 에이전트 이름과 아래 내용이
+                      이미 무엇을 하는 자리인지 말한다. */}
+                      {/* 샷을 정하는 것이 촬영의 몫이다. 줄콘티는 컷만 나눈다. */}
+                      <button
+                        type="button"
+                        className="rail-lens-primary"
+                        onClick={requestCameraCheck}
+                        disabled={cameraCheckPending || cutPlan.length === 0}
+                      >
+                        {cameraCheckPending ? '촬영 점검 중…' : '촬영 다시 점검'}
+                      </button>
+                      {cameraCheckError && (
+                        <p className="rail-lens-error">
+                          AI 호출 실패 · {cameraCheckError}
+                        </p>
+                      )}
+                      {cameraCheck && !cameraCheckPending && cameraFindings.length === 0 && (
+                        <p className="rail-check-summary">걸리는 것이 없습니다.</p>
+                      )}
+                      {cameraFindings.length > 0 && (
+                        <DiagnosisList
+                          findings={cameraFindings}
+                          emptyLabel=""
+                          onGoTo={goToFindingCut}
+                          onRequestFix={requestShotFix}
+                          cutLabelOf={cutLabelOf}
+                          fixPending={shotFixPending}
+                          fixProposal={shotFixProposal}
+                          fixError={shotFixError}
+                          onAcceptFix={acceptShotFix}
+                          onRejectFix={rejectShotFix}
+                        />
+                      )}
+
+                    </div>
+                  )}
+                </section>
+              )}
+
+              {/* 컷 사이를 본다. 삽입·삭제는 표에 이미 있으므로 여기서는
+                어느 이음새에 무엇이 있는지만 짚는다. */}
+              {cutStage === 'cutplan' && (
+                <section className={`rail-agent${openAgent === 'editing' ? ' open' : ''}`}>
+                  <button
+                    type="button"
+                    className="rail-agent-head"
+                    aria-expanded={openAgent === 'editing'}
+                    onClick={() => setOpenAgent(openAgent === 'editing' ? null : 'editing')}
+                  >
+                    <span className="editing-agent-mark" aria-hidden="true">E</span>
+                    <div>
+                      <strong>Editing</strong>
+                      <span>Seams</span>
+                    </div>
+                    {editingFindings.length > 0 && (
+                      <em className="rail-agent-badge is-open">{editingFindings.length}</em>
+                    )}
+                    <svg className="rail-agent-caret" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="m6 9 6 6 6-6" />
+                    </svg>
+                  </button>
+                  {openAgent === 'editing' && (
+                    <div className="rail-agent-body">
+                      {/* 리드 문장은 두지 않는다. 에이전트 이름(Editing · Seams)과
+                      아래 진단이 이미 무엇을 보는 자리인지 말한다. */}
+                      {/* 점검은 컷 플랜이 들어올 때 이미 한 번 돌았다. 이 버튼은
+                      컷을 고친 뒤 다시 보기 위한 것이다 — 그래서 `다시`다.
+                      규칙 진단과 AI 지적은 같은 종류(컷 구성의 문제)이므로
+                      목록을 나누지 않고 한 곳에 쌓는다. */}
+                      <button
+                        type="button"
+                        className="rail-lens-primary is-editing"
+                        onClick={() => requestNarrativeCheck('cutplan')}
+                        disabled={narrativeCheckPending || cutPlan.length === 0}
+                      >
+                        {narrativeCheckPending ? '컷 구성 보는 중…' : '컷 구성 다시 점검'}
+                      </button>
+                      {narrativeCheckError && (
+                        <p className="rail-lens-error">
+                          AI 호출 실패 · {narrativeCheckError}
+                        </p>
+                      )}
+                      {/* 지적이 하나도 없을 때만 점검이 돌았다는 것을 알린다.
+                      지적이 있으면 목록이 그 자체로 결과다 — 총평까지 얹으면
+                      같은 말을 두 번 읽는다. */}
+                      {narrativeCheck?.stage === 'cutplan' && !narrativeCheckPending
+                        && narrativeCheck.findings.length === 0 && (
+                          <p className="rail-check-summary">걸리는 것이 없습니다.</p>
+                        )}
+
+                      {/* DG2 P1의 병합·분할. 지금까지 Panels에만 있었는데,
+                      컷 구성을 바꾸는 일은 컷 플랜에서 하는 것이 맞다.
+                      컷을 고르기 전 안내 문구는 두지 않는다 — 아무것도
+                      할 수 없는 상태에서 자리만 차지한다. */}
+                      {selectedCutId && cutSelectedFromTable && (() => {
+                        const index = cutPlan.findIndex((cut) => cut.id === selectedCutId)
+                        const cut = cutPlan[index]
+                        const next = cutPlan[index + 1]
+                        if (!cut) return null
+                        return (
+                          <div className="rail-cut-edit">
+                            <strong>컷 {cut.beat + 1}-{cut.beatOrder}</strong>
+                            <p>{cut.content}</p>
+                            <div>
+                              <button
+                                type="button"
+                                onClick={() => splitCut(cut.id)}
+                              >
+                                나누기
+                              </button>
+                              <button
+                                type="button"
+                                disabled={!next || next.beat !== cut.beat}
+                                title={next && next.beat === cut.beat
+                                  ? `컷 ${next.beat + 1}-${next.beatOrder}와 합칩니다`
+                                  : '같은 Moment의 다음 컷이 없습니다'}
+                                onClick={() => mergeCuts(cut.id)}
+                              >
+                                다음 컷과 합치기
+                              </button>
+                            </div>
+                          </div>
+                        )
+                      })()}
+
+                      {/* onGoTo는 컷을 골라 두는 쪽을 쓴다 — 위의 나누기·합치기가
+                      고른 컷에 걸리므로, beat만 옮기면 짚어준 자리에 도착해도
+                      고칠 것이 열리지 않는다. */}
+                      <DiagnosisList
+                        findings={visibleEditingFindings}
+                        emptyLabel="지금 이음새에서 걸리는 것이 없습니다."
+                        onGoTo={goToFindingCut}
+                        cutLabelOf={cutLabelOf}
+                        onRequestInsert={requestCutInsert}
+                        insertPending={cutInsertPending}
+                        insertProposal={cutInsertProposal}
+                        insertError={cutInsertError}
+                        onAcceptInsert={() => {
+                          const findingId = cutInsertProposal?.findingId
+                          acceptCutInsert()
+                          if (findingId) setAppliedEditingFindingIds((current) => new Set([...current, findingId]))
+                        }}
+                        onRejectInsert={rejectCutInsert}
+                        onApplyEdit={(finding) => {
+                          const firstCutId = finding.cutIds?.[0]
+                          if (!firstCutId) return
+                          if (finding.operation === 'split') splitCut(firstCutId)
+                          if (finding.operation === 'merge') mergeCuts(firstCutId)
+                          if (finding.operation === 'delete') deleteCut(firstCutId)
+                          setAppliedEditingFindingIds((current) => new Set([...current, finding.id]))
+                        }}
+                      />
+                    </div>
+                  )}
+                </section>
+              )}
+              {/* 다음 단계는 에이전트 목록 밖, 레일 맨 아래에 둔다.
+                어느 에이전트를 열어 두었든 같은 자리에 있어야
+                이 단계에서 나가는 길로 읽힌다. */}
+              <section className="narrative-rail-guidance">
+                <span>다음 단계</span>
+                {/* 대본은 주어진 것에서 시작한다. 다음 단계는 컷 분해다. */}
+                {/* 이야기 한 덩어리로 들어왔으면 씬·비트부터 세운다.
+                  컷을 나누려면 그 단위가 있어야 한다. */}
+                {cutStage === 'script' && needsStructure ? (
+                  <>
+                    <p>
+                      아직 이야기 한 덩어리입니다. 씬과 Moment로 나누면 그
+                      단위로 컷을 정할 수 있습니다.
+                    </p>
                     <button
                       type="button"
-                      className="narrative-rail-primary is-cutplan"
-                      onClick={cutPlan.length > 0 ? clearCutPlanStageOverride : requestCutPlan}
-                      disabled={cutPlanRunPending}
+                      className="narrative-rail-primary"
+                      onClick={requestStoryStructure}
+                      disabled={structurePending}
                     >
-                      {sceneStatePending
-                        ? '인물·공간 읽는 중…'
-                        : cutPlanPending
-                          ? '컷 나누는 중…'
-                          : cutPlanRunPending
-                            ? '샷 정하는 중…'
-                            : cutPlan.length > 0 ? '컷 플랜 이어서' : '컷 플랜 만들기'}
+                      {structurePending ? '나누는 중…' : '씬·Moment로 나누기'}
                     </button>
-                  )}
-                </>
-              ) : cutStage === 'cutplan' ? (
-                <>
-                  {/* 대본 단계와 같은 자리에서 다음 단계로 나간다. 헤더에
+                  </>
+                ) : cutStage === 'script' ? (
+                  <>
+                    <p>
+                      {scriptHasShape
+                        ? '대본이 준비됐습니다. 그림 전에 이 장면을 몇 개의 컷으로 나눌지 정하고, 이어서 촬영이 각 컷의 샷을 정합니다.'
+                        : '아직 윤곽이 잡히기 전입니다. 위에서 대본을 손보고 나면 컷으로 나눌 수 있습니다.'}
+                    </p>
+
+                    {/* 나눌 것이 생긴 뒤에 뜬다. 처음부터 두면 뼈대인 채로
+                      컷부터 만들게 되고, 그림까지 간 뒤에는 고치는 비용이
+                      가장 비싸다. */}
+                    {scriptHasShape && (
+                      <button
+                        type="button"
+                        className="narrative-rail-primary is-cutplan"
+                        onClick={cutPlan.length > 0 ? clearCutPlanStageOverride : requestCutPlan}
+                        disabled={cutPlanRunPending}
+                      >
+                        {sceneStatePending
+                          ? '인물·공간 읽는 중…'
+                          : cutPlanPending
+                            ? '컷 나누는 중…'
+                            : cutPlanRunPending
+                              ? '샷 정하는 중…'
+                              : cutPlan.length > 0 ? '컷 플랜 이어서' : '컷 플랜 만들기'}
+                      </button>
+                    )}
+                  </>
+                ) : cutStage === 'cutplan' ? (
+                  <>
+                    {/* 대본 단계와 같은 자리에서 다음 단계로 나간다. 헤더에
                       두면 단계마다 나가는 길이 다른 자리에 있어, 감독이
                       매번 찾아야 한다. 되돌리는 버튼(Back/Again/Discard)은
                       헤더에 남는다 — 나가는 길과 섞이면 안 된다. */}
-                  <p>
-                    컷 수와 순서를 확인했으면 확정합니다. 이어서 촬영이 각
-                    컷의 샷을 정합니다.
-                  </p>
-                  {/* 미정인 채로 확정하면 그 컷은 샷 없이 그림으로 간다.
+                    <p>
+                      컷 수와 순서를 확인했으면 확정합니다. 다음 단계에서 패널의
+                      표현 방식과 장면 기준을 준비합니다.
+                    </p>
+                    {/* 미정인 채로 확정하면 그 컷은 샷 없이 그림으로 간다.
                       막지는 않는다 — 일부러 비워 둘 수도 있다(DG1 P3의
                       위임). 다만 모르고 넘어가지는 않게 한다. */}
-                  {undecidedShots > 0 && (
-                    <p className="narrative-rail-caution">
-                      아직 샷을 안 정한 컷이 {undecidedShots}개 있습니다.
-                      촬영에서 정하거나, 이대로 두려면 그대로 확정하세요.
+                    {undecidedShots > 0 && (
+                      <p className="narrative-rail-caution">
+                        아직 샷을 안 정한 컷이 {undecidedShots}개 있습니다.
+                        촬영에서 정하거나, 이대로 두려면 그대로 확정하세요.
+                      </p>
+                    )}
+                    <button
+                      type="button"
+                      className="narrative-rail-primary is-cutplan"
+                      onClick={acceptCutPlan}
+                      disabled={cutPlanRunPending}
+                    >
+                      {cutPlanRunPending ? '샷 정하는 중…' : '컷 플랜 확정'}
+                    </button>
+                  </>
+                ) : cutStage === 'preparation' ? (
+                  <>
+                    <p>
+                      {needsReferences
+                        ? referencesReadyForPanels
+                          ? '표현 방식과 필요한 장면 기준이 준비되었습니다. 가운데에서 Panels를 시작하세요.'
+                          : `선택한 표현 방식에는 기준 이미지가 필요합니다. Mise-en-scène에서 ${missingReferenceRequirements.length}개를 준비하세요.`
+                        : '러프 콘티는 기준 이미지 없이 바로 시작할 수 있습니다.'}
                     </p>
-                  )}
-                  {!referencesReadyForPanels && (
-                    <div className="narrative-rail-caution reference-readiness">
-                      패널로 넘어가기 전에 필요한 레퍼런스 {missingReferenceRequirements.length}개를 준비하세요.
-                    </div>
-                  )}
-                  <button
-                    type="button"
-                    className="narrative-rail-primary is-cutplan"
-                    onClick={acceptCutPlan}
-                    disabled={cutPlanRunPending || !referencesReadyForPanels}
-                    title={referencesReadyForPanels
-                      ? undefined
-                      : '필요한 인물·공간 레퍼런스를 만든 뒤 확정할 수 있습니다'}
-                  >
-                    {cutPlanRunPending ? '샷 정하는 중…' : '컷 플랜 확정'}
-                  </button>
-                </>
-              ) : (
-                <>
-                  <p>
-                    Beat {activeBeat + 1}을(를) 보고 있습니다. 이 Beat의 행동과
-                    대사를 조금씩 고쳐 나가세요.
-                  </p>
-                </>
-              )}
-            </section>
+                  </>
+                ) : (
+                  <>
+                    <p>
+                      Moment {activeBeat + 1}을(를) 보고 있습니다. 이 Moment의 행동과
+                      대사를 조금씩 고쳐 나가세요.
+                    </p>
+                  </>
+                )}
+              </section>
             </div>
           ) : (
             <button
@@ -5366,12 +6064,12 @@ export default function StoryboardView({ onEnterReview = null }) {
             >
               {/* 접혀 있어도 어느 에이전트가 있고 무엇이 남았는지 보인다. */}
               <span className="narrative-agent-mark">N</span>
-              {cutStage === 'cutplan' && <span className="lens-agent-mark">M</span>}
+              {['cutplan', 'preparation'].includes(cutStage) && <span className="lens-agent-mark">M</span>}
               <strong>Agents</strong>
-              {narrativeSuggestions.length + (cutStage === 'cutplan' ? undecidedSceneFacts : 0) > 0 && (
+              {narrativeSuggestions.length + (['cutplan', 'preparation'].includes(cutStage) ? undecidedSceneFacts : 0) > 0 && (
                 <em>
                   {narrativeSuggestions.length
-                    + (cutStage === 'cutplan' ? undecidedSceneFacts : 0)}
+                    + (['cutplan', 'preparation'].includes(cutStage) ? undecidedSceneFacts : 0)}
                 </em>
               )}
             </button>

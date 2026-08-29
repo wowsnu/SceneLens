@@ -15,7 +15,7 @@ export default function ScriptView() {
       currentBeat = el.beat
       elements.push(
         <div key={`beat-${el.beat}`} className="script-beat-divider">
-          <span className="beat-number">Beat {el.beat + 1}</span>
+          <span className="beat-number">Moment {el.beat + 1}</span>
           <hr className="beat-line" />
         </div>
       )

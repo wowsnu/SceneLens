@@ -330,7 +330,7 @@ const createMockScriptSuggestion = ({ beatElements, targetBeat, requestKey, scen
     type: 'insert-script-line',
     beat: targetBeat,
     insertAfterIndex: anchor.globalIdx,
-    title: '이 Beat에 행동 한 줄을 더해볼까요?',
+    title: '이 Moment에 행동 한 줄을 더해볼까요?',
     reason: normalizedRequest,
     proposedText,
     newElement: {
@@ -399,9 +399,9 @@ const createMockNarrativeSuggestions = (state, requestKey, input = {}) => {
       type: 'split-beat',
       beat: targetBeat,
       elementIndex: boundary.globalIdx,
-      title: '여기서 Beat를 나눠볼까요?',
+      title: '여기서 Moment를 나눠볼까요?',
       reason: `“${shortenNarrativeText(previous?.text)}” 이후 “${shortenNarrativeText(boundary.text)}”에서 정보나 행동의 국면이 달라집니다.`,
-      actionLabel: 'Split Beat',
+      actionLabel: 'Split Moment',
     })
   }
 
@@ -411,7 +411,7 @@ const createMockNarrativeSuggestions = (state, requestKey, input = {}) => {
       type: 'panel-count',
       beat: targetBeat,
       targetCount: 2,
-      title: '이 Beat를 두 패널로 나눠볼까요?',
+      title: '이 Moment를 두 패널로 나눠볼까요?',
       reason: '사건과 반응을 한 패널에 압축하지 않고 순서대로 확인할 수 있습니다.',
       purposes: [
         '사건 또는 새로운 정보를 먼저 제시',
@@ -426,7 +426,7 @@ const createMockNarrativeSuggestions = (state, requestKey, input = {}) => {
       id: `narrative-${requestKey}-keep-${targetBeat}`,
       type: 'keep-structure',
       beat: targetBeat,
-      title: '현재 Beat와 패널 구성을 유지해도 좋습니다.',
+      title: '현재 Moment와 패널 구성을 유지해도 좋습니다.',
       reason: '이 Prototype 분석에서는 추가 분할보다 현재 정보 흐름을 보존하는 편이 명확합니다.',
     })
   }
@@ -1852,10 +1852,11 @@ const reorderCutPlan = (items) => {
 // 이 함수를 selector로 공유한다.
 //   script  → 대본만
 //   cutplan → 컷 리스트만
-//   panels  → 대본 + 패널
+//   preparation → 표현 방식과 장면 기준
+//   panels      → 대본 + 패널
 export const selectCutStage = (state) => {
   if (state.cutPlanStageOverride) return state.cutPlanStageOverride
-  if (state.cutPlanAccepted) return 'panels'
+  if (state.cutPlanAccepted) return state.panelPreparationComplete ? 'panels' : 'preparation'
   // 컷 플랜 다음에 촬영이 이어서 돈다. 컷이 들어오자마자 넘기면 샷이 빈
   // 표를 보다가 값이 뒤늦게 채워진다. 두 공정이 다 끝나고 넘어간다.
   // 컷 플랜에서 '샷 다시 정하기'를 누른 경우는 해당하지 않는다.
@@ -1944,6 +1945,9 @@ const useStore = create((set, get) => ({
   // 줄콘티 상태. draft는 검토 중인 제안, accepted는 확정 여부.
   cutPlan: [],
   cutPlanAccepted: false,
+  // 컷을 확정한 뒤, 표현 방식과 필요한 기준 이미지를 따로 준비한다.
+  // 이 단계를 분리해야 미장센 에이전트의 판단처럼 보이지 않는다.
+  panelPreparationComplete: false,
   cutPlanRequestKey: 0,
   cutPlanShotSizes: CUT_PLAN_SHOT_SIZES,
   cutPlanAngles: CUT_PLAN_ANGLES,
@@ -2468,6 +2472,7 @@ const useStore = create((set, get) => ({
       cutPlanPending: true,
       cutPlanError: null,
       cutPlanAccepted: false,
+      panelPreparationComplete: false,
       cutPlanSkipped: false,
       cutPlanStageOverride: null,
       cutPlanRequestKey: state.cutPlanRequestKey + 1,
@@ -2724,6 +2729,10 @@ const useStore = create((set, get) => ({
     const insertedShot = {
       ...createFlowShot({ index: shots.length, scriptBeat: anchorBeat }),
       cutPlanItemId: inserted.id,
+      // 방금 끼워 넣은 칸이라는 표시. 패널 격자는 이 표시가 있는 빈 칸에만
+      // 프롬프트 편집칸을 연다 — 아직 안 그린 컷까지 열면 격자가 통째로
+      // 입력칸이 된다. 내용을 받아 바로 그리는 경우에는 필요 없다.
+      ...((fields.content || '').trim() ? {} : { insertDraft: true }),
     }
     const withPanel = updateActiveBranchShots(state, (current) => {
       const shotIndex = current.findIndex((shot) => shot.cutPlanItemId === afterItemId)
@@ -2878,6 +2887,7 @@ const useStore = create((set, get) => ({
         targetBeat: cut.beat,
         requestKey: state.narrativeSuggestionRequestKey + 1,
         sceneIntention: state.sceneIntention || '',
+        scope: 'beat',
       })
       // 줄을 더하는 제안만 받는다. 나누기·바꾸기는 여기서 할 일이 아니다.
       const item = (result || [])
@@ -2984,30 +2994,35 @@ const useStore = create((set, get) => ({
   // 패널에서 컷을 지울 때는 컷 플랜만 남겨 두면 안 된다. 이후 프롬프트가
   // 삭제된 컷을 계속 조립하거나 패널과 컷 번호가 어긋난다. 편집 렌즈의
   // 삭제는 이 세 구조(컷·패널·이음새)를 한 번에 정리한다.
-  deleteCut: (cutId) => {
-    logEdit({ lens: 'editing', level: 'shot', target: cutId, action: 'delete', source: 'panel' })
+  deleteCut: (cutId, shotId = null) => {
+    logEdit({ lens: 'editing', level: 'shot', target: cutId || shotId, action: 'delete', source: 'panel' })
     return set((state) => {
-      const cutIndex = state.cutPlan.findIndex((item) => item.id === cutId)
-      if (cutIndex < 0 || state.cutPlan.length <= 1) return {}
+      const activeScene = state.scenes[state.activeScene]
+      const activeBranchIndex = activeScene?.activeBranch ?? 0
+      const shots = activeScene?.branches[activeBranchIndex]?.shots || []
 
-      const shots = state.scenes[state.activeScene]
-        ?.branches[state.scenes[state.activeScene].activeBranch ?? 0]?.shots || []
-      const shotIndex = shots.findIndex((shot) => shot.cutPlanItemId === cutId)
-      const deletedShot = shots[shotIndex]
-      const previousShot = shotIndex > 0 ? shots[shotIndex - 1] : null
+      const targetShotIndex = shots.findIndex((shot) =>
+        (shotId && shot.id === shotId) || (cutId && shot.cutPlanItemId === cutId)
+      )
+      const targetShot = targetShotIndex >= 0 ? shots[targetShotIndex] : null
+      const targetCutId = cutId || targetShot?.cutPlanItemId
+
+      const previousShot = targetShotIndex > 0 ? shots[targetShotIndex - 1] : null
 
       const next = updateActiveBranchShots(state, (current) => (
-        deletedShot ? current.filter((shot) => shot.id !== deletedShot.id) : current
+        targetShot ? current.filter((s) => s.id !== targetShot.id) : current
       ))
       const nextSeams = { ...state.seams }
-      // 삭제된 컷의 앞뒤 이음새는 모두 기존 컷을 기준으로 한 기록이라
-      // 새로 맞닿은 두 컷에 그대로 적용하면 안 된다.
       if (previousShot) delete nextSeams[seamKeyFor(previousShot.id)]
-      if (deletedShot) delete nextSeams[seamKeyFor(deletedShot.id)]
+      if (targetShot) delete nextSeams[seamKeyFor(targetShot.id)]
+
+      const nextCutPlan = targetCutId
+        ? reorderCutPlan(state.cutPlan.filter((item) => item.id !== targetCutId))
+        : state.cutPlan
 
       return {
         ...next,
-        cutPlan: reorderCutPlan(state.cutPlan.filter((item) => item.id !== cutId)),
+        cutPlan: nextCutPlan,
         seams: nextSeams,
       }
     })
@@ -3020,7 +3035,12 @@ const useStore = create((set, get) => ({
   // 사이 이음새는 컷 안이 되므로 사라진다. 다만 거기 적힌 '생략된 것'은
   // 이제 한 컷 안에서 일어나는 일이므로 내용으로 옮긴다 — 그냥 지우면
   // 기록해 둔 것이 조용히 사라진다.
-  mergeCuts: (firstCutId, { content = null } = {}) => {
+  // `draft: true`면 합치기만 하고 그리지 않는다. Panels 단계의 이음새가
+  // 이 길로 부른다 — 거기서는 합쳐진 컷이 **빈 패널**로 남고, 감독이 그
+   // 카드 안에서 합쳐진 프롬프트를 확인·수정한 뒤 직접 `그리기`를 누른다
+  // (삽입과 같은 규칙). 다른 자리(컷 플랜 표, GridView의 SeamEditor)는
+  // 미리보기에서 이미 문장을 확정하고 들어오므로 곧바로 그린다.
+  mergeCuts: (firstCutId, { content = null, draft = false } = {}) => {
     logEdit({ lens: 'editing', level: 'shot', target: firstCutId, action: 'merge', source: 'seam' })
     return set((state) => {
     const index = state.cutPlan.findIndex((item) => item.id === firstCutId)
@@ -3065,7 +3085,35 @@ const useStore = create((set, get) => ({
     // 뒤 컷의 패널을 없앤다. 앞 컷의 패널이 병합된 컷을 맡는다.
     const secondShot = shots.find((shot) => shot.cutPlanItemId === second.id)
     const next = updateActiveBranchShots(state, (current) => (
-      current.filter((shot) => shot.id !== secondShot?.id)
+      current
+        .filter((shot) => shot.id !== secondShot?.id)
+        // draft에서는 남은 패널의 그림도 비운다. 그 그림은 합치기 전 첫
+        // 컷만 보여주므로 그대로 두면 새 content와 어긋나고, 무엇보다
+        // 그림이 남아 있으면 빈 패널 편집칸이 열리지 않는다.
+        //
+        // `mergedDraft`로 표시해 둔다. 빈 패널 편집칸은 삽입에도 쓰이는데,
+        // 합쳐서 빈 것을 `새 패널`이라 부르고 삽입용 제안을 물으면 감독이
+        // 무엇을 보고 있는지 잘못 알게 된다.
+        //
+        // 합치기 전 두 문장도 함께 남긴다. 합치고 나면 원문은 사라지는데,
+        // `겹치는 부분 지우기`는 그 둘을 봐야 무엇이 겹치는지 알 수 있다.
+        .map((shot) => (
+          draft && shot.id === firstShot?.id
+            ? {
+              ...shot,
+              image: null,
+              mergedDraft: {
+                firstContent: first.content || '',
+                firstPurpose: first.purpose || '',
+                secondContent: second.content || '',
+                secondPurpose: second.purpose || '',
+                elision: seam?.elision || '',
+                firstImage: firstShot?.image || null,
+                secondImage: secondShot?.image || null,
+              },
+            }
+            : shot
+        ))
     ))
 
     // 사이 이음새는 컷 안이 되었으므로 지운다.
@@ -3090,7 +3138,7 @@ const useStore = create((set, get) => ({
       cutPlan: nextCutPlan,
       seams: nextSeams,
       panelDraftImages,
-      ...(firstShot ? {
+      ...(firstShot && !draft ? {
         panelToolRequest: {
           id: `panel-tool-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
           shotId: firstShot.id,
@@ -3114,7 +3162,12 @@ const useStore = create((set, get) => ({
   // 무엇이 겹쳤는지 알고 있으므로 두 컷의 내용을 함께 받는다. 이때는 원본도
   // 앞 컷의 내용으로 줄여야 한다 — 원본이 통째로 남으면 나눈 것이 아니라
   // 뒤에 하나 더 붙인 것이 된다.
-  splitCut: (cutId, { parts = null } = {}) => {
+  // `draft: true`면 나누기만 하고 그리지 않는다. Panels 단계의 패널이 이
+  // 길로 부른다 — 두 컷이 **빈 패널 둘**로 남고, 감독이 각 카드 안에서
+  // 앞뒤로 보낼 문장을 나눈 뒤 직접 `그리기`를 누른다 (삽입·합치기와 같은
+  // 규칙). 앞 칸에 원본을 그대로 두어 뒤로 보낼 부분을 잘라 옮기게 한다 —
+  // 빈 칸 둘을 마주하면 무엇을 나누는 중인지 알 수 없다.
+  splitCut: (cutId, { parts = null, draft = false } = {}) => {
     logEdit({ lens: 'editing', level: 'shot', target: cutId, action: 'split', source: 'seam' })
     return set((state) => {
     const index = state.cutPlan.findIndex((item) => item.id === cutId)
@@ -3160,8 +3213,22 @@ const useStore = create((set, get) => ({
           scriptBeat: source.beat,
         }),
         cutPlanItemId: second.id,
+        // 뒤 칸이다. `나눌 자리 찾기`는 두 칸을 한 번에 채우므로 버튼은
+        // 앞 칸에만 둔다 — 같은 요청을 두 자리에 두면 어느 쪽을 눌러야
+        // 하는지 묻게 되고, 답은 '아무 쪽이나'다.
+        ...(draft ? { splitDraft: 'second' } : {}),
       })
-      return copy
+      // draft에서는 앞 패널의 그림도 비운다. 그 그림은 나누기 전 한 컷을
+      // 통째로 보여주므로 줄어든 내용과 어긋나고, 그림이 남아 있으면 빈
+      // 패널 편집칸이 열리지 않는다. `splitDraft`로 표시해 두면 카드가
+      // 삽입·합치기와 구분해 무엇을 하는 중인지 밝힐 수 있다.
+      return draft
+        ? copy.map((shot) => (
+          shot.cutPlanItemId === cutId
+            ? { ...shot, image: null, splitDraft: 'first' }
+            : shot
+        ))
+        : copy
     })
 
     const branchShots = next.scenes?.[state.activeScene]?.branches?.[
@@ -3188,13 +3255,13 @@ const useStore = create((set, get) => ({
     // 앞 컷의 옛 그림은 줄어든 내용과 맞지 않는다. 남겨 두면 새 그림이 올
     // 때까지 감독이 옛 그림을 그 컷으로 읽는다.
     const panelDraftImages = { ...(state.panelDraftImages || {}) }
-    if (parts?.first?.content && firstShot) delete panelDraftImages[firstShot.id]
+    if ((parts?.first?.content || draft) && firstShot) delete panelDraftImages[firstShot.id]
     return {
       ...next,
       cutPlan: nextCutPlan,
       seams: nextSeams,
       panelDraftImages,
-      ...(parts?.first?.content && firstShot ? {
+      ...(parts?.first?.content && firstShot && !draft ? {
         panelToolRequest: {
           id: `panel-tool-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
           // 두 컷을 순서대로 그린다. 앞 컷을 먼저 그려야 뒤 컷이 그것을
@@ -3219,7 +3286,7 @@ const useStore = create((set, get) => ({
     return { cutPlan: reorderCutPlan(next) }
   }),
   // 컷을 버린다. 되돌릴 수 없으므로 명시적 Discard에만 쓴다.
-  dismissCutPlan: () => set({ cutPlan: [], cutPlanAccepted: false, cutPlanSkipped: false }),
+  dismissCutPlan: () => set({ cutPlan: [], cutPlanAccepted: false, panelPreparationComplete: false, cutPlanSkipped: false }),
   // 대본으로 돌아가되 컷은 보존한다. 단계 이동은 작업을 지우지 않는다.
   backToScript: () => set({ cutPlanStageOverride: 'script' }),
   // 단계 이동으로 잠시 대본을 보고 있는 상태. 컷 자체와는 무관하다.
@@ -3245,7 +3312,7 @@ const useStore = create((set, get) => ({
   // 그림을 보고 판정한다 (DG1 P4).
   acceptCutPlan: () => set((state) => {
     if (state.cutPlan.length === 0) {
-      return { cutPlanAccepted: true, cutPlanSkipped: false, cutPlanStageOverride: null }
+      return { cutPlanAccepted: true, panelPreparationComplete: false, cutPlanSkipped: false, cutPlanStageOverride: null }
     }
 
     let orphaned = []
@@ -3266,6 +3333,7 @@ const useStore = create((set, get) => ({
     return {
       ...next,
       cutPlanAccepted: true,
+      panelPreparationComplete: false,
       cutPlanSkipped: false,
       cutPlanStageOverride: null,
       declarations: [...judged, ...proposed],
@@ -3275,6 +3343,9 @@ const useStore = create((set, get) => ({
   }),
   cutPlanOrphanedShots: [],
   clearCutPlanOrphanWarning: () => set({ cutPlanOrphanedShots: [] }),
+
+  completePanelPreparation: () => set({ panelPreparationComplete: true, cutPlanStageOverride: null }),
+  reopenPanelPreparation: () => set({ panelPreparationComplete: false, cutPlanStageOverride: null }),
 
   // --- Responsibility registry (DG1 P3) ---------------------------------
   declarations: [],
@@ -3519,7 +3590,7 @@ const useStore = create((set, get) => ({
         place: cut.place || inferred.place,
       }
     })
-    return { cutPlan, cutPlanAccepted: false, cutPlanStageOverride: null }
+    return { cutPlan, cutPlanAccepted: false, panelPreparationComplete: false, cutPlanStageOverride: null }
   }),
   cutPlanSkipped: false,
   overviewTab: 'spatial',
@@ -3780,6 +3851,36 @@ const useStore = create((set, get) => ({
       set({ cameraCheckPending: false, cameraCheckError: error.message })
     }
   },
+  miseCheck: null,
+  miseCheckPending: false,
+  miseCheckError: null,
+  requestMiseCheck: async () => {
+    const state = get()
+    if (state.miseCheckPending || state.cutPlan.length === 0) return
+    set({ miseCheckPending: true, miseCheckError: null, miseCheck: null })
+    try {
+      const { checkNarrative } = await import('../services/api.js')
+      logScaffold({ feature: 'lens', action: 'open', lens: 'mise', stage: 'cutplan' })
+      const result = await checkNarrative({
+        cuts: state.cutPlan,
+        sceneIntention: state.sceneIntention || '',
+        script: state.screenplay.map((element) => element.text).join('\n'),
+        lens: 'mise',
+      })
+      set({
+        miseCheck: {
+          ...result,
+          findings: (result.findings || []).map((finding) => ({
+            ...finding,
+            checkedFingerprint: cutFindingFingerprint(state.cutPlan, finding.cutIds),
+          })),
+        },
+        miseCheckPending: false,
+      })
+    } catch (error) {
+      set({ miseCheckPending: false, miseCheckError: error.message })
+    }
+  },
   requestNarrativeSuggestions: async (input = {}) => {
     const state = get()
     const requestKey = state.narrativeSuggestionRequestKey + 1
@@ -3808,11 +3909,26 @@ const useStore = create((set, get) => ({
     try {
       // 지연 import — 스토어를 node로 단독 검증할 수 있게 한다.
       const { suggestNarrative } = await import('../services/api.js')
-      // 대본 전체를 함께 넘긴다. "뒷부분이 급하다" 같은 요청은 지금
-      // Beat만 봐서는 답할 수 없다.
-      const withIndex = state.screenplay
+      // 기본 대상은 Beat 하나가 아니라 해당 Scene 전체다. 헤딩부터 다음
+      // 헤딩 전까지만 넘겨 다른 Scene을 고치라는 제안이 섞이지 않게 한다.
+      const screenplayWithIndex = state.screenplay
         .map((element, globalIdx) => ({ ...element, globalIdx }))
-        .filter((element) => element.type !== 'scene-heading')
+      const sceneGroups = []
+      let sceneGroupInProgress = null
+      screenplayWithIndex.forEach((element) => {
+        if (element.type === 'scene-heading' || !sceneGroupInProgress) {
+          sceneGroupInProgress = {
+            title: element.type === 'scene-heading' ? element.text : '',
+            elements: [],
+          }
+          sceneGroups.push(sceneGroupInProgress)
+        }
+        if (element.type !== 'scene-heading') sceneGroupInProgress.elements.push(element)
+      })
+      const currentSceneGroup = sceneGroups.find((group) => (
+        group.elements.some((element) => (element.beat ?? 0) === targetBeat)
+      )) || sceneGroups[0] || { title: '', elements: [] }
+      const withIndex = currentSceneGroup.elements
       const beatsByIndex = new Map()
       withIndex.forEach((element) => {
         const beat = element.beat ?? 0
@@ -3827,6 +3943,8 @@ const useStore = create((set, get) => ({
         sceneIntention: state.sceneIntention || '',
         panelCount,
         beatsByIndex,
+        sceneTitle: currentSceneGroup.title,
+        scope: 'scene',
         scriptBeats: [...beatsByIndex.entries()]
           .sort((left, right) => left[0] - right[0])
           .map(([index, elements]) => ({
@@ -3973,7 +4091,7 @@ const useStore = create((set, get) => ({
       const newShot = createFlowShot({
         index: insertShotAt,
         scriptBeat: insertAt,
-        label: `Beat ${insertAt + 1} Shot 1`,
+        label: `Moment ${insertAt + 1} Shot 1`,
       })
       shifted.splice(insertShotAt, 0, newShot)
       return {
@@ -4024,7 +4142,7 @@ const useStore = create((set, get) => ({
       movedShots.splice(insertShotAt, 0, createFlowShot({
         index: insertShotAt,
         scriptBeat: insertAt,
-        label: `Beat ${insertAt + 1} Shot 1`,
+        label: `Moment ${insertAt + 1} Shot 1`,
       }))
       return { shots: movedShots, activeShot: insertShotAt, activeBeat: insertAt }
     })
@@ -4508,7 +4626,7 @@ const useStore = create((set, get) => ({
       const newShot = createFlowShot({
         index: targetIdx,
         scriptBeat: beat,
-        label: `Beat ${beat + 1} Shot ${sameBeatIndices.length + 1}`,
+        label: `Moment ${beat + 1} Shot ${sameBeatIndices.length + 1}`,
       })
       const nextShots = [...shots]
       nextShots.splice(targetIdx, 0, newShot)

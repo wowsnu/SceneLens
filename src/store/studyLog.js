@@ -316,9 +316,19 @@ export const summarize = (log = readLog()) => {
 }
 
 /** 세션을 파일로 내보낸다. */
-export const exportLog = () => {
+export const exportLog = ({ finalSnapshot = null, metadata = {} } = {}) => {
   const log = readLog()
-  const payload = { summary: summarize(log), events: log }
+  const payload = {
+    schema_version: '2.0',
+    exported_at: new Date().toISOString(),
+    metadata: { session_id: sessionId(), condition: condition(), ...metadata },
+    summary: summarize(log),
+    events: log,
+    // 분석 중 think-aloud/video의 특정 시점을 마지막 산출물과 연결할 수
+    // 있게 한다. 이미지 원본은 이미 별도 저장되어 있으므로 여기에는 구조와
+    // 식별자·설명만 둔다.
+    final_snapshot: finalSnapshot,
+  }
   const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' })
   const url = URL.createObjectURL(blob)
   const link = document.createElement('a')

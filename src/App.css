@@ -60,6 +60,18 @@
   background-color: #000;
 }
 
+/* 대본 단계는 아직 컷을 검토하는 화면이 아니다. Scene 카드와 대본
+   에이전트에만 집중할 수 있도록, 중앙의 컷 검토판은 다음 단계에서 연다. */
+.unified-workspace.script-stage-workspace .left-panel {
+  flex: 1;
+  max-width: none;
+  border-right: 0;
+}
+
+.unified-workspace.script-stage-workspace .center-panel {
+  display: none;
+}
+
 .panel-container {
   display: flex;
   flex-direction: column;

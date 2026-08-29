@@ -19,7 +19,7 @@ export default function CenterPanel({ showScriptPanel = true }) {
             {scriptPanelOpen && (
               <div>
                 <span>Script reference</span>
-                <strong>Beat {activeBeat + 1}</strong>
+                <strong>Moment {activeBeat + 1}</strong>
               </div>
             )}
             <button
@@ -42,7 +42,7 @@ export default function CenterPanel({ showScriptPanel = true }) {
                   {element.text}
                 </div>
               )) : (
-                <p className="drawing-script-empty">No script lines in this Beat.</p>
+                <p className="drawing-script-empty">No script lines in this Moment.</p>
               )}
             </div>
           ) : (

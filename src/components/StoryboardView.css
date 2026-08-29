@@ -781,6 +781,78 @@
 
 .sb-item:last-child { border-bottom: none; }
 
+/* Script에서는 Beat를 평평하게 나열하지 않고 Scene 카드 안에 묶는다. */
+.script-scene-card {
+  margin: 24px 0;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+  background: #141417;
+  overflow: hidden;
+}
+.script-scene-card:first-of-type { margin-top: 0; }
+.script-scene-card-header {
+  display: grid;
+  grid-template-columns: auto auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  min-height: 58px;
+  padding: 12px 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.09);
+  background: #1b1b20;
+}
+.script-scene-card.is-collapsed .script-scene-card-header { border-bottom: 0; }
+.script-scene-toggle {
+  width: 25px;
+  height: 25px;
+  padding: 0;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.82);
+}
+.script-scene-toggle:hover { background: rgba(255, 255, 255, 0.08); }
+.script-scene-card-header > span {
+  color: #93c5fd;
+  font-size: 11px;
+  font-weight: 750;
+  letter-spacing: .1em;
+}
+.script-scene-card-header strong,
+.script-scene-card-header input {
+  min-width: 0;
+  margin: 0;
+  border: 0;
+  background: transparent;
+  color: #f4f4f5;
+  font: inherit;
+  font-size: 18px;
+  font-weight: 720;
+}
+.script-scene-card-header input:focus { outline: 1px solid rgba(96, 165, 250, 0.7); background: rgba(59, 130, 246, 0.08); }
+.script-scene-card-header em { color: rgba(255, 255, 255, 0.58); font-size: 12px; font-style: normal; }
+.script-scene-card .sb-item.layout-script-focus {
+  margin: 0;
+  padding: 0 16px;
+  border: 0;
+  box-shadow: none;
+}
+.script-scene-card .sb-item.layout-script-focus + .sb-item.layout-script-focus {
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+}
+.script-scene-card.is-script-stage .sb-item.layout-script-focus + .sb-item.layout-script-focus {
+  /* 내부 Beat 경계는 데이터 연결에만 남기고, 대본 화면에서는 Scene의
+     줄 흐름을 끊지 않는다. */
+  border-top: 0;
+}
+.script-scene-card .sb-text-col {
+  width: 100%;
+  color: #e4e4e7;
+}
+
+/* Scene 카드 안에서도 지문이 배경에 묻지 않도록 본문 대비를 한 단계 올린다. */
+.script-scene-card .sb-script-action { color: #e4e4e7; }
+.script-scene-card .sb-script-parenthetical { color: #c4c4cc; }
+
 .sb-item {
   position: relative;
 }
@@ -1263,9 +1335,14 @@
 }
 
 .cut-plan-table .col-cut {
-  width: 76px;
+  width: 88px;
   padding-left: 12px;
+  overflow: visible;
   white-space: nowrap;
+}
+
+.cut-plan-table .col-cut .cut-plan-review-mark {
+  margin-left: 4px;
 }
 
 .cut-plan-number {
@@ -3547,11 +3624,17 @@
 
 /* 정보 면과 레퍼런스 면의 전환을 카드 뒤집기처럼 읽히게 한다. */
 .rail-scene-reference-card {
+  min-height: 106px;
+  padding: 0 !important;
+  overflow: hidden;
+  border-color: rgba(126, 200, 160, 0.2) !important;
+  background: linear-gradient(145deg, rgba(126, 200, 160, 0.08), rgba(255, 255, 255, 0.018)) !important;
   perspective: 700px;
 }
 
 .rail-reference-card-inner {
   position: relative;
+  min-height: 106px;
   transform-style: preserve-3d;
   transition: transform 340ms cubic-bezier(.2, .72, .25, 1);
 }
@@ -3572,7 +3655,47 @@
 }
 
 .rail-reference-info {
+  display: flex;
+  flex-direction: column;
+  min-height: 106px;
+  box-sizing: border-box;
+  padding: 12px;
   transform: rotateY(0deg);
+}
+
+/* 인물·공간 기준은 단순한 한 줄 목록이 아니다. 정보 면에서도 제목과
+   기준 요약을 위아래로 분리해, 레퍼런스 그림 면과 같은 카드 비중을 준다. */
+.rail-scene-reference-card .rail-scene-head {
+  align-items: flex-start;
+  flex-wrap: wrap;
+  row-gap: 4px;
+  margin-bottom: 8px;
+}
+
+.rail-scene-reference-card .rail-scene-head strong {
+  font-size: 14px;
+  line-height: 1.35;
+}
+
+.rail-scene-reference-card .rail-scene-head em {
+  font-size: 11.5px;
+  line-height: 1.5;
+}
+
+.rail-scene-reference-card .rail-reference-summary {
+  margin-top: 0;
+  padding-top: 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.rail-scene-reference-card .rail-reference-summary p {
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.rail-scene-reference-card .rail-reference-summary em {
+  padding: 3px 6px;
+  font-size: 10px;
 }
 
 .rail-reference-preview {
@@ -4531,13 +4654,13 @@
   flex-shrink: 0;
   width: 16px;
   height: 16px;
-  padding: 0;
+  padding: 2px;
   border: none;
   border-radius: 3px;
   background: transparent;
   color: rgba(255, 255, 255, 0.3);
   font-family: inherit;
-  font-size: 12px;
+  font-size: 13px;
   line-height: 1;
   cursor: pointer;
 }
@@ -4617,6 +4740,207 @@
 .style-preset-picker.is-row > button:disabled {
   cursor: not-allowed;
   opacity: 0.5;
+}
+
+/* Cut plan의 미장센은 기준 이미지를 만드는 곳이 아니다. 선택된 씬의
+   인물·공간을 각 컷에 어떻게 배치하는지 읽는 작은 계획표로 둔다. */
+.mise-staging-plan {
+  margin: 0 14px 12px;
+}
+
+.mise-staging-context {
+  display: grid;
+  gap: 3px;
+  padding: 10px 11px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.mise-staging-context > span {
+  color: rgba(255, 255, 255, 0.36);
+  font-size: 10px;
+}
+
+.mise-staging-context strong {
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 12px;
+}
+
+.mise-staging-context em {
+  overflow: hidden;
+  color: rgba(255, 255, 255, 0.48);
+  font-size: 11px;
+  font-style: normal;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mise-staging-plan ol {
+  display: grid;
+  gap: 7px;
+  margin: 9px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.mise-staging-plan li {
+  padding: 9px 10px;
+  border-left: 2px solid rgba(216, 170, 98, 0.42);
+  background: rgba(255, 255, 255, 0.018);
+}
+
+.mise-staging-plan li strong,
+.mise-staging-plan li span,
+.mise-staging-plan li p {
+  display: block;
+}
+
+.mise-staging-plan li strong {
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 11px;
+}
+
+.mise-staging-plan li span {
+  margin-top: 2px;
+  color: rgba(216, 170, 98, 0.8);
+  font-size: 10.5px;
+}
+
+.mise-staging-plan li p {
+  margin: 4px 0 0;
+  color: rgba(255, 255, 255, 0.52);
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+/* 컷을 확정한 뒤의 독립 설정 화면. 스타일은 특정 에이전트의 판단이 아니라
+   보드 전체에 적용할 제작 선택이므로, rail 밖에서 한 번만 고른다. */
+.panel-preparation {
+  width: min(100%, 920px);
+  margin: 52px auto;
+  padding: 34px;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 14px;
+  background: linear-gradient(145deg, rgba(216, 170, 98, 0.07), rgba(255, 255, 255, 0.018) 42%);
+}
+
+.panel-preparation > header > span {
+  color: #d8aa62;
+  font-family: 'Courier Prime', ui-monospace, monospace;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.panel-preparation h2 {
+  margin: 8px 0 7px;
+  color: rgba(255, 255, 255, 0.94);
+  font-size: 24px;
+  line-height: 1.25;
+}
+
+.panel-preparation header p,
+.panel-preparation footer p {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.52);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.panel-preparation-style {
+  margin: 28px 0;
+}
+
+.style-preset-picker.is-setup {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.style-preset-picker.is-setup > button {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  padding: 9px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 9px;
+  background: rgba(0, 0, 0, 0.14);
+  color: rgba(255, 255, 255, 0.54);
+  font: inherit;
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.style-preset-picker.is-setup > button img {
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  object-fit: cover;
+  border-radius: 5px;
+  opacity: 0.54;
+}
+
+.style-preset-picker.is-setup > button:hover:not(:disabled) {
+  border-color: rgba(255, 255, 255, 0.28);
+  color: rgba(255, 255, 255, 0.84);
+}
+
+.style-preset-picker.is-setup > button.is-active {
+  border-color: rgba(216, 170, 98, 0.76);
+  background: rgba(216, 170, 98, 0.11);
+  color: #f2d9ad;
+}
+
+.style-preset-picker.is-setup > button.is-active img {
+  opacity: 1;
+}
+
+.panel-preparation footer {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-top: 20px;
+  border-top: 1px solid rgba(255, 255, 255, 0.09);
+}
+
+.panel-preparation footer > div {
+  flex: 1;
+  min-width: 0;
+}
+
+.panel-preparation footer strong {
+  display: block;
+  margin-bottom: 4px;
+  color: rgba(255, 255, 255, 0.82);
+  font-size: 12px;
+}
+
+.panel-preparation footer button {
+  flex: 0 0 auto;
+  padding: 10px 13px;
+  border-radius: 7px;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.panel-preparation-open-mise {
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: transparent;
+  color: rgba(255, 255, 255, 0.66);
+}
+
+.panel-preparation-start {
+  border: 1px solid #d8aa62;
+  background: #d8aa62;
+  color: #1a1510;
+  font-weight: 700 !important;
+}
+
+.panel-preparation-start:disabled {
+  cursor: not-allowed;
+  opacity: 0.42;
 }
 
 /* 컷 구성 점검. 서사가 먼저 짚는 자리다 — 그림이 없는 지금이 가장 싸다. */
@@ -4805,13 +5129,49 @@
 /* 패널 한눈에 보기. 전체 생성은 한 번에 나오는데 Beat마다 한 줄씩 쌓아
    보여 주면 이어지는지 알 수 없다. */
 .sb-panel-grid {
+  --panel-grid-gap: 14px;
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 14px;
-  max-width: 1100px;
+  grid-template-columns: repeat(3, minmax(220px, 1fr));
+  gap: var(--panel-grid-gap);
+  width: min(1100px, 100%);
+  box-sizing: border-box;
   margin: 0 auto;
+  overflow-x: auto;
   padding: 18px 24px 36px;
 }
+
+/* 구조 편집은 즉시 반영하되, 바로 전 한 번은 되돌릴 수 있어야 한다. */
+.sb-panel-undo {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: fit-content;
+  max-width: 100%;
+  margin: 0 0 2px auto;
+  padding: 7px 8px 7px 11px;
+  border: 1px solid rgba(147, 197, 253, 0.34);
+  border-radius: 8px;
+  background: rgba(20, 25, 35, 0.96);
+  color: rgba(226, 232, 240, 0.9);
+  font-size: 12px;
+}
+.sb-panel-undo button {
+  border: 0;
+  border-radius: 5px;
+  background: rgba(96, 165, 250, 0.2);
+  color: #bfdbfe;
+  font: inherit;
+  font-weight: 750;
+  cursor: pointer;
+  padding: 4px 8px;
+}
+.sb-panel-undo button:last-child {
+  padding: 3px 5px;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.55);
+}
+.sb-panel-undo button:hover { background: rgba(96, 165, 250, 0.34); color: #fff; }
 
 /* 단계 카드는 현재 위치만 말한다. 검토는 패널을 끝까지 훑은 다음의 행동이라
    그리드 끝에 단독으로 둔다. */
@@ -4842,16 +5202,21 @@
   color: #fff2dd;
 }
 
-/* 좁아지면 칸을 줄인다. 3열을 고집하면 패널이 알아볼 수 없이 작아진다. */
-@media (max-width: 900px) {
-  .sb-panel-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
+.sb-panel-grid-card {
+  position: relative;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
 }
 
 .sb-panel-grid-item {
   position: relative;
-  display: block;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  flex: 1;
+  box-sizing: border-box;
   padding: 8px;
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 12px;
@@ -4868,6 +5233,11 @@
 
 .sb-panel-grid-item.is-active {
   border-color: rgba(150, 190, 210, 0.65);
+}
+
+.sb-panel-grid-card.is-active .sb-panel-grid-item {
+  border-color: rgba(150, 190, 210, 0.65);
+  box-shadow: 0 0 0 1px rgba(150, 190, 210, 0.16);
 }
 
 .sb-panel-grid-item img {
@@ -4892,6 +5262,134 @@
   font-size: 11px;
 }
 
+/* 이음새에서 바로 넣은 컷은 같은 그리드 안의 빈 패널로 나타난다. 별도
+   삽입 화면으로 가지 않고, 이 카드에서 프롬프트를 완성한 뒤 생성한다. */
+.sb-panel-grid-insert-draft {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  width: 100%;
+  flex: 1;
+  min-height: 140px;
+  box-sizing: border-box;
+  padding: 10px 11px;
+  border: 1px dashed rgba(196, 150, 210, 0.62);
+  border-radius: 7px;
+  background: rgba(196, 150, 210, 0.055);
+}
+
+/* S 번호 배지와 구조 변경 초안의 제목은 같은 윗줄을 쓴다. 본문 전체를
+   아래로 밀면 작은 카드에서 제목·입력칸이 잘리므로, 제목 행만 배지 폭만큼
+   비워 둘 공간을 준다. */
+.sb-panel-grid-item:has(.sb-panel-grid-insert-draft) .sb-panel-grid-insert-draft-head {
+  min-height: 20px;
+  padding-left: 31px;
+  box-sizing: border-box;
+}
+
+.sb-panel-grid-insert-draft-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 7px;
+  width: 100%;
+}
+
+.sb-panel-grid-insert-draft-head > span {
+  min-width: 0;
+  color: rgba(221, 214, 254, 0.88);
+  font-size: 13px;
+  font-weight: 850;
+  letter-spacing: .04em;
+  overflow-wrap: anywhere;
+}
+
+.sb-panel-grid-ai-btn {
+  padding: 4px 9px;
+  border: 1px solid rgba(192, 132, 252, 0.45);
+  border-radius: 6px;
+  background: rgba(139, 92, 246, 0.28);
+  color: #f3e8ff;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.sb-panel-grid-ai-btn:hover:not(:disabled) {
+  border-color: rgba(216, 180, 254, 0.8);
+  background: rgba(139, 92, 246, 0.45);
+  color: #ffffff;
+}
+
+.sb-panel-grid-ai-btn:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+.sb-panel-grid-ai-candidates {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  max-height: 120px;
+  overflow-y: auto;
+  margin-bottom: 4px;
+}
+
+.sb-panel-grid-ai-candidate-chip {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: 6px 9px;
+  border: 1px solid rgba(192, 132, 252, 0.35);
+  border-radius: 6px;
+  background: rgba(24, 20, 33, 0.92);
+  color: #f3e8ff;
+  text-align: left;
+  cursor: pointer;
+}
+
+.sb-panel-grid-ai-candidate-chip:hover {
+  border-color: rgba(216, 180, 254, 0.8);
+  background: rgba(139, 92, 246, 0.32);
+}
+
+.sb-panel-grid-ai-candidate-chip strong {
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.sb-panel-grid-ai-candidate-chip em {
+  font-size: 11.5px;
+  font-style: normal;
+  color: rgba(221, 214, 254, 0.82);
+  margin-top: 2px;
+}
+
+.sb-panel-grid-ai-error {
+  margin: 0;
+  color: #fca5a5;
+  font-size: 12px;
+}
+
+.sb-panel-grid-insert-draft textarea {
+  flex: 1;
+  width: 100%;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.92);
+  font: inherit;
+  font-size: 13px;
+  line-height: 1.5;
+  resize: none;
+}
+
+.sb-panel-grid-insert-draft textarea::placeholder { color: rgba(221, 214, 254, 0.55); }
+
 .sb-panel-grid-order {
   position: absolute;
   top: 14px;
@@ -4906,6 +5404,47 @@
   font-weight: 700;
   text-align: center;
 }
+
+/* 삭제는 그림 위 오른쪽 위의 ×다. 자주 쓰는 조작이 아니라 카드 아래
+   한 줄을 계속 차지할 이유가 없다. 평소에는 흐리게 두고 카드에 마우스를
+   올렸을 때만 또렷해진다 — 지우는 버튼이 늘 눈에 띄면 격자가 시끄럽다. */
+.sb-panel-grid-remove {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.55);
+  color: rgba(255, 255, 255, 0.62);
+  font-size: 14px;
+  line-height: 1;
+  opacity: 0;
+  cursor: pointer;
+  transition: opacity .12s ease, background .12s ease, color .12s ease;
+}
+
+.sb-panel-grid-card:hover .sb-panel-grid-remove,
+.sb-panel-grid-remove:focus-visible { opacity: 1; }
+
+/* hover가 없는 기기에서는 늘 보인다. 안 그러면 태블릿에서 지울 방법이
+   아예 사라진다 — 이 도구는 태블릿에서도 쓴다. */
+@media (hover: none) {
+  .sb-panel-grid-remove { opacity: 1; }
+}
+
+.sb-panel-grid-remove:hover {
+  background: rgba(190, 18, 60, 0.72);
+  color: #fff;
+}
+
+/* AI 초안 배지와 같은 자리라 겹친다. 배지가 있으면 × 를 그 왼쪽으로 민다. */
+.sb-panel-grid-candidate ~ .sb-panel-grid-remove { right: 74px; }
 
 /* 아직 확정 전인 생성본도 대본과 함께 보기와 똑같이 보인다. */
 .sb-panel-grid-candidate {
@@ -4922,16 +5461,250 @@
 }
 
 .sb-panel-grid-item em {
-  margin-top: 7px;
-  color: rgba(255, 255, 255, 0.5);
-  font-size: 11px;
+  margin-top: 8px;
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 12.5px;
   font-style: normal;
   line-height: 1.5;
-  /* 컷 내용이 길면 격자가 들쭉날쭉해진다. 두 줄까지만 보인다. */
+  word-break: break-word;
   display: -webkit-box;
-  -webkit-line-clamp: 2;
+  -webkit-line-clamp: 5;
   -webkit-box-orient: vertical;
   overflow: hidden;
+}
+
+/* 패널 조작은 카드 안쪽에서 끝낸다. 한눈에 보기에서 카드를 열지 않고도
+   구조를 바꿀 수 있어야 이음새와 컷 조작이 같은 문맥으로 읽힌다. */
+.sb-panel-grid-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 5px;
+  padding-top: 6px;
+}
+
+.sb-panel-grid-confirm-label {
+  margin-right: auto;
+  color: #fca5a5;
+  font-size: 11.5px;
+  font-weight: 700;
+}
+
+.sb-panel-grid-actions button,
+.sb-panel-grid-confirm button {
+  min-height: 27px;
+  padding: 2px 9px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.05);
+  color: rgba(255, 255, 255, 0.85);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.sb-panel-grid-actions button:hover,
+.sb-panel-grid-confirm button:hover {
+  border-color: rgba(255, 255, 255, 0.32);
+  color: rgba(255, 255, 255, 0.92);
+}
+
+.sb-panel-grid-actions button:disabled { cursor: not-allowed; opacity: .35; }
+.sb-panel-grid-actions button.danger { color: rgba(253, 164, 175, 0.84); }
+
+/* 이음새는 독립된 패널이 아니라 두 패널 사이의 조작물이다. 각 줄은
+   왼쪽에서 오른쪽으로 읽고, 줄 끝의 연결은 두 행 사이의 전용 바로 둔다. */
+.sb-panel-grid-seam {
+  position: absolute;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sb-panel-grid-seam.is-horizontal {
+  top: 37%;
+  width: var(--panel-grid-gap);
+  height: 30px;
+}
+
+.sb-panel-grid-seam.is-forward {
+  right: calc(var(--panel-grid-gap) / -2);
+  transform: translateX(50%);
+}
+
+.sb-panel-grid-seam.is-reverse {
+  left: calc(var(--panel-grid-gap) / -2);
+  transform: translateX(-50%);
+}
+
+/* 카드 사이의 보라색 점선은 화면을 복잡하게 만들어 제거했다. 이음새
+   자체는 중앙의 이음새 버튼으로 그대로 조작한다. */
+.sb-panel-grid-seam.is-horizontal::before,
+.sb-panel-grid-row-seam::before,
+.sb-panel-grid-row-seam::after,
+.sb-panel-grid-row-seam-lower { display: none; }
+
+/* S3→S4처럼 줄을 넘는 연결. 선을 억지로 대각선으로 긋지 않고 다음 행으로
+   넘어간다는 것을 독립된 바로 읽게 한다. */
+.sb-panel-grid-row-seam {
+  position: relative;
+  grid-column: 1 / -1;
+  min-height: 42px;
+}
+
+
+/* 줄 끝의 S3에서 점선 바로 내려오고, 반대편 끝은 S4로 다시 이어진다.
+   가운데의 이음새 버튼은 경로를 가리지 않도록 선 위에만 떠 있다. */
+
+.sb-panel-grid-seam-trigger {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  min-width: 30px;
+  min-height: 30px;
+  padding: 0 8px;
+  border: 1px solid rgba(192, 132, 252, 0.35);
+  border-radius: 999px;
+  background: rgba(28, 24, 38, 0.98);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.26), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  color: rgba(233, 213, 255, 0.82);
+  font: inherit;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color .16s ease, background .16s ease, box-shadow .16s ease, transform .16s ease;
+}
+
+.sb-panel-grid-seam-trigger:hover {
+  border-color: rgba(216, 180, 254, 0.74);
+  background: rgba(50, 35, 68, 0.98);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.32), 0 0 0 3px rgba(167, 139, 250, 0.08);
+  transform: translateY(-1px);
+}
+
+.sb-panel-grid-seam-trigger > span { font-size: 13px; line-height: 1; color: #d8b4fe; }
+.sb-panel-grid-seam-trigger strong { font-size: 9.5px; white-space: nowrap; }
+.sb-panel-grid-seam-trigger small { color: rgba(233, 213, 255, 0.62); font-size: 9px; font-weight: 700; white-space: nowrap; }
+.sb-panel-grid-seam.is-marked .sb-panel-grid-seam-trigger,
+.sb-panel-grid-seam.is-open .sb-panel-grid-seam-trigger {
+  border-color: rgba(216, 180, 254, 0.82);
+  background: rgba(61, 40, 84, 0.98);
+  color: #f3e8ff;
+}
+
+/* 같은 줄에서는 연결점을 작게 남긴다. 컷 사이의 선이 주인공이고, 버튼은
+   필요한 순간에만 조작점으로 읽혀야 한다. */
+.sb-panel-grid-seam.is-horizontal .sb-panel-grid-seam-trigger {
+  width: 28px;
+  min-width: 28px;
+  height: 28px;
+  min-height: 28px;
+  padding: 0;
+  border-radius: 50%;
+}
+
+.sb-panel-grid-seam.is-horizontal .sb-panel-grid-seam-trigger strong,
+.sb-panel-grid-seam.is-horizontal .sb-panel-grid-seam-trigger small { display: none; }
+.sb-panel-grid-seam.is-horizontal .sb-panel-grid-seam-trigger > span { font-size: 0; }
+.sb-panel-grid-seam.is-horizontal .sb-panel-grid-seam-trigger > span::after { content: '↔'; font-size: 12px; }
+
+/* 줄 전환은 무엇에서 무엇으로 넘어가는지만 한 줄로 보여 준다. */
+.sb-panel-grid-row-seam .sb-panel-grid-seam-trigger {
+  min-width: 96px;
+  min-height: 32px;
+  padding-inline: 10px;
+}
+.sb-panel-grid-row-seam .sb-panel-grid-seam-trigger strong { display: none; }
+.sb-panel-grid-row-seam .sb-panel-grid-seam-trigger > span { font-size: 14px; }
+.sb-panel-grid-row-seam .sb-panel-grid-seam-trigger small { font-size: 9.5px; letter-spacing: .01em; }
+
+.sb-panel-grid-seam-editor {
+  position: absolute;
+  z-index: 4;
+  top: calc(100% + 6px);
+  left: 50%;
+  display: grid;
+  gap: 7px;
+  width: 222px;
+  padding: 11px;
+  border: 1px solid rgba(192, 132, 252, 0.38);
+  border-radius: 12px;
+  background: rgba(24, 20, 33, 0.99);
+  box-shadow: 0 18px 36px rgba(0, 0, 0, 0.42), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  transform: translateX(-50%);
+}
+
+.sb-panel-grid-row-seam .sb-panel-grid-seam-editor {
+  top: calc(100% + 5px);
+}
+
+.sb-panel-grid-seam-editor > span { color: rgba(221, 214, 254, 0.68); font-size: 9px; font-weight: 800; letter-spacing: .04em; }
+.sb-panel-grid-seam-editor > div { display: flex; flex-wrap: wrap; gap: 5px; }
+.sb-panel-grid-seam-editor button {
+  min-height: 25px;
+  padding: 0 8px;
+  border: 1px solid rgba(192, 132, 252, 0.18);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.04);
+  color: rgba(237, 226, 242, 0.72);
+  font: inherit;
+  font-size: 9px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.sb-panel-grid-seam-editor button:hover { border-color: rgba(216, 180, 254, 0.52); color: #f3e8ff; }
+.sb-panel-grid-seam-editor button.active { border-color: rgba(216, 180, 254, 0.72); background: rgba(139, 92, 246, 0.24); color: #f3e8ff; }
+.sb-panel-grid-seam-editor button.reset { justify-self: end; color: rgba(221, 214, 254, 0.7); }
+
+.sb-panel-grid-seam-structure-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 5px;
+  margin-top: 2px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(192, 132, 252, 0.14);
+}
+
+.sb-panel-grid-seam-structure-actions button {
+  color: rgba(233, 213, 255, 0.84);
+  background: rgba(139, 92, 246, 0.09);
+}
+
+.sb-panel-seam-operation {
+  grid-column: 1 / -1;
+  width: min(720px, 100%);
+  margin: 4px auto 0;
+}
+
+.sb-panel-grid-confirm {
+  grid-column: 1 / -1;
+  z-index: 5;
+  width: min(320px, 100%);
+  display: grid;
+  gap: 8px;
+  margin: -40px 0 0 auto;
+  padding: 10px;
+  border: 1px solid rgba(251, 191, 36, 0.36);
+  border-radius: 8px;
+  background: rgba(28, 24, 15, 0.98);
+  box-shadow: 0 12px 26px rgba(0, 0, 0, 0.35);
+}
+.sb-panel-grid-confirm p { margin: 0; color: rgba(254, 243, 199, 0.88); font-size: 10px; line-height: 1.45; }
+.sb-panel-grid-confirm > div { display: flex; justify-content: flex-end; gap: 5px; }
+.sb-panel-grid-confirm button.confirm { border-color: rgba(251, 191, 36, 0.56); color: #fde68a; }
+
+@media (max-width: 620px) {
+  .sb-panel-grid {
+    grid-template-columns: repeat(3, minmax(200px, 1fr));
+    width: 760px;
+    margin-left: 0;
+    padding-inline: 14px;
+  }
+  .sb-panel-grid-seam-editor { left: 0; transform: none; }
 }
 
 /* 인물 기준은 작품에 한 벌이고, 씬은 달라진 것만 갖는다. 어느 쪽인지

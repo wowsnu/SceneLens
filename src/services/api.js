@@ -259,7 +259,7 @@ export async function structureStory(story, sceneIntention = '') {
 // 제안이지 수정이 아니다. 사용자가 수락해야 대본이 바뀐다 (DG1 P2).
 export async function suggestNarrative({
   narrativeRequest, beatElements, targetBeat, requestKey, sceneIntention = '', panelCount = null,
-  scriptBeats = [], beatsByIndex = null,
+  scriptBeats = [], beatsByIndex = null, sceneTitle = '', scope = 'scene',
 }) {
   const data = await fetchWithTimeout(`${API_BASE}/narrative/suggest`, {
     method: 'POST',
@@ -269,6 +269,8 @@ export async function suggestNarrative({
       beat_lines: beatElements.map((element) => element.text),
       script_beats: scriptBeats,
       active_beat: targetBeat,
+      scene_title: sceneTitle,
+      scope,
       scene_intention: sceneIntention,
       panel_count: panelCount,
     }),
@@ -293,6 +295,8 @@ export async function checkNarrative({
         content: cut.content || '',
         purpose: cut.purpose || '',
         characters: cut.characters || '',
+        place: cut.place || '',
+        time: cut.time || '',
         // 크기가 내용과 맞는지 판단하려면 지금 값이 필요하다.
         shot_size: cut.shotSize || '',
       })),

@@ -923,10 +923,12 @@ class NarrativeSuggestionBeat(BaseModel):
 
 class NarrativeSuggestionRequest(BaseModel):
     narrative_request: str                  # 사용자의 요청
-    beat_lines: List[str]                   # 지금 Beat의 줄들
-    # 대본 전체. 비어 있으면 지금 Beat만 보고 판단한다.
+    beat_lines: List[str]                   # 사용자가 마지막으로 짚은 Beat의 줄들
+    # scene 범위에서는 현재 Scene에 속한 Beat만 보낸다.
     script_beats: List[NarrativeSuggestionBeat] = []
     active_beat: int = 0
+    scene_title: Optional[str] = ""
+    scope: Literal["scene", "beat"] = "scene"
     scene_intention: Optional[str] = ""
     panel_count: Optional[int] = None       # 이 Beat의 현재 패널 수
 
@@ -951,6 +953,8 @@ class NarrativeCheckCut(BaseModel):
     content: str
     purpose: Optional[str] = ""
     characters: Optional[str] = ""
+    place: Optional[str] = ""
+    time: Optional[str] = ""
     # 정해진 샷 크기. 내용과 크기가 맞는지는 이 값이 있어야 판단할 수 있다.
     # 비어 있으면 아직 촬영이 정하지 않은 컷이다.
     shot_size: Optional[str] = ""
@@ -962,7 +966,7 @@ class NarrativeCheckRequest(BaseModel):
     lines: List[str] = []
     scene_intention: Optional[str] = ""
     script: Optional[str] = ""
-    lens: Optional[Literal["editing", "camera"]] = None
+    lens: Optional[Literal["editing", "camera", "mise"]] = None
 
     @model_validator(mode="after")
     def require_material(self):
@@ -984,6 +988,11 @@ class NarrativeCheckFinding(BaseModel):
         # 크기가 그 컷의 핵심을 담는지는 내용과 샷 크기만으로 판단할 수 있고,
         # 그린 뒤에 알면 다시 그려야 하므로 여기서 짚는다.
         "camera-information-selection",
+        # 컷 플랜의 미장센은 텍스트 근거로 확인 가능한 요소·관계·동선만
+        # 점검한다. 실제 화면의 시선 유도는 Panels 이후에 본다.
+        "mise-functional-elements",
+        "mise-relational-blocking",
+        "mise-spatial-continuity",
     ]
     # 이 지적이 걸린 컷. 인과·정보 순서는 둘 이상이 될 수 있다.
     # 대본 점검에서는 비고 line_indexes가 대신 찬다.

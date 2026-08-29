@@ -3,7 +3,7 @@ import StoryboardView from './components/StoryboardView'
 import DecisionBoard from './components/DecisionBoard'
 import StudyLogPanel from './components/StudyLogPanel'
 import CenterPanel from './components/CenterPanel'
-import useStore from './store/useStore'
+import useStore, { selectCutStage } from './store/useStore'
 import { exportLog, summarize, resetLog, setCondition, condition } from './store/studyLog'
 import './App.css'
 
@@ -22,6 +22,7 @@ function App() {
   const leaveReview = useStore((s) => s.leaveReview)
   const clearStoryboardShotSelection = useStore((s) => s.clearStoryboardShotSelection)
   const activeBeat = useStore((s) => s.activeBeat)
+  const cutStage = useStore(selectCutStage)
   const zenMode = useStore((s) => s.zenMode)
   const setZenMode = useStore((s) => s.setZenMode)
 
@@ -51,7 +52,26 @@ function App() {
       }
       if (event.key === 'E' || event.key === 'e') {
         event.preventDefault()
-        const payload = exportLog()
+        const state = useStore.getState()
+        const finalSnapshot = {
+          captured_at: new Date().toISOString(),
+          screenplay: state.screenplay,
+          active_scene: state.activeScene,
+          scenes: (state.scenes || []).map((scene, sceneIndex) => ({
+            id: scene.id || `scene-${sceneIndex + 1}`,
+            title: scene.title || '',
+            active_branch: scene.activeBranch ?? 0,
+            shots: (scene.branches?.[scene.activeBranch ?? 0]?.shots || []).map((shot, order) => ({
+              id: shot.id, order: order + 1, label: shot.label || shot.intent || '',
+              image: shot.image || null, beat: shot.scriptBeat ?? shot.beat ?? null,
+            })),
+          })),
+        }
+        const payload = exportLog({ finalSnapshot, metadata: { tool: 'SceneLens' } })
+        fetch('/api/study/export', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ tool: 'scenelens', condition: payload.metadata.condition, payload }),
+        }).catch(() => console.warn('[study] server export failed'))
         console.log('[study] exported', payload.summary)
       }
       if (event.key === 'R' || event.key === 'r') {
@@ -139,7 +159,15 @@ function App() {
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
         )}
       </button>
-      <main className="unified-workspace">
+      <button
+        className="floating-fullscreen-btn"
+        style={{ left: 12, right: 'auto', width: 'auto', padding: '0 10px' }}
+        onClick={() => window.dispatchEvent(new KeyboardEvent('keydown', { key: 'E', ctrlKey: true, shiftKey: true }))}
+        title="실험 데이터 내보내기"
+      >
+        내보내기
+      </button>
+      <main className={`unified-workspace${cutStage === 'script' ? ' script-stage-workspace' : ''}`}>
 
         {/* LEFT */}
         {(maximizedPanel === null || maximizedPanel === 'left' || drawingWorkspaceOpen) && (
@@ -158,7 +186,7 @@ function App() {
         <section className={`panel-container center-panel ${maximizedPanel === 'left' ? 'panel-hidden' : ''} ${drawingWorkspaceOpen ? 'drawing-workspace' : ''} ${drawingFocused ? 'maximized' : ''}`}>
           {drawingWorkspaceOpen && (
             <div className="panel-header">
-              <span className="panel-title">{`DRAWING · BEAT ${activeBeat + 1}`}</span>
+              <span className="panel-title">{`DRAWING · MOMENT ${activeBeat + 1}`}</span>
               <>
                 <button
                   className="panel-control-btn"

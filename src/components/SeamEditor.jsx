@@ -229,6 +229,12 @@ export default function SeamEditor({
   if (!pendingEdit || !cut) return null
   const isMerge = kind === 'merge'
   const isDelete = kind === 'delete'
+  const insertBeforeShot = kind === 'insert'
+    ? shots.find((entry) => entry.cutPlanItemId === cutId)
+    : null
+  const insertAfterShot = kind === 'insert'
+    ? shots[pendingEdit.index]
+    : null
 
   const run = () => {
     if (isMerge) {
@@ -294,6 +300,47 @@ export default function SeamEditor({
         </p>
       )}
 
+      {kind === 'insert' ? (
+        <section className="grid-insert-preview" aria-label="삽입할 새 패널 미리보기">
+          <article className="grid-insert-neighbor">
+            <span>S{pendingEdit.index}</span>
+            <div className="grid-insert-neighbor-frame">
+              {insertBeforeShot?.image
+                ? <img src={insertBeforeShot.image} alt={`S${pendingEdit.index}`} />
+                : <p>{cut.content || '(비어 있음)'}</p>}
+            </div>
+            <p>{cut.content || '(비어 있음)'}</p>
+          </article>
+
+          <article className="grid-insert-new-panel">
+            <span>새 패널</span>
+            <div className="grid-insert-new-frame">
+              <em>INSERT</em>
+              <textarea
+                value={insertChoice?.content ?? ''}
+                rows={5}
+                placeholder="이 사이에 들어갈 샷 프롬프트를 적으세요"
+                onChange={(e) => setInsertChoice((current) => ({
+                  ...(current || {}),
+                  content: e.target.value,
+                  provenance: 'User',
+                }))}
+                aria-label="새 패널 프롬프트"
+              />
+            </div>
+          </article>
+
+          <article className="grid-insert-neighbor">
+            <span>S{pendingEdit.index + 1}</span>
+            <div className="grid-insert-neighbor-frame">
+              {insertAfterShot?.image
+                ? <img src={insertAfterShot.image} alt={`S${pendingEdit.index + 1}`} />
+                : <p>{nextCut?.content || '(비어 있음)'}</p>}
+            </div>
+            <p>{nextCut?.content || '(비어 있음)'}</p>
+          </article>
+        </section>
+      ) : (
       <div className="grid-edit-diff">
         <div className="grid-edit-before">
           <span>현재 컷 프롬프트</span>
@@ -321,28 +368,6 @@ export default function SeamEditor({
               <p className="grid-edit-rejoin">
                 {prevCut ? `S${cutIndex}` : '앞'} <i aria-hidden="true">→</i> {nextCut ? `S${cutIndex + 2}` : '뒤'}가 바로 이어집니다
               </p>
-            </>
-          ) : kind === 'insert' ? (
-            <>
-              <p>{cut.content || '(비어 있음)'}</p>
-              {/* 후보를 고르면 이 칸이 채워지고, 감독이 그 문장을 그대로
-                  두거나 고쳐 쓸 수 있다. */}
-              <textarea
-                className="grid-edit-new"
-                value={insertChoice?.content ?? ''}
-                rows={3}
-                placeholder="새 컷 프롬프트 · 아래에서 고르거나 여기에 직접 씁니다"
-                onChange={(e) => setInsertChoice((current) => ({
-                  ...(current || {}),
-                  content: e.target.value,
-                  // 후보를 고른 뒤 감독이 문장을 손대면 그 시점부터 감독이
-                  // 쓴 것이다 — 골랐다는 사실이 아니라 지금 화면에 있는
-                  // 문장이 누구 것인지가 출처를 정한다.
-                  provenance: 'User',
-                }))}
-                aria-label="새 컷 프롬프트"
-              />
-              <p>{nextCut?.content || '(비어 있음)'}</p>
             </>
           ) : kind === 'split' ? (
             // 두 칸 모두 감독이 고친다. 진단에서 왔으면 나눈 안이 채워져
@@ -378,6 +403,7 @@ export default function SeamEditor({
           )}
         </div>
       </div>
+      )}
 
       {/* Merge는 이어붙인 문장으로 시작한다. 겹치는 부분을 지운 안으로
           바꾸려면 물어야 한다 — 자동으로 바꾸면 감독이 손대던 문장이
@@ -452,7 +478,6 @@ export default function SeamEditor({
                     줄에 다시 적으면 같은 정보가 두 번 보인다. */}
                 <strong>{candidate.content}</strong>
                 <em>{candidate.purpose}</em>
-                <span>{candidate.reason}</span>
               </button>
             )
           })}

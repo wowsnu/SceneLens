@@ -159,8 +159,8 @@ async def suggest_seam_insert(request: SeamInsertRequest) -> SeamInsertResponse:
 
     client = AsyncOpenAI(api_key=api_key)
     response = await client.chat.completions.create(
-        # 화면 사이 변화를 읽는 일이라 그림이 있으면 mini로 올린다.
-        model="gpt-5.4-mini" if images else "gpt-5.4-nano",
+        # 더 깊은 연출 맥락 파악을 위해 mini / gpt-5.4 모델을 사용한다.
+        model="gpt-5.4" if images else "gpt-5.4-mini",
         messages=[
             {"role": "system", "content": PROMPT},
             {"role": "user", "content": content},
