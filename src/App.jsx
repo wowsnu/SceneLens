@@ -106,6 +106,16 @@ function App() {
     setLeftPanelVisible(false)
   }
 
+  // 검토면은 왼쪽 제작 화면을 접은 상태에서 열린다. 돌아갈 때는 이 순서를
+  // 한 곳에서만 되돌린다. 서로 다른 버튼이 일부 상태만 바꾸면 두 패널이
+  // 모두 숨겨져 빈(검은) 작업면이 될 수 있다.
+  const returnToStoryboard = () => {
+    leaveReview()
+    clearStoryboardShotSelection()
+    setLeftPanelVisible(true)
+    setMaximizedPanel('left')
+  }
+
   useEffect(() => {
     const handleKey = (e) => {
       if (e.key === 'z' || e.key === 'Z') {
@@ -215,11 +225,7 @@ function App() {
               ? <CenterPanel showScriptPanel={drawingFocused} />
               : <DecisionBoard
                   boardView="split"
-                  onBackToStoryboard={!leftPanelVisible ? () => {
-                    leaveReview()
-                    setLeftPanelVisible(true)
-                    setMaximizedPanel('left')
-                  } : null}
+                  onBackToStoryboard={!leftPanelVisible ? returnToStoryboard : null}
                 />}
           </div>
         </section>

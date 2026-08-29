@@ -9,6 +9,7 @@ const LENSES = [
   { id: 'camera', label: '촬영', mark: 'C' },
   { id: 'editing', label: '편집', mark: 'E' },
 ]
+const EMPTY_DIAGNOSES = new Map()
 
 const anchorKindLabel = (kind) => ({
   shot: '컷',
@@ -25,7 +26,7 @@ const anchorKindLabel = (kind) => ({
 export default function IssueInspector({
   issue,
   issues = [],
-  diagnosesById,
+  diagnosesById = EMPTY_DIAGNOSES,
   relations = [],
   lensChecks = {},
   shots = [],
@@ -44,6 +45,9 @@ export default function IssueInspector({
   seamOperation = null,
   removingPanel = null,
 }) {
+  // 비동기 분석 결과가 교체되는 한 프레임에는 Map이 아직 전달되지 않을 수
+  // 있다. 검토 화면은 그때 빈 Inspector를 보여야지 전체를 멈추면 안 된다.
+  const diagnosisMap = diagnosesById instanceof Map ? diagnosesById : EMPTY_DIAGNOSES
   // 지금 그림 위에 표시를 얹고 있는 렌즈. 그림은 그대로 있고 이것만
   // 바뀐다 (`LENS_TRACKS_UI.md` 4장).
   //
@@ -143,7 +147,7 @@ export default function IssueInspector({
   const diagnosisIds = new Set(issue.diagnosis_ids || [])
   const perspectives = LENSES.map((lens) => {
     const diagnosis = [...diagnosisIds]
-      .map((id) => diagnosesById.get(id))
+      .map((id) => diagnosisMap.get(id))
       .find((entry) => entry?.lens === lens.id)
     return { lens, diagnosis, check: lensChecks[lens.id] || null }
   })
@@ -244,13 +248,18 @@ export default function IssueInspector({
   // 선택 Issue를 처음 짚은 Lens가 그래프의 중심이다. 다른 Lens는 이
   // 판단과 어떤 관계를 맺는지 위·아래 가지로 붙는다.
   const relationCenterLens = LENSES.find((lens) => lens.id === issue.origin_lens)
-    || primaryPerspective.lens
-  const relationLanes = relatedRelations.map((relation) => {
+    || primaryPerspective?.lens
+    || null
+  // 관객에서 막 넘어온 Issue는 아직 어느 Lens도 분석하지 않은 상태다.
+  // 이때는 관계 그래프의 중심이 될 Lens가 없으므로, 임의로 하나를 꾸며
+  // 내지 않고 관계 보기를 비워 둔다. 이전에는 여기서 null.lens를 읽어
+  // 연출 검토 전환 전체가 크래시했다.
+  const relationLanes = relationCenterLens ? relatedRelations.map((relation) => {
     const connected = (relation.lenses || []).filter((lensId) => lensId !== relationCenterLens.id)
     const otherLens = LENSES.find((lens) => lens.id === connected[0])
       || LENSES.find((lens) => lens.id !== relationCenterLens.id && (relation.lenses || []).includes(lens.id))
     return otherLens ? { relation, otherLens } : null
-  }).filter(Boolean)
+  }).filter(Boolean) : []
   // 중심(130, 30, r=12)에서 좌우 노드(46/214, 96, r=12)로 뻗는 두
   // 변이 좌우 완전히 대칭이어야 화살표 각도가 자연스럽다. 곡선
   // 제어점을 눈대중 값으로 두면(예전 값) 두 변의 곡률이 미묘하게

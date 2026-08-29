@@ -186,7 +186,10 @@ COMPARISON_SCHEMA = {
                     "common_reading": {"type": "string"},
                     "divergences": {
                         "type": "array",
-                        "maxItems": 3,
+                        # 갈림은 예외적인 검토 지점이다. 세 개를 허용하면
+                        # 비교 모델이 조건별 표현 차이까지 문제처럼 늘어놓는
+                        # 경향이 있어, 정말 중요한 두 지점까지만 받는다.
+                        "maxItems": 2,
                         "items": {
                             "type": "object",
                             "additionalProperties": False,
@@ -196,9 +199,13 @@ COMPARISON_SCHEMA = {
                             ],
                             "properties": {
                                 "panel_orders": {"type": "array", "items": {"type": "integer"}},
-                                "shared_cues": {"type": "array", "items": {"type": "string"}},
+                                "shared_cues": {
+                                    "type": "array", "minItems": 1, "maxItems": 2,
+                                    "items": {"type": "string"},
+                                },
                                 "readings": {
                                     "type": "array",
+                                    "minItems": 2,
                                     "items": {
                                         "type": "object",
                                         "additionalProperties": False,
@@ -250,7 +257,7 @@ The response is shown directly to a creator. Use everyday Korean for an adult co
 Your reading condition is: {condition['label']}.
 {condition['instruction']}
 This condition is not a real demographic claim or a real person's voice. It only sets what you attend to while reading.
-The three conditions must produce meaningfully different reading traces when the panels provide a basis: basic on-screen understanding, the emphasis made by screen construction, or the connection created between cuts. Do not force a difference where the pixels do not support one.
+The conditions may attend to different aspects of the same panels: basic on-screen understanding, screen construction, or cut connection. That difference in attention is expected; do not manufacture a different story meaning, emotion, or conclusion just to make the traces distinct.
 
 Return exactly one cumulative Initial Reading. It is one plausible reading, never a claim about real audience groups.
 
@@ -399,15 +406,21 @@ async def _compare_readings(
     prompt = """Compare independent, intention-blind storyboard reading records written by different reading conditions. Write Korean in short, everyday sentences for a creator. Do not use academic, critic-like, or demographic language. Say what was seen and how it led to a different reading, rather than naming an abstract analytical concept.
 Do not invent a real audience consensus, demographic fact, screenplay fact, or creator intention. Do not declare a difference a flaw just because the readings differ.
 
-Return one short common_reading only if the records actually share a flow. Then return zero to three divergences only where the conditions reach meaningfully different interpretations at a panel or adjacent panel range. Divergence ranges must not overlap: one panel or cut connection gets at most one divergence. Order them from the most consequential difference to the least. Each readings item must use the matching condition_id and its differing reading in plain language, at most 60 Korean characters — it is shown in a narrow side panel, so a longer line is cut off. shared_cues must quote only short visible-cue phrases already present in the records. why_it_matters explains what decision the creator may need to consider, not what they should choose.
+Return one short common_reading only if the records actually share a flow. **The default result is no divergences.** Return at most two divergences, and only after every rule below is satisfied. Divergence ranges must not overlap: one panel or cut connection gets at most one divergence. Order them from the most consequential difference to the least. Each readings item must use the matching condition_id and its differing reading in plain language, at most 60 Korean characters — it is shown in a narrow side panel, so a longer line is cut off. shared_cues must quote one or two short visible-cue phrases already present in the records. why_it_matters explains the concrete decision fork the creator may need to consider, not what they should choose.
 
-Only create a divergence when it can be inspected through mise, camera, or editing. Do not create one merely because identity, goal, or causal meaning remains unavailable from the panels; leave that uncertainty in the reading records. Use issue_kind and suspected_cause only to classify where to inspect the difference: element_visibility for hard-to-identify visible elements; spatial_relation for blocking/props/position; framing_readability for framing or emphasis; cut_connection for an unclear relation across panels; information_order for confusing reveal order. Do not create a divergence when the records merely use different wording.
+A divergence is **not** a difference in interpretation, emphasis, emotion, prediction, or attention. Those differences are expected because the records were deliberately written under different conditions. The default result is therefore an empty divergences list.
+
+Create a divergence only for a concrete, visually checkable contradiction that could make the storyboard communicate two incompatible *facts*: who or what is shown, where it is positioned or facing, what action is visibly happening, whether two adjacent cuts visibly establish a connection, or whether a specific piece of information has appeared. Both records must make opposing, committed claims about the same fact and quote the same visible cue or cut connection. A condition merely omitting a cue, using weaker language, leaving a possibility open, or discussing a different aspect is never a contradiction.
+
+Before creating one, apply this counterfactual: if the condition labels were removed, would a creator still see an explicit factual conflict that must be resolved in the panels? If not, return no divergence. In particular, do NOT create one for different wording, detail level, emotional vocabulary, confidence, tone, one condition mentioning framing while another describes plot, or even competing story interpretations such as “discovery” versus “alarm.” Those are plausible readings, not a failure to flag. Do NOT create one because identity, goal, or causal meaning is unavailable from the panels; leave that uncertainty in the reading records. Only after this threshold is met, use issue_kind and suspected_cause to classify the directly inspectable source: element_visibility for hard-to-identify visible elements; spatial_relation for blocking/props/position; framing_readability for framing or emphasis; cut_connection for an unclear relation across panels; information_order for information visibly revealed too early, too late, or inconsistently.
 
 Here are the independent records:\n""" + json.dumps(records, ensure_ascii=False)
     response = await client.chat.completions.create(
         # 이쪽은 이미 쓰인 기록을 비교하는 텍스트 작업이라 그림을 보지 않는다.
-        # 다만 지적을 뭉뚱그리지 않고 컷별로 갈라내야 해서 nano로는 얕았다.
-        model=os.getenv("VIEWER_COMPARISON_MODEL", "gpt-5.4-mini"),
+        # 다만 작은 모델은 조건별 **초점 차이**를 해석 갈림으로 과잉 분류했다.
+        # 독립된 읽기가 정말 양립 불가능한지 가리는 판단이므로 읽기와 같은
+        # 기본 모델을 쓴다. 비용을 우선하는 실험에서는 환경 변수로 내릴 수 있다.
+        model=os.getenv("VIEWER_COMPARISON_MODEL", "gpt-5.4"),
         messages=[{"role": "user", "content": prompt}],
         response_format={"type": "json_schema", "json_schema": COMPARISON_SCHEMA},
         max_completion_tokens=2200,
