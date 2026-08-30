@@ -109,10 +109,9 @@ class EnhanceSketchRequest(BaseModel):
     style: Optional[str] = ""
     style_preset: Literal["rough", "detailed", "photoreal"] = "rough"
     layout: Optional[str] = ""
-    # "add" — 그린 것을 그대로 두고 선을 몇 개 보탠다.
-    # "restyle" — 같은 그림을 씬의 그림체로 다시 그린다. 손으로 그린 패널과
-    # 생성한 패널이 섞였을 때 한 보드로 보이게 하는 쪽이다.
-    mode: Optional[str] = "add"
+    # 기본은 스케치를 보드의 그림체로 맞추는 것이다. add는 이전 클라이언트
+    # 호환을 위해서만 허용한다.
+    mode: Optional[str] = "restyle"
 
 # Response: Enhance sketch
 class EnhanceSketchResponse(BaseModel):
@@ -822,6 +821,19 @@ class DirectingLensComparison(BaseModel):
     differences: List[DirectingComparisonDifference] = Field(min_length=2, max_length=3)
 
 
+class DirectingHold(BaseModel):
+    """이 자리를 보고 **바꿀 필요가 없다**고 판단한 렌즈와 그 근거.
+
+    진단이 아니므로 Issue의 `lenses`에는 들어가지 않는다. 그래도 화면에는
+    남아야 한다 — 한 렌즈가 고치자고 할 때 다른 렌즈가 그대로 두자고 한
+    사실이 사라지면, 감독은 바꾸자는 쪽 말만 듣고 판정하게 된다.
+    """
+
+    lens: DirectingLens
+    # 왜 지금도 충분한가. 그 렌즈의 summary를 그대로 옮긴다.
+    reason: str = ""
+
+
 class DirectingIssue(BaseModel):
     """한 자리에서 하나의 현상. 트랙의 마커 하나이자 Inspector 카드 하나.
 
@@ -851,6 +863,11 @@ class DirectingIssue(BaseModel):
     lenses: List[DirectingLens] = Field(min_length=1)
     # 처음 짚은 렌즈. consequence면 원인 쪽.
     origin_lens: Optional[DirectingLens] = None
+    # 이 범위를 보고 **바꿀 필요가 없다**고 판단한 렌즈. 진단이 없으므로
+    # `lenses`에 넣을 수 없지만(그 목록은 문제를 짚은 렌즈다), 감독은 이
+    # 판단도 봐야 한다 — 한 렌즈가 고치자고 할 때 다른 렌즈가 그대로 두자고
+    # 한 사실이 화면에서 사라지면, 바꾸자는 쪽 말만 남는다.
+    holding_lenses: List["DirectingHold"] = Field(default_factory=list)
     # 이 Issue를 이루는 관계들. 종류와 방향이 여기 남는다.
     relation_types: List[Literal["agreement", "conflict", "consequence"]] = Field(
         default_factory=list

@@ -243,8 +243,8 @@
 }
 
 /* 한 번에 훑는 목록은 오른쪽 흐름의 대체가 아니라, 큰 증거 사진 바로
-   아래에 붙는다. 각 판단의 첫 문장만 세로로 두고, 근거·수정 버튼·질문은
-   다시 반복하지 않는다. */
+   아래에 붙는다. 판단과 이미 받은 수정 방향을 함께 보여 주되 실제 수정
+   작업은 렌즈별 수정 화면에서 이어 간다. */
 .issue-lens-overview {
   display: grid;
   gap: 7px;
@@ -264,15 +264,25 @@
 
 .issue-lens-overview-item {
   --lens: var(--text-muted);
+  /* 아래 수정 방향 칸이 이 카드의 실제 폭에 맞춰 접힌다. 바깥 뷰포트로
+     판단하면 오른쪽 흐름(236px) 안에서 다시 넘친다. */
+  container-type: inline-size;
+  overflow: hidden;
+  width: 100%;
+  border: 1px solid color-mix(in srgb, var(--lens), transparent 74%);
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--lens), transparent 94%);
+}
+
+.issue-lens-overview-reading {
   display: grid;
   grid-template-columns: 15px auto auto minmax(0, 1fr);
   align-items: start;
   gap: 7px;
   width: 100%;
   padding: 10px 10px;
-  border: 1px solid color-mix(in srgb, var(--lens), transparent 74%);
-  border-radius: 6px;
-  background: color-mix(in srgb, var(--lens), transparent 94%);
+  border: 0;
+  background: transparent;
   color: rgba(226, 232, 240, 0.76);
   font: inherit;
   /* 이 줄의 본문은 렌즈가 실제로 내린 판단이다 — 읽는 자리이므로
@@ -284,12 +294,12 @@
 }
 
 .issue-lens-overview-item:hover { background: color-mix(in srgb, var(--lens), transparent 87%); }
-.issue-lens-overview-item:focus-visible { outline: 2px solid var(--lens); outline-offset: 2px; }
+.issue-lens-overview-reading:focus-visible { outline: 2px solid var(--lens); outline-offset: -2px; }
 .issue-lens-overview-item.lens-mise { --lens: var(--mise-lens); }
 .issue-lens-overview-item.lens-camera { --lens: var(--camera-lens); }
 .issue-lens-overview-item.lens-editing { --lens: var(--editing-lens); }
-.issue-lens-overview-item b { color: var(--lens); font-size: 11px; }
-.issue-lens-overview-item strong { color: color-mix(in srgb, var(--lens), white 35%); font-size: 11.5px; }
+.issue-lens-overview-reading b { color: var(--lens); font-size: 11px; }
+.issue-lens-overview-reading strong { color: color-mix(in srgb, var(--lens), white 35%); font-size: 11.5px; }
 .issue-lens-stance {
   padding: 1px 5px;
   border-radius: 3px;
@@ -304,7 +314,88 @@
 .issue-lens-stance.stance-change { background: color-mix(in srgb, var(--lens), transparent 82%); color: color-mix(in srgb, var(--lens), white 28%); }
 .issue-lens-stance.stance-keep { color: #cbd5e1; }
 .issue-lens-stance.stance-different { color: #fcd34d; }
-.issue-lens-overview-item span { min-width: 0; color: rgba(226, 232, 240, 0.68); }
+.issue-lens-overview-reading > span { min-width: 0; color: rgba(226, 232, 240, 0.68); }
+
+/* 이 칸은 오른쪽 흐름 안이라 236px까지 좁아진다. 라벨·목록·버튼을 한 줄에
+   놓으면 설명이 네댓 줄로 접혀 읽을 수 없으므로, 기본은 세로로 쌓고 폭이
+   나올 때만 가로로 편다. */
+.issue-lens-overview-directions {
+  display: grid;
+  gap: 7px;
+  /* 세로로 쌓일 때는 얕게 들여쓴다. 32px는 가로로 펼 때 판단 줄의 렌즈
+     기호와 줄을 맞추려는 값이라, 좁은 폭에서는 본문만 밀어낸다. */
+  padding: 9px 10px 10px 14px;
+  border-top: 1px solid color-mix(in srgb, var(--lens), transparent 84%);
+  background: rgba(2, 4, 7, 0.22);
+}
+
+@container (min-width: 460px) {
+  .issue-lens-overview-directions {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: start;
+    gap: 8px 10px;
+    padding-left: 32px;
+  }
+}
+
+.issue-lens-overview-directions > span {
+  padding-top: 3px;
+  color: color-mix(in srgb, var(--lens), white 26%);
+  font-size: 9.5px;
+  font-weight: 850;
+  white-space: nowrap;
+}
+
+.issue-lens-overview-directions ul {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.issue-lens-overview-directions li {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+  min-width: 0;
+}
+
+.issue-lens-overview-directions li strong {
+  flex: none;
+  color: rgba(241, 245, 249, 0.86);
+  font-size: 10.5px;
+}
+
+.issue-lens-overview-directions li p {
+  min-width: 0;
+  margin: 0;
+  color: rgba(203, 213, 225, 0.62);
+  font-size: 10.5px;
+  line-height: 1.45;
+}
+
+.issue-lens-overview-directions > button {
+  min-height: 27px;
+  padding: 0 9px;
+  border: 1px solid color-mix(in srgb, var(--lens), transparent 58%);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--lens), transparent 90%);
+  color: color-mix(in srgb, var(--lens), white 30%);
+  font: inherit;
+  font-size: 10px;
+  font-weight: 850;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.issue-lens-overview-directions > button:hover {
+  background: color-mix(in srgb, var(--lens), transparent 82%);
+}
+
+/* 세로로 쌓일 때. 버튼이 칸 전체로 늘어나면 목록보다 무거워 보인다. */
+.issue-lens-overview-directions > button { justify-self: start; }
 
 /* 카드의 배경이 아니라, 관점 흐름선 위에서 움직이는 작은 광학 렌즈다.
    비친 빛·가장자리·안쪽 그림자를 분리해 유리의 두께가 느껴지게 한다. */

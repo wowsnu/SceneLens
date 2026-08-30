@@ -16,6 +16,7 @@ from app.services.shot_principles import ANGLES, MOVES, SHOT_SIZES
 
 from app.models.schemas import (
     DirectingCommonFinding,
+    DirectingHold,
     DirectingLensComparison,
     DirectingIssue,
     DirectingLens,
@@ -993,7 +994,7 @@ def _validate_referenced_panels(
     Issue. Requiring S2 in targets here conflicts with `_validate_issue_focus`.
     """
     panel_ids = {panel.id for panel in request.panels}
-    items = [
+    diagnosis_items = [
         *(
             (
                 diagnosis,
@@ -1007,9 +1008,12 @@ def _validate_referenced_panels(
             )
             for diagnosis in result.diagnoses
         ),
-        *((question, question.prompt) for question in questions),
     ]
-    for item, text in items:
+    items = [
+        *((item, text, False) for item, text in diagnosis_items),
+        *((question, question.prompt, True) for question in questions),
+    ]
+    for item, text, is_question in items:
         target_panel_ids = {
             panel_id
             for target in item.targets
@@ -1032,6 +1036,21 @@ def _validate_referenced_panels(
             raise ValueError(
                 "every panel discussed in a diagnosis or question must appear in targets: "
                 + ", ".join(sorted(missing_targets))
+            )
+        # 일반 검토의 질문이 컷 번호를 직접 말했다면 targets도 바로 그 컷만
+        # 가리켜야 한다. `S2`를 묻는 문장에 S3까지 targets로 넣으면 프런트가
+        # 그 질문을 S3 Issue의 검토 방안으로 연결할 수 있다. 컷 번호를 쓰지
+        # 않은 "두 컷의 연결" 같은 질문은 기존처럼 level/targets로 판단한다.
+        if (
+            not request.focus
+            and is_question
+            and referenced_panel_ids
+            and target_panel_ids != referenced_panel_ids
+        ):
+            raise ValueError(
+                "a question that names panel ids must target exactly those panels: "
+                f"named={', '.join(sorted(referenced_panel_ids))}; "
+                f"targets={', '.join(sorted(target_panel_ids))}"
             )
 
 
@@ -1588,6 +1607,14 @@ def _lens_digest(lens_results: dict) -> str:
             ]
             if moves:
                 lines.append(f"    갈 수 있는 길: {' / '.join(moves)}")
+        # `keep`인 렌즈는 진단이 없어 위 블록이 통째로 비고, 판정 한 줄만
+        # 남는다. 그러면 "촬영은 왜 지금도 충분하다고 보는가"를 알 수 없어
+        # conflict(Tension)를 만들 재료가 없다. 그 렌즈가 어느 층위를 어떤
+        # 근거로 유지로 봤는지 함께 넘긴다.
+        if result.stance == "keep" or not result.diagnoses:
+            for assessment in result.level_assessments:
+                if assessment.status == "keep" and assessment.summary:
+                    lines.append(f"    (유지 근거) {assessment.level}: {assessment.summary}")
         for assessment in result.level_assessments:
             if assessment.open_question:
                 lines.append(f"  - (미결) {assessment.level}: {assessment.open_question}")
@@ -1834,6 +1861,13 @@ def _build_issues(
             title = _title_from_rule(picked[0])
 
         anchor, anchor_kind = _anchor_for(picked)
+        # 이 범위를 `keep`으로 본 렌즈. 진단이 없어 위 클러스터에는 들어오지
+        # 않지만, 감독은 "촬영은 이대로도 된다고 봤다"를 함께 읽어야 한다.
+        holding = [
+            DirectingHold(lens=lens, reason=result.summary or "")
+            for lens, result in lens_results.items()
+            if getattr(result, "stance", None) == "keep" and lens not in lenses
+        ]
         issues.append(DirectingIssue(
             id=f"issue-{index}",
             anchor=anchor,
@@ -1842,6 +1876,7 @@ def _build_issues(
             diagnosis_ids=ids,
             lenses=lenses,
             origin_lens=origin,
+            holding_lenses=holding,
             # 방향이 있는 관계가 먼저다. consequence는 어디를 고쳐야
             # 하는지까지 말해 주므로 감독이 먼저 읽어야 한다.
             relation_types=sorted(

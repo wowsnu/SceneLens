@@ -166,14 +166,26 @@ export default function IssueInspector({
   //
   // 진단으로 처음부터 들어와 있던 렌즈(`addedAt`이 없다)는 감독이 부른
   // 것이 아니므로 부른 렌즈들보다 앞에 둔다.
+  // 이 범위를 보고 `바꿀 필요 없다`고 판단한 렌즈. 진단이 없어 위 목록에는
+  // 들어오지 않지만, 감독은 그 판단도 봐야 한다 — 고치자는 렌즈만 보이면
+  // 유지하자는 쪽 근거가 화면에서 사라진다.
+  const holdingByLens = new Map(
+    (issue.holding_lenses || [])
+      .map((entry) => (typeof entry === 'string' ? { lens: entry, reason: '' } : entry))
+      .filter((entry) => entry?.lens)
+      .map((entry) => [entry.lens, entry.reason || '']),
+  )
+  const holdingLensIds = new Set(holdingByLens.keys())
   const joinedPerspectives = perspectives.filter(({ lens, diagnosis, check }) => (
-    lens.id !== primaryPerspective?.lens.id && Boolean(diagnosis || check)
+    lens.id !== primaryPerspective?.lens.id
+    && Boolean(diagnosis || check || holdingLensIds.has(lens.id))
   )).sort((a, b) => (
     (a.check?.addedAt ?? 0) - (b.check?.addedAt ?? 0)
   ))
   const visiblePerspectives = [primaryPerspective, ...joinedPerspectives].filter(Boolean)
   const availablePerspectives = perspectives.filter(({ lens, diagnosis, check }) => (
-    lens.id !== primaryPerspective?.lens.id && !diagnosis && !check
+    lens.id !== primaryPerspective?.lens.id
+    && !diagnosis && !check && !holdingLensIds.has(lens.id)
   ))
   // 새 렌즈를 부르는 일은 아직 왼쪽 증거를 바꾸지 않는다. 응답이 실제로
   // 생긴 뒤에만 그 렌즈를 눌러 같은 그림을 다른 표시로 본다.
@@ -188,16 +200,28 @@ export default function IssueInspector({
     // 처음 분석 결과는 `{ lens, diagnosis: { diagnosis: '…' } }`로 한 겹
     // 감싸져 있고, 추가 검토 결과는 바로 diagnosis 객체다. 객체를 JSX에
     // 넣으면 렌더가 멈추므로 최종 문장만 정상화한다.
+    const holdReason = holdingByLens.get(lens.id)
     const reading = diagnosis?.diagnosis?.diagnosis
       || check?.diagnosis?.diagnosis
       || check?.reading
+      || holdReason
       || ''
+    const reviseTarget = diagnosis?.diagnosis || check?.diagnosis || null
+    const directions = (reviseTarget?.alternatives || [])
+      .filter((alternative) => alternative.kind === 'change')
     return {
       lens,
       reading: typeof reading === 'string' ? reading : '',
-      stance: diagnosis?.stance || check?.stance || (diagnosis || check?.diagnosis ? 'change' : check?.status === 'ready' ? 'keep' : 'different'),
+      // 유지로 판단한 렌즈는 진단도 체크도 없다. 그 사실을 stance로
+      // 먼저 읽어야 `different`로 잘못 떨어지지 않는다.
+      stance: diagnosis?.stance || check?.stance
+        || (diagnosis || check?.diagnosis ? 'change'
+          : holdingLensIds.has(lens.id) ? 'keep'
+            : check?.status === 'ready' ? 'keep' : 'different'),
       loading: check?.status === 'loading' || (lens.id === issue.origin_lens && answeringMainLensQuestion),
-      clear: check?.status === 'ready' && !diagnosis && !check?.diagnosis && !check?.reading,
+      clear: check?.status === 'ready' && !diagnosis && !check?.diagnosis && !check?.reading && !holdReason,
+      reviseTarget,
+      directions,
     }
   })
   // 같은 자리에 걸린 다른 Issue. 두 렌즈가 같은 컷을 짚었는데 관계가
@@ -373,30 +397,60 @@ export default function IssueInspector({
     </div>
   )
   // 모아 보기는 오른쪽 흐름의 축소판이 아니다. 하나의 큰 증거 사진 아래에
-  // 참여 Lens의 판단을 세로로 놓아, 같은 장면을 두고 무엇을 다르게 읽었는지
-  // 한 번에 비교한다. 한 항목을 누르면 다시 그 Lens의 상세 읽기로 들어간다.
+  // 참여 Lens의 판단과 수정 방향을 세로로 놓아, 진단부터 고치러 가는 길까지
+  // 한 번에 비교한다. 수정본을 여기서 만들지는 않는다 — 실제 작업은 각
+  // Lens의 기존 수정 화면에서 한다.
   const overviewReading = !revisionWorkspace && (
     <section className="issue-lens-overview issue-lens-overview-on-canvas" aria-label="참여 Lens 판단 모아 보기">
-      <span className="issue-lens-overview-label">이 장면을 본 판단</span>
-      {overviewEntries.map(({ lens, reading, stance, loading, clear }) => (
-        <button
+      <span className="issue-lens-overview-label">이 장면을 본 판단과 수정 방향</span>
+      {overviewEntries.map(({ lens, reading, stance, loading, clear, reviseTarget, directions }) => (
+        <article
           key={lens.id}
-          type="button"
           className={`issue-lens-overview-item lens-${lens.id}`}
-          onClick={() => {
-            setActiveLens(lens.id)
-            setOverviewOpened({ issueId: issue.id, open: false })
-          }}
         >
-          <b>{lens.mark}</b>
-          <strong>{lens.label}</strong>
-          <em className={`issue-lens-stance stance-${stance}`}>
-            {stance === 'keep' ? '현재 유지' : stance === 'different' ? '다른 concern' : '수정 필요'}
-          </em>
-          <span>
-            {loading ? '검토 중…' : clear ? '이 관점에서는 별도 문제를 찾지 못했습니다.' : reading || '판단을 기다리는 중입니다.'}
-          </span>
-        </button>
+          <button
+            type="button"
+            className="issue-lens-overview-reading"
+            onClick={() => {
+              setActiveLens(lens.id)
+              setOverviewOpened({ issueId: issue.id, open: false })
+            }}
+          >
+            <b>{lens.mark}</b>
+            <strong>{lens.label}</strong>
+            <em className={`issue-lens-stance stance-${stance}`}>
+              {stance === 'keep' ? '현재 유지' : stance === 'different' ? '다르게 봄' : '수정 필요'}
+            </em>
+            <span>
+              {loading ? '검토 중…' : clear ? '이 관점에서는 별도 문제를 찾지 못했습니다.' : reading || '판단을 기다리는 중입니다.'}
+            </span>
+          </button>
+          {/* 유지 의견인 렌즈에는 수정 방향을 두지 않는다. `이대로 괜찮다`고
+              말해 놓고 그 아래 `수정하기`가 있으면 두 말이 부딪힌다. */}
+          {reviseTarget && stance !== 'keep' && (
+            <div className="issue-lens-overview-directions">
+              <span>수정 방향</span>
+              <ul>
+                {directions.length > 0 ? directions.map((direction) => (
+                  <li key={`${direction.label}:${direction.effect}`}>
+                    <strong>{direction.label}</strong>
+                    <p>{direction.effect}</p>
+                  </li>
+                )) : (
+                  <li>
+                    <p>{reviseTarget.suggested_action}</p>
+                  </li>
+                )}
+              </ul>
+              <button
+                type="button"
+                onClick={() => onRevise?.({ lens: lens.id, diagnosis: reviseTarget }, issue)}
+              >
+                {lens.label}에서 수정하기
+              </button>
+            </div>
+          )}
+        </article>
       ))}
     </section>
   )
