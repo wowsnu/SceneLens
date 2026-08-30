@@ -11,10 +11,14 @@ function RecallItem({ label, children, accent = false }) {
 }
 
 export default function AudienceAfterReading({ readings = [], conditions = [] }) {
-  if (readings.length === 0) return null
+  // 응답 모양을 믿지 않는다. 이 화면은 검토 전체를 들고 있어, 여기서 한
+  // 번 터지면 감독이 하던 작업까지 사라진다.
+  const entries = Array.isArray(readings) ? readings : []
+  if (entries.length === 0) return null
 
   const conditionLabel = (conditionId) => {
-    const condition = conditions.find((entry) => entry.id === conditionId)
+    const condition = (Array.isArray(conditions) ? conditions : [])
+      .find((entry) => entry?.id === conditionId)
     return condition?.title || condition?.label || conditionId
   }
 
@@ -29,27 +33,28 @@ export default function AudienceAfterReading({ readings = [], conditions = [] })
       </header>
 
       <div className="audience-after-reading-list">
-        {readings.map((entry, readerIndex) => {
-          const reading = entry.reading || {}
+        {entries.map((entry, readerIndex) => {
+          const reading = entry?.reading || {}
           const recall = reading.recall || {}
+          const clues = Array.isArray(recall.remembered_clues) ? recall.remembered_clues : []
           return (
             <article
-              key={entry.condition_id}
+              key={entry?.condition_id || readerIndex}
               className="audience-after-reading-card"
               style={{ '--reader': `var(--reader-${readerIndex % 4})` }}
             >
               <header>
                 <span aria-hidden="true">{readerIndex + 1}</span>
-                <strong>{conditionLabel(entry.condition_id)}</strong>
+                <strong>{conditionLabel(entry?.condition_id)}</strong>
               </header>
 
               <section className="audience-recall" aria-label="다 보고 난 뒤">
                 <dl>
                   <RecallItem label="기억한 사건">{recall.remembered_event}</RecallItem>
-                  {(recall.remembered_clues || []).length > 0 && (
+                  {clues.length > 0 && (
                     <RecallItem label="기억한 단서">
                       <span className="audience-recall-clues">
-                        {recall.remembered_clues.map((clue, index) => (
+                        {clues.map((clue, index) => (
                           <i key={`${clue}:${index}`}>{clue}</i>
                         ))}
                       </span>
