@@ -155,12 +155,91 @@ const resolveMentions = (text = '', cast = []) => {
 // 컷 내용을 그 자리에서 고친다. 타이핑마다 스토어를 고치면 열여덟 행이
 // 매번 다시 그려지므로, 편집 중에는 로컬에 두고 손을 뗄 때 커밋한다.
 // 커밋된 문장이 곧 그림 프롬프트의 본문이 된다 (`buildCutPrompt`).
+// 본문을 `@이름` 조각으로 쪼갠다. 읽는 동안에는 그 조각만 색을 입혀,
+// 인물 지시가 일반 문장과 구분되게 한다.
+//
+// textarea는 일부 글자만 색칠할 수 없다. 그래서 편집 중이 아닐 때만 이
+// 조각들을 보여 주고, 누르면 평범한 입력칸으로 바뀐다 — 색칠한 겹을
+// 입력칸 위에 정확히 포개는 방식은 줄바꿈·자동 높이에서 어긋난다.
+const splitMentions = (text = '', cast = []) => {
+  const resolved = new Map(resolveMentions(text, cast).map((entry) => [entry.token, entry]))
+  const parts = []
+  let last = 0
+  for (const match of String(text).matchAll(/(^|[\s([{'"])@([^\s@,，.。!?…]+)/g)) {
+    const at = match.index + match[1].length
+    if (at > last) parts.push({ text: String(text).slice(last, at) })
+    parts.push({ text: match[0].slice(match[1].length), mention: resolved.get(match[2]) })
+    last = at + match[0].length - match[1].length
+  }
+  if (last < String(text).length) parts.push({ text: String(text).slice(last) })
+  return parts
+}
+
 function ConteContent({ cutId, value, onCommit, cast = EMPTY_CAST }) {
   const [draft, setDraft] = useState(value)
+  const [editing, setEditing] = useState(false)
   // 고친 것이 아직 안 들어갔는지 보여준다. 손을 뗄 때 저장되는데, 그
   // 사실이 화면에 없으면 고치고도 반영됐는지 알 수 없어 다시 누르게 된다.
   const dirty = draft.trim() !== value
   const mentions = resolveMentions(draft, cast)
+  const highlighted = splitMentions(draft, cast)
+  const hasMention = highlighted.some((part) => part.mention)
+
+  // 읽는 중 — `@이름`에 색이 들어간 문장을 보여 준다. 누르면 편집으로
+  // 바뀐다. 인물 지시가 없으면 굳이 갈라 둘 이유가 없다.
+  if (!editing && hasMention) {
+    return (
+      <div className={`sb-conte-content-wrap${dirty ? ' is-dirty' : ''}`}>
+        <div
+          className="sb-conte-content sb-conte-content-read"
+          role="textbox"
+          tabIndex={0}
+          title="눌러서 고치기"
+          onClick={(event) => {
+            event.stopPropagation()
+            setEditing(true)
+          }}
+          onFocus={() => setEditing(true)}
+        >
+          {highlighted.map((part, index) => (
+            part.mention
+              ? (
+                <mark
+                  key={index}
+                  className={part.mention.matched ? 'is-matched' : 'is-unmatched'}
+                >
+                  {part.text}
+                </mark>
+              )
+              : <span key={index}>{part.text}</span>
+          ))}
+        </div>
+        {mentions.length > 0 && (
+          <div className="sb-character-mentions" aria-label="이 컷에 지정한 인물">
+            {mentions.map((mention) => (
+              <span
+                key={mention.token}
+                className={mention.matched ? 'is-matched' : 'is-unmatched'}
+                title={mention.matched
+                  ? (mention.exact
+                    ? `${mention.name} 기준이 이 컷에 물립니다`
+                    : `@${mention.token} → ${mention.name} 기준이 이 컷에 물립니다`)
+                  : mention.ambiguous
+                    ? `${mention.options.join(', ')} 중 누구인지 정할 수 없습니다. 이름을 끝까지 적어 주세요.`
+                    : '이런 이름의 인물이 없습니다. 인물 기준에 있는 이름으로 적어 주세요.'}
+              >
+                @{mention.matched ? mention.name : mention.token}
+                {mention.matched && !mention.exact && <i>← @{mention.token}</i>}
+                {!mention.matched && <i>{mention.ambiguous ? '모호함' : '없는 인물'}</i>}
+              </span>
+            ))}
+          </div>
+        )}
+        {dirty && <span className="sb-conte-content-dirty">고친 내용 · 그리면 반영됩니다</span>}
+      </div>
+    )
+  }
+
   return (
     <div className={`sb-conte-content-wrap${dirty ? ' is-dirty' : ''}`}>
       <textarea
@@ -176,7 +255,11 @@ function ConteContent({ cutId, value, onCommit, cast = EMPTY_CAST }) {
         placeholder="이 컷에서 무슨 일이 일어나는가"
         onClick={(event) => event.stopPropagation()}
         onChange={(event) => setDraft(event.target.value)}
-        onBlur={() => onCommit(draft.trim())}
+        onBlur={() => {
+          onCommit(draft.trim())
+          // 읽는 모습으로 돌아간다 — 그래야 `@이름`에 다시 색이 들어간다.
+          setEditing(false)
+        }}
         onKeyDown={(event) => {
           // Escape는 되돌린다. 잘못 고쳤을 때 원문으로 돌아갈 길이 있어야 한다.
           if (event.key === 'Escape') {
@@ -187,6 +270,12 @@ function ConteContent({ cutId, value, onCommit, cast = EMPTY_CAST }) {
         ref={(el) => {
           // 내용만큼 늘린다. 스크롤바가 생기면 문장 뒷부분이 표에서 사라진다.
           if (!el) return
+          // 읽는 모습에서 막 넘어왔으면 곧바로 칠 수 있게 커서를 준다.
+          if (editing && document.activeElement !== el) {
+            el.focus()
+            const end = el.value.length
+            el.setSelectionRange(end, end)
+          }
           el.style.height = 'auto'
           el.style.height = `${el.scrollHeight}px`
         }}

@@ -6204,6 +6204,46 @@
   overflow: hidden;
 }
 
+/* 읽는 모습. textarea는 일부 글자만 색칠할 수 없어서, 편집 중이 아닐 때만
+   이 겹으로 바꿔 `@이름`에 색을 넣는다. 크기 값은 위 입력칸과 같아야
+   전환할 때 글자가 튀지 않는다. */
+.sb-conte-content-read {
+  box-sizing: border-box;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  cursor: text;
+  outline: none;
+}
+
+.sb-conte-content-read:hover {
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+.sb-conte-content-read:focus-visible {
+  border-color: rgba(56, 189, 248, 0.5);
+}
+
+/* 본문 안의 `@이름`. 배지와 같은 색을 써서 둘이 같은 것을 가리킨다는
+   것이 보이게 한다. */
+.sb-conte-content-read mark {
+  border-radius: 3px;
+  padding: 0 2px;
+  background: transparent;
+  font-weight: 700;
+}
+
+.sb-conte-content-read mark.is-matched {
+  background: rgba(14, 116, 144, 0.28);
+  color: #7dd3fc;
+}
+
+.sb-conte-content-read mark.is-unmatched {
+  background: rgba(120, 83, 8, 0.22);
+  color: #fcd34d;
+  text-decoration: underline dashed rgba(252, 211, 77, 0.55);
+  text-underline-offset: 3px;
+}
+
 /* 평소에 입력칸으로 보이지 않게 둔다. 열여덟 줄이 전부 상자로 보이면
    표가 서식이 아니라 양식처럼 읽힌다. */
 .sb-conte-content:hover {
@@ -6221,12 +6261,14 @@
 }
 
 /* 본문에 쓴 @인물명은 생성에 물리는 명시적 인물 지시다. 일반 텍스트와
-   구분되도록 바로 아래에 색 태그로 다시 보여 준다. */
+   구분되도록 바로 아래에 색 태그로 다시 보여 준다.
+   입력칸에 딱 붙여 그 칸에 딸린 것으로 읽히게 한다 — 떨어뜨리면 본문과
+   무관한 별도 목록처럼 보인다. 좌우는 textarea의 padding에 맞춘다. */
 .sb-character-mentions {
   display: flex;
   flex-wrap: wrap;
   gap: 4px;
-  margin: 3px 6px 0;
+  margin: -1px 6px 0;
 }
 
 .sb-character-mentions span {
