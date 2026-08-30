@@ -2255,10 +2255,11 @@
   text-transform: uppercase;
 }
 
+/* 지금 무엇을 보고 있는지. 44%는 크기를 키워도 흐려 읽히지 않는다. */
 .narrative-rail-context > p {
   margin: 6px 0 0;
-  color: rgba(255, 255, 255, 0.44);
-  font-size: 13px;
+  color: rgba(255, 255, 255, 0.68);
+  font-size: 13.5px;
   line-height: 1.55;
 }
 
@@ -2279,11 +2280,13 @@
 
 /* 설명과 버튼을 같은 크기로 둔다. 이 문단이 버튼보다 작으면 정작 읽어야
    할 안내가 뒤로 물러나고 버튼만 남는다. */
+/* 다음에 무엇을 할지 알려 주는 문장이다. 라벨보다 커야 하고, 옅은
+   회색은 크기를 더 작아 보이게 하므로 대비도 함께 올린다. */
 .narrative-rail-guidance > p {
   margin: 7px 0 14px;
-  color: rgba(255, 255, 255, 0.62);
-  font-size: 12px;
-  line-height: 1.6;
+  color: rgba(255, 255, 255, 0.76);
+  font-size: 13.5px;
+  line-height: 1.62;
 }
 
 /* 확정 전에 짚어줄 것. 막지는 않으므로 경고색까지 가지 않고, 설명문과
