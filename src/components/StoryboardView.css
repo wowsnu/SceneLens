@@ -1816,7 +1816,7 @@
 
 .narrative-rail-cutplan-note {
   margin: 0 0 9px;
-  color: rgba(255, 255, 255, 0.42);
+  color: rgba(255, 255, 255, 0.6);
   font-size: 12.5px;
   line-height: 1.5;
 }
@@ -2469,7 +2469,7 @@
 
 .narrative-rail-proposal-status p {
   margin: 2px 0 0;
-  color: rgba(255, 255, 255, 0.34);
+  color: rgba(255, 255, 255, 0.58);
   font-size: 11.5px;
 }
 
@@ -3879,7 +3879,7 @@
 .rail-coverage-clear {
   margin: 0;
   padding: 0 14px 16px;
-  color: rgba(255, 255, 255, 0.36);
+  color: rgba(255, 255, 255, 0.58);
   font-size: 13px;
 }
 
@@ -4244,8 +4244,8 @@
    점검이 돌았다는 사실은 이 줄이 남긴다. */
 .rail-check-summary {
   margin: 0 14px 10px;
-  color: rgba(255, 255, 255, 0.44);
-  font-size: 11.5px;
+  color: rgba(255, 255, 255, 0.62);
+  font-size: 13px;
   line-height: 1.55;
 }
 
@@ -5022,7 +5022,7 @@
 }
 
 .narrative-rail-check-empty {
-  color: rgba(255, 255, 255, 0.4);
+  color: rgba(255, 255, 255, 0.58);
 }
 
 .narrative-rail-check-error {
