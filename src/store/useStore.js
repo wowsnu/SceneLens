@@ -789,17 +789,23 @@ export const buildCutPrompt = (cut, {
   ].filter(Boolean).join(' ')
 
   // 2문장: 화면 안에서 무슨 일이 일어나는가.
+  //
+  // `@`는 감독이 인물을 짚는 우리 문법이지 그림에 대한 지시가 아니다.
+  // 그대로 두면 이미지 모델이 낯선 기호를 지시로 오해하거나 화면에 글자로
+  // 그린다. 인물은 아래 castLine이 따로 말하므로 여기서는 뗀다. 낱말 앞에
+  // 붙은 것만 뗀다 — `a@b.com`은 멘션이 아니라 원문의 일부다.
+  const spoken = String(cut.content || '').replace(/(^|[\s([{'"])@(?=[^\s@,，.。!?…])/g, '$1')
   const isSpeech = cut.purpose === '발화' || cut.purpose === '리액션'
   const speaker = cast[0]
   let action = ''
-  if (cut.content) {
+  if (spoken) {
     if (isSpeech) {
       // 대사를 그대로 두면 이미지 모델이 글자를 그리려 한다.
       action = speaker
-        ? `${speaker}${hasFinalConsonant(speaker) ? '이' : '가'} "${cut.content}"라고 말하는 순간이다.`
-        : `누군가 "${cut.content}"라고 말하는 순간이다.`
+        ? `${speaker}${hasFinalConsonant(speaker) ? '이' : '가'} "${spoken}"라고 말하는 순간이다.`
+        : `누군가 "${spoken}"라고 말하는 순간이다.`
     } else {
-      const body = cut.content.replace(/[.。]\s*$/, '')
+      const body = spoken.replace(/[.。]\s*$/, '')
       action = `${body}.`
     }
   }

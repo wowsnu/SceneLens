@@ -452,6 +452,15 @@ export async function buildSpaceLayout({ heading, script, locationFacts = '' }) 
 // --- 패널 그림 ------------------------------------------------------------
 // 앞 공정이 조립한 프롬프트를 실제로 소비하는 자리. 씬 기준·책임 선언·
 // 이음새·샷이 전부 이 문장으로 모인다.
+// `@이름`은 감독이 인물을 짚는 우리 문법이지 그림에 대한 지시가 아니다.
+// 모델에 그대로 보내면 낯선 기호를 지시로 오해하거나 화면에 글자로 그린다.
+// 인물은 프롬프트의 인물 문장과 references가 이미 말하므로 여기서 뗀다.
+// 낱말 앞에 붙은 것만 뗀다. `a@b.com`처럼 낱말 가운데 있는 것은 멘션이
+// 아니라 원문의 일부다.
+const withoutMentionMarks = (text = '') => (
+  String(text).replace(/(^|[\s([{'"])@(?=[^\s@,，.。!?…])/g, '$1')
+)
+
 export async function generatePanelImage(
   prompt, {
     shared = '', previous = '', references = [], style = '', stylePreset = 'rough', layout = '', model = 'gpt-image-1',
@@ -467,7 +476,15 @@ export async function generatePanelImage(
     // references는 인물·공간의 레퍼런스 그림 — 글로만 기준을 주면
     // 컷마다 다른 얼굴이 나온다.
     body: JSON.stringify({
-      prompt, shared, previous, references, style, style_preset: stylePreset, layout, model, changes,
+      prompt: withoutMentionMarks(prompt),
+      shared: withoutMentionMarks(shared),
+      previous: withoutMentionMarks(previous),
+      references,
+      style,
+      style_preset: stylePreset,
+      layout,
+      model,
+      changes,
     }),
   }, 240000)
   return `data:image/png;base64,${data.image}`
