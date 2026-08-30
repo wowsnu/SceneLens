@@ -1249,9 +1249,14 @@
   font-weight: 850;
 }
 
+/* 가로로 채우고 폭이 모자라면 아래로 넘어간다. 최소폭은 기준 그림(92px)과
+   그 옆 항목값이 한 줄로 읽힐 만큼은 남겨야 한다 — 좁게 두면 `외형 기준`
+   한 줄이 두세 줄로 접힌다. 최대폭도 묶는다: 인물이 하나면 카드가 패널
+   전체로 늘어나 그림 옆이 텅 빈다. */
 .scene-basis-characters {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(215px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(340px, 460px));
+  justify-content: start;
   gap: 8px;
 }
 
@@ -1270,11 +1275,13 @@
   background: rgba(0, 0, 0, 0.12);
 }
 
+/* 기준 그림은 이후 모든 패널이 따라갈 대상이다. 얼굴·공간이 실제로
+   어떻게 생겼는지 판정할 수 있을 만큼은 커야 한다. */
 .scene-basis-image-button,
 .scene-basis-image-placeholder {
-  flex: 0 0 48px;
-  width: 48px;
-  height: 58px;
+  flex: 0 0 92px;
+  width: 92px;
+  height: 112px;
   padding: 0;
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 6px;
@@ -1290,13 +1297,13 @@
 .scene-basis-image-button::after {
   content: '확대';
   position: absolute;
-  right: 3px;
-  bottom: 3px;
-  padding: 2px 3px;
-  border-radius: 3px;
+  right: 4px;
+  bottom: 4px;
+  padding: 2px 5px;
+  border-radius: 4px;
   background: rgba(2, 6, 23, 0.74);
   color: rgba(240, 253, 244, 0.86);
-  font-size: 7px;
+  font-size: 9px;
   font-weight: 800;
   opacity: 0;
   transition: opacity 120ms ease;
@@ -1321,14 +1328,15 @@
   display: grid;
   place-items: center;
   color: rgba(167, 243, 208, 0.45);
-  font-size: 9px;
+  font-size: 11px;
   font-weight: 800;
 }
 
+/* 공간은 가로로 넓게 잡힌 그림이라 인물보다 넓은 틀을 준다. */
 .scene-basis-location-image-button,
 .scene-basis-location > .scene-basis-image-placeholder {
-  width: 64px;
-  flex-basis: 64px;
+  width: 148px;
+  flex-basis: 148px;
 }
 
 .scene-basis-image-preview {
@@ -1758,6 +1766,64 @@
 
 .scene-basis-stage-track button:hover {
   background: rgba(16, 185, 129, 0.17);
+}
+
+/* 다른 씬 구간은 눌러도 이 씬 상태가 아니므로 흐리게 비활성으로 둔다. */
+.scene-basis-stage-track button.is-other-scene {
+  background: rgba(255, 255, 255, 0.015);
+  cursor: default;
+  opacity: 0.4;
+}
+.scene-basis-stage-track button.is-other-scene:hover {
+  background: rgba(255, 255, 255, 0.015);
+}
+
+/* 씬 경계 줄. 상태 구간 줄과 같은 격자를 쓰되 색만 다르다. */
+.scene-basis-scene-track {
+  --scene-track-cell: 168px;
+  display: grid;
+  grid-template-columns: 132px repeat(var(--scene-track-columns), var(--scene-track-cell));
+  min-width: calc(132px + var(--scene-track-columns) * var(--scene-track-cell));
+  min-height: 26px;
+  margin-bottom: 5px;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.12);
+}
+.scene-basis-scene-track button {
+  position: relative;
+  min-width: 0;
+  padding: 0 8px;
+  border: 0;
+  border-left: 1px solid rgba(148, 163, 184, 0.08);
+  background: transparent;
+  color: rgba(226, 232, 240, 0.5);
+  font: inherit;
+  font-size: 9.5px;
+  font-weight: 800;
+  line-height: 1;
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+}
+.scene-basis-scene-track button.is-start::before {
+  content: '';
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  left: -1px;
+  width: 2px;
+  border-radius: 999px;
+  background: rgba(148, 163, 184, 0.7);
+}
+.scene-basis-scene-track button.is-active.is-start::before {
+  background: rgba(110, 231, 183, 0.85);
+}
+.scene-basis-scene-track button.is-active {
+  color: #d1fae5;
+}
+.scene-basis-scene-track button:hover {
+  background: rgba(148, 163, 184, 0.08);
 }
 
 /* 다관점 검토는 검토 방식 다음에 곧바로 시퀀스를 보여 준다. 대상 선택은

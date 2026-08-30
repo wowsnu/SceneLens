@@ -1926,6 +1926,18 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
   const clearViewerFindingHandoff = useStore((s) => s.clearViewerFindingHandoff)
   const panelDraftImages = useStore((s) => s.panelDraftImages)
   const panelDraftVersions = useStore((s) => s.panelDraftVersions)
+  const panelStylePreset = useStore((s) => s.panelStylePreset)
+  // 러프 컷은 레퍼런스를 생성에 물리지 않으므로 기준 그림을 두지 않는다 —
+  // 실사로 한 번 만들었다가 러프로 바꿨으면 그 그림은 이 흐름의 기준이
+  // 아니다. 러프가 아닐 때는, 어느 밀도로 만든 것인지 모르는 그림(예시
+  // 데이터처럼 stylePreset이 없는 것)까지 숨기지는 않는다 — 다른 밀도로
+  // 만든 것이 분명할 때만 뺀다.
+  const refImageFor = (subject) => {
+    if (!subject?.image) return null
+    if (panelStylePreset === 'rough') return null
+    if (subject.stylePreset && subject.stylePreset !== panelStylePreset) return null
+    return subject.image
+  }
   // 다시 그린 그림을 받을지 버릴지. 적용하는 순간 확정되면 감독은 결과를
   // 보기 전에 이미 바꾼 상태가 된다.
   const panelRevisionPending = useStore((s) => s.panelRevisionPending)
@@ -2059,6 +2071,26 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
   })), [miseCharactersRaw, resolveFactsAtStage])
 
   const scriptScenes = useMemo(() => selectScenes(screenplay), [screenplay])
+  // 장면 기준 스트립은 씬 하나만 보여 주지 않는다. 전체 컷을 이어 놓고
+  // 씬이 바뀌는 자리에 이름을 붙인다 — 다른 씬으로 넘어갈 길이 이 화면에
+  // 따로 없어, 삽입·분할한 컷이 다른 씬이면 안 보이는 것처럼 읽혔다.
+  const shotSceneMap = useMemo(() => shots.map((shot) => {
+    const cut = cutPlan.find((item) => item.id === shot.cutPlanItemId)
+    const beat = cut?.beat ?? shot.scriptBeat ?? 0
+    const scene = scriptScenes.find((entry) => (
+      beat >= entry.startBeat && beat <= entry.endBeat
+    )) || scriptScenes[0] || null
+    return scene
+  }), [shots, cutPlan, scriptScenes])
+  // 전체 스트립에서 지금 씬이 차지하는 구간. 다른 씬은 흐리게 둔다.
+  const activeSceneShotRange = useMemo(() => {
+    const indexes = shots
+      .map((shot, index) => (shotSceneMap[index]?.id === activeSceneId ? index : -1))
+      .filter((index) => index >= 0)
+    return indexes.length > 0
+      ? { from: indexes[0], to: indexes[indexes.length - 1] }
+      : { from: 0, to: Math.max(shots.length - 1, 0) }
+  }, [shots, shotSceneMap, activeSceneId])
   const scopeFrom = Math.min(rangeStart, rangeEnd)
   const scopeTo = Math.max(rangeStart, rangeEnd)
   const scope = scopeMode === 'range'
@@ -4865,41 +4897,81 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
         <div className="reading-review-sequence-controls">
           <span>스토리보드</span>
           <strong>{sceneState.title || '현재 장면'}</strong>
-          <small>이 장면 {sceneShots.length}컷</small>
+          <small>전체 {shots.length}컷 · 이 장면 {sceneShots.length}컷</small>
         </div>
         <div className="reading-review-shared-scroll scene-basis-shared-scroll">
-          <StoryboardStripLane
-            embedded
-            shots={sceneShots}
-            selectedShotIndex={activeStage?.start ?? 0}
-            highlightRange={{ from: 0, to: Math.max(sceneShots.length - 1, 0) }}
-            onSelectShot={(index) => {
-              const stage = [...spatialStages]
-                .reverse()
-                .find((entry) => entry.start <= index)
-              setActiveSpatialStageId(stage?.id || null)
-            }}
-          />
+          {/* 씬 경계. 어느 컷부터 다른 씬인지 이름으로 보이고, 눌러서
+              그 씬으로 넘어간다. */}
           <div
-            className="scene-basis-stage-track"
-            style={{ '--scene-track-columns': sceneShots.length }}
-            aria-label="장면 상태 구간"
+            className="scene-basis-scene-track"
+            style={{ '--scene-track-columns': shots.length }}
+            aria-label="씬 구간"
           >
-            <span className="scene-basis-stage-label">장면 상태</span>
-            {sceneShots.map((shot, index) => {
-              const stage = [...spatialStages]
-                .reverse()
-                .find((entry) => entry.start <= index)
-              const startsHere = stage?.start === index
-              const isActive = stage?.id === activeStage?.id
+            <span className="scene-basis-stage-label">씬</span>
+            {shots.map((shot, index) => {
+              const scene = shotSceneMap[index]
+              const startsHere = index === 0 || shotSceneMap[index - 1]?.id !== scene?.id
+              const isActive = scene?.id === activeSceneId
               return (
                 <button
                   key={shot.id}
                   type="button"
                   className={`${isActive ? 'is-active' : ''}${startsHere ? ' is-start' : ''}`}
                   aria-pressed={isActive}
+                  onClick={() => {
+                    setFlowActiveShot(index)
+                    const cut = cutPlan.find((item) => item.id === shot.cutPlanItemId)
+                    setActiveBeat(cut?.beat ?? shot.scriptBeat ?? 0)
+                  }}
+                  title={scene?.heading?.text || scene?.title || `S${index + 1}`}
+                >
+                  {startsHere ? <span>{scene?.heading?.text || scene?.title || `씬 ${index + 1}`}</span> : ''}
+                </button>
+              )
+            })}
+          </div>
+          <StoryboardStripLane
+            embedded
+            shots={shots}
+            selectedShotIndex={Math.max(0, shots.findIndex((shot) => shot.id === sceneShots[activeStage?.start ?? 0]?.id))}
+            highlightRange={activeSceneShotRange}
+            onSelectShot={(index) => {
+              // 다른 씬의 컷을 누르면 그 씬으로 넘어간다. 같은 씬 안이면
+              // 그 컷이 속한 상태 구간을 연다.
+              const shot = shots[index]
+              const cut = cutPlan.find((item) => item.id === shot?.cutPlanItemId)
+              setFlowActiveShot(index)
+              setActiveBeat(cut?.beat ?? shot?.scriptBeat ?? 0)
+              const localIndex = sceneShots.findIndex((entry) => entry.id === shot?.id)
+              if (localIndex >= 0) {
+                const stage = [...spatialStages].reverse().find((entry) => entry.start <= localIndex)
+                setActiveSpatialStageId(stage?.id || null)
+              }
+            }}
+          />
+          <div
+            className="scene-basis-stage-track"
+            style={{ '--scene-track-columns': shots.length }}
+            aria-label="장면 상태 구간"
+          >
+            <span className="scene-basis-stage-label">장면 상태</span>
+            {shots.map((shot) => {
+              const localIndex = sceneShots.findIndex((entry) => entry.id === shot.id)
+              const inActiveScene = localIndex >= 0
+              const stage = inActiveScene
+                ? [...spatialStages].reverse().find((entry) => entry.start <= localIndex)
+                : null
+              const startsHere = stage?.start === localIndex
+              const isActive = stage?.id === activeStage?.id
+              return (
+                <button
+                  key={shot.id}
+                  type="button"
+                  className={`${isActive ? 'is-active' : ''}${startsHere ? ' is-start' : ''}${inActiveScene ? '' : ' is-other-scene'}`}
+                  aria-pressed={isActive}
+                  disabled={!inActiveScene}
                   onClick={() => setActiveSpatialStageId(stage?.id || null)}
-                  title={stage?.time ? `${stage.label} · ${stage.time}` : (stage?.label || `S${sceneNumberFrom + index}의 장면 기준`)}
+                  title={stage?.time ? `${stage.label} · ${stage.time}` : (stage?.label || '다른 씬')}
                 >
                   {startsHere ? <><span>{stage.label}</span><em>{stage.time || '시간 미정'}</em></> : ''}
                 </button>
@@ -4930,6 +5002,11 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
         <strong>{activeStage?.label || 'S1'} · {activeStage?.time || '시간 미정'}</strong> 시간 상태를 보고 있습니다.
         인물과 공간의 값은 이 상태부터 적용됩니다.
       </p>
+      {panelStylePreset === 'rough' && (
+        <p className="scene-basis-stage-context">
+          러프 컷은 기준 이미지 없이 텍스트 기준만으로 진행합니다.
+        </p>
+      )}
       {stageChanges.length > 0 && (
         <ul className="scene-basis-stage-changes" aria-label="이 시간 상태에서 달라진 기준">
           {stageChanges.map((change) => (
@@ -4948,16 +5025,18 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
             <em>{sceneState.characters.length}</em>
           </header>
           <div className="scene-basis-characters">
-            {(sceneBasisCharactersExpanded ? sceneState.characters : sceneState.characters.slice(0, 3)).map((character) => (
+            {(sceneBasisCharactersExpanded ? sceneState.characters : sceneState.characters.slice(0, 3)).map((character) => {
+              const refImage = refImageFor(character)
+              return (
               <article key={character.id} className="scene-basis-character">
-                {character.image ? (
+                {refImage ? (
                   <button
                     type="button"
                     className="scene-basis-image-button"
-                    onClick={() => setSceneBasisImagePreview({ src: character.image, alt: `${character.name} 레퍼런스` })}
+                    onClick={() => setSceneBasisImagePreview({ src: refImage, alt: `${character.name} 레퍼런스` })}
                     aria-label={`${character.name} 레퍼런스 크게 보기`}
                   >
-                    <img src={character.image} alt="" />
+                    <img src={refImage} alt="" />
                   </button>
                 ) : (
                   <span className="scene-basis-image-placeholder" aria-hidden="true">인물</span>
@@ -5001,7 +5080,9 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
                         .map((fact) => renderSceneBasisCharacterFact(character, fact))}
                     </dl>
                   </div>
-                  {sceneBasisEditing && (
+                  {/* 러프 컷은 레퍼런스를 생성에 물리지 않는다. 만들어도
+                      안 쓰이므로 버튼도 두지 않는다. */}
+                  {sceneBasisEditing && panelStylePreset !== 'rough' && (
                     <button
                       type="button"
                       className="scene-basis-reference-action"
@@ -5010,12 +5091,13 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
                     >
                       {isReferenceImagePending('character', character.id)
                         ? '레퍼런스 만드는 중…'
-                        : character.image ? '레퍼런스 다시 만들기' : '레퍼런스 만들기'}
+                        : refImage ? '레퍼런스 다시 만들기' : '레퍼런스 만들기'}
                     </button>
                   )}
                 </div>
               </article>
-            ))}
+              )
+            })}
           </div>
           {sceneState.characters.length > 3 && (
             <button
@@ -5033,14 +5115,14 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
         <section className="scene-basis-section" aria-label="공간 기준">
           <header><span>공간</span></header>
           <article className="scene-basis-location">
-            {sceneState.location.image ? (
+            {refImageFor(sceneState.location) ? (
               <button
                 type="button"
                 className="scene-basis-image-button scene-basis-location-image-button"
-                onClick={() => setSceneBasisImagePreview({ src: sceneState.location.image, alt: `${sceneState.location.name} 레퍼런스` })}
+                onClick={() => setSceneBasisImagePreview({ src: refImageFor(sceneState.location), alt: `${sceneState.location.name} 레퍼런스` })}
                 aria-label={`${sceneState.location.name} 레퍼런스 크게 보기`}
               >
-                <img src={sceneState.location.image} alt="" />
+                <img src={refImageFor(sceneState.location)} alt="" />
               </button>
             ) : (
               <span className="scene-basis-image-placeholder" aria-hidden="true">공간</span>
@@ -5070,7 +5152,7 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
                   </div>
                 })}
               </dl>
-              {sceneBasisEditing && (
+              {sceneBasisEditing && panelStylePreset !== 'rough' && (
                 <button
                   type="button"
                   className="scene-basis-reference-action"
@@ -5079,7 +5161,7 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
                 >
                   {isReferenceImagePending('location')
                     ? '레퍼런스 만드는 중…'
-                    : sceneState.location.image ? '레퍼런스 다시 만들기' : '레퍼런스 만들기'}
+                    : refImageFor(sceneState.location) ? '레퍼런스 다시 만들기' : '레퍼런스 만들기'}
                 </button>
               )}
             </div>
