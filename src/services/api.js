@@ -194,6 +194,25 @@ export async function requestAutoFillRange({ shots, scriptContext, intent, userP
   }, FILL_TIMEOUT)
 }
 
+// 읽기가 끝난 뒤의 대조. 관객은 의도를 모른 채 읽고(위 호출), 그 결과를
+// 감독이 컷 플랜에서 이미 정해 둔 목적과 여기서 맞춰 본다 — 감독에게
+// 새로 물어보는 것은 없다.
+export async function checkViewerIntent({ cuts, sceneIntention = '' }) {
+  return fetchWithTimeout(`${API_BASE}/viewer/intent-check`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      cuts: cuts.map((cut) => ({
+        panel_order: cut.panelOrder,
+        purpose: cut.purpose || '',
+        content: cut.content || '',
+        readings: cut.readings || [],
+      })),
+      scene_intention: sceneIntention,
+    }),
+  }, 90000)
+}
+
 export async function requestViewerReflection({
   panels,
   readingConditions = ['first_viewer'],

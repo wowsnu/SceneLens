@@ -8733,3 +8733,115 @@ button.active .lens-glass::after {
   line-height: 1.5;
 }
 .multi-review-full-analysis { display: none; }
+
+/* 의도와 읽힘 대조 — 관객이 읽은 것이 컷의 목적에 닿았는가.
+   읽기 결과만 주면 감독이 컷마다 혼자 판정해야 한다. 어긋난 것을 먼저
+   세어 보여, 어디부터 볼지가 정해지게 한다. */
+.intent-check {
+  display: grid;
+  gap: 9px;
+  margin: 12px 0 0;
+  padding: 13px 15px 14px;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 8px;
+  background: rgba(4, 5, 7, 0.4);
+}
+
+.intent-check-status {
+  margin: 0;
+  color: rgba(226, 232, 240, 0.6);
+  font-size: 12px;
+}
+
+.intent-check-head {
+  display: flex;
+  align-items: baseline;
+  gap: 9px;
+}
+
+.intent-check-head > span {
+  color: rgba(226, 232, 240, 0.44);
+  font-size: 10px;
+  font-weight: 850;
+  letter-spacing: 0.08em;
+}
+
+.intent-check-head > strong {
+  color: rgba(248, 250, 252, 0.92);
+  font-size: 13.5px;
+}
+
+.intent-check-head > em {
+  margin-left: auto;
+  color: rgba(110, 231, 183, 0.78);
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 800;
+}
+
+.intent-check-summary {
+  margin: 0;
+  color: rgba(226, 232, 240, 0.7);
+  font-size: 12.5px;
+  line-height: 1.55;
+}
+
+.intent-check-list {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.intent-check-list button {
+  display: grid;
+  grid-template-columns: auto auto minmax(0, 1fr);
+  align-items: baseline;
+  gap: 4px 8px;
+  width: 100%;
+  padding: 9px 10px;
+  border: 1px solid var(--intent-edge, rgba(252, 211, 77, 0.34));
+  border-radius: 6px;
+  background: var(--intent-fill, rgba(120, 83, 8, 0.14));
+  color: rgba(226, 232, 240, 0.82);
+  font: inherit;
+  font-size: 12px;
+  line-height: 1.5;
+  text-align: left;
+  cursor: pointer;
+}
+
+/* 다르게 읽힌 것과, 읽히긴 했으나 뒤로 밀린 것을 색으로 가른다. */
+.intent-check-list .is-missed button {
+  --intent-edge: rgba(248, 113, 113, 0.4);
+  --intent-fill: rgba(127, 29, 29, 0.18);
+}
+
+.intent-check-list button:hover { filter: brightness(1.15); }
+
+.intent-check-list b {
+  color: rgba(248, 250, 252, 0.94);
+  font-size: 12px;
+  font-weight: 850;
+}
+
+.intent-check-list em {
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(248, 250, 252, 0.8);
+  font-size: 10px;
+  font-style: normal;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+/* 화면의 무엇이 그렇게 읽히게 했는가. 판정 아래 한 줄로 붙인다. */
+.intent-check-list i {
+  grid-column: 1 / -1;
+  color: rgba(226, 232, 240, 0.56);
+  font-size: 11.5px;
+  font-style: normal;
+  line-height: 1.45;
+}

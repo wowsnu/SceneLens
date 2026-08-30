@@ -305,6 +305,48 @@ class ViewerPerspectiveComparison(BaseModel):
     common_reading: str
     divergences: List[ViewerPerspectiveDivergence] = []
 
+# ── Viewer Intent Check: 읽힌 것 ↔ 컷의 목적 ──────────────────
+# 관객은 의도를 모른 채 읽는다(그 원칙은 위 흐름이 지킨다). 대조는 그
+# 뒤에 따로 한다 — 읽기가 끝난 결과와, 감독이 컷 플랜에서 이미 정해 둔
+# 목적을 맞춰 본다. 감독에게 새로 물어보는 것은 없다.
+
+class IntentCheckCut(BaseModel):
+    """대조할 컷 하나. 값은 전부 컷 플랜에 이미 있는 것이다."""
+
+    panel_order: int
+    # 이 컷이 왜 있는가. 컷 플랜의 `중요한 것`이다.
+    purpose: str = ""
+    # 화면에 무엇이 보이는가. 목적이 비었을 때 판정의 근거가 된다.
+    content: str = ""
+    # 관객이 이 자리에서 실제로 읽은 것. 조건이 여럿이면 줄로 모은다.
+    readings: List[str] = Field(default_factory=list)
+
+
+class IntentCheckRequest(BaseModel):
+    cuts: List[IntentCheckCut] = Field(min_length=1)
+    # 장면 전체 의도. 컷 목적이 비어도 이것과는 견줄 수 있다.
+    scene_intention: str = ""
+
+
+class IntentCheckVerdict(BaseModel):
+    panel_order: int
+    # reached  — 목적이 관객에게 닿았다.
+    # partial  — 닿긴 했으나 다른 것이 앞선다.
+    # missed   — 목적과 다르게 읽혔다.
+    # unknown  — 목적이 비어 있어 판정할 수 없다.
+    status: Literal["reached", "partial", "missed", "unknown"]
+    # 왜 그렇게 보았는가. 관객의 문장과 목적을 잇는 한 문장.
+    reason: str = Field(default="", max_length=200)
+    # 어긋났을 때, 화면의 무엇이 그렇게 읽히게 했는가.
+    screen_cause: str = Field(default="", max_length=200)
+
+
+class IntentCheckResponse(BaseModel):
+    verdicts: List[IntentCheckVerdict] = Field(default_factory=list)
+    # 회차 전체로 봤을 때 한 문장. 컷 하나씩만 보면 흐름이 안 보인다.
+    summary: str = ""
+
+
 class ViewerInitialReadingResponse(BaseModel):
     initial_reading: ViewerInitialReading
     readings: List[ViewerConditionReading] = []

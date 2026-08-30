@@ -1736,6 +1736,10 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
   const [lensFocusedShotIndex, setLensFocusedShotIndex] = useState(null)
   const [viewerSnapshot, setViewerSnapshot] = useState(null)
   const [viewerReport, setViewerReport] = useState(null)
+  // 읽힌 것과 컷의 목적을 맞춰 본 결과. 읽기와 따로 둔다 — 관객은 의도를
+  // 모른 채 읽고, 대조는 그 다음 일이다.
+  const [intentCheck, setIntentCheck] = useState(null)
+  const [intentCheckStatus, setIntentCheckStatus] = useState('idle')
   const [viewerPanelOrder, setViewerPanelOrder] = useState(null)
   const [viewerStatus, setViewerStatus] = useState('idle')
   const [viewerError, setViewerError] = useState('')
@@ -1927,6 +1931,8 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
   const panelDraftImages = useStore((s) => s.panelDraftImages)
   const panelDraftVersions = useStore((s) => s.panelDraftVersions)
   const panelStylePreset = useStore((s) => s.panelStylePreset)
+  // 컷 목적이 비어 있어도 장면 의도와는 견줄 수 있다.
+  const sceneIntention = useStore((s) => s.sceneIntention)
   // 러프 컷은 레퍼런스를 생성에 물리지 않으므로 기준 그림을 두지 않는다 —
   // 실사로 한 번 만들었다가 러프로 바꿨으면 그 그림은 이 흐름의 기준이
   // 아니다. 러프가 아닐 때는, 어느 밀도로 만든 것인지 모르는 그림(예시
@@ -3304,6 +3310,9 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
     })
     setViewerReport(null)
     setViewerPanelOrder(null)
+    // 대조는 그 읽기에 붙는 것이다. 읽기를 버리면 함께 버린다.
+    setIntentCheck(null)
+    setIntentCheckStatus('idle')
   }
 
   const toggleReadingCondition = (conditionId) => {
@@ -3779,6 +3788,43 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
     shot.order >= viewerScopeFrom && shot.order <= viewerScopeTo
   ))
 
+  // 읽힌 것과 컷의 목적을 맞춰 본다.
+  //
+  // 감독에게 새로 묻지 않는다 — 목적은 컷 플랜의 `중요한 것`에 이미 있고,
+  // 읽힘은 방금 받은 결과에 있다. 둘을 잇는 판정만 여기서 만든다. 이것이
+  // 없으면 감독은 관객이 무엇을 읽었는지만 받아 들고, 잘된 것인지는 컷마다
+  // 혼자 판정해야 한다.
+  const runIntentCheck = async ({ readings, panelOrders }) => {
+    const cuts = panelOrders.map((order) => {
+      const shot = shots[order - 1]
+      const cut = cutPlan.find((item) => item.id === shot?.cutPlanItemId)
+      // 이 컷에서 각 관객이 읽은 문장. 조건이 여럿이면 모두 모은다.
+      const lines = readings.flatMap((entry) => {
+        const step = (entry.reading?.steps || []).find((item) => item.panel_order === order)
+        return step?.immediate_reading ? [step.immediate_reading] : []
+      })
+      return {
+        panelOrder: order,
+        purpose: cut?.purpose || '',
+        content: cut?.content || '',
+        readings: lines,
+      }
+    }).filter((cut) => cut.readings.length > 0)
+    if (cuts.length === 0) return
+
+    setIntentCheckStatus('loading')
+    try {
+      const { checkViewerIntent } = await import('../services/api.js')
+      const result = await checkViewerIntent({ cuts, sceneIntention: sceneIntention || '' })
+      setIntentCheck(result)
+      setIntentCheckStatus('ready')
+    } catch {
+      // 대조에 실패해도 읽기 자체는 남는다. 그쪽이 본 것이고, 이것은
+      // 그 위에 얹는 판정이다.
+      setIntentCheckStatus('error')
+    }
+  }
+
   const runViewerReflection = async () => {
     if (selectedSnapshotShots.length < 2) {
       setViewerStatus('error')
@@ -3862,6 +3908,9 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
       setViewerPanelOrder(panelOrders[0])
       setFlowActiveShot(panelOrders[0] - 1)
       setViewerStatus('ready')
+      // 읽은 직후에 이어서 대조한다. 감독이 버튼을 한 번 더 누르게 하면
+      // 대부분 누르지 않고, 화면은 읽을거리로 남는다.
+      void runIntentCheck({ readings, panelOrders })
     } catch (error) {
       setViewerStatus('error')
       setViewerError(error.message || '관객 검토 결과를 불러오지 못했습니다.')
@@ -4880,6 +4929,61 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
         )}
         {viewerError && <p className="viewer-error">{viewerError}</p>}
       </div>
+
+      {/* 읽힌 것과 컷의 목적이 맞았는가. 읽기 결과만 주면 감독이 컷마다
+          혼자 판정해야 하고, 열다섯 컷이면 끝까지 하지 못한다. 어긋난 것을
+          먼저 세어 보여, 어디부터 볼지가 정해지게 한다. */}
+      {viewerReport && intentCheckStatus !== 'idle' && (
+        <section className="intent-check" aria-label="의도와 읽힘 대조">
+          {intentCheckStatus === 'loading' && (
+            <p className="intent-check-status">읽힌 것과 컷의 목적을 맞춰 보는 중…</p>
+          )}
+          {intentCheckStatus === 'error' && (
+            <p className="intent-check-status">대조하지 못했습니다. 읽기 결과는 아래에 그대로 있습니다.</p>
+          )}
+          {intentCheckStatus === 'ready' && intentCheck && (() => {
+            const verdicts = intentCheck.verdicts || []
+            const off = verdicts.filter((v) => v.status === 'missed' || v.status === 'partial')
+            const reached = verdicts.filter((v) => v.status === 'reached').length
+            return (
+              <>
+                <header className="intent-check-head">
+                  <span>의도와 읽힘</span>
+                  <strong>
+                    {off.length > 0
+                      ? `${off.length}개 컷이 다르게 읽혔습니다`
+                      : '모든 컷이 의도대로 읽혔습니다'}
+                  </strong>
+                  <em>통함 {reached}</em>
+                </header>
+                {intentCheck.summary && <p className="intent-check-summary">{intentCheck.summary}</p>}
+                {/* 어긋난 것만 세로로 둔다. 통한 컷까지 나열하면 볼 것이
+                    다시 열다섯 개가 된다. */}
+                {off.length > 0 && (
+                  <ul className="intent-check-list">
+                    {off.map((verdict) => (
+                      <li key={verdict.panel_order} className={`is-${verdict.status}`}>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setViewerPanelOrder(verdict.panel_order)
+                            setFlowActiveShot(verdict.panel_order - 1)
+                          }}
+                        >
+                          <b>S{verdict.panel_order}</b>
+                          <em>{verdict.status === 'missed' ? '다르게 읽힘' : '뒤로 밀림'}</em>
+                          <span>{verdict.reason}</span>
+                          {verdict.screen_cause && <i>{verdict.screen_cause}</i>}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </>
+            )
+          })()}
+        </section>
+      )}
 
       {/* ③ Workbench. 트랙과 같이 결과가 없어도 자리를 지킨다. */}
       {viewerReport && (
