@@ -627,9 +627,18 @@ const createMockCutPlan = (state) => {
     const beatElements = withIdx.filter((element) => (element.beat ?? 0) === beat)
     const actions = beatElements.filter((element) => element.type === 'action')
     const heading = beatElements.find((element) => element.type === 'scene-heading')
-    // 이 Beat에 등장하는 인물. 서술에서 찾는다.
+    // 이 Beat에 등장하는 인물.
+    //
+    // 구조화가 줄마다 짚어 준 인물이 있으면 그것을 쓴다 — 문장에서 이름을
+    // 찾는 방식은 이름이 적히지 않은 줄("문이 열린다")에서 인물을 놓치고,
+    // 다른 인물의 이름이 스쳐 지나가는 문장에서는 없는 인물을 넣는다.
+    // 없을 때만(직접 쓴 대본, 옛 세션) 서술에서 찾는 쪽으로 내려간다.
     const beatText = beatElements.map((element) => element.text).join(' ')
-    const cast = KNOWN_CAST.filter((name) => beatText.includes(name))
+    const named = [...new Set(beatElements.flatMap((element) => element.characters || []))]
+      .filter((name) => KNOWN_CAST.includes(name))
+    const cast = named.length > 0
+      ? named
+      : KNOWN_CAST.filter((name) => beatText.includes(name))
 
     let beatOrder = 0
     const push = (fields) => {

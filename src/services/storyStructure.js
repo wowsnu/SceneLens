@@ -24,6 +24,10 @@ export function toStructureDraft(data, story = '') {
           beat,
           filled: line.filled,
           sourceEvidence: line.source_evidence || [],
+          // 이 줄의 화면에 보여야 할 인물. 구조화가 직접 짚어 준 값이라,
+          // 문장에서 이름을 찾는 것보다 정확하다 — 이름이 문장에 안 적힌
+          // 줄("문이 열린다")에도 누가 있는지가 남는다.
+          characters: line.characters || [],
         })
       })
     })
