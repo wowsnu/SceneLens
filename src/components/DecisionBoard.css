@@ -6604,6 +6604,24 @@ button.active .lens-glass::after {
   font-weight: 750;
 }
 
+/* 관객이 하나뿐이라 읽기를 돌릴 수 없다는 것. 고르는 자리에서 바로
+   말해야 한다 — 실행 바의 같은 안내는 이 팝오버에 가려 보이지 않는다.
+   flex 줄바꿈 목록이므로 한 줄을 온전히 차지하게 둔다. */
+.viewer-initial-reading-need {
+  /* 이 목록은 자리에 따라 flex(실행 바)이거나 grid(팝오버)다. 어느
+     쪽에서도 한 줄을 온전히 차지하게 둔다. */
+  flex: 0 0 100%;
+  grid-column: 1 / -1;
+  margin: 0;
+  padding: 6px 8px;
+  border: 1px solid rgba(252, 211, 77, 0.3);
+  border-radius: 6px;
+  background: rgba(120, 83, 8, 0.16);
+  color: #fcd34d;
+  font-size: 11px;
+  line-height: 1.45;
+}
+
 .viewer-initial-reading-choices button {
   min-height: 27px;
   padding: 0 8px;
@@ -8540,6 +8558,15 @@ button.active .lens-glass::after {
 .reading-condition-depth > summary::-webkit-details-marker { display: none; }
 .reading-condition-depth > summary > strong { color: #ede9fe; font-size: 9.5px; }
 .reading-condition-depth > summary > em { color: rgba(196, 181, 253, 0.65); font-size: 8.5px; font-style: normal; }
+/* 접혀 있을 때도 왜 못 돌리는지 보이게 한다. */
+.reading-condition-depth > summary > b {
+  padding: 1px 5px;
+  border-radius: 999px;
+  background: rgba(120, 83, 8, 0.3);
+  color: #fcd34d;
+  font-size: 8.5px;
+  font-weight: 850;
+}
 .reading-condition-depth[open] > summary { border-color: rgba(167, 139, 250, 0.58); background: rgba(109, 40, 217, 0.13); }
 
 .reading-condition-depth .viewer-initial-reading-choices {
@@ -8600,6 +8627,10 @@ button.active .lens-glass::after {
   color: rgba(196, 181, 253, 0.66);
   font-size: 9px;
 }
+
+/* 팝오버 안은 9~9.5px 계열이라 기본 11px이 혼자 크다. 다만 이 줄은
+   왜 못 돌리는지 말하는 문장이라 항목 글씨보다는 커야 한다. */
+.reading-condition-depth .viewer-initial-reading-need { font-size: 10.5px; }
 
 .reading-condition-depth .viewer-initial-reading-choices button {
   min-height: 27px;

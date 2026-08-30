@@ -4733,6 +4733,14 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
     return (
       <div className="viewer-initial-reading-choices" role="group" aria-label="추가 읽기 조건">
         <span>기본 관객</span>
+        {/* 고르는 자리에서 바로 알린다. 실행 바의 안내는 이 팝오버에 가려
+            보이지 않고, 이 화면이 보여 주는 것은 읽기가 **갈린** 자리라
+            관객이 하나면 나올 것이 구조적으로 없다. */}
+        {selectedReadingConditionIds.length < 2 && (
+          <p className="viewer-initial-reading-need">
+            관객이 하나면 견줄 상대가 없어 갈린 자리가 나오지 않습니다. 하나 더 고르세요.
+          </p>
+        )}
         {VIEWER_READING_CONDITIONS.map((condition) => {
           const selected = selectedReadingConditionIds.includes(condition.id)
           return (
@@ -4774,6 +4782,7 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
             <summary>
               <span>관객 구성</span>
               <strong>{selectedReadingConditionIds.length}명 선택</strong>
+              {selectedReadingConditionIds.length < 2 && <b>하나 더 필요</b>}
               <em>변경</em>
             </summary>
             <div className="reading-condition-depth-menu">
@@ -4798,11 +4807,15 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
               ? '관객을 둘 이상 골라야 갈린 자리가 나옵니다.'
               : undefined}
           >
+            {/* 못 누르는 이유를 라벨이 직접 말한다. 툴팁에만 두면 마우스를
+                올려 보기 전까지는 왜 안 눌리는지 알 수 없다. */}
             {viewerStatus === 'loading'
               ? '읽는 중…'
-              : viewerReport
-                ? '다시 읽기'
-                : `${selectedReadingConditionIds.length}명 관객으로 읽기`}
+              : selectedReadingConditionIds.length < 2
+                ? '관객을 하나 더 고르세요'
+                : viewerReport
+                  ? '다시 읽기'
+                  : `${selectedReadingConditionIds.length}명 관객으로 읽기`}
           </button>
         </div>
 
@@ -4900,7 +4913,20 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
         />
       )}
     </section>
-  ) : null
+  ) : (
+    // 스냅샷이 없으면(생성된 컷이 둘 미만이거나 스토리보드를 오간 뒤
+    // 범위 계산이 비었을 때) 빈 화면 대신 안내를 둔다. 검정 화면으로
+    // 아무것도 안 뜨는 것을 막는다.
+    <section className="multi-review-preview reading-review-surface" aria-label="관객 읽기 검토">
+      <div className="viewer-reflection-hint" style={{ padding: '2rem' }}>
+        <p>관객 검토를 하려면 생성된 컷이 최소 둘 필요합니다.</p>
+        <p>패널을 더 그린 뒤 다시 열어 주세요.</p>
+        {onBackToStoryboard && (
+          <button type="button" onClick={onBackToStoryboard}>← 스토리보드로 돌아가기</button>
+        )}
+      </div>
+    </section>
+  )
 
   // 장면 기준도 연출·관객 검토와 같은 표면에서 시작한다. 다만 여기의 트랙은
   // 문제를 찾는 레일이 아니라, 이 장면 안에서 공통 기준이 언제 바뀌는지
