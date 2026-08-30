@@ -3361,6 +3361,15 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
 
   const selectTrackIssue = (issueId) => {
     setSelectedIssueId(issueId)
+    // 다른 Issue를 고르면 열려 있던 수정 작업면은 그 Issue의 것이 아니다.
+    // Inspector는 revisionWorkspace의 issue를 먼저 보므로, 닫지 않으면
+    // 방금 고친 Issue의 화면이 그대로 남아 새로 고른 것이 열리지 않는다.
+    if (revisionWorkspace && revisionWorkspace.issue?.id !== issueId) {
+      setSeamEdit(null)
+      setRevisionWorkspace(null)
+    }
+    // 갈림을 보던 중이면 놓는다 — Inspector가 가리키는 것이 하나여야 한다.
+    setSelectedReadingFindingId(null)
     // Issue를 고르면 그 자리가 보여야 한다. 훑던 위치가 남아 있으면
     // 고른 Issue가 아니라 엉뚱한 컷이 선택된 채로 남는다.
     setBrowsingShotIndex(null)
