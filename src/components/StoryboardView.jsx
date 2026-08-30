@@ -25,6 +25,7 @@ import useStore, {
   selectLayoutForCut,
   cutFindingFingerprint,
   characterNamesOfCut,
+  castNameMatches,
 } from '../store/useStore'
 import FramingGlyph from './FramingGlyph'
 import './StoryboardView.css'
@@ -106,14 +107,6 @@ const layerOfCheckFinding = (finding) => {
 const EMPTY_SHOTS = []
 const EMPTY_CAST = []
 
-// textarea 자체는 일부 글자만 색칠할 수 없다. 대신 `@이름`을 입력하면
-// 바로 아래에 태그로 드러내, 일반 문장과 다른 지시라는 것을 보이게 한다.
-//
-// **적은 글자를 그대로 보여 주지 않는다.** 실제로 어느 인물이 물렸는지를
-// 보여야 한다 — `@하`라고만 적어도 부분 일치로 `하린`이 물리는데, 배지가
-// `@하`로 뜨면 적용된 것인지 알 수 없다. 아무 인물도 못 찾으면 그 사실을
-// 밝힌다. 매칭 규칙은 실제 생성(`referencesForCut`)과 같다 — 정확히
-// 같은 이름이 있으면 그것만, 없을 때만 부분 일치로 내려간다.
 // 이름 뒤에 붙는 조사. `@하린이`, `@민준과`처럼 문장으로 쓴 것을 이름으로
 // 되돌리는 데 쓴다.
 const MENTION_PARTICLES = ['이가', '에게서', '한테서', '으로', '에게', '한테', '이랑', '와의', '과의',
@@ -127,6 +120,15 @@ const stripParticle = (token = '') => {
   return token
 }
 
+// `@이름`이 가리키는 인물을 찾는다.
+//
+// **이름 전체를 적어야 물린다.** `@하`처럼 줄여 쓴 것은 `하린`이 아니다 —
+// 줄임을 받아 주면 오타가 조용히 다른 인물로 물리고, 인물이 늘어난 뒤에
+// 같은 글자가 갑자기 다른 사람을 가리키게 된다. 못 찾으면 그 사실을
+// 밝혀서 감독이 그 자리에서 고치게 한다.
+//
+// 조사는 문장으로 쓴 것이므로 받아 준다 — `@하린이 본다`의 `하린이`는
+// 줄여 쓴 것이 아니라 이름에 조사가 붙은 것이다.
 const resolveMentions = (text = '', cast = []) => {
   const typed = [...String(text).matchAll(/@([^\s@,，.。!?…]+)/g)]
     .map((match) => match[1].trim())
@@ -135,20 +137,18 @@ const resolveMentions = (text = '', cast = []) => {
   const match = (value) => {
     const exact = names.find((name) => name === value)
     if (exact) return exact
-    // `@하린이`처럼 이름 뒤에 문장이 이어 붙은 경우.
+    // `@하린이`처럼 이름 뒤에 문장이 이어 붙은 경우. 이름으로 **시작**해야
+    // 한다 — 이름의 일부만 적은 것은 여기에 걸리지 않는다.
     return names.filter((name) => value.startsWith(name))
       .sort((left, right) => right.length - left.length)[0] || null
   }
   return typed.map((token) => {
-    // 적은 그대로 → 조사를 뗀 것 순으로 본다. `@민이`는 `민`으로 줄여 쓴
-    // 것이므로 조사를 떼야 `민준`에 닿는다.
     const bare = stripParticle(token)
     const direct = match(token) || (bare !== token ? match(bare) : null)
     if (direct) return { token, name: direct, matched: true, exact: true }
-    const loose = names.filter((name) => name.includes(bare) || bare.includes(name))
-    // 후보가 여럿이면 어느 쪽인지 정할 수 없다. 이름을 더 적으라고 알린다.
-    if (loose.length === 1) return { token, name: loose[0], matched: true, exact: bare === token }
-    return { token, name: null, matched: false, ambiguous: loose.length > 1, options: loose }
+    // 줄여 쓴 것으로 보이면 무엇을 적어야 하는지 알려 준다. 물리지는 않는다.
+    const partial = names.filter((name) => name.startsWith(bare))
+    return { token, name: null, matched: false, ambiguous: partial.length > 0, options: partial }
   })
 }
 
@@ -207,8 +207,12 @@ function ConteContent({ cutId, value, onCommit, cast = EMPTY_CAST }) {
                 <mark
                   key={index}
                   className={part.mention.matched ? 'is-matched' : 'is-unmatched'}
+                  title={part.mention.matched ? `@${part.mention.token} · 인물 지시` : undefined}
                 >
-                  {part.text}
+                  {/* 물린 것은 `@`를 감춘다. 인물로 이어졌다는 것은 색이
+                      이미 말하므로, 문장은 문장대로 읽히는 편이 낫다.
+                      물리지 않은 것은 `@`를 남겨야 고칠 자리가 보인다. */}
+                  {part.mention.matched ? part.text.slice(1) : part.text}
                 </mark>
               )
               : <span key={index}>{part.text}</span>
@@ -225,12 +229,12 @@ function ConteContent({ cutId, value, onCommit, cast = EMPTY_CAST }) {
                     ? `${mention.name} 기준이 이 컷에 물립니다`
                     : `@${mention.token} → ${mention.name} 기준이 이 컷에 물립니다`)
                   : mention.ambiguous
-                    ? `${mention.options.join(', ')} 중 누구인지 정할 수 없습니다. 이름을 끝까지 적어 주세요.`
+                    ? `이름을 끝까지 적어 주세요 — ${mention.options.join(', ')}`
                     : '이런 이름의 인물이 없습니다. 인물 기준에 있는 이름으로 적어 주세요.'}
               >
                 @{mention.matched ? mention.name : mention.token}
                 {mention.matched && !mention.exact && <i>← @{mention.token}</i>}
-                {!mention.matched && <i>{mention.ambiguous ? '모호함' : '없는 인물'}</i>}
+                {!mention.matched && <i>{mention.ambiguous ? '이름을 끝까지' : '없는 인물'}</i>}
               </span>
             ))}
           </div>
@@ -291,14 +295,14 @@ function ConteContent({ cutId, value, onCommit, cast = EMPTY_CAST }) {
                   ? `${mention.name} 기준이 이 컷에 물립니다`
                   : `@${mention.token} → ${mention.name} 기준이 이 컷에 물립니다`)
                 : mention.ambiguous
-                  ? `${mention.options.join(', ')} 중 누구인지 정할 수 없습니다. 이름을 끝까지 적어 주세요.`
+                  ? `이름을 끝까지 적어 주세요 — ${mention.options.join(', ')}`
                   : '이런 이름의 인물이 없습니다. 인물 기준에 있는 이름으로 적어 주세요.'}
             >
               {/* 물린 경우엔 **실제 인물 이름**을 보인다. 적은 글자를 그대로
                   두면 적용됐는지 알 수 없다. */}
               @{mention.matched ? mention.name : mention.token}
               {mention.matched && !mention.exact && <i>← @{mention.token}</i>}
-              {!mention.matched && <i>{mention.ambiguous ? '모호함' : '없는 인물'}</i>}
+              {!mention.matched && <i>{mention.ambiguous ? '이름을 끝까지' : '없는 인물'}</i>}
             </span>
           ))}
         </div>
@@ -2325,18 +2329,18 @@ export default function StoryboardView({ onEnterReview = null }) {
     const scene = withSharedReferences(sceneStateForCut(cut))
     if (!scene || !cut) return []
     const cast = characterNamesOfCut(cut)
-    // 이름이 정확히 같은 인물을 먼저 찾는다. 부분 일치만 쓰면 이름이 서로
-    // 포함될 때 화면에 없는 인물까지 딸려 들어간다 — `하린` 컷에 `하린
-    // 엄마`가, `수` 컷에 `수현`과 `철수`가 물린다. 컷에 한 명인데 기준
-    // 그림이 셋이면 모델은 없어야 할 얼굴을 참고한다.
+    // 이름이 정확히 같은 인물을 먼저 찾는다. 이름으로 시작하는 것까지는
+    // 같은 사람이다 — `하린이`, `하린과`는 조사가 붙은 것이다.
     //
-    // 정확히 맞는 것이 하나도 없을 때만 부분 일치로 내려간다. 컷의
-    // 등장인물이 `하린과 민호`처럼 서술형으로 적히는 경우가 있어, 그때는
-    // 느슨하게라도 찾아야 기준이 아예 빠지지 않는다.
-    const exact = (character) => cast.some((name) => name === character.name)
-    const loose = (character) => cast.some((name) => (
-      name.includes(character.name) || character.name.includes(name)
-    ))
+    // **이름의 일부만 적은 것은 받지 않는다.** 양방향 부분 일치를 쓰면
+    // `하`가 `하린`을, `수`가 `수현`과 `철수`를 함께 물어, 컷에 한 명인데
+    // 기준 그림이 셋이 되고 모델은 없어야 할 얼굴을 참고한다.
+    //
+    // 정확히 맞는 것이 없을 때만, 컷의 등장인물이 `하린과 민호`처럼 한
+    // 문장으로 적힌 경우를 위해 그 문장 **안에서** 이름을 찾는다. 방향은
+    // 한쪽뿐이다 — 적은 글이 이름을 담아야 하고, 그 반대는 아니다.
+    const exact = (character) => cast.some((name) => castNameMatches(name, character.name))
+    const loose = (character) => cast.some((name) => name.includes(character.name))
     const anyExact = scene.characters.some((character) => character.image && exact(character))
     const inThisCut = anyExact ? exact : loose
     const refs = scene.characters

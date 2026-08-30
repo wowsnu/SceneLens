@@ -1361,8 +1361,8 @@ export const characterNamesOfCut = (cut = {}) => {
     .split(',')
     .map((name) => name.trim().replace(/^@/, ''))
     .filter(Boolean)
-  // 적은 토큰과 조사를 뗀 것을 모두 후보로 둔다. 아래 소비자들이 부분
-  // 일치로 인물을 찾으므로, 둘 중 맞는 쪽이 걸린다.
+  // 적은 토큰과 조사를 뗀 것을 모두 후보로 둔다. `@하린이`는 `하린이`와
+  // `하린` 둘 다로 두어 아래 매칭이 이름을 찾을 수 있게 한다.
   const tagged = [cut.content, cut.promptOverride]
     .flatMap((text) => [...String(text || '').matchAll(/@([^\s@,，.。!?…]+)/g)])
     .flatMap((match) => {
@@ -1374,6 +1374,16 @@ export const characterNamesOfCut = (cut = {}) => {
   return [...new Set([...declared, ...tagged])]
 }
 
+// 컷이 가리킨 이름 하나가 이 인물인가.
+//
+// **이름 전체를 적어야 한다.** 예전에는 양방향 부분 일치를 써서 `하`가
+// `하린`을 물었는데, 그러면 오타가 조용히 다른 인물로 물리고 `수`가
+// `수현`과 `철수`를 한꺼번에 끌어온다. 이름으로 시작하는 것(`하린이`,
+// `하린과`)만 받아 준다 — 그것은 줄여 쓴 것이 아니라 조사가 붙은 것이다.
+export const castNameMatches = (token = '', name = '') => (
+  Boolean(name) && (token === name || token.startsWith(name))
+)
+
 // 이 컷에 걸리는 씬 기준을 뽑는다. 컷에 나오는 인물만 넣는다 —
 // 씬의 모든 인물을 매 컷에 적으면 화면에 없는 사람까지 그리게 된다.
 export const selectSceneReference = (sceneState, cut, cutIndex = null, cutOrder = null) => {
@@ -1381,7 +1391,7 @@ export const selectSceneReference = (sceneState, cut, cutIndex = null, cutOrder 
 
   const cast = characterNamesOfCut(cut)
   const characters = sceneState.characters
-    .filter((character) => cast.some((name) => name.includes(character.name) || character.name.includes(name)))
+    .filter((character) => cast.some((name) => castNameMatches(name, character.name)))
     .map((character) => ({
       name: character.name,
       detail: settledFacts(character.facts, cutIndex, cutOrder),
