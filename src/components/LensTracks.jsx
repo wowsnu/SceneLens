@@ -56,13 +56,13 @@ export default function LensTracks({
   selectedIssueId = null,
   onSelectIssue,
   onToggleLens,
-  // 관객이 갈린 자리. **진단이 아니라 근거다** — 렌즈 줄과 떨어뜨려
-  // 놓고 모양도 가른다 (LENS_TRACKS_UI.md 7·9장).
-  readingDivergences = [],
-  onSelectDivergence,
-  selectedDivergenceId = null,
-  // 관객 읽기를 이미 한 번 돌렸는가. 갈림 마커가 없어도, 읽었다는
-  // 사실은 연출 검토에서 `관객` 줄로 보인다 (S6).
+  // 의도가 안 닿은 자리. 렌즈가 짚은 진단이 아니라 관객 쪽에서 온
+  // 것이므로 렌즈 줄과 떨어뜨려 놓는다 (LENS_TRACKS_UI.md 7·9장).
+  readingMarkers = [],
+  onSelectFinding,
+  selectedMarkerId = null,
+  // 의도 대조까지 끝났는가. 마커가 없어도, 봤다는 사실은 연출 검토에서
+  // `관객` 줄로 보인다 (S6).
   readingDone = false,
   scrollRef = null,
   onScroll,
@@ -187,44 +187,48 @@ export default function LensTracks({
             )
           })}
 
-          {/* 관객이 갈린 자리.
+          {/* 의도가 안 닿은 자리.
 
               렌즈 줄에 섞지 않는다. 렌즈 마커는 AI가 규칙으로 짚은
-              **진단**이라 감독이 판정할 대상이지만, 이것은 실제로 읽기가
-              갈렸다는 **현상**이다 — 판정 대상이 아니라 판정의 근거다.
-              같은 줄에 같은 모양으로 두면 그 층위 차이가 사라진다.
+              **진단**이지만, 이것은 관객이 실제로 그렇게 읽었다는
+              **현상**이다. 같은 줄에 같은 모양으로 두면 그 층위 차이가
+              사라진다.
 
-              그래서 구분선 아래 한 칸 띄워 놓고, 점(●)이 아니라 빈
-              마름모(◇)로 그린다. 가로축은 공유하므로 어느 컷에서 갈렸는지는
-              위 진단들과 세로로 맞춰 읽힌다. */}
-          {(readingDivergences.length > 0 || readingDone) && (
+              그래서 구분선 아래 한 칸 띄워 놓는다. 가로축은 공유하므로
+              어느 컷에서 어긋났는지는 위 진단들과 세로로 맞춰 읽힌다. */}
+          {(readingMarkers.length > 0 || readingDone) && (
             <div className="lens-track reading-lane">
               {/* 이름은 짧게. 라벨 열은 렌즈 이름(2~3자)에 맞춰져 있어
                   길면 두 줄로 접히고, 접힌 줄이 아래 상태 문구와 겹친다. */}
-              <span className="lens-track-label" title="관객이 갈린 자리">관객</span>
+              <span className="lens-track-label" title="의도와 다르게 읽힌 자리">관객</span>
               <div className="lens-track-line">
-                {readingDivergences.length === 0 && readingDone && (
-                  <span className="lens-track-empty-note">관객 읽기 완료 · 갈린 자리 없음</span>
+                {readingMarkers.length === 0 && readingDone && (
+                  <span className="lens-track-empty-note">관객 읽기 완료 · 의도대로 읽힘</span>
                 )}
-                {readingDivergences.map(({ id, position, title, anchor, anchor_kind: anchorKind, conditions, answer }) => (
+                {readingMarkers.map(({ id, position, title, anchor, intent }) => (
                   <button
                     key={id}
                     type="button"
-                    data-divergence-id={id}
-                    /* `anchorKind`를 함께 얹어, 컷 안인지 컷 사이인지가
-                       렌즈 트랙과 같은 문법으로 읽히게 한다. */
-                    className={`lens-marker reading-marker-lane ${anchorKind || 'shot'} ${id === selectedDivergenceId ? 'selected' : ''} ${answer ? 'answered' : ''}`}
+                    data-marker-id={id}
+                    /* 의도가 안 닿은 자리만 이 줄에 온다. 갈림은 관객끼리
+                       달랐다는 근거일 뿐이라 관객 읽힘 화면에 남고, 이
+                       줄에는 고칠 자리만 든다. */
+                    className={`lens-marker reading-marker-lane shot intent is-${intent?.status || 'missed'} ${id === selectedMarkerId ? 'selected' : ''}`}
                     style={{ '--pos': position }}
-                    onClick={() => onSelectDivergence?.(id)}
-                    aria-pressed={id === selectedDivergenceId}
+                    onClick={() => onSelectFinding?.(id)}
+                    aria-pressed={id === selectedMarkerId}
                     title={[
-                      `${anchor} · ${anchorKind === 'seam' ? '이음새' : '컷'} · ${title}`,
-                      `${(conditions || []).join(' / ')}에서 읽기가 갈렸습니다`,
-                      answer ? `감독의 답: ${answer}` : '눌러서 이 자리를 검토 범위로',
-                    ].join('\n')}
+                      `${anchor} · 의도와 다르게 읽힘`,
+                      `노린 것: ${intent?.intended || ''}`,
+                      `읽힌 것: ${intent?.read_as || ''}`,
+                      intent?.screen_cause,
+                      '눌러서 이 자리를 검토 범위로',
+                    ].filter(Boolean).join('\n')}
                   >
+                    {/* 점만 둔다. 이름은 툴팁과 아래 Inspector가 말한다 —
+                        트랙에 글씨가 붙으면 렌즈 줄의 마커와 겹쳐 읽힌다. */}
                     <span className="lens-marker-dot" aria-hidden="true" />
-                    <span className="lens-marker-label">{answer ? `${title} · 답함` : title}</span>
+                    <span className="sr-only">{title}</span>
                   </button>
                 ))}
               </div>
@@ -251,15 +255,15 @@ export default function LensTracks({
           관점 사이의 관계를 확인하는 중입니다 — 같은 문제로 묶일 수 있습니다.
         </p>
       )}
-      {/* 이 문구는 **렌즈 진단**이 없다는 뜻이다. 갈림 마커가 떠 있는데
+      {/* 이 문구는 **렌즈 진단**이 없다는 뜻이다. 관객 마커가 떠 있는데
           "아직 볼 것이 없습니다"라고만 하면 화면과 어긋난다 — 그때는
           무엇이 없는 것인지 밝힌다. */}
       {!loading && issues.length === 0 && (
         <p className="lens-tracks-status">
-          {readingDivergences.length > 0
-            ? '렌즈가 짚은 것은 아직 없습니다. 아래는 관객이 갈린 자리입니다.'
+          {readingMarkers.length > 0
+            ? '렌즈가 짚은 것은 아직 없습니다. 아래는 의도가 안 닿은 자리입니다.'
             : readingDone
-              ? '렌즈가 짚은 것은 아직 없습니다. 관객 읽기는 돌렸고, 갈린 자리는 없습니다.'
+              ? '렌즈가 짚은 것은 아직 없습니다. 관객 읽기는 돌렸고, 의도는 다 닿았습니다.'
               : '아직 볼 것이 없습니다. 분석하면 여기에 표시됩니다.'}
         </p>
       )}

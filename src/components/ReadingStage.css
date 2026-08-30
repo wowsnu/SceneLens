@@ -1,4 +1,4 @@
-/* 갈린 자리의 컷들과 그 자리를 지나는 순차 읽기.
+/* 걸린 자리의 컷들과 그 자리를 지나는 순차 읽기.
    연출 쪽 EvidenceStage와 같은 자리·같은 규칙 (LENS_TRACKS_UI.md 4장). */
 
 .reading-stage {
@@ -326,7 +326,7 @@
 .reading-trace-feeling em,
 .reading-trace-hypothesis em,
 .reading-trace-question em,
-.reading-trace-divergence em {
+.reading-trace-line em {
   flex: none;
   min-width: 46px;
   color: var(--text-muted);
@@ -356,8 +356,8 @@
   line-height: 1.55;
 }
 
-/* 걸어와서 여기가 갈린 자리다. 순차 읽기 아래에 붙는다. */
-.reading-trace-divergence {
+/* 걸어와서 여기가 그 자리다. 순차 읽기 아래에 붙는다. */
+.reading-trace-line {
   display: flex;
   gap: 8px;
   margin: 2px 0 0;

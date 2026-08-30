@@ -1,5 +1,6 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef } from 'react'
 import ReadingStage from './ReadingStage'
+import { audienceAction, engagementSignalAt } from './audienceBehavior'
 import './ReadingWorkbench.css'
 
 /**
@@ -30,56 +31,6 @@ import './ReadingWorkbench.css'
  * 그래서 버튼도 `수정하기`가 아니라 `답 남기기`다. 무엇을 하는 버튼인지
  * 이름에 그대로 적는다.
  */
-function ReadingAnswer({ finding, scopeLabel = '', saved, onAnswer }) {
-  const [draft, setDraft] = useState('')
-  // 다른 갈림으로 옮기면 쓰던 초안은 무효다. effect로 되돌리면 한 번
-  // 잘못 그린 뒤 고치는 셈이라 렌더 중에 판정한다.
-  const [scope, setScope] = useState(finding.id)
-  if (scope !== finding.id) {
-    setScope(finding.id)
-    setDraft('')
-  }
-
-  if (saved) {
-    return (
-      <div className="reading-answer answered">
-        <span className="reading-answer-mark">답함</span>
-        <p>{saved.answer}</p>
-        <button type="button" onClick={() => onAnswer?.(finding, '')}>
-          다시 쓰기
-        </button>
-      </div>
-    )
-  }
-
-  return (
-    <form
-      className="reading-answer"
-      onSubmit={(event) => {
-        event.preventDefault()
-        onAnswer?.(finding, draft)
-        setDraft('')
-      }}
-    >
-      <label htmlFor={`reading-answer-${finding.id}`}>
-        {scopeLabel && <b>{scopeLabel}</b>}
-        이 자리는 어떻게 읽히길 바라나요?
-      </label>
-      <textarea
-        id={`reading-answer-${finding.id}`}
-        rows={3}
-        value={draft}
-        placeholder="예: 놀람보다 결과를 받아들이는 쪽으로 읽혔으면 한다."
-        onChange={(event) => setDraft(event.target.value)}
-      />
-      <button type="submit" disabled={!draft.trim()}>답 남기기</button>
-      {/* 이 답이 어디로 가는지 밝힌다. 적어 두기만 하는데 곧 무언가
-          일어날 것처럼 보이면 감독이 결과를 기다리게 된다. */}
-      <small>연출 검토를 돌릴 때 세 렌즈가 이 답을 전제로 봅니다.</small>
-    </form>
-  )
-}
-
 export default function ReadingWorkbench({
   // 트랙에서 고른 칸 — `{ condition, order }`. 이것이 기본 단위다.
   step = null,
@@ -91,8 +42,6 @@ export default function ReadingWorkbench({
   shots = [],
   range = null,
   // 관객이 남긴 물음에 감독이 답한다. 여기서 고치지는 않는다.
-  onAnswer,
-  answers = {},
   // 앞뒤 컷으로 걸어간다. 트랙까지 올라가지 않고도 순차 읽기를 따라갈
   // 수 있어야 한다 — 읽기는 앞뒤로 움직이며 확인하는 것이다.
   onWalkTo,
@@ -159,6 +108,9 @@ export default function ReadingWorkbench({
   const activeReading = readings.find((entry) => entry.id === step.condition) || null
   const activeStep = stepOf(step.condition, step.order)
   const noticedCues = activeStep?.noticed_cues || activeStep?.visible_cues || []
+  const activeSignal = engagementSignalAt(activeReading?.reading, step.order)
+  const activeAction = activeSignal ? audienceAction(activeSignal.action) : null
+  const recheckOrders = (activeSignal?.panel_orders || []).filter((order) => order !== step.order)
 
   // 그림을 놓을 자리. **언제나 고른 칸을 따라간다.**
   //
@@ -176,16 +128,6 @@ export default function ReadingWorkbench({
     title: '',
   }
 
-  // 이 갈림이 걸친 컷들. 이음새면 둘이다.
-  //
-  // 갈림은 컷 하나가 아니라 구간에서 일어나는데, 컷마다 읽기가 다르다.
-  // 그것을 한 문장으로 뭉뚱그리면 감독은 무엇에 답하는지 알 수 없다 —
-  // 답은 갈림 하나에 하나지만, **답하기 전에 컷별로 무엇이 갈렸는지는
-  // 보여야** 그 한 문장을 제대로 쓸 수 있다.
-  const spannedOrders = finding?.panelOrders?.length
-    ? finding.panelOrders
-    : [step.order]
-
   return (
     <section
       className="reading-workbench"
@@ -201,12 +143,14 @@ export default function ReadingWorkbench({
           <header className="reading-workbench-bar">
             <strong>S{step.order}</strong>
             <span>{labelOf(step.condition)}의 읽기</span>
-            {/* 갈렸는지 아닌지를 여기서 먼저 말한다. 침묵을 "문제 없음"으로
-                읽지 않게 한다 (`design_goal.md` DG1 P2). */}
+            {/* 어긋난 자리인지 아닌지를 여기서 먼저 말한다. 침묵을 "문제
+                없음"으로 읽지 않게 한다 (`design_goal.md` DG1 P2). */}
             {finding ? (
-              <em className="diverged">여기서 읽기가 갈렸습니다</em>
+              <em className="flagged">
+                {finding.kind === 'intent' ? '의도가 다르게 읽혔습니다' : '관객이 짚은 자리입니다'}
+              </em>
             ) : (
-              <em>이 자리는 갈리지 않았습니다</em>
+              <em>의도대로 읽혔습니다</em>
             )}
             {/* 키가 있다는 것을 알린다. 그림을 눌러도 되고 화살표로도
                 걸을 수 있다. */}
@@ -229,6 +173,28 @@ export default function ReadingWorkbench({
             </div>
 
             <aside className="reading-workbench-side">
+              {activeSignal && (
+                <section className={`reading-behavior-detail is-${activeSignal.action}`}>
+                  <h4>보는 행동</h4>
+                  <div>
+                    <span aria-hidden="true">{activeAction.mark}</span>
+                    <strong>{activeAction.label}</strong>
+                  </div>
+                  <p>{activeSignal.reason}</p>
+                  {activeSignal.story_pull && (
+                    <small>계속 보는 이유 · {activeSignal.story_pull}</small>
+                  )}
+                  {recheckOrders.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => onWalkTo?.({ condition: step.condition, order: recheckOrders.at(-1) })}
+                    >
+                      S{recheckOrders.at(-1)} 다시 보기
+                    </button>
+                  )}
+                </section>
+              )}
+
               {/* 왜 그렇게 읽었나. 그림과 나란히 있어야 대조된다. */}
               {noticedCues.length > 0 && (
                 <section className="reading-cues">
@@ -255,32 +221,25 @@ export default function ReadingWorkbench({
                 </section>
               )}
 
-              {/* 갈렸을 때만. 같은 컷을 다른 관객이 어떻게 읽었는지 나란히
-                  두고, 감독이 그에 답한다.
-
-                  **여기서 고치지 않는다.** 관객 읽기는 의도를 모르는 것이
-                  원칙이라(7장), 감독의 답을 관객에게 되먹이면 그 전제가
-                  깨진다. 답은 적어 두기만 하고, 실제 수정은 연출 검토가
-                  그 답을 전제로 삼아 세 렌즈로 본 뒤에 한다. */}
-              {finding && (
-                <section className="reading-divergence">
-                  {/* 컷별 읽기를 나열하지 않는다. 갈렸다는 사실과 그것이
-                      왜 중요한지면 답하기에 충분하고, 각 관객이 뭐라고
-                      읽었는지는 위 트랙의 칸이 이미 보여 준다 — 같은 것을
-                      두 자리에 두면 읽는 자리가 흩어진다. */}
+              {/* 의도가 안 닿은 자리. **감독에게 묻지 않는다** — 답을
+                  받아 봐야 관객 읽기는 의도를 모르는 것이 원칙이라(7장)
+                  되먹일 수 없고, 물음만 늘었다. 무엇이 어긋났는지 보여
+                  주고, 고치는 일은 연출 검토가 렌즈로 맡는다. */}
+              {finding?.intent && (
+                <section className="reading-intent-gap">
+                  <dl>
+                    <div>
+                      <dt>노린 것</dt>
+                      <dd>{finding.intent.intended}</dd>
+                    </div>
+                    <div>
+                      <dt>읽힌 것</dt>
+                      <dd>{finding.intent.read_as}</dd>
+                    </div>
+                  </dl>
                   {finding.why_it_matters && (
-                    <p className="reading-divergence-why">{finding.why_it_matters}</p>
+                    <p className="reading-intent-cause">{finding.why_it_matters}</p>
                   )}
-                  <ReadingAnswer
-                    finding={finding}
-                    /* 답은 갈림 하나에 하나다. 그 하나가 어느 자리를
-                       덮는지 밝혀야, 컷별로 다른 읽기을 감안해 쓴다. */
-                    scopeLabel={spannedOrders.length > 1
-                      ? `S${spannedOrders[0]}–S${spannedOrders[spannedOrders.length - 1]}`
-                      : `S${spannedOrders[0]}`}
-                    saved={answers[finding.id] || null}
-                    onAnswer={onAnswer}
-                  />
                 </section>
               )}
             </aside>

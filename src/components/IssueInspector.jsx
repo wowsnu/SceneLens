@@ -523,14 +523,29 @@ export default function IssueInspector({
       <header className="issue-inspector-heading">
         <span>
           {issue.anchor}{anchorKindLabel(issue.anchor_kind) && ` · ${anchorKindLabel(issue.anchor_kind)}`}
-          {/* 렌즈가 짚은 것이 아니라 관객이 갈린 자리다. 밝히지 않으면
+          {/* 렌즈가 짚은 것이 아니라 관객 쪽에서 온 자리다. 밝히지 않으면
               감독이 이것을 진단으로 읽는다. */}
-          {issue.from_viewer && ' · 관객이 갈린 자리'}
+          {issue.from_viewer && (issue.intent ? ' · 의도와 다르게 읽힌 자리' : ' · 관객이 짚은 자리')}
         </span>
         <h3>{issue.title}</h3>
         {issue.from_viewer && (
           <>
             {issue.detail && <p>{issue.detail}</p>}
+            {/* 노린 것과 읽힌 것을 나란히 둔다. "다르게 읽혔다"만으로는
+                감독이 무엇을 되찾아야 하는지 알 수 없다 — 원래 의도가
+                같은 자리에 있어야 고칠 방향이 정해진다. */}
+            {issue.intent && (
+              <dl className="issue-intent-gap">
+                <div>
+                  <dt>노린 것</dt>
+                  <dd>{issue.intent.intended}</dd>
+                </div>
+                <div>
+                  <dt>읽힌 것</dt>
+                  <dd>{issue.intent.read_as}</dd>
+                </div>
+              </dl>
+            )}
             {/* 관객들이 실제로 뭐라고 읽었는가. 렌즈가 무엇을 볼지
                 정하는 근거이므로 여기서 한 번 보인다. */}
             {(issue.viewer_readings || []).length > 0 && (
@@ -543,17 +558,9 @@ export default function IssueInspector({
                 ))}
               </ul>
             )}
-            {/* 감독이 관객 읽힘에서 이 갈림에 답했으면 그 답을 여기 남긴다.
-                연출 검토로 넘어와도 답이 사라지지 않는다 (S6). */}
-            {issue.viewer_answer && (
-              <p className="issue-viewer-answer">
-                <em>감독의 답</em>
-                {issue.viewer_answer}
-              </p>
-            )}
             <p className="issue-viewer-hint">
-              {issue.viewer_answer
-                ? '감독의 답이 전제로 반영됩니다. 렌즈로 더 볼 수 있습니다.'
+              {issue.intent
+                ? '의도가 이 컷에서 닿지 않았습니다. 렌즈를 골라 화면의 어디를 고칠지 봅니다.'
                 : '아직 아무 렌즈도 이 자리를 보지 않았습니다. 아래에서 골라 주세요.'}
             </p>
           </>

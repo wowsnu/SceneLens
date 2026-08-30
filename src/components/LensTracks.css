@@ -374,11 +374,10 @@
 }
 
 
-/* --- 관객이 갈린 자리 -------------------------------------------------
-   렌즈 줄과 **떨어뜨려** 놓는다. 렌즈 마커는 AI가 규칙으로 짚은 진단이라
-   감독이 판정할 대상이지만, 이것은 실제로 읽기가 갈렸다는 현상이다 —
-   판정 대상이 아니라 판정의 근거다. 같은 줄에 같은 모양으로 두면 그
-   층위 차이가 사라진다 (LENS_TRACKS_UI.md 7장). */
+/* --- 의도가 안 닿은 자리 ----------------------------------------------
+   렌즈 줄과 **떨어뜨려** 놓는다. 렌즈 마커는 AI가 규칙으로 짚은 진단이지만,
+   이것은 관객이 실제로 그렇게 읽었다는 현상이다. 같은 줄에 같은 모양으로
+   두면 그 층위 차이가 사라진다 (LENS_TRACKS_UI.md 7장). */
 
 .lens-track.reading-lane {
   --lens: #a78bfa;
@@ -414,7 +413,7 @@
   height: 0;
 }
 
-/* 갈린 자리는 없지만 관객 읽기는 돌렸다는 표시. */
+/* 어긋난 자리는 없지만 대조는 끝났다는 표시. */
 .lens-track.reading-lane .lens-track-empty-note {
   position: absolute;
   left: 0;
@@ -423,16 +422,15 @@
   white-space: nowrap;
 }
 
-/* **비어 있다.** 채운 점은 진단의 것이고, 이 줄은 근거다.
-   모양(원/마름모)은 렌즈 트랙과 같은 문법을 따른다 — 컷 안이면 원,
-   컷 사이면 마름모. 위치만이 아니라 형태로도 어디가 갈렸는지 읽힌다. */
+/* 기본은 비어 있다 — 아래 `.intent` 규칙이 채운다. 모양은 렌즈 트랙과
+   같은 문법을 따른다 (컷 안이면 원, 컷 사이면 마름모). */
 .reading-marker-lane .lens-marker-dot {
   background: transparent;
   border: 1.5px solid var(--lens);
   box-shadow: none;
 }
 
-/* 컷 사이의 갈림. `.lens-marker.seam`이 이미 마름모로 돌리므로 여기서
+/* 컷 사이. `.lens-marker.seam`이 이미 마름모로 돌리므로 여기서
    크기만 맞춘다 — 테두리가 있어 같은 값이면 조금 커 보인다. */
 .reading-marker-lane.seam .lens-marker-dot {
   width: 9px;
@@ -444,12 +442,26 @@
   background: color-mix(in srgb, var(--lens), transparent 55%);
 }
 
-/* 감독이 이미 답한 갈림. 채워 두어 "이 자리는 처리했다"가 트랙에서
-   바로 읽히게 한다 (S6). */
-.reading-marker-lane.answered .lens-marker-dot {
-  background: color-mix(in srgb, var(--lens), transparent 35%);
-  border-style: solid;
+
+/* 의도가 안 닿은 자리는 채워 그린다. 감독이 노린 것이 화면에서 다르게
+   읽혔다는 뜻이라, 트랙에서 고칠 대상으로 읽혀야 한다. */
+.reading-marker-lane.intent .lens-marker-dot {
+  background: var(--warn, #d97706);
+  border-color: var(--warn, #d97706);
 }
-.reading-marker-lane.answered .lens-marker-label {
-  opacity: 0.75;
+/* 부분적으로만 닿은 자리는 반만 채운다. 아예 안 닿은 것과 같은
+   무게로 보이면 어디부터 손댈지가 안 정해진다. */
+.reading-marker-lane.intent.is-partial .lens-marker-dot {
+  background: color-mix(in srgb, var(--warn, #d97706), transparent 55%);
+}
+/* 마커에 글씨를 안 쓰므로 이름은 읽어주기용으로만 남긴다. */
+.reading-marker-lane .sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }

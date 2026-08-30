@@ -55,7 +55,7 @@
   letter-spacing: 0.03em;
 }
 
-.reading-workbench-bar > em.diverged {
+.reading-workbench-bar > em.flagged {
   padding: 2px 9px;
   border: 1px solid color-mix(in srgb, var(--reader), transparent 55%);
   border-radius: 999px;
@@ -121,6 +121,58 @@
   line-height: 1.55;
 }
 
+/* 순차 읽기의 행동 배지를 눌렀을 때 보는 근거. 행동은 별도의 사후
+   목록이 아니라 그 순간의 읽기와 함께 확인한다. */
+.reading-behavior-detail {
+  padding: 10px;
+  border: 1px solid color-mix(in srgb, var(--reader), transparent 72%);
+  border-radius: 7px;
+  background: color-mix(in srgb, var(--reader), transparent 94%);
+}
+
+.reading-behavior-detail > div {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 6px;
+  color: color-mix(in srgb, var(--reader), white 30%);
+}
+
+.reading-behavior-detail > div > span {
+  display: grid;
+  width: 20px;
+  height: 20px;
+  place-items: center;
+  border-radius: 5px;
+  background: color-mix(in srgb, var(--reader), transparent 82%);
+  font-size: 9px;
+  font-weight: 900;
+}
+
+.reading-behavior-detail > div > strong { font-size: 10.5px; }
+.reading-behavior-detail.is-exit_risk > div { color: #fca5a5; }
+
+.reading-behavior-detail small {
+  display: block;
+  margin-top: 5px;
+  color: color-mix(in srgb, var(--reader), white 20%);
+  font-size: 9.5px;
+  line-height: 1.45;
+}
+
+.reading-behavior-detail button {
+  margin-top: 8px;
+  padding: 4px 8px;
+  border: 1px solid color-mix(in srgb, var(--reader), transparent 65%);
+  border-radius: 5px;
+  background: transparent;
+  color: color-mix(in srgb, var(--reader), white 30%);
+  font: inherit;
+  font-size: 9.5px;
+  font-weight: 750;
+  cursor: pointer;
+}
+
 /* 무엇이 눈에 들어왔나 — 그 관객이 왜 그렇게 읽었는지의 근거다. */
 .reading-cues ul {
   display: flex;
@@ -140,135 +192,52 @@
   font-size: 10px;
 }
 
-/* --- 갈렸을 때만 ----------------------------------------------------- */
+/* --- 의도가 어긋난 자리 ---------------------------------------------- */
 
-.reading-divergence {
+/* 여기서 감독에게 묻지 않는다. 무엇을 노렸고 무엇으로 읽혔는지만 두고,
+   고치는 일은 연출 검토가 렌즈로 맡는다. */
+.reading-intent-gap {
   padding-top: 13px;
   border-top: 1px solid color-mix(in srgb, var(--reader), transparent 78%);
 }
 
-.reading-divergence p {
-  margin: 0 0 8px;
-}
-
-.reading-divergence p em {
-  display: block;
-  margin-bottom: 2px;
-  color: var(--text-muted);
-  font-size: 9px;
-  font-style: normal;
-  font-weight: 800;
-  letter-spacing: 0.05em;
-}
-
-.reading-divergence-why {
-  color: rgba(226, 232, 240, 0.56) !important;
-  font-size: 10.5px !important;
-}
-
-/* 관객이 남긴 물음에 감독이 답하는 칸. 여기서 고치지 않으므로 버튼도
-   `수정하기`가 아니라 `답 남기기`다 (LENS_TRACKS_UI.md 7장). */
-.reading-answer {
-  display: flex;
-  flex-direction: column;
+.reading-intent-gap dl {
+  display: grid;
   gap: 6px;
-  margin-top: 12px;
-  padding-top: 12px;
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
-}
-
-.reading-answer label {
-  display: flex;
-  align-items: baseline;
-  gap: 6px;
-  color: color-mix(in srgb, var(--reader), white 34%);
-  font-size: 10.5px;
-  font-weight: 700;
-}
-
-/* 이 답이 어느 자리를 덮는지. 이음새면 두 컷을 아우른다. */
-.reading-answer label b {
-  flex: none;
-  padding: 1px 6px;
-  border-radius: 4px;
-  background: color-mix(in srgb, var(--reader), transparent 80%);
-  font-size: 9.5px;
-  font-variant-numeric: tabular-nums;
-}
-
-.reading-answer textarea {
-  width: 100%;
-  padding: 8px 9px;
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  border-radius: 6px;
-  background: rgba(0, 0, 0, 0.24);
-  color: rgba(240, 244, 250, 0.92);
-  font: inherit;
-  font-size: 11.5px;
-  line-height: 1.5;
-  resize: vertical;
-}
-
-.reading-answer textarea:focus {
-  border-color: color-mix(in srgb, var(--reader), transparent 45%);
-  outline: none;
-}
-
-.reading-answer button {
-  align-self: flex-start;
-  padding: 6px 12px;
-  border: 1px solid color-mix(in srgb, var(--reader), transparent 55%);
-  border-radius: 7px;
-  background: color-mix(in srgb, var(--reader), transparent 88%);
-  color: color-mix(in srgb, var(--reader), white 32%);
-  font: inherit;
-  font-size: 10.5px;
-  font-weight: 800;
-  cursor: pointer;
-}
-
-.reading-answer button:hover:not(:disabled) {
-  border-color: var(--reader);
-  background: color-mix(in srgb, var(--reader), transparent 78%);
-}
-
-.reading-answer button:disabled { opacity: 0.4; cursor: default; }
-
-/* 이 답이 어디로 가는지. 적어 두기만 하는데 곧 무언가 일어날 것처럼
-   보이면 감독이 결과를 기다리게 된다. */
-.reading-answer small {
-  color: var(--text-muted);
-  font-size: 9.5px;
-  line-height: 1.5;
-}
-
-/* 이미 답한 자리. 무엇을 적었는지 남겨 두고 고칠 길만 연다. */
-.reading-answer.answered p {
   margin: 0;
-  padding: 8px 10px;
-  border-left: 2px solid color-mix(in srgb, var(--reader), transparent 45%);
-  background: color-mix(in srgb, var(--reader), transparent 92%);
-  color: rgba(226, 232, 240, 0.86);
-  font-size: 11.5px;
-  line-height: 1.55;
 }
 
-.reading-answer-mark {
-  align-self: flex-start;
-  padding: 2px 8px;
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--reader), transparent 78%);
-  color: color-mix(in srgb, var(--reader), white 36%);
+.reading-intent-gap dl > div {
+  display: grid;
+  grid-template-columns: 46px 1fr;
+  gap: 8px;
+  align-items: baseline;
+}
+
+.reading-intent-gap dt {
+  color: var(--text-muted);
   font-size: 9px;
   font-weight: 800;
   letter-spacing: 0.05em;
 }
 
-.reading-answer.answered button {
-  border-color: rgba(255, 255, 255, 0.16);
-  background: transparent;
-  color: rgba(226, 232, 240, 0.7);
-  font-weight: 700;
+.reading-intent-gap dd {
+  margin: 0;
+  color: rgba(226, 232, 240, 0.88);
+  font-size: 11.5px;
+  line-height: 1.5;
+}
+
+/* 읽힌 쪽이 어긋난 쪽이다. 한 단계 밝혀 대비가 보이게 한다. */
+.reading-intent-gap dl > div:last-child dd {
+  color: rgba(252, 211, 77, 0.95);
+}
+
+.reading-intent-cause {
+  margin: 8px 0 0;
+  color: rgba(226, 232, 240, 0.56);
+  font-size: 10.5px;
+  line-height: 1.5;
 }
 
 /* --- 수정 작업면 ------------------------------------------------------ */

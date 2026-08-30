@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef } from 'react'
+import { audienceAction, engagementSignalAt } from './audienceBehavior'
 import './ReadingTracks.css'
 
 /**
@@ -51,7 +52,7 @@ export default function ReadingTracks({
   shots = [],
   // 트랙의 행. 읽은 조건들이다.
   conditions = [],
-  // 마커. divergence와 단독 review_point가 같은 모양으로 들어온다.
+  // 마커. 의도가 안 닿은 자리와 단독 review_point가 같은 모양으로 들어온다.
   findings = [],
   // 조건별 읽기 기록. 각 줄의 칸을 채우는 것이 이것이다.
   readings = [],
@@ -59,15 +60,13 @@ export default function ReadingTracks({
   selectedFindingId = null,
   // 지금 읽고 있는 칸의 컷 번호. 이 칸이 화면 안에 있어야 한다.
   walkedTo = null,
-  // 감독이 답을 남긴 갈림. 트랙에 표시가 남아야 어디까지 봤는지 안다.
-  answers = {},
   onSelectStep,
   onToggleCondition,
   scrollRef = null,
   onScroll,
   embedded = false,
   loading = false,
-  // 이미 한 번 읽었는가. "아직 안 읽음"과 "읽었지만 안 갈림"을 구분한다.
+  // 이미 한 번 읽었는가. "아직 안 읽음"과 "읽었지만 어긋난 데 없음"을 구분한다.
   hasRead = false,
 }) {
   const trackScrollRef = useRef(null)
@@ -93,7 +92,7 @@ export default function ReadingTracks({
     return map
   }, [readings])
 
-  // 이 칸에서 갈렸는가. 갈림은 별도 점이 아니라 그 칸을 강조하는 것으로
+  // 이 칸에 걸린 것이 있는가. 별도 점이 아니라 그 칸을 강조하는 것으로
   // 표시하므로, 컷+조건으로 바로 찾을 수 있어야 한다.
   const findingIndex = useMemo(() => {
     const map = new Map()
@@ -103,7 +102,7 @@ export default function ReadingTracks({
         .filter((index) => index !== undefined)
       if (indices.length === 0) return
       // 앵커가 걸친 컷 전부에 표시한다. 이음새(S2→S3)면 두 칸 다 —
-      // 갈림은 그 사이에서 일어나므로 양쪽을 함께 봐야 한다.
+      // 그 사이에서 일어난 것이므로 양쪽을 함께 봐야 한다.
       indices.forEach((index) => {
         finding.conditions?.forEach((conditionId) => {
           map.set(`${index + 1}:${conditionId}`, finding)
@@ -118,7 +117,7 @@ export default function ReadingTracks({
     [findingIndex],
   )
 
-  // 여러 조건이 갈린 자리. 세로선을 그어 그 정렬을 보이게 한다.
+  // 여러 조건에 함께 걸린 자리. 세로선을 그어 그 정렬을 보이게 한다.
   const stackedFindings = useMemo(() => (
     findings
       .filter((finding) => (finding.conditions?.length || 0) >= 2)
@@ -213,13 +212,18 @@ export default function ReadingTracks({
                 const turnMark = step.relation_to_previous !== 'reinforced'
                   ? RELATION_MARKS[step.relation_to_previous] || ''
                   : ''
+                const signal = engagementSignalAt(
+                  readings.find((entry) => entry.id === condition.id)?.reading,
+                  order,
+                )
+                const action = signal ? audienceAction(signal.action) : null
                 return (
                   <button
                     key={order}
                     type="button"
                     data-finding-id={finding?.id}
                     data-cell-order={order}
-                    className={`reading-cell ${finding ? `diverged ${finding.kind}` : ''} ${selected ? 'selected' : ''} ${finding && answers[finding.id] ? 'answered' : ''}`}
+                    className={`reading-cell ${finding ? `flagged ${finding.kind}` : ''} ${selected ? 'selected' : ''}`}
                     style={{ '--pos': index }}
                     onClick={() => onSelectStep?.({ condition: condition.id, order, finding })}
                     aria-pressed={Boolean(selected)}
@@ -230,9 +234,21 @@ export default function ReadingTracks({
 
                         문장 위에 띄우지 않는다 — absolute로 올리면 글자가
                         배지 아래로 지나가 둘 다 못 읽는다(실제로 그랬다). */}
-                    {turnMark && (
-                      <span className={`reading-cell-turn turn-${step.relation_to_previous}`}>
-                        {turnMark}
+                    {(turnMark || action) && (
+                      <span className="reading-cell-meta">
+                        {turnMark && (
+                          <span className={`reading-cell-turn turn-${step.relation_to_previous}`}>
+                            {turnMark}
+                          </span>
+                        )}
+                        {action && (
+                          <span
+                            className={`reading-cell-action action-${signal.action}`}
+                            title={signal.reason}
+                          >
+                            <b aria-hidden="true">{action.mark}</b>{action.label}
+                          </span>
+                        )}
                       </span>
                     )}
                     {/* 순차 읽기는 이 칸이 다 맡는다. 읽은 것과 그때 든
@@ -249,9 +265,6 @@ export default function ReadingTracks({
                       <span
                         className="reading-cell-mark"
                         aria-hidden="true"
-                        /* 답을 남긴 자리는 표식이 채워진다. 무엇을 이미
-                           판정했는지 트랙만 훑어도 알 수 있어야 한다. */
-                        title={answers[finding.id] ? '답을 남긴 자리' : undefined}
                       />
                     )}
                   </button>
@@ -277,8 +290,8 @@ export default function ReadingTracks({
       )}
 
       {loading && <p className="reading-tracks-status">관객이 읽는 중입니다…</p>}
-      {/* 아직 안 읽음 / 읽었지만 안 갈림은 다르다. 침묵을 "문제 없음"으로
-          읽지 않게 구분해 말한다 (`design_goal.md` DG1 P2). */}
+      {/* 아직 안 읽음 / 읽었지만 어긋난 데 없음은 다르다. 침묵을 "문제
+          없음"으로 읽지 않게 구분해 말한다 (`design_goal.md` DG1 P2). */}
       {!loading && !hasRead && (
         <p className="reading-tracks-status">
           아직 볼 것이 없습니다. 읽으면 여기에 표시됩니다.
@@ -286,7 +299,7 @@ export default function ReadingTracks({
       )}
       {!loading && hasRead && findings.length === 0 && (
         <p className="reading-tracks-status">
-          이 관객들 사이에서는 읽기가 갈린 자리를 찾지 못했습니다.
+          의도가 어긋난 자리를 찾지 못했습니다.
         </p>
       )}
     </section>

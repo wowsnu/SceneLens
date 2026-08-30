@@ -1,7 +1,7 @@
 import './ReadingStage.css'
 
 /**
- * 갈린 자리의 컷들과, 그 자리를 지나는 **순차 읽기**.
+ * 걸린 자리의 컷들과, 그 자리를 지나는 **순차 읽기**.
  *
  * 연출 쪽 `EvidenceStage`와 같은 자리다 (`LENS_TRACKS_UI.md` 4장). 다른
  * 것은 그림 위에 얹는 것이 좌표 상자가 아니라 **그 관객이 그 컷에서
@@ -80,12 +80,12 @@ export default function ReadingStage({
   // 앞뒤 컷을 눌러 그리로 걸어갈 수 있는가. 순차 읽기는 앞뒤로 움직이며
   // 읽는 것이므로, 그림 자체가 이동 수단이 된다.
   onWalkTo = null,
-  // 이 관객이 이 자리에서 뭐라고 읽었는가 (divergence의 조건별 문장).
+  // 이 관객이 이 자리에서 뭐라고 읽었는가.
   line = '',
 }) {
   const frames = framesFor(finding, shots, range)
   const anchorPanels = panelsOf(finding?.anchor)
-  // 이 자리의 첫 컷에서 시작한다. 갈린 자리가 곧 읽던 자리이므로,
+  // 이 자리의 첫 컷에서 시작한다. 걸린 자리가 곧 읽던 자리이므로,
   // 트랙에서 점을 누른 순간 그 컷의 반응이 보여야 한다.
   const anchorOrder = panelIndexOf(anchorPanels[0]) + 1
 
@@ -214,10 +214,10 @@ export default function ReadingStage({
             </details>
           )}
 
-          {/* 이 자리에서 이 관객이 무엇을 다르게 읽었는가. 갈림의 근거라
-              순차 읽기 아래에 붙인다 — 걸어와서 여기가 갈린 자리다. */}
+          {/* 이 자리에서 이 관객이 무엇을 읽었는가. 근거라서 순차 읽기
+              아래에 붙인다 — 걸어와서 여기가 그 자리다. */}
           {line && (
-            <p className="reading-trace-divergence">
+            <p className="reading-trace-line">
               <em>{conditionLabel || '이 읽기'}</em>{line}
             </p>
           )}

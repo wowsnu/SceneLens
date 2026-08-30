@@ -1130,7 +1130,7 @@
 }
 
 
-/* 관객이 갈린 자리에서, 관객들이 실제로 뭐라고 읽었는가.
+/* 관객이 짚은 자리에서, 관객들이 실제로 뭐라고 읽었는가.
    렌즈가 무엇을 볼지 정하는 근거다 (LENS_TRACKS_UI.md 7장). */
 .issue-viewer-readings {
   display: grid;
@@ -1183,4 +1183,42 @@
   margin: 9px 0 0 !important;
   color: rgba(226, 232, 240, 0.5) !important;
   font-size: 10.5px !important;
+}
+
+/* 노린 것 / 읽힌 것. 같은 폭으로 나란히 두어 무엇이 어긋났는지가
+   문장이 아니라 대비로 읽히게 한다. 이 패널은 어두운 바탕이라
+   색은 옆 블록(.issue-viewer-readings)과 같은 계열로 맞춘다. */
+.issue-intent-gap {
+  display: grid;
+  gap: 1px;
+  margin: 9px 0 0;
+  padding: 7px 9px;
+  border-left: 2px solid rgba(251, 191, 36, 0.5);
+  background: rgba(251, 191, 36, 0.07);
+}
+
+.issue-intent-gap > div {
+  display: grid;
+  grid-template-columns: 46px 1fr;
+  gap: 8px;
+  align-items: baseline;
+}
+
+.issue-intent-gap dt {
+  color: rgba(253, 224, 133, 0.9);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+}
+
+.issue-intent-gap dd {
+  margin: 0;
+  color: rgba(226, 232, 240, 0.82);
+  font-size: 11.5px;
+  line-height: 1.5;
+}
+
+/* 읽힌 것은 어긋난 쪽이다. 한 단계 밝혀 대비가 보이게 한다. */
+.issue-intent-gap > div:last-child dd {
+  color: rgba(252, 211, 77, 0.95);
 }

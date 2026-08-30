@@ -21,6 +21,7 @@ import IssueInspector from './IssueInspector'
 import { panelIndexOf } from './evidenceSummary'
 import ReadingTracks from './ReadingTracks'
 import ReadingWorkbench from './ReadingWorkbench'
+import AudienceAfterReading from './AudienceAfterReading'
 import RevisionWorkspace from './RevisionWorkspace'
 import SeamEditor from './SeamEditor'
 import { editingActionFor } from './seamAction'
@@ -1147,7 +1148,7 @@ function SceneFactChanges({
 // ViewerFixCard를 걷어냈다 (2026-08-27).
 //
 // `가까운 수정안 / 넓은 수정안 / 눈높이 수정안`은 진단과 무관한 하드코딩
-// 프리셋이었다 — 어떤 갈림이든 늘 같은 세 버튼이 나와, "이 갈림을 풀려면
+// 프리셋이었다 — 어떤 자리든 늘 같은 세 버튼이 나와, "이것을 풀려면
 // 무엇을 바꿔야 하나"와 아무 상관이 없었다. 연출 검토가 AI가 낸
 // `alternatives`를 판정하게 하는 것과 구조가 달랐던 이유다.
 //
@@ -1683,7 +1684,7 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
   const [revisionWorkspace, setRevisionWorkspace] = useState(null)
   // 두 컷 사이에 펼친 편집. { operation, removingPanel, pendingEdit }
   const [seamEdit, setSeamEdit] = useState(null)
-  // 관객 검토도 같은 구조로 돈다 — 트랙에서 갈린 자리를 고르고, 아래
+  // 관객 검토도 같은 구조로 돈다 — 트랙에서 걸린 자리를 고르고, 아래
   // Workbench에서 관객을 갈아 끼우며 읽는다 (LENS_TRACKS_UI.md 7장).
   // 연출 쪽 `activeTrackLenses`/`selectedIssueId`와 같은 자리의 상태다.
   const [activeReadingTracks, setActiveReadingTracks] = useState(() => new Set())
@@ -1694,7 +1695,6 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
   // 않는다 — 관객은 의도를 모르는 것이 원칙이라, 감독의 답을 관객에게
   // 먹이면 그 전제가 깨진다. 답은 **연출 검토의 전제**로만 쌓이고,
   // 나중에 다관점 검토를 돌릴 때 세 렌즈가 그 위에서 본다.
-  const [readingAnswers, setReadingAnswers] = useState({})
   // 스트립에서 지금 보고 있는 컷. 검토 대상(singleScopeShotId)과 다른
   // 것이다 — 스트립을 훑는 것은 "어디를 보는가"이지 "무엇을 검토하는가"가
   // 아니다 (LENS_TRACKS_UI.md 1장의 역할 분리). 검토 대상은 범위가 잠가
@@ -2442,13 +2442,6 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
         ? [{ level: question.level, question: question.prompt, answer: decision.answer }]
         : []
     }),
-    // 관객 검토에서 답한 것도 같은 전제다. 감독이 확정한 창작 결정이므로
-    // 어느 화면에서 답했든 세 렌즈가 함께 그 위에서 본다.
-    ...Object.entries(readingAnswers).map(([, entry]) => ({
-      level: `${entry.anchor} 관객 읽기`,
-      question: entry.question,
-      answer: entry.answer,
-    })),
   ]
   // 메인 검토에서 요약만 본 뒤에도, 세 렌즈가 낸 원래 상세 보고서로
   // 돌아갈 길은 남겨 둔다. 상세 내용은 각 렌즈 작업대가 그대로 맡고,
@@ -3289,11 +3282,11 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
     setRangeStart(0)
     setRangeEnd(generatedEnd)
     setScopeMode('range')
-    // 관객 둘로 시작한다. 이 화면이 보여 주는 것은 **갈림**인데, 관객이
-    // 하나면 견줄 상대가 없어 divergence가 구조적으로 나올 수 없다 —
-    // 트랙이 빈 채로 열려 "아직 안 돌았나"로 읽힌다
-    // (LENS_TRACKS_UI.md 7장). 셋째는 첫 결과를 본 뒤 더한다.
-    setSelectedReadingConditionIds(['first_viewer', 'film_literate'])
+    // 관객 하나로 시작한다. 이 화면이 보여 주는 것은 **감독이 노린 것이
+    // 닿았는가**이고, 그건 관객 하나로도 판정된다 — 둘로 시작하던 것은
+    // 견줄 상대가 있어야 갈림이 나오기 때문이었고, 갈림은 더 보지 않는다.
+    // 다른 관객은 첫 결과를 본 뒤 더한다.
+    setSelectedReadingConditionIds(['first_viewer'])
     setViewerSnapshot({
       sceneId: scene?.id,
       sceneLabel: scene?.label || 'Current scene',
@@ -3382,7 +3375,7 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
       setSeamEdit(null)
       setRevisionWorkspace(null)
     }
-    // 갈림을 보던 중이면 놓는다 — Inspector가 가리키는 것이 하나여야 한다.
+    // 관객 쪽을 보던 중이면 놓는다 — Inspector가 가리키는 것이 하나여야 한다.
     setSelectedReadingFindingId(null)
     // Issue를 고르면 그 자리가 보여야 한다. 훑던 위치가 남아 있으면
     // 고른 Issue가 아니라 엉뚱한 컷이 선택된 채로 남는다.
@@ -3513,18 +3506,18 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
     }, revisionWorkspace.issue, revisionWorkspace.diagnosis)
   }
 
-  // 트랙에서 관객 갈림을 눌렀을 때. **검토를 돌리지 않는다** —
+  // 트랙에서 관객 쪽 마커를 눌렀을 때. **검토를 돌리지 않는다** —
   // 고르기만 하고, 어느 렌즈로 볼지는 감독이 Inspector에서 정한다.
   // 연출 쪽의 `+ 렌즈 더하기`와 같은 방식이다 (문서 4장).
-  const selectDivergence = (findingId) => {
+  const selectReadingFinding = (findingId) => {
     const finding = readingFindings.find((entry) => entry.id === findingId)
     if (!finding) return
     const orders = finding.panelOrders || []
     if (orders.length === 0) return
 
-    logScaffold({ feature: 'lens', action: 'select-divergence', anchor: finding.anchor })
+    logScaffold({ feature: 'lens', action: 'select-reading-finding', anchor: finding.anchor })
 
-    // 갈린 자리로 검토 범위를 옮긴다. 렌즈를 부를 때 이 범위의 패널을
+    // 그 자리로 검토 범위를 옮긴다. 렌즈를 부를 때 이 범위의 패널을
     // 보내므로, 고르는 즉시 맞춰 둔다.
     const from = orders[0] - 1
     const to = orders[orders.length - 1] - 1
@@ -3538,7 +3531,7 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
     }
     setBrowsingShotIndex(from)
     setFlowActiveShot(from)
-    // 갈림을 보는 중에는 렌즈 Issue 선택을 놓는다 — 아래 Inspector가
+    // 이걸 보는 중에는 렌즈 Issue 선택을 놓는다 — 아래 Inspector가
     // 무엇을 가리키는지 하나여야 한다.
     setSelectedIssueId(null)
     setSelectedReadingFindingId(
@@ -3547,8 +3540,8 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
   }
 
   const checkSelectedIssueLens = async (lens) => {
-    // 갈림을 보는 중이면 그것이 대상이다. 진단이 아니라 관객이 짚은
-    // 자리이지만, 렌즈를 부르는 흐름은 똑같다.
+    // 관객 쪽을 보는 중이면 그것이 대상이다. 렌즈가 짚은 진단이 아니지만,
+    // 렌즈를 부르는 흐름은 똑같다.
     const issue = readingIssue || selectedTrackIssue
     if (!issue || issue.lenses?.includes(lens)) return
     const key = issueLensCheckKey(issue.id, lens)
@@ -3588,12 +3581,15 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
       .map((diagnosisId) => diagnosesById.get(diagnosisId))
       .find((entry) => entry?.lens === issue.origin_lens)
       || (issue.diagnosis_ids || []).map((diagnosisId) => diagnosesById.get(diagnosisId)).find(Boolean)
-    // 갈림에는 먼저 짚은 렌즈가 없다. 관객이 읽은 것을 논점으로 준다 —
-    // "이 자리에서 읽기가 갈렸다"가 렌즈가 이어 읽을 출발점이다.
-    const viewerReading = issue.from_viewer
-      ? `관객 읽기가 갈렸습니다 — ${(issue.viewer_readings || [])
-        .map((entry) => `${entry.label}: ${entry.line}`).join(' / ')}`
-      : ''
+    // 관객 쪽에서 온 자리에는 먼저 짚은 렌즈가 없다. 무엇이 어긋났는지를
+    // 논점으로 준다 — 그것이 렌즈가 이어 읽을 출발점이다.
+    const viewerReading = issue.intent
+      ? `감독이 노린 것은 "${issue.intent.intended}"인데 관객은 "${issue.intent.read_as}"로 읽었습니다.`
+        + (issue.intent.screen_cause ? ` ${issue.intent.screen_cause}` : '')
+      : issue.from_viewer
+        ? `관객이 짚었습니다 — ${(issue.viewer_readings || [])
+          .map((entry) => `${entry.label}: ${entry.line}`).join(' / ')}`
+        : ''
 
     try {
       const response = await requestDirectingReview({
@@ -3633,7 +3629,7 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
       // 비교 단계는 최초 Lens와 사용자가 더한 Lens의 실제 판단만 받는다.
       // Inspector의 Issue 자체를 합치지는 않는다.
       setMultiReviewRuns((current) => {
-        // 갈림에서 부른 경우 이 범위를 아직 검토한 적이 없을 수 있다.
+        // 관객 쪽에서 부른 경우 이 범위를 아직 검토한 적이 없을 수 있다.
         // 그때 결과를 버리면 렌즈가 답했는데 화면에 아무것도 안 뜬다.
         const run = current[issue.sourceScopeKey] || { status: 'ready', requestId: Date.now() }
         // 이 렌즈를 다시 부르면 lensResults[lens]가 통째로 새 결과로
@@ -3878,32 +3874,25 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
           ...point,
           panel_orders: point.panel_orders.map(mapPanelOrder),
         })),
+        engagement_signals: (reading.engagement_signals || []).map((signal) => ({
+          ...signal,
+          panel_orders: signal.panel_orders.map(mapPanelOrder),
+        })),
       })
       const readings = (result.readings?.length
         ? result.readings
         : [{ condition_id: selectedReadingConditionIds[0], reading: result.initial_reading }]
       ).map((entry) => ({ ...entry, reading: remapReading(entry.reading) }))
-      const comparison = result.comparison ? {
-        ...result.comparison,
-        divergences: (result.comparison.divergences || []).map((divergence) => ({
-          ...divergence,
-          panel_orders: divergence.panel_orders.map(mapPanelOrder),
-        })),
-      } : null
       // 무엇을 보고 말한 것인지 남긴다. 이후 수정이 이 읽기에 대한
       // 반응인지 판단하려면 읽은 스토리보드가 특정돼야 한다. 패널의
       // 이미지가 바뀌면 다른 버전이므로, 읽은 패널의 이미지로 버전을
       // 만든다.
       logEvent('viewer_result', {
         storyboard_version: storyboardVersion(renderedShots),
-        divergences: (comparison?.divergences || []).map((divergence, index) => (
-          divergence.id || `d${index + 1}`
-        )),
       })
       setViewerReport({
         initial_reading: readings[0].reading,
         readings,
-        comparison,
       })
       setViewerPanelOrder(panelOrders[0])
       setFlowActiveShot(panelOrders[0] - 1)
@@ -4465,11 +4454,11 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
   // --- 관객 검토를 트랙 구조로 --------------------------------------
   //
   // 연출 검토와 같은 형태로 읽는다 (LENS_TRACKS_UI.md 7장). 행은 렌즈가
-  // 아니라 읽기 조건이고, 마커는 Issue가 아니라 **divergence**다.
+  // 아니라 읽기 조건이고, 마커는 Issue가 아니라 **의도가 안 닿은 자리**다.
   //
-  // 새 데이터를 만들지 않는다. `comparison.divergences`와 `review_points`는
-  // 이미 백엔드가 주고 있고, 여기서는 트랙이 읽을 수 있는 모양으로만
-  // 바꾼다 (문서 11장 — 기능을 새로 만들지 않는다).
+  // 관객끼리 읽기가 갈렸는지는 더 이상 보지 않는다. 갈림은 그 자체로
+  // 고칠 것이 아니었고, 감독에게 답을 물어야 비로소 쓸모가 생기는데 그
+  // 물음이 일을 늘리기만 했다. 감독이 노린 것이 닿았는지만 본다.
 
   // 트랙의 행. 실제로 읽은 조건만 둔다 — 고르기만 하고 아직 읽지 않은
   // 조건까지 빈 행으로 그리면, 결과가 없는 것인지 갈리지 않은 것인지
@@ -4504,32 +4493,28 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
   const readingFindings = useMemo(() => {
     if (!viewerReport) return []
     const scopeKey = `${scene?.id || activeScene}:${branch?.id || activeBranch}`
-    // 갈림이 먼저다. 트랙의 점은 "여기서 읽기가 갈렸다"를 말한다.
-    const divergences = (viewerReport.comparison?.divergences || []).map((divergence, index) => {
-      const anchor = readingAnchorOf(divergence.panel_orders)
-      return {
-        id: `${scopeKey}:diverge:${index}:${anchor}`,
-        kind: 'diverge',
-        anchor,
-        anchor_kind: divergence.panel_orders.length > 1 ? 'seam' : 'shot',
-        panelOrders: divergence.panel_orders,
-        // 트랙 마커에 적히는 짧은 이름. 갈린 근거를 그대로 쓴다 —
-        // 새 문장을 만들지 않는다.
-        title: divergence.shared_cues?.[0] || '읽기가 갈림',
-        why_it_matters: divergence.why_it_matters || '',
-        conditions: divergence.readings.map((entry) => entry.condition_id),
-        // 조건별로 뭐라고 읽었는가. Workbench의 오른쪽 흐름이 이걸 쌓는다.
-        lines: Object.fromEntries(
-          divergence.readings.map((entry) => [entry.condition_id, entry.reading]),
-        ),
-        route: (divergence.routes || [])[0] || null,
-        issue_kind: divergence.issue_kind,
-        source: divergence,
-      }
-    })
-    // 갈리지 않은 자리의 단독 지적. 같은 자리에 갈림이 있으면 그쪽이
-    // 이미 말하므로 넣지 않는다 — 마커가 겹쳐 무엇이 갈림인지 흐려진다.
-    const takenAnchors = new Set(divergences.map((entry) => entry.anchor))
+
+    // 의도가 안 닿은 자리. 트랙의 마커, Inspector, Workbench가 모두 이
+    // 목록 하나를 따라간다.
+    const intentMisses = (intentCheck?.verdicts || [])
+      .filter((verdict) => verdict.status === 'missed' || verdict.status === 'partial')
+      .map((verdict) => ({
+        id: `${scopeKey}:intent:${verdict.panel_order}`,
+        kind: 'intent',
+        anchor: `S${verdict.panel_order}`,
+        anchor_kind: 'shot',
+        panelOrders: [verdict.panel_order],
+        // 마커에 적히는 이름. 노린 것과 읽힌 것을 그대로 잇는다.
+        title: `${verdict.intended} → ${verdict.read_as}`,
+        why_it_matters: verdict.screen_cause || '',
+        conditions: [],
+        lines: {},
+        intent: verdict,
+      }))
+
+    // 관객이 컷을 보며 남긴 단독 지적. 의도가 안 닿았다고 판정된 자리는
+    // 그쪽이 이미 말하므로 넣지 않는다 — 마커가 겹친다.
+    const takenAnchors = new Set(intentMisses.map((entry) => entry.anchor))
     const reviewPoints = viewerReadings.flatMap((entry) => (
       (entry.reading?.review_points || []).map((point, index) => {
         const anchor = readingAnchorOf(point.panel_orders)
@@ -4550,50 +4535,38 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
         }
       }).filter(Boolean)
     ))
-    return [...divergences, ...reviewPoints]
-  }, [viewerReport, viewerReadings, scene?.id, activeScene, branch?.id, activeBranch])
 
-  // 갈림을 연출 트랙에도 올린다. **진단이 아니라 근거로** 올라간다 —
-  // 렌즈 줄과 떨어진 자리에 다른 모양으로 그려진다 (LensTracks의
-  // `reading-lane`). 감독이 연출을 보다가 "여기서 실제로 읽기가 갈렸다"를
-  // 같은 가로축에서 볼 수 있어야, 그 진단이 관객에게 어떻게 닿는지 잇는다.
+    return [...intentMisses, ...reviewPoints]
+  }, [viewerReport, viewerReadings, intentCheck, scene?.id, activeScene, branch?.id, activeBranch])
+
+  // 의도가 안 닿은 자리를 연출 트랙에 올린다. 렌즈 줄과 떨어진 자리에
+  // 다른 모양으로 그려진다 (LensTracks의 `reading-lane`). 감독이 연출을
+  // 보다가 "여기서 노린 게 안 닿았다"를 같은 가로축에서 볼 수 있어야,
+  // 그 진단이 관객에게 어떻게 닿는지 잇는다.
   //
-  // 갈림만 올린다 — 감독이 답을 다는 자리도 갈림이다(Workbench가 갈림에
-  // 대해서만 답을 받는다). 답한 갈림은 아래에서 answer를 얹어, 연출
-  // 검토로 넘어와도 답이 그 자리에 남게 한다 (S6).
+  // **갈림은 올리지 않는다.** 갈림은 관객끼리 다르게 읽었다는 사실일
+  // 뿐이라 그 자체로 고칠 것이 아니고, 근거는 관객 읽힘 화면에 있다.
+  // 연출 트랙은 고칠 자리만 든다.
   const readingLaneMarkers = useMemo(() => (
     readingFindings
-      .filter((finding) => finding.kind === 'diverge')
-      .map((finding) => {
-        const orders = finding.panelOrders || []
-        if (orders.length === 0) return null
-        const first = orders[0] - 1
-        const last = orders[orders.length - 1] - 1
-        return {
-          id: finding.id,
-          // 트랙의 마커와 같은 계산이다 — 컷 인덱스 기준의 실수.
-          position: orders.length > 1 ? (first + last) / 2 : first,
-          // 컷 안인지 컷 사이인지. 렌즈 트랙과 같은 문법으로 그린다 —
-          // 위치만이 아니라 형태로도 읽히게.
-          anchor_kind: finding.anchor_kind,
-          title: finding.title,
-          anchor: finding.anchor,
-          conditions: (finding.conditions || []).map((conditionId) => (
-            allViewerReadingConditions.find((item) => item.id === conditionId)?.title || conditionId
-          )),
-          // 감독이 관객 읽힘에서 이 갈림에 답했으면 그 요약을 얹는다.
-          // 연출 검토로 넘어와도 답한 자리와 답 내용이 트랙에 남는다 (S6).
-          answer: readingAnswers[finding.id]?.answer || '',
-        }
-      })
-      .filter(Boolean)
-  ), [readingFindings, allViewerReadingConditions, readingAnswers])
+      .filter((finding) => finding.kind === 'intent')
+      .map((finding) => ({
+        id: finding.id,
+        // 트랙의 마커와 같은 계산이다 — 컷 인덱스 기준의 실수.
+        position: (finding.panelOrders?.[0] || 1) - 1,
+        anchor_kind: 'shot',
+        anchor: finding.anchor,
+        title: finding.title,
+        conditions: [],
+        intent: finding.intent,
+      }))
+  ), [readingFindings])
 
   const selectedReadingFinding = readingFindings.find((entry) => (
     entry.id === selectedReadingFindingId
   )) || null
 
-  // 갈림을 Inspector가 읽을 수 있는 모양으로 감싼다.
+  // 관객 쪽 finding을 Inspector가 읽을 수 있는 모양으로 감싼다.
   //
   // 진단이 아니므로 `diagnosis_ids`는 비어 있다 — 그래서 Inspector의
   // 세 렌즈가 전부 "아직 안 봄"으로 뜨고, 감독이 `~로 검토하기`를 눌러
@@ -4607,8 +4580,12 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
       anchor: finding.anchor,
       anchor_kind: finding.anchor_kind,
       title: finding.title,
-      // 이 자리를 판정하는 질문. 관객이 왜 갈렸는지가 곧 기준이다.
+      // 이 자리를 판정하는 질문. 화면의 어느 부분이 그렇게 읽히게
+      // 했는지가 곧 기준이다.
       detail: finding.why_it_matters || '',
+      // 의도가 안 닿은 자리. Inspector가 "노린 것"과 "읽힌 것"을 나란히
+      // 보여줘야 감독이 무엇을 되찾아야 하는지 안다.
+      intent: finding.intent || null,
       // 렌즈가 아직 아무도 짚지 않았다.
       lenses: [],
       diagnosis_ids: [],
@@ -4619,11 +4596,9 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
         label: allViewerReadingConditions.find((item) => item.id === conditionId)?.title || conditionId,
         line,
       })),
-      // 감독이 관객 읽힘에서 남긴 답. 연출 검토로 넘어와도 유지된다 (S6).
-      viewer_answer: readingAnswers[finding.id]?.answer || '',
       sourceScopeKey: multiReviewScopeKey,
     }
-  }, [readingFindings, selectedReadingFindingId, allViewerReadingConditions, multiReviewScopeKey, readingAnswers])
+  }, [readingFindings, selectedReadingFindingId, allViewerReadingConditions, multiReviewScopeKey])
 
   // 트랙 행이 새로 생기면 켠다. 감독이 끈 것은 그대로 둔다 — 결과가
   // 도착할 때마다 선택이 되돌아가면 무엇을 보고 있었는지 잃는다.
@@ -4646,7 +4621,7 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
     })
   }, [viewerReadings, selectedReadingConditionIds])
 
-  // 고른 갈림이 사라지면 선택도 놓는다. 안 그러면 Workbench가 빈 채로
+  // 고른 자리가 사라지면 선택도 놓는다. 안 그러면 Workbench가 빈 채로
   // 남아 무엇을 보는 자리인지 알 수 없다.
   useEffect(() => {
     setSelectedReadingFindingId((current) => (
@@ -4654,39 +4629,13 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
     ))
   }, [readingFindings])
 
-  // 칸을 누르면 그 컷의 읽기를 아래에서 편다. 갈린 칸이면 그 갈림까지
-  // 함께 고른다 — 갈림은 별도 대상이 아니라 그 칸에서 일어난 일이다.
+  // 칸을 누르면 그 컷의 읽기를 아래에서 편다. 걸린 칸이면 그것까지
+  // 함께 고른다 — 별도 대상이 아니라 그 칸에서 일어난 일이다.
   const selectReadingStep = ({ condition, order, finding }) => {
     setViewerPanelOrder(order)
     setSelectedReadingStep({ condition, order })
     setSelectedReadingFindingId(finding?.id || null)
     logScaffold({ feature: 'viewer', action: 'read-step', diverged: Boolean(finding) })
-  }
-
-  // 관객이 남긴 물음에 감독이 답한다. **여기서 고치지 않는다.**
-  //
-  // 관객 읽기는 의도를 모르는 것이 원칙이므로(7장), 감독의 답을 관객에게
-  // 되먹이면 그 전제가 깨진다. 그래서 답은 적어 두기만 하고, 나중에 연출
-  // 검토를 돌릴 때 세 렌즈가 그 전제 위에서 본다.
-  const answerReadingQuestion = (finding, answer) => {
-    const text = (answer || '').trim()
-    if (!text) return
-    setReadingAnswers((current) => ({
-      ...current,
-      [finding.id]: {
-        answer: text,
-        anchor: finding.anchor,
-        question: finding.why_it_matters || finding.title,
-        at: Date.now(),
-      },
-    }))
-    logEvent('verdict', {
-      target: finding.id,
-      verdict: 'answered',
-      source: 'viewer',
-      level: finding.anchor_kind,
-    })
-    logScaffold({ feature: 'viewer', action: 'answer', anchor: finding.anchor })
   }
 
   // 패널별 반응 카드를 스토리보드 위에 얹지 않는다. 스토리보드는
@@ -4782,14 +4731,6 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
     return (
       <div className="viewer-initial-reading-choices" role="group" aria-label="추가 읽기 조건">
         <span>기본 관객</span>
-        {/* 고르는 자리에서 바로 알린다. 실행 바의 안내는 이 팝오버에 가려
-            보이지 않고, 이 화면이 보여 주는 것은 읽기가 **갈린** 자리라
-            관객이 하나면 나올 것이 구조적으로 없다. */}
-        {selectedReadingConditionIds.length < 2 && (
-          <p className="viewer-initial-reading-need">
-            관객이 하나면 견줄 상대가 없어 갈린 자리가 나오지 않습니다. 하나 더 고르세요.
-          </p>
-        )}
         {VIEWER_READING_CONDITIONS.map((condition) => {
           const selected = selectedReadingConditionIds.includes(condition.id)
           return (
@@ -4831,7 +4772,6 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
             <summary>
               <span>관객 구성</span>
               <strong>{selectedReadingConditionIds.length}명 선택</strong>
-              {selectedReadingConditionIds.length < 2 && <b>하나 더 필요</b>}
               <em>변경</em>
             </summary>
             <div className="reading-condition-depth-menu">
@@ -4851,17 +4791,17 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
             type="button"
             className="reading-run-button"
             onClick={runViewerReflection}
-            disabled={viewerStatus === 'loading' || selectedReadingConditionIds.length < 2}
-            title={selectedReadingConditionIds.length < 2
-              ? '관객을 둘 이상 골라야 갈린 자리가 나옵니다.'
+            disabled={viewerStatus === 'loading' || selectedReadingConditionIds.length === 0}
+            title={selectedReadingConditionIds.length === 0
+              ? '관객을 하나 이상 골라 주세요.'
               : undefined}
           >
             {/* 못 누르는 이유를 라벨이 직접 말한다. 툴팁에만 두면 마우스를
                 올려 보기 전까지는 왜 안 눌리는지 알 수 없다. */}
             {viewerStatus === 'loading'
               ? '읽는 중…'
-              : selectedReadingConditionIds.length < 2
-                ? '관객을 하나 더 고르세요'
+              : selectedReadingConditionIds.length === 0
+                ? '관객을 고르세요'
                 : viewerReport
                   ? '다시 읽기'
                   : `${selectedReadingConditionIds.length}명 관객으로 읽기`}
@@ -4879,8 +4819,8 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
                 selectScopeShot(index, event)
                 return
               }
-              // 컷을 누른 것은 "이 자리의 반응을 보겠다"이다. 갈림 선택은
-              // 놓는다 — 다른 자리를 보면서 옛 갈림이 아래에 남아 있으면
+              // 컷을 누른 것은 "이 자리의 반응을 보겠다"이다. 고른 자리는
+              // 놓는다 — 다른 자리를 보면서 옛것이 아래에 남아 있으면
               // 무엇을 보고 있는지 어긋난다.
               setViewerPanelOrder(index + 1)
               setSelectedReadingFindingId(null)
@@ -4899,7 +4839,6 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
             activeConditions={activeReadingTracks}
             selectedFindingId={selectedReadingFindingId}
             walkedTo={selectedReadingStep?.order ?? null}
-            answers={readingAnswers}
             loading={viewerStatus === 'loading'}
             hasRead={Boolean(viewerReport)}
             scrollRef={readingSequenceScrollRef}
@@ -4922,11 +4861,6 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
       </section>
 
       <div className="reading-condition-feedback" aria-live="polite">
-        {selectedReadingConditionIds.length < 2 && (
-          <p className="viewer-reflection-hint">
-            관객이 하나면 견줄 상대가 없어 갈린 자리가 나오지 않습니다. 하나 더 골라 주세요.
-          </p>
-        )}
         {viewerError && <p className="viewer-error">{viewerError}</p>}
       </div>
 
@@ -5005,10 +4939,6 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
           conditions={readingTrackConditions}
           shots={shots}
           range={{ from: viewerScopeFrom - 1, to: viewerScopeTo - 1 }}
-          /* 여기서 고치지 않는다. 관객이 남긴 물음에 감독이 답하면 그
-             답이 연출 검토의 전제로 쌓인다 (7장). */
-          onAnswer={answerReadingQuestion}
-          answers={readingAnswers}
           /* 앞뒤 컷으로 걸어간다 — 그림을 눌러서도, 화살표로도.
              수정 작업면을 걷어내면서 이 배선이 함께 빠져 있었다. */
           onWalkTo={({ condition, order }) => selectReadingStep({
@@ -5019,6 +4949,13 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
               && (entry.panelOrders || []).includes(order)
             )) || null,
           })}
+        />
+      )}
+
+      {viewerReport && (
+        <AudienceAfterReading
+          readings={viewerReadings}
+          conditions={allViewerReadingConditions}
         />
       )}
     </section>
@@ -6742,16 +6679,18 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
                     loading={multiReviewLoading}
                     relating={Boolean(multiReviewRun.relating)}
                     scrollRef={reviewSequenceScrollRef}
-                    /* 갈림은 진단이 아니라 근거다. 렌즈 줄과 떨어진
-                       자리에 다른 모양으로 놓인다 (문서 7장). */
-                    readingDivergences={readingLaneMarkers}
-                    readingDone={Boolean(viewerReport)}
-                    selectedDivergenceId={selectedReadingFindingId}
+                    /* 의도가 안 닿은 자리다. 렌즈가 짚은 진단이 아니므로
+                       렌즈 줄과 떨어진 자리에 놓인다 (문서 7장). */
+                    readingMarkers={readingLaneMarkers}
+                    /* 이 줄이 드는 건 의도 점검 결과다. 관객 읽기만
+                       끝났을 때 "의도대로 읽힘"이라고 하면, 아직 안 본 것을
+                       괜찮다고 말하는 셈이 된다. */
+                    readingDone={intentCheckStatus === 'ready'}
+                    selectedMarkerId={selectedReadingFindingId}
                     /* 여기는 연출 검토다. 누르면 관객 검토로 건너가지
-                       않고, 그 갈림을 **세 렌즈가 보고 진단한다** —
-                       갈림은 진단이 아니라 근거이므로, 화면에서 무엇이
-                       그렇게 만들었는지는 렌즈가 짚어야 한다. */
-                    onSelectDivergence={selectDivergence}
+                       않고, 그 자리를 **세 렌즈가 보고 진단한다** — 무엇이
+                       그렇게 읽히게 만들었는지는 렌즈가 짚어야 한다. */
+                    onSelectFinding={selectReadingFinding}
                     onSelectIssue={selectTrackIssue}
                     onToggleLens={(lensId) => setActiveTrackLenses((current) => {
                       const next = new Set(current)
@@ -6798,9 +6737,9 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
 
               {(trackIssues.length > 0 || readingIssue) && (
                 <IssueInspector
-                  /* 갈림을 고르면 그것이 Inspector의 대상이다. 진단이
-                     아니므로 세 렌즈가 모두 "아직 안 봄"으로 뜨고,
-                     감독이 눌러 부르면 그 렌즈가 이 자리를 본다. */
+                  /* 관객 쪽 자리를 고르면 그것이 Inspector의 대상이다.
+                     렌즈 진단이 아니므로 세 렌즈가 모두 "아직 안 봄"으로
+                     뜨고, 감독이 눌러 부르면 그 렌즈가 이 자리를 본다. */
                   issue={revisionWorkspace?.issue || readingIssue || selectedTrackIssue}
                   issues={trackIssues}
                   diagnosesById={diagnosesById}
