@@ -257,7 +257,7 @@
 
 .issue-lens-overview-label {
   color: rgba(226, 232, 240, 0.46);
-  font-size: 9px;
+  font-size: 10px;
   font-weight: 850;
   letter-spacing: .08em;
 }
@@ -265,18 +265,20 @@
 .issue-lens-overview-item {
   --lens: var(--text-muted);
   display: grid;
-  grid-template-columns: 13px auto auto minmax(0, 1fr);
+  grid-template-columns: 15px auto auto minmax(0, 1fr);
   align-items: start;
-  gap: 6px;
+  gap: 7px;
   width: 100%;
-  padding: 9px 8px;
+  padding: 10px 10px;
   border: 1px solid color-mix(in srgb, var(--lens), transparent 74%);
   border-radius: 6px;
   background: color-mix(in srgb, var(--lens), transparent 94%);
   color: rgba(226, 232, 240, 0.76);
   font: inherit;
-  font-size: 10px;
-  line-height: 1.42;
+  /* 이 줄의 본문은 렌즈가 실제로 내린 판단이다 — 읽는 자리이므로
+     라벨보다 크게 둔다. */
+  font-size: 11.5px;
+  line-height: 1.5;
   text-align: left;
   cursor: pointer;
 }
@@ -286,14 +288,14 @@
 .issue-lens-overview-item.lens-mise { --lens: var(--mise-lens); }
 .issue-lens-overview-item.lens-camera { --lens: var(--camera-lens); }
 .issue-lens-overview-item.lens-editing { --lens: var(--editing-lens); }
-.issue-lens-overview-item b { color: var(--lens); font-size: 10px; }
-.issue-lens-overview-item strong { color: color-mix(in srgb, var(--lens), white 35%); font-size: 10px; }
+.issue-lens-overview-item b { color: var(--lens); font-size: 11px; }
+.issue-lens-overview-item strong { color: color-mix(in srgb, var(--lens), white 35%); font-size: 11.5px; }
 .issue-lens-stance {
-  padding: 1px 4px;
+  padding: 1px 5px;
   border-radius: 3px;
   background: rgba(226, 232, 240, 0.08);
   color: rgba(226, 232, 240, 0.7);
-  font-size: 8px;
+  font-size: 9.5px;
   font-style: normal;
   font-weight: 850;
   letter-spacing: .02em;
