@@ -3519,8 +3519,14 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
 
     // 그 자리로 검토 범위를 옮긴다. 렌즈를 부를 때 이 범위의 패널을
     // 보내므로, 고르는 즉시 맞춰 둔다.
-    const from = orders[0] - 1
-    const to = orders[orders.length - 1] - 1
+    //
+    // 컷 범위 안으로 묶는다. 읽고 나서 스토리보드를 고치면 판정이
+    // 가리키던 컷이 사라질 수 있는데, 그 값이 그대로 범위가 되면 없는
+    // 컷을 검토 대상으로 들고 간다.
+    if (shots.length === 0) return
+    const clamp = (index) => Math.min(Math.max(index, 0), shots.length - 1)
+    const from = clamp(orders[0] - 1)
+    const to = clamp(orders[orders.length - 1] - 1)
     if (from === to) {
       setScopeMode('single')
       setSingleScopeShotId(shots[from]?.id || null)
@@ -4496,8 +4502,20 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
 
     // 의도가 안 닿은 자리. 트랙의 마커, Inspector, Workbench가 모두 이
     // 목록 하나를 따라간다.
-    const intentMisses = (intentCheck?.verdicts || [])
-      .filter((verdict) => verdict.status === 'missed' || verdict.status === 'partial')
+    // 응답 모양을 믿지 않는다. 이 화면은 검토 전체를 들고 있어, 여기서
+    // 한 번 터지면 감독이 하던 작업까지 사라진다.
+    const intentMisses = (Array.isArray(intentCheck?.verdicts) ? intentCheck.verdicts : [])
+      .filter((verdict) => verdict?.status === 'missed' || verdict?.status === 'partial')
+      // 읽고 나서 스토리보드를 고치면 판정이 가리키던 컷이 사라질 수
+      // 있다. 없는 컷을 트랙에 올리면 범위 계산이 빈 자리를 짚는다.
+      .filter((verdict) => (
+        Number.isInteger(verdict.panel_order)
+        && verdict.panel_order >= 1
+        && verdict.panel_order <= shots.length
+      ))
+      // 두 구가 다 있어야 "노린 것 → 읽힌 것"이 말이 된다. 하나가 비면
+      // 화면에 `undefined → …`가 그대로 찍힌다.
+      .filter((verdict) => verdict.intended && verdict.read_as)
       .map((verdict) => ({
         id: `${scopeKey}:intent:${verdict.panel_order}`,
         kind: 'intent',
@@ -4537,7 +4555,7 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
     ))
 
     return [...intentMisses, ...reviewPoints]
-  }, [viewerReport, viewerReadings, intentCheck, scene?.id, activeScene, branch?.id, activeBranch])
+  }, [viewerReport, viewerReadings, intentCheck, shots.length, scene?.id, activeScene, branch?.id, activeBranch])
 
   // 의도가 안 닿은 자리를 연출 트랙에 올린다. 렌즈 줄과 떨어진 자리에
   // 다른 모양으로 그려진다 (LensTracks의 `reading-lane`). 감독이 연출을
@@ -4876,9 +4894,11 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
             <p className="intent-check-status">대조하지 못했습니다. 읽기 결과는 아래에 그대로 있습니다.</p>
           )}
           {intentCheckStatus === 'ready' && intentCheck && (() => {
-            const verdicts = intentCheck.verdicts || []
-            const off = verdicts.filter((v) => v.status === 'missed' || v.status === 'partial')
-            const reached = verdicts.filter((v) => v.status === 'reached').length
+            const verdicts = Array.isArray(intentCheck.verdicts) ? intentCheck.verdicts : []
+            const off = verdicts.filter((v) => (
+              (v?.status === 'missed' || v?.status === 'partial') && v.intended && v.read_as
+            ))
+            const reached = verdicts.filter((v) => v?.status === 'reached').length
             return (
               <>
                 <header className="intent-check-head">
@@ -4899,9 +4919,13 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
                         <button
                           type="button"
                           onClick={() => {
+                            // 읽고 나서 컷을 지웠으면 그 자리가 없다.
+                            // 없는 컷으로 옮기면 아래가 빈 자리를 짚는다.
+                            if (verdict.panel_order > shots.length) return
                             setViewerPanelOrder(verdict.panel_order)
                             setFlowActiveShot(verdict.panel_order - 1)
                           }}
+                          disabled={verdict.panel_order > shots.length}
                         >
                           <b>S{verdict.panel_order}</b>
                           <em>{verdict.status === 'missed' ? '다르게 읽힘' : '뒤로 밀림'}</em>

@@ -12,8 +12,10 @@ export const audienceAction = (action) => (
 
 // 행동은 여러 컷을 가리킬 수 있다. 마지막 컷이 지금 행동이 일어난
 // 순간이고, 앞의 컷들은 `다시 보기`의 대상이다.
-export const engagementSignalAt = (reading, panelOrder) => (
-  (reading?.engagement_signals || []).find((signal) => (
-    (signal.panel_orders || []).at(-1) === panelOrder
+export const engagementSignalAt = (reading, panelOrder) => {
+  const signals = reading?.engagement_signals
+  if (!Array.isArray(signals)) return null
+  return signals.find((signal) => (
+    Array.isArray(signal?.panel_orders) && signal.panel_orders.at(-1) === panelOrder
   )) || null
-)
+}
