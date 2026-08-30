@@ -215,7 +215,15 @@ export default function ReadingTracks({
                     style={{ '--pos': index }}
                     onClick={() => onSelectStep?.({ condition: condition.id, order, finding })}
                     aria-pressed={Boolean(selected)}
-                    title={`S${order} · ${step.immediate_reading}`}
+                    /* 칸은 좁아 잘린다. 왜 그렇게 읽혔는지까지는 툴팁이
+                       받는다 — 칸 안에서 더 늘리면 읽은 문장이 밀린다. */
+                    title={[
+                      `S${order} · ${step.immediate_reading}`,
+                      finding?.intent?.intended && finding.intent.read_as
+                        ? `노린 것: ${finding.intent.intended} / 읽힌 것: ${finding.intent.read_as}`
+                        : null,
+                      finding?.why_it_matters,
+                    ].filter(Boolean).join('\n')}
                   >
                     {/* 변화 상태를 두 문법으로 말하지 않는다. 모델 내부의
                         relation_to_previous는 유지하되 화면에는 실제 관람
@@ -240,6 +248,17 @@ export default function ReadingTracks({
                         <span className="reading-cell-feeling"> {step.feeling}</span>
                       )}
                     </span>
+                    {/* 의도가 안 닿았으면 **그 칸 안에서** 말한다. 아래
+                        따로 칸을 하나 더 두면 감독은 읽은 문장과 어긋남을
+                        두 자리에서 맞춰 봐야 하고, 화면에 볼 것이 하나 더
+                        늘어난다. 어긋남은 이 컷의 성질이므로 이 컷에 붙는다. */}
+                    {finding?.intent?.intended && finding.intent.read_as && (
+                      <span className="reading-cell-intent">
+                        <i>{finding.intent.intended}</i>
+                        <b aria-hidden="true">→</b>
+                        <em>{finding.intent.read_as}</em>
+                      </span>
+                    )}
                     {finding && (
                       <span
                         className="reading-cell-mark"

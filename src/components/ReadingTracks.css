@@ -192,6 +192,13 @@
   color: rgba(226, 232, 240, 0.86);
 }
 
+/* 어긋남 줄이 붙은 칸은 문장을 한 줄 덜 보여 준다. 그대로 두면 칸이
+   넘쳐 아래가 잘리고, 잘리는 것이 하필 어긋남 줄이다. */
+.reading-cell.intent .reading-cell-text {
+  -webkit-line-clamp: 4;
+  line-clamp: 4;
+}
+
 /* 그때의 반응. 문장과 **같은 흐름 안에** 이어 붙인다 — 구분선으로
    갈라 두면 칸 하나에 내용이 둘 있는 것처럼 보인다. 색으로만 구분한다. */
 .reading-cell-feeling {
@@ -268,6 +275,51 @@
 .reading-cell.selected {
   border-color: var(--reader);
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--reader), transparent 55%);
+}
+
+/* 의도가 안 닿은 자리. 읽은 문장 **바로 아래**, 같은 칸 안에 둔다 —
+   따로 자리를 만들지 않는다. 노린 것과 읽힌 것을 화살표 하나로 잇는
+   것이 이 어긋남의 전부이므로, 라벨(`노린 것`/`읽힌 것`)은 색과 방향이
+   대신 말한다. 자세한 것은 툴팁과 아래 Workbench가 받는다. */
+.reading-cell-intent {
+  display: flex;
+  align-items: baseline;
+  flex: none;
+  gap: 4px;
+  min-width: 0;
+  padding-top: 5px;
+  border-top: 1px solid rgba(251, 191, 36, 0.22);
+  font-size: 9px;
+  font-style: normal;
+  line-height: 1.35;
+}
+
+.reading-cell-intent i,
+.reading-cell-intent em {
+  overflow: hidden;
+  font-style: normal;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 노린 것은 물러나고, 읽힌 것이 앞에 온다 — 감독이 봐야 하는 것은
+   자기가 의도한 쪽이 아니라 실제로 읽힌 쪽이다. */
+.reading-cell-intent i {
+  flex: 0 1 auto;
+  color: rgba(226, 232, 240, 0.55);
+}
+
+.reading-cell-intent b {
+  flex: none;
+  color: rgba(251, 191, 36, 0.65);
+  font-size: 8px;
+  font-weight: 700;
+}
+
+.reading-cell-intent em {
+  flex: 1 1 auto;
+  color: #fcd34d;
+  font-weight: 700;
 }
 
 /* 걸린 칸의 표식. 오른쪽 위 모서리에 작게 — 문장을 가리지 않는다. */
