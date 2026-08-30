@@ -3690,6 +3690,10 @@ const useStore = create((set, get) => ({
   }),
   sceneIntention: '',
   setSceneIntention: (sceneIntention) => set({ sceneIntention }),
+  // 대본을 **통째로** 갈아 끼운다. 지금 화면에서 부르는 곳은 없다 —
+  // 제안 적용은 `applyNarrativeSuggestionEdit`, 줄 편집은
+  // `updateScreenplayLine`이 맡는다. 여기서 제안·점검을 함께 비우는 것은
+  // 대본이 다른 것으로 바뀌었을 때만 맞는 처리다.
   setScreenplay: (script) => set((state) => {
     const maxBeat = Math.max(0, ...script.map((line) => line.beat ?? 0))
     const next = updateActiveBranchShots(state, (shots, _branch, scene) => {
@@ -3712,6 +3716,30 @@ const useStore = create((set, get) => ({
       narrativeCheck: null,
       narrativeCheckStale: false,
       autoDraftDisabled: false,
+    }
+  }),
+  // 제안 하나를 대본에 반영한다.
+  //
+  // setScreenplay를 쓰면 안 된다. 그쪽은 "대본을 통째로 새로 붙여넣었다"는
+  // 뜻이라 제안 목록과 점검 결과를 함께 비우고 stale도 내려, 자동 점검
+  // effect가 곧바로 다시 돈다 — 감독이 적용을 누른 것뿐인데 점검이 새로
+  // 시작된다. 여기서는 줄만 바꾸고, 점검은 stale로만 표시한다.
+  applyNarrativeSuggestionEdit: (script) => set((state) => {
+    const maxBeat = Math.max(0, ...script.map((line) => line.beat ?? 0))
+    const next = updateActiveBranchShots(state, (shots, _branch, scene) => ({
+      shots: shots.map((shot) => ({
+        ...shot,
+        scriptBeat: Math.max(0, Math.min(shot.scriptBeat ?? 0, maxBeat)),
+      })),
+      activeShot: scene.activeShot ?? state.activeShot ?? 0,
+      activeBeat: Math.max(0, Math.min(state.activeBeat ?? 0, maxBeat)),
+    }))
+    return {
+      ...next,
+      screenplay: script,
+      // 점검 결과는 이제 옛 대본 기준이다. 그 사실만 남기고 다시 돌리지는
+      // 않는다 — 다시 볼지는 감독이 정한다.
+      narrativeCheckStale: true,
     }
   }),
   // --- 대본 인라인 편집 -------------------------------------------------
@@ -4150,7 +4178,9 @@ const useStore = create((set, get) => ({
     return {
       ...next,
       screenplay: newScreenplay,
-      narrativeSuggestions: [],
+      // 제안 목록은 여기서 비우지 않는다. 나누기로 줄 번호가 밀려도 제안은
+      // 자리를 문장으로 다시 찾으므로(`anchorText`) 계속 유효하고, 무엇을
+      // 남길지는 부른 쪽이 정한다 — 제안 적용은 그 카드 하나만 지운다.
       narrativeCheckStale: true,
     }
   }),

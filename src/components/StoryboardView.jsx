@@ -1212,7 +1212,6 @@ function NarrativeSuggestionCard({ suggestion, onAccept, onDismiss }) {
 
 export default function StoryboardView({ onEnterReview = null }) {
   const screenplay = useStore((s) => s.screenplay)
-  const setScreenplay = useStore((s) => s.setScreenplay)
   const sceneIntention = useStore((s) => s.sceneIntention)
   const setSceneIntention = useStore((s) => s.setSceneIntention)
   const splitBeat = useStore((s) => s.splitBeat)
@@ -1458,6 +1457,7 @@ export default function StoryboardView({ onEnterReview = null }) {
   const narrativeError = useStore((s) => s.narrativeError)
   const narrativeAnswered = useStore((s) => s.narrativeAnswered)
   const clearNarrativeResult = useStore((s) => s.clearNarrativeResult)
+  const applyNarrativeSuggestionEdit = useStore((s) => s.applyNarrativeSuggestionEdit)
   const acceptStructureDraft = useStore((s) => s.acceptStructureDraft)
   const dismissStructureDraft = useStore((s) => s.dismissStructureDraft)
   const updateScreenplayLine = useStore((s) => s.updateScreenplayLine)
@@ -2724,10 +2724,10 @@ export default function StoryboardView({ onEnterReview = null }) {
       const at = resolveSuggestionIndex(suggestion, suggestion.insertAfterIndex)
       const nextScreenplay = [...screenplay]
       nextScreenplay.splice(at + 1, 0, suggestion.newElement)
-      setScreenplay(nextScreenplay)
+      applyNarrativeSuggestionEdit(nextScreenplay)
     } else if (suggestion.type === 'replace-script-line') {
       const at = resolveSuggestionIndex(suggestion, suggestion.elementIndex)
-      setScreenplay(screenplay.map((element, index) => (
+      applyNarrativeSuggestionEdit(screenplay.map((element, index) => (
         index === at
           ? { ...element, text: suggestion.proposedText }
           : element
