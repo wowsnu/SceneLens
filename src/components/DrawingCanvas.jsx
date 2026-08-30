@@ -1,6 +1,9 @@
 import { useRef, useEffect, useCallback, useMemo, useState } from 'react'
 import useStore, {
+  PANEL_STYLE_PRESETS,
   buildCutPrompt,
+  castNameMatches,
+  characterNamesOfCut,
   cutOrderOf,
   sceneOfBeat,
   seamKeyFor,
@@ -23,6 +26,24 @@ function loadImage(src) {
 function stripImageDataUrl(value = '') {
   if (!value.startsWith('data:image/')) return ''
   return value.replace(/^data:image\/\w+;base64,/, '')
+}
+
+async function referenceImageBase64(value = '') {
+  if (!value) return ''
+  if (value.startsWith('data:image/')) return stripImageDataUrl(value)
+  try {
+    const response = await fetch(value)
+    if (!response.ok) return ''
+    const blob = await response.blob()
+    return await new Promise((resolve) => {
+      const reader = new FileReader()
+      reader.onload = () => resolve(stripImageDataUrl(String(reader.result || '')))
+      reader.onerror = () => resolve('')
+      reader.readAsDataURL(blob)
+    })
+  } catch {
+    return ''
+  }
 }
 
 export default function DrawingCanvas() {
@@ -82,7 +103,7 @@ export default function DrawingCanvas() {
   const setComparePreview = useStore((s) => s.setComparePreview)
   const clearComparePreview = useStore((s) => s.clearComparePreview)
 
-  // Panel generation and AI 보태기 must see the same current-cut context.
+  // Panel generation and 그림체 맞추기 must see the same current-cut context.
   // The original canvas remains the primary image; references only help identify
   // an already-implied person, prop, or place before adding a few strokes.
   const enhanceContext = useMemo(() => {
@@ -121,21 +142,38 @@ export default function DrawingCanvas() {
         cutOrder,
       })
       : null
-    const cast = (cut.characters || '').split(',').map((name) => name.trim()).filter(Boolean)
-    const references = [
+    const cast = characterNamesOfCut(cut)
+    const exact = (character) => cast.some((name) => castNameMatches(name, character.name))
+    const loose = (character) => cast.some((name) => name.includes(character.name))
+    const anyExact = (sceneState?.characters || []).some((character) => character.image && exact(character))
+    const inThisCut = anyExact ? exact : loose
+    const subjectReferences = [
       ...(sceneState?.characters || [])
-        .filter((character) => character.image && cast.some((name) => name.includes(character.name)))
+        .filter((character) => character.image && inThisCut(character))
         .map((character) => ({
           name: character.name,
           kind: 'character',
-          image: stripImageDataUrl(character.image),
+          image: character.image,
         })),
       sceneState?.location?.image ? {
         name: sceneState.location.name || '공간',
         kind: 'location',
-        image: stripImageDataUrl(sceneState.location.image),
+        image: sceneState.location.image,
       } : null,
-    ].filter((reference) => reference?.image).slice(0, 3)
+    ].filter((reference) => reference?.image)
+
+    // 일반 패널 생성과 같은 순서: 그림체 앵커 → 직전 패널 → 현재 컷의
+    // 인물 전원 → 공간. 러프는 인물·공간 기준을 물리지 않는다.
+    const styleAnchor = PANEL_STYLE_PRESETS.find((preset) => preset.id === panelStylePreset)
+    const references = styleAnchor
+      ? [{ name: styleAnchor.label, kind: 'style', image: styleAnchor.image }]
+      : []
+    const previousShot = shotIndex > 0 ? activeFlowBranch?.shots?.[shotIndex - 1] : null
+    const previousImage = previousShot?.image || previousShot?.sketch || ''
+    if (previousImage) {
+      references.push({ name: '앞 컷', kind: 'neighbor-before', image: previousImage })
+    }
+    if (panelStylePreset !== 'rough') references.push(...subjectReferences)
     return {
       prompt: panelPrompt?.effective || '',
       shared: panelPrompt?.shared || '',
@@ -1012,26 +1050,17 @@ export default function DrawingCanvas() {
     setCanvasDataUrl(null)
   }, [saveHistory, setCanvasDataUrl])
 
-  // 두 가지를 한 함수로 둔다. 미리보기·적용·오류 처리가 같고, 다른 것은
-  // 서버에 보내는 mode와 화면에 쓰는 말뿐이다.
-  const ENHANCE_MODES = {
-    add: {
-      name: 'AI 보태기',
-      line: '그린 내용은 그대로 두고, 같은 그림을 고른 선으로 다시 그립니다.',
-      loading: '보태는 중…',
-    },
-    restyle: {
-      name: '그림체 맞추기',
-      line: '스케치의 배치를 그대로 두고, 다른 패널과 같은 방식으로 완성합니다.',
-      loading: '그림체 맞추는 중…',
-    },
+  // 손그림의 배치는 보존하되 보드의 인물·공간 기준과 그림체로 완성한다.
+  // 이전의 'AI 보태기'는 이 결과와 구분하기 어려워 하나의 기능으로 합쳤다.
+  const ENHANCE_META = {
+    name: '그림체 맞추기',
+    line: '스케치의 배치를 그대로 두고, 다른 패널과 같은 방식으로 완성합니다.',
   }
 
-  const handleEnhance = async (mode = 'add') => {
+  const handleEnhance = async () => {
     if (!canvasDataUrl) return
-    const meta = ENHANCE_MODES[mode] || ENHANCE_MODES.add
     setIsEnhancing(true)
-    setIsEnhancingLocal(mode)
+    setIsEnhancingLocal(true)
     clearComparePreview()
 
     const imageBase64 = canvasDataUrl.startsWith('data:') ? canvasDataUrl.split(',')[1] : canvasDataUrl
@@ -1042,16 +1071,21 @@ export default function DrawingCanvas() {
       originalImage,
       candidateImage: null,
       loading: true,
-      strategyName: meta.name,
-      recommendationLine: meta.line,
+      strategyName: ENHANCE_META.name,
+      recommendationLine: ENHANCE_META.line,
       isEnhancePreview: true,
+      enhanceMode: 'restyle',
     })
 
     try {
       const result = await enhanceSketch(imageBase64, {
         scriptContext: screenplay.map((el) => el.text).join('\n'),
         ...enhanceContext,
-        mode,
+        references: (await Promise.all(enhanceContext.references.map(async (reference) => ({
+          ...reference,
+          image: await referenceImageBase64(reference.image),
+        })))).filter((reference) => reference.image),
+        mode: 'restyle',
       })
       const resultImage = `data:image/png;base64,${result.enhanced_image}`
       setComparePreview({
@@ -1059,9 +1093,10 @@ export default function DrawingCanvas() {
         originalImage,
         candidateImage: resultImage,
         loading: false,
-        strategyName: meta.name,
-        recommendationLine: meta.line,
+        strategyName: ENHANCE_META.name,
+        recommendationLine: ENHANCE_META.line,
         isEnhancePreview: true,
+        enhanceMode: 'restyle',
       })
     } catch (err) {
       setComparePreview({
@@ -1071,7 +1106,7 @@ export default function DrawingCanvas() {
         loading: false,
         error: err.message,
         isEnhancePreview: true,
-        strategyName: meta.name,
+        strategyName: ENHANCE_META.name,
       })
     } finally {
       setIsEnhancing(false)
@@ -1102,33 +1137,18 @@ export default function DrawingCanvas() {
 
   return (
     <div className="canvas-container" ref={containerRef}>
-      {/* 보태기는 그린 선을 그대로 두고, 그림체 맞추기는 같은 그림을 다시
-          그린다. 손으로 그린 컷과 생성한 컷이 섞여 있을 때 뒤쪽이 필요하다. */}
       {!comparePreview && (
         <div className="enhance-btn-wrap">
           <button
-            className={`enhance-trigger-btn ${isEnhancingLocal === 'add' ? 'loading' : ''}`}
-            onClick={() => handleEnhance('add')}
+            className={`enhance-trigger-btn is-restyle ${isEnhancingLocal ? 'loading' : ''}`}
+            onClick={handleEnhance}
             disabled={Boolean(isEnhancingLocal) || !canvasDataUrl}
-            title={canvasDataUrl ? '그린 내용은 두고, 같은 그림을 고른 선으로 다시 그립니다' : '스케치를 그리거나 패널을 먼저 불러와주세요'}
-          >
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/>
-            </svg>
-            {isEnhancingLocal === 'add' ? '보태는 중…' : 'AI 보태기'}
-          </button>
-          <button
-            className={`enhance-trigger-btn is-restyle ${isEnhancingLocal === 'restyle' ? 'loading' : ''}`}
-            onClick={() => handleEnhance('restyle')}
-            disabled={Boolean(isEnhancingLocal) || !canvasDataUrl}
-            title={canvasDataUrl
-              ? '스케치를 배치도로 삼아, 다른 패널과 같은 방식으로 완성합니다'
-              : '스케치를 그리거나 패널을 먼저 불러와주세요'}
+            title={canvasDataUrl ? '스케치의 배치를 유지하고 보드 전체의 그림체로 완성합니다' : '스케치를 그리거나 패널을 먼저 불러와주세요'}
           >
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M12 3v18"/><path d="M5 8h14"/><path d="M7 21h10"/>
             </svg>
-            {isEnhancingLocal === 'restyle' ? '그림체 맞추는 중…' : '그림체 맞추기'}
+            {isEnhancingLocal ? '그림체 맞추는 중…' : '그림체 맞추기'}
           </button>
         </div>
       )}
@@ -1256,9 +1276,7 @@ export default function DrawingCanvas() {
                     <>
                       <img src={comparePreview.candidateImage} alt="Reframed storyboard" />
                       <div className="compare-preview-label">
-                        {comparePreview.isEnhancePreview
-                          ? (comparePreview.enhanceMode === 'sketch' ? 'AI 보태기' : 'Photo Reference')
-                          : 'Reframed'}
+                        {comparePreview.isEnhancePreview ? '그림체 맞추기' : 'Reframed'}
                       </div>
                       <span
                         role="button"
@@ -1267,9 +1285,7 @@ export default function DrawingCanvas() {
                         title="확대해서 보기"
                         onClick={(e) => {
                           e.stopPropagation()
-                          const label = comparePreview.isEnhancePreview
-                            ? (comparePreview.enhanceMode === 'sketch' ? 'AI 보태기' : 'Photo Reference')
-                            : 'Reframed'
+                          const label = comparePreview.isEnhancePreview ? '그림체 맞추기' : 'Reframed'
                           setZoomedImage({ src: comparePreview.candidateImage, label })
                         }}
                         onKeyDown={(e) => { if (e.key === 'Enter') { e.stopPropagation(); setZoomedImage({ src: comparePreview.candidateImage, label: 'Reframed' }) } }}

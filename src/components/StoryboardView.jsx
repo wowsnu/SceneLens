@@ -2361,8 +2361,7 @@ export default function StoryboardView({ onEnterReview = null }) {
   // 이 레퍼런스가 지금 표현 스타일과 다른 밀도로 만들어졌는가.
   //
   // 조용히 다시 그리지 않는다 — 감독이 마음에 들어 하던 기준 그림이 예고
-  // 없이 사라지면 안 된다. 갈렸다는 사실만 알리고 처분은 `다시 생성`으로
-  // 남긴다 (발견과 처분의 분리).
+  // 없이 사라지면 안 된다. 갈렸다는 사실만 알리고 현재 생성 참조에서 뺀다.
   const staleStyleLabel = (subject) => {
     const made = subject?.stylePreset
     // 이 기능 이전에 만든 레퍼런스는 밀도 기록이 없다. 모르는 것을

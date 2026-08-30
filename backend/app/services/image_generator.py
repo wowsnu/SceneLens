@@ -622,7 +622,7 @@ async def enhance_sketch(
     # 손으로 그린 패널만 러프 스케치로 남는다.
     style_preset: str = "rough",
     layout: str = "",
-    mode: str = "add",
+    mode: str = "restyle",
 ) -> str:
     """Clean up a sketch, or draw the finished panel from it.
 
@@ -661,9 +661,12 @@ async def enhance_sketch(
     )
     closing = (
         "Image 1 is the director's sketch and fixes the staging — who stands where, at what size,\n"
-        "facing which way, seen from which angle. The later images listed above are identity\n"
+        "facing which way, seen from which angle. Character and location images are exact identity\n"
         "references: draw those exact people and that exact place, posed as image 1 stages them.\n"
-        "Do not copy the references' own poses or framing."
+        "A style image controls ONLY rendering medium, line weight, shading and detail level;\n"
+        "never copy its people, ethnicity, clothing, room, props, pose or framing. A neighbor panel\n"
+        "controls continuity of identity, place, lighting, screen direction and drawing style only;\n"
+        "do not copy its action, pose or framing. Do not copy any reference's own composition."
         if restyling
         else "Image 1 is the director's sketch and is the drawing itself. The later images listed above are\n"
         "character, location, or layout references, provided only to recognize what image 1 already\n"
