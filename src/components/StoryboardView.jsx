@@ -104,23 +104,45 @@ const layerOfCheckFinding = (finding) => {
 }
 
 const EMPTY_SHOTS = []
+const EMPTY_CAST = []
 
 // textarea 자체는 일부 글자만 색칠할 수 없다. 대신 `@이름`을 입력하면
-// 바로 아래에 같은 이름을 인물 태그로 드러내, 일반 문장과 다른 지시라는
-// 것을 보이게 한다. 실제 생성에서는 characterNamesOfCut가 이 값을 읽는다.
-const mentionsIn = (text = '') => [...String(text).matchAll(/@([^\s@,，.。!?…]+)/g)]
-  .map((match) => match[1].trim())
-  .filter((name, index, names) => name && names.indexOf(name) === index)
+// 바로 아래에 태그로 드러내, 일반 문장과 다른 지시라는 것을 보이게 한다.
+//
+// **적은 글자를 그대로 보여 주지 않는다.** 실제로 어느 인물이 물렸는지를
+// 보여야 한다 — `@하`라고만 적어도 부분 일치로 `하린`이 물리는데, 배지가
+// `@하`로 뜨면 적용된 것인지 알 수 없다. 아무 인물도 못 찾으면 그 사실을
+// 밝힌다. 매칭 규칙은 실제 생성(`referencesForCut`)과 같다 — 정확히
+// 같은 이름이 있으면 그것만, 없을 때만 부분 일치로 내려간다.
+const resolveMentions = (text = '', cast = []) => {
+  const typed = [...String(text).matchAll(/@([^\s@,，.。!?…]+)/g)]
+    .map((match) => match[1].trim())
+    .filter((name, index, names) => name && names.indexOf(name) === index)
+  const names = cast.map((character) => character?.name).filter(Boolean)
+  return typed.map((token) => {
+    const exact = names.find((name) => name === token)
+    if (exact) return { token, name: exact, matched: true, exact: true }
+    // `@하린이`처럼 조사가 붙은 것은 정상적인 문장이다. 이름으로 시작하면
+    // 조사로 보고 원래 토큰을 따로 알리지 않는다.
+    const suffixed = names.filter((name) => token.startsWith(name))
+      .sort((left, right) => right.length - left.length)[0]
+    if (suffixed) return { token, name: suffixed, matched: true, exact: true }
+    const loose = names.filter((name) => name.includes(token) || token.includes(name))
+    // 후보가 여럿이면 어느 쪽인지 정할 수 없다. 이름을 더 적으라고 알린다.
+    if (loose.length === 1) return { token, name: loose[0], matched: true, exact: false }
+    return { token, name: null, matched: false, ambiguous: loose.length > 1, options: loose }
+  })
+}
 
 // 컷 내용을 그 자리에서 고친다. 타이핑마다 스토어를 고치면 열여덟 행이
 // 매번 다시 그려지므로, 편집 중에는 로컬에 두고 손을 뗄 때 커밋한다.
 // 커밋된 문장이 곧 그림 프롬프트의 본문이 된다 (`buildCutPrompt`).
-function ConteContent({ cutId, value, onCommit }) {
+function ConteContent({ cutId, value, onCommit, cast = EMPTY_CAST }) {
   const [draft, setDraft] = useState(value)
   // 고친 것이 아직 안 들어갔는지 보여준다. 손을 뗄 때 저장되는데, 그
   // 사실이 화면에 없으면 고치고도 반영됐는지 알 수 없어 다시 누르게 된다.
   const dirty = draft.trim() !== value
-  const mentions = mentionsIn(draft)
+  const mentions = resolveMentions(draft, cast)
   return (
     <div className={`sb-conte-content-wrap${dirty ? ' is-dirty' : ''}`}>
       <textarea
@@ -153,7 +175,25 @@ function ConteContent({ cutId, value, onCommit }) {
       />
       {mentions.length > 0 && (
         <div className="sb-character-mentions" aria-label="이 컷에 지정한 인물">
-          {mentions.map((name) => <span key={name}>@{name}</span>)}
+          {mentions.map((mention) => (
+            <span
+              key={mention.token}
+              className={mention.matched ? 'is-matched' : 'is-unmatched'}
+              title={mention.matched
+                ? (mention.exact
+                  ? `${mention.name} 기준이 이 컷에 물립니다`
+                  : `@${mention.token} → ${mention.name} 기준이 이 컷에 물립니다`)
+                : mention.ambiguous
+                  ? `${mention.options.join(', ')} 중 누구인지 정할 수 없습니다. 이름을 끝까지 적어 주세요.`
+                  : '이런 이름의 인물이 없습니다. 인물 기준에 있는 이름으로 적어 주세요.'}
+            >
+              {/* 물린 경우엔 **실제 인물 이름**을 보인다. 적은 글자를 그대로
+                  두면 적용됐는지 알 수 없다. */}
+              @{mention.matched ? mention.name : mention.token}
+              {mention.matched && !mention.exact && <i>← @{mention.token}</i>}
+              {!mention.matched && <i>{mention.ambiguous ? '모호함' : '없는 인물'}</i>}
+            </span>
+          ))}
         </div>
       )}
       {/* 그리기를 누르면 이 문장이 먼저 반영되므로(`commitOpenContentEdits`)
@@ -4453,6 +4493,9 @@ export default function StoryboardView({ onEnterReview = null }) {
                               key={`${shotCut.id}:${shotCut.content || ''}`}
                               cutId={shotCut.id}
                               value={shotCut.content || ''}
+                              /* `@이름` 배지가 실제로 물린 인물을 보이려면
+                                 이 컷이 속한 씬의 인물 기준이 필요하다. */
+                              cast={sceneStateForCut(shotCut)?.characters || EMPTY_CAST}
                               onCommit={(next) => (
                                 next !== (shotCut.content || '')
                                 && updateCutPlanItem(shotCut.id, { content: next })
