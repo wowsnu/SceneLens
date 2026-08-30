@@ -824,16 +824,21 @@ export const buildCutPrompt = (cut, {
       : ''
 
   // 4문장: 무엇이 읽혀야 하는가.
-  // 촬영이 정한 dominant가 있으면 그것을 쓴다 — 화면에서 시선이 먼저 가야
-  // 할 것이므로, purpose보다 구체적인 지시가 된다.
+  //
+  // 둘은 다른 것을 말한다. dominant는 **화면에서 시선이 먼저 갈 대상**
+  // (`그래프`, `하린의 손`)이고, purpose는 **이 컷이 존재하는 이유**
+  // (`정보 제시`, `리액션`)다. 하나로 덮으면 감독이 컷 표에서 고친 쪽이
+  // 조용히 무시된다 — 예전에는 dominant가 있으면 purpose를 통째로 버렸다.
   const emphasisPhrase = PURPOSE_PHRASES[cut.purpose]
-  const emphasis = cut.dominant
+  const purposeLine = emphasisPhrase
+    ? `${emphasisPhrase} 잡는다.`
+    : (cut.purpose
+      ? `${cut.purpose}${hasFinalConsonant(cut.purpose) ? '이' : '가'} 드러나도록 잡는다.`
+      : '')
+  const dominantLine = cut.dominant
     ? `${cut.dominant}에 시선이 먼저 가도록 잡는다.`
-    : emphasisPhrase
-      ? `${emphasisPhrase} 잡는다.`
-      : (cut.purpose
-        ? `${cut.purpose}${hasFinalConsonant(cut.purpose) ? '이' : '가'} 드러나도록 잡는다.`
-        : '')
+    : ''
+  const emphasis = [dominantLine, purposeLine].filter(Boolean).join(' ')
 
   // 이음새가 앞 컷과의 관계를 정한다. 경과가 있으면 앞 컷 직후가 아니므로
   // 인물의 자세나 위치를 그대로 이어 그리면 안 된다.
