@@ -6830,13 +6830,6 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
                       current ? { ...current, applied: true } : current
                     ))
                   }}
-                  onReappraise={() => {
-                    setRevisionWorkspace(null)
-                    setSelectedIssueId(null)
-                    // 바뀐 화면으로 다시 돌린다. 옛 판단이 남아 있으면
-                    // 이미 해결된 문제를 다시 읽게 된다.
-                    runMultiReview()
-                  }}
                   onReject={rejectPanelRevision}
                     />
                   ) : null}

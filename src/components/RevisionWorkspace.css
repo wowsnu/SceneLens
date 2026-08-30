@@ -172,7 +172,10 @@
    Reappraise가 화면의 순서로 이어져야 한다. */
 .revision-applied { display: grid; gap: 4px; padding: 12px 14px; border-top: 1px solid var(--border); background: rgba(216,170,98,.06); }
 .revision-applied strong { color: #e9c58d; font-size: 12px; }
-.revision-applied p { margin: 0; color: var(--text-secondary); font-size: 11px; }
+.revision-applied p { margin: 0; color: var(--text-secondary); font-size: 11px; line-height: 1.55; }
+/* 문장 안에서 화면의 버튼 이름을 가리킨다. 어디를 누르라는 것인지
+   그 자리를 찾을 수 있게 다른 색으로 둔다. */
+.revision-applied p b { color: #e9c58d; font-weight: 750; }
 .revision-applied > div { display: flex; gap: 6px; margin-top: 6px; }
 .revision-applied .primary { padding: 6px 10px; border: 1px solid rgba(216,170,98,.55); border-radius: 5px; background: rgba(216,170,98,.16); color: #f0cb91; font-weight: 800; }
 .revision-applied button:not(.primary) { padding: 6px 10px; border: 1px solid var(--border-light); border-radius: 5px; background: transparent; color: var(--text-secondary); }

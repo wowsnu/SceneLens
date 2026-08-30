@@ -59,7 +59,7 @@ export default function RevisionWorkspace({
   // 생성이 시작되면 컷 표는 먼저 제안 값으로 바뀐다. 하지만 감독이
   // 수용/되돌리기를 고르기 전까지 카드의 비교는 적용 전 값을 보여야 한다.
   revisionBefore = null,
-  applied = false, onReappraise,
+  applied = false,
   currentImage = '',
   cameraPrompt = '', onDirectCameraEdit,
   // 편집은 한 장을 바꾸는 일이 아니라 앞·대상·뒤 컷의 관계를 고치는
@@ -440,22 +440,24 @@ export default function RevisionWorkspace({
       {/* 아래에 따로 미리보기를 두지 않는다. 결과는 위 `현재 → 변화된
           사진` 자리에 바로 나온다. */}
 
-      {/* 적용 뒤. 여기서 끝내지 않는다 — 고친 화면을 다른 렌즈가 어떻게
-          읽는지 다시 보는 것이 Reappraise다(LENS_TRACKS_UI.md 8장).
-          바꾼 그림에 대한 옛 판단이 그대로 남아 있으면, 감독은 이미
-          해결된 문제를 다시 읽게 된다. */}
+      {/* 적용 뒤. 여기서 전체 재검토를 걸지 않는다 — 감독은 보통 이슈
+          하나를 고친 참이고, 남은 이슈를 마저 보려던 참이다. 전체를 다시
+          돌리면 그 목록이 사라졌다 새로 오고 시간도 걸린다.
+          바뀐 화면으로 다시 보는 길은 트랙 위 `이 분석 뒤에 패널이
+          바뀌었습니다` 배너에 하나로 모아 둔다 — 남은 이슈를 다 처리한
+          뒤에 누르는 것이 맞는 자리다. */}
       {applied && (
         <section className="revision-applied" aria-live="polite">
           <strong>적용했습니다.</strong>
-          <p>고친 화면을 다시 보면 다른 관점의 판단도 함께 갱신됩니다.</p>
+          <p>
+            다른 관점의 판단까지 갱신하려면, 위 트랙의
+            {' '}<b>바뀐 화면으로 다시 보기</b>에서 한 번에 다시 봅니다.
+          </p>
           <div>
-            <button type="button" className="primary" onClick={onReappraise}>
-              다시 보기
-            </button>
-            {/* 적용은 이미 했다. 여기서 닫는 것은 `유지` 판정이 아니라
-                다시 보기를 미루는 것뿐이다 — onKeep을 부르면 적용해 놓고
+            {/* 적용은 이미 했다. 여기서 닫는 것은 `유지` 판정이 아니므로
+                onKeep이 아니라 onClose다 — onKeep을 부르면 적용해 놓고
                 유지로 기록된다. */}
-            <button type="button" onClick={onClose}>나중에</button>
+            <button type="button" className="primary" onClick={onClose}>닫기</button>
           </div>
         </section>
       )}
