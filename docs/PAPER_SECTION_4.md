@@ -1,7 +1,16 @@
 # 논문 4장 — SceneLens
 
-이 문서는 논문 4장의 확정본이다. 구현이 여기서 벗어나면 구현을 고친다.
-문단 끝의 **[구현]** 표시는 코드에서 어디에 해당하는지 가리킨다.
+이 문서는 논문 4장의 구현-대조 기록이다. 문단 끝의 **[구현]** 표시는
+코드에서 어디에 해당하는지 가리킨다.
+
+**2026-08-30:** 논문 요약본(`docs/논문.md`)의 4장(4.1–4.6)을 최신 코드와
+실제 화면(스크린샷)에 맞춰 다시 썼다. 형식은 그대로 bullet + 쉬운 말이되
+`.jsx`·함수명·한국어 UI 라벨·"어느 버튼" 표현은 뺐다 (원고에 안 들어가는
+것). 원고체로 갈 때의 흐름/골격은 `docs/paper_section4_outline.md`에 있다.
+이 문서(`PAPER_SECTION_4.md`)는 구현 대조용이라 코드 파일명을 남긴다.
+
+아래 "구현 대조"의 4.5 `revise/retain/defer` 항목은 그때 정정했다 — 실제
+UI에는 그 버튼이 없고, 자유 서술 답 + 세 렌즈 재검토로 동작한다.
 
 ---
 
@@ -15,8 +24,9 @@ Formative에서 나온 DR을 SceneLens가 취하는 설계 방향으로 변환.
 Cut Plan에서 beat, 필요한 cut, cut의 역할, shot 등을 먼저 검토한다.
 
 **P2. Externalize instantiated decisions after generation.**
-생성된 결과를 Narrative / Mise-en-scène / Cinematography / Editing × level로
-다시 풀어 보여준다.
+생성된 결과를 Mise-en-scène / Cinematography / Editing 세 realization lens ×
+level로 다시 풀어 보여준다. (Narrative는 생성 전 Cut Plan 단계에서만
+검토한다 — 아래 "어긋나는 것" 3 참조.)
 
 **P3. Turn implicit criteria and gaps into questions for judgment.**
 각 decision에 evaluative criterion을 질문으로 제공하고, 필요한데 보이지 않는
@@ -30,7 +40,9 @@ Cut Plan에서 beat, 필요한 cut, cut의 역할, shot 등을 먼저 검토한�
 맞춰야 한다.
 
 **P1. 문제의 범위를 명시한다.**
-분석된 문제가 `element / shot / sequence` 중 어디에서 작동하는지 보여준다.
+분석된 문제가 `element / shot / seam / sequence` 네 단계 중 어디에서
+작동하는지 보여준다. (코드 값은 `attribute / shot_structure /
+shot_relation / scene_structure` — 아래 "어긋나는 것" 1 참조.)
 
 **P2. Panel 밖의 관계 자체를 편집 대상으로 만든다.**
 shot과 shot 사이의 관계를 직접 다룬다 — `insert / split / merge / reorder`.
@@ -38,9 +50,10 @@ continuity, information flow, pacing 등 여러 shot에 걸친 문제는 sequenc
 구조에서 검토·수정한다. **seam**이 이 자리다.
 
 **P3. 각 level에 맞는 revision alternative를 제공한다.**
-- element 문제 → 해당 element 수정
+- element 문제 → 해당 element 수정 (prompt / draw-over)
 - shot 문제 → framing/composition/shot 자체 수정
-- sequence 문제 → insert/split/merge/reorder 등 구조적 alternative
+- seam 문제 → 이음새 조작 (insert / merge / split / swap)
+- sequence 문제 → Scene State에서 장면 전체 기준 수정
 
 사용자가 문제를 찾았는데 다시 panel regeneration으로 돌아가는 것을 막는다.
 
@@ -85,25 +98,60 @@ beat / cut / cut의 역할 / 주요 인물 / shot 등을 textual plan으로 먼�
 외부화한다. 이미지가 생성되기 전에 필요한 cut과 역할을 검토·수정한다.
 실제 줄콘티/shot planning practice와 연결된다. **[구현]** 컷 플랜 단계.
 
+**Before generation 점검 (2026-08-30 추가 확인).** Cut Plan 단계에서
+Mise/Cinematography/Editing 세 에이전트가 **이미지 없이 글로만** 미리
+점검한다 (`requestMiseCheck` / `requestCameraCheck` /
+`requestNarrativeCheck('cutplan')` → 모두 `/api/narrative/check`,
+`narrative_check.py`, `lens` 파라미터로 구분). Narrative는 대본 자체를
+본다. 생성 후 세 렌즈(`directing-review`)와 다른 엔드포인트다.
+
 **After generation — Lens Analysis**
-4 cinematic lenses — Narrative / Mise-en-scène / Cinematography / Editing.
-생성된 결과에 실제로 구현된 directing decisions를 lens별로 분석한다.
-**[구현]** `directing_review.py`. 네 렌즈 모두 규칙을 갖는다. narrative만
-그림 없이도 판단하므로 생성 전 컷 플랜 단계에서도 쓸 수 있다.
+생성 후에는 **Mise-en-scène / Cinematography / Editing 세 렌즈**만
+(`directing_review.py`). Narrative는 생성 후 검토에 참여하지 않는다.
+네 렌즈 모두 규칙(렌즈당 4개, 총 16개)을 갖고, 그중 narrative 규칙은
+생성 전 `narrative_check`에서만 쓴다.
 
-**Decision card**
-- 현재 어떤 decision이 구현되어 있는지
-- **Criterion:** 그 결정을 판단할 evaluative question
-- **Alternative:** `Keep / Widen / Shift POV`처럼 가능한 다른 directing choice
+**~~Decision card~~ — 그런 UI 요소는 없다 (2026-08-30 정정).**
+실제 결과 화면은 **Lens Tracks + Issue**다.
 
-**[구현]** `directing_rules.py`의 규칙 12개가 각자 `criterion`을 갖고,
-서버가 `rule_id`로 진단에 붙인다. `alternatives`는 첫 번째가 언제나 `keep`.
+- `directing-review`는 `DirectingLensResult`를 렌즈당 하나 돌려준다 —
+  `stance`(change/keep/different), `summary`, `level_assessments`(항상 4개),
+  `diagnoses`(최대 4개, 층위당 최대 1개).
+- `level_assessments` 4개는 **UI에 노출하지 않는다.** 감독에게 필요한 건
+  "수정이 필요한 문제"이고, 4개 층위를 그대로 보여주면 각각 수정 방식이
+  달라 판단이 어렵다는 결론.
+- 화면에는 세 렌즈 **트랙**에 문제 **마커**가 찍히고
+  (`LensTracks.jsx`), 관련 마커는 **Issue**로 묶여 "확인할 것 N개"로
+  나온다. Issue를 열면 `IssueInspector.jsx`가:
+  - 렌즈별 stance (`현재 유지` / `다르게 봄` / `수정 필요`)
+  - 진단 낸 렌즈: 진단 문장 + 접힌 "이 판단의 근거"(criterion / evidence /
+    theory_basis)
+  - 진단 안 낸 렌즈: "아직 안 봄" → `onCheckLens`로 호출
+  - `mainLensQuestion` — 화면만으로 못 보는 것 → 감독 답 → 세 렌즈 재분석
+  - `그대로 두기` 포함 수정 방향 → RevisionWorkspace
+- criterion은 규칙에서 골라 서버가 `rule_id`로 붙인다. `alternatives`
+  첫 번째는 언제나 `keep`.
+- **화면 배치 (스크린샷 2026-08-30):**
+  - 위: 스토리보드 스트립 + 미장센/촬영/편집 3 트랙, 문제 마커
+  - 가운데: 큰 그림 + `visual_evidence` 좌표 박스를 그림 위에 오버레이
+  - 왼쪽 아래: 진단 상세 + 접힌 "이 판단의 근거"(이 Lens의 기준 /
+    화면에서 본 것 / 참고한 책과 핵심 근거)
+  - 오른쪽: **관점 흐름** — `렌즈별`/`모아 보기` 토글, 렌즈별 상태 카드
+    (`처음 발견` / `이 렌즈도 고칠 곳을 봄` / `다르게 봄 · 수정 필요` /
+    `현재 유지`) + `수정하기`, `다른 렌즈로 검토하기`, **관계 보기**
+    (M·C·E 노드 SVG), **함께 보는 문제**(agreement) / `갈리는 판단`
+    (conflict) / `source → affected`(consequence), **검토 방향**
+    입력칸(= `mainLensQuestion` 답)
 
 **Cross-lens relation**
 한 lens의 결정이 다른 lens의 판단에 어떤 영향을 주는지 연결해서 보여준다.
-4 lenses를 독립적인 evaluator가 아니라 **interconnected views**로 설명한다.
-**[구현]** `_relate_lenses`. `consequence` 관계에 방향이 있고
-(`camera → editing`), 그 방향에서 `먼저 볼 렌즈`가 나온다.
+3 realization lenses를 독립적인 evaluator가 아니라 **interconnected
+views**로 설명한다.
+**[구현]** `_relate_lenses` (`directing_review.py`). `agreement` /
+`conflict`(UI="Tension") / `consequence` 세 유형. `consequence`에만
+`source_lens`/`affected_lens` 방향이 있고, 그 방향에서 `먼저 볼 렌즈`가
+나온다. `IssueInspector.jsx`의 `관계 보기`가 이를 M·C·E 노드 그래프로
+그리며, consequence는 원인→영향 방향으로 화살촉을 붙인다.
 
 **[인터페이스]** 이 주장은 화면에서도 성립해야 한다. 렌즈가 탭이면 한 번에
 한 관점만 보이므로 관점이 배타적인 것이 되어, `interconnected views`라는
@@ -125,27 +173,42 @@ beat / cut / cut의 역할 / 주요 인물 / shot 등을 textual plan으로 먼�
 
 DG2 구현.
 
-**Problem scope를 명시** — `element / shot / sequence`.
-사용자가 발견한 문제가 어느 level에서 작동하는지 보여준다.
+**Problem scope는 4단계** — `element / shot / seam / sequence`
+(코드 값 `attribute / shot_structure / shot_relation / scene_structure`).
+**감독에게 4개 목록으로 나열하지 않는다** (2026-08-30). Issue의 수정 방향
+버튼이 알맞은 도구로 바로 이어질 뿐이다.
 
-**Level-matched revision**
-- element → 해당 visual element 수정
-- shot → framing/composition/shot 수정
-- sequence → insert / split / merge / reorder
+**Level-matched revision** (`RULE_DESTINATIONS`, `DecisionBoard.jsx`)
+- element → prompt edit / draw-over
+- shot → framing/composition/shot 값 수정
+- seam → insert / merge / split / swap (실행 전 미리보기)
+- sequence → Scene State (장면 전체 기준)
 
-**Shot seam을 편집 대상으로 사용**
-- 두 shot 사이에서 빠진 사건
-- 연결 방식
-- 추가 shot 필요 여부
-- continuity / information flow / pacing
+**한 컷 수정 (RevisionWorkspace, `RevisionWorkspace.jsx`)**
+Issue의 `수정하기` → 그 렌즈의 수정 지시 + `현재 → 변화된 그림` 대조 +
+수정안 2–3개(각 `프롬프트에 반영`) + `현재 유지` / `직접 수정`. 접힌
+`이 판단의 근거`. 오른쪽에 관점 흐름 패널이 그대로 붙는다.
 
-각 level에 맞는 **revision alternatives**를 제안한다.
+**Shot seam 편집 (패널 그리드, 스크린샷 2026-08-30)**
+- 두 패널 사이 `↔` → 팝오버: 연결(컷/매치컷/디졸브/페이드) +
+  시간(연속/잠시/경과) + `사이에 넣기` / `합치기`
+- 컷 사이 `↓ S3 → S4` 배지
+- `사이에 넣기` → 새 패널 즉시 삽입 → 그 자리에서 프롬프트 입력 또는
+  `AI에 물어보기` 제안 → `생성`. **AI 생성이 seam 조작에 바로 붙어 있다.**
+
+**Scene State 편집 (`장면 기준` 탭, 스크린샷 2026-08-30)**
+- 스트립 아래 상태 구간 바(`장면 상태 S1–S15 · 밤`). 구간 클릭 → 그 시점 기준
+- 시간 / 인물(공통 기준 + 이 시간 상태) / 공간(장소 정체 + 고정 소품)
+- 대본에서 추출. 컷별 배치는 상속, 달라진 것만 별도 기록. `기준 고치기`
+- 러프 콘티는 기준 이미지 없이 텍스트 기준만
 
 **핵심: panel regeneration이 아니라 problem이 존재하는 structural level에서
 intervention.**
 
-**[구현]** `RULE_DESTINATIONS` — 규칙 12개가 각자 목적지를 갖는다
-(seam / merge / split / layout / prompt / draw / narrative).
+**[구현]** `DecisionBoard.jsx`의 `RULE_DESTINATIONS` — 규칙 16개가 각자
+목적지를 갖는다 (seam / merge / split / swap / insert / delete / layout /
+prompt / draw / arrow / cutplan / script / narrative). 규칙에 없으면
+level로 정한다 (`attribute`면 prompt/draw, 나머지는 cutplan).
 
 ---
 
@@ -169,14 +232,37 @@ interpretation이 갈린 지점을 비교한다.
 핵심은 **누가 맞는지 판정하는 게 아니라, 어떤 cue가 서로 다른 해석을
 만들었는지 드러내는 것**이다.
 
+**화면 (스크린샷 2026-08-30).** `관객 검토` 탭. 연출 검토와 같은 표면.
+- 상단 `관객 구성 N명 선택` — 조건 1–3개, 갈림을 보려면 2개 이상. 커스텀
+  조건(`먼저 보는 것` 입력)도 추가 가능 (`custom_` id).
+- 스토리보드 스트립 아래 **읽기 트랙** — 조건마다 한 줄, 컷 칸에 짧은 읽기
+  + 배지(`처음` / `생각 바뀜`).
+- 칸 클릭 → 아래 **워크벤치**(`ReadingWorkbench.jsx`): 큰 그림(앞뒤 컷
+  미리보기) + `눈에 들어온 것`(칩) / `여기까지 보고 든 생각` /
+  `궁금한 채로 남은 것` + ← → 로 컷 걷기.
+- 갈림 없으면 `이 관객들 사이에서는 읽기가 갈린 자리를 찾지 못했습니다`.
+- 관객 읽기를 돌리면 **연출 검토의 렌즈 트랙 아래 `관객` 트랙**이 붙는다
+  (`ReadingTracks` in `DecisionBoard.jsx`). 갈린 자리 마커 → 클릭 시 세
+  렌즈가 그 지점을 봄.
+
 **Creator intent와 사후 비교.**
 Viewer 생성 단계에서는 intent를 주지 않는다. 이후 creator가
 **Intent ↔ Evidence ↔ Interpretation**을 비교한다. 그래서 intention-blind
 원칙을 유지하면서도 communicability를 reflection할 수 있다.
 
+**감독의 재판단 — 자유 서술 답 + 세 렌즈 재검토 (2026-08-30 정정).**
+갈린 지점마다 감독이 `이 자리는 어떻게 읽히길 바라나요?`에 자유 텍스트로
+답한다 (`ReadingWorkbench.jsx`의 `ReadingAnswer`). **Viewer 화면 안에서는
+고치지 않는다** — 의도를 모른 채 읽는다는 원칙을 지키기 위해, 감독의 답을
+관객에게 되먹이지 않는다 (`ReadingWorkbench.jsx:261-264`). 답은 기록만 되고,
+그 답을 전제로 삼아 `directing-review`(세 렌즈)를 다시 돌릴 때 실제 수정이
+일어난다. 원인 큐를 되짚어 어느 렌즈를 재호출할지는
+`viewer_routing_rules.py`가 제안한다.
+
 **Difference ≠ Error.**
-interpretation divergence를 자동 결함으로 판단하지 않는다. 사용자가
-`revise / intentionally retain / defer` 중 하나를 판단하도록 한다.
+interpretation divergence를 자동 결함으로 판단하지 않는다. 그대로 둘지,
+고칠지, 미룰지는 감독이 정한다. 다만 **`revise / retain / defer` 세 판정
+버튼은 UI에 없다** — 위의 자유 서술 답이 그 자리다.
 
 **Reflective probe, not audience simulation.**
 이 1–3개 조건을 실제 인구집단이나 실제 관객을 대표하는 persona라고 주장하지
@@ -211,11 +297,11 @@ System에서는 이 정도만 명확히 한다:
 이 논리가 `reflective probe, not audience replacement` framing을 강하게
 해준다.
 
-**주의.** 이 절은 "페르소나"라는 말을 쓰지 않는다. 세 조건은
-`처음 보는 관객 / 영화에 익숙한 관객 / 이야기 흐름을 중요하게 보는 관객`이며,
-각각 이해 가능성, 영화적 표현에 대한 민감성, 컷 사이의 순차·인과적
-연결을 우선해서 보는 **attention condition**으로 서술해야 이 framing과
-어긋나지 않는다.
+**주의.** 이 절은 "페르소나"라는 말을 쓰지 않는다. 세 조건의 코드 라벨은
+`화면만으로 읽기 / 연출 방식에 주목 / 컷 연결에 주목`이며, 각각 기본 이해
+가능성, 프레이밍·크기·반복 같은 영화적 표현, 컷과 컷의 연결을 우선해서
+보는 **attention condition**으로 서술해야 이 framing과 어긋나지 않는다.
+논문 본문의 자연어 서술과 코드 라벨을 맞춰 둔다.
 
 ---
 
@@ -227,14 +313,14 @@ System에서는 이 정도만 명확히 한다:
 
 | 항목 | 확인 |
 |---|---|
-| 4.3 Criterion | 규칙 12개 전부 `criterion` 보유. 서버가 `rule_id`로 붙임 |
+| 4.3 Criterion | 규칙 **16개**(렌즈당 4개) 전부 `criterion` 보유. 서버가 `rule_id`로 붙임 |
 | 4.3 Alternative | `ensure_keep_alternative` validator가 `keep`을 보장 |
-| 4.3 Cross-lens | `consequence`에 `source_lens`/`affected_lens` 방향 있음 |
+| 4.3 Cross-lens | `consequence`에 `source_lens`/`affected_lens` 방향 있음. `conflict`는 UI에서 "Tension"으로 표시 |
 | 4.5 intent 비공개 | `ViewerPanelInput`이 `image` 하나뿐. 프롬프트도 명시 |
 | 4.5 순차 해석 | `noticed_cues / immediate_reading / relation_to_previous / current_hypothesis / open_question` |
 | 4.5 독립 읽기 | 조건별로 따로 호출하고, 비교는 그 뒤 별도 프롬프트 |
-| 4.5 reading conditions | `first_viewer / film_literate / context_close` — 이해 가능성 / 영화적 표현 / 순차·인과적 연결을 나누는 **attention condition**이다 (`instruction` 필드) |
-| 4.5 Difference ≠ Error | `revise / retain / defer` 세 판정이 UI에 있음 |
+| 4.5 reading conditions | `first_viewer / film_literate / context_close` — 라벨은 `화면만으로 읽기 / 연출 방식에 주목 / 컷 연결에 주목`. 이해 가능성 / 영화적 표현 / 컷-투-컷 연결을 나누는 **attention condition** (`instruction` 필드) |
+| 4.5 Difference ≠ Error | 자유 서술 답(`ReadingAnswer`) + 세 렌즈 재검토. `revise/retain/defer` 버튼은 **없음** (위 정정 참조) |
 
 ### 어긋나는 것
 
