@@ -1458,7 +1458,6 @@ export default function StoryboardView({ onEnterReview = null }) {
   const narrativeError = useStore((s) => s.narrativeError)
   const narrativeAnswered = useStore((s) => s.narrativeAnswered)
   const clearNarrativeResult = useStore((s) => s.clearNarrativeResult)
-  const clearNarrativeSuggestions = useStore((s) => s.clearNarrativeSuggestions)
   const acceptStructureDraft = useStore((s) => s.acceptStructureDraft)
   const dismissStructureDraft = useStore((s) => s.dismissStructureDraft)
   const updateScreenplayLine = useStore((s) => s.updateScreenplayLine)
@@ -2702,28 +2701,43 @@ export default function StoryboardView({ onEnterReview = null }) {
     setPendingFocus({ index: Math.max(0, index - 1), caret: 'end' })
   }
 
-  // 하나를 수락하면 나머지는 버린다. 제안은 수락 시점의 대본을 가리키는
-  // 인덱스를 들고 있어서, 대본이 바뀌면 그 인덱스가 다른 줄을 가리킨다 —
-  // 남겨 두면 두 번째 수락이 엉뚱한 자리에 적용된다.
+  // 제안이 가리키는 대본 줄을 지금 대본에서 다시 찾는다.
+  //
+  // 제안은 만들어질 때의 인덱스를 들고 있는데, 다른 제안을 먼저 적용하면
+  // 줄이 밀려 그 인덱스가 다른 줄을 가리킨다. 그래서 자리를 문장으로도
+  // 기억해 두고(`anchorText`), 적용할 때 그 문장을 다시 찾는다. 그러면
+  // 남은 제안들이 계속 유효해, 적용한 카드 하나만 사라진다.
+  const resolveSuggestionIndex = (suggestion, fallbackIndex) => {
+    const anchor = (suggestion.anchorText || '').trim()
+    if (!anchor) return fallbackIndex
+    // 원래 자리가 아직 그 문장이면 그대로 쓴다 — 같은 문장이 두 번
+    // 나올 때 엉뚱한 쪽으로 옮겨 가지 않는다.
+    if (screenplay[fallbackIndex]?.text?.trim() === anchor) return fallbackIndex
+    const found = screenplay.findIndex((element) => element.text?.trim() === anchor)
+    return found >= 0 ? found : fallbackIndex
+  }
+
   const handleAcceptNarrativeSuggestion = (suggestion) => {
     if (suggestion.type === 'split-beat') {
-      splitBeat(suggestion.elementIndex)
+      splitBeat(resolveSuggestionIndex(suggestion, suggestion.elementIndex))
     } else if (suggestion.type === 'insert-script-line') {
+      const at = resolveSuggestionIndex(suggestion, suggestion.insertAfterIndex)
       const nextScreenplay = [...screenplay]
-      nextScreenplay.splice(suggestion.insertAfterIndex + 1, 0, suggestion.newElement)
+      nextScreenplay.splice(at + 1, 0, suggestion.newElement)
       setScreenplay(nextScreenplay)
     } else if (suggestion.type === 'replace-script-line') {
+      const at = resolveSuggestionIndex(suggestion, suggestion.elementIndex)
       setScreenplay(screenplay.map((element, index) => (
-        index === suggestion.elementIndex
+        index === at
           ? { ...element, text: suggestion.proposedText }
           : element
       )))
     }
     // 이 제안이 점검 지적에서 왔다면 그 지적도 해결로 옮겨 카드를 숨긴다.
-    // 나머지 제안은 계속 버린다 — 적용으로 줄 인덱스가 밀려 이어 적용하면
-    // 엉뚱한 줄에 붙는다. 같은 제안을 두 번 적용할 수 없다 (S4).
     if (pendingSuggestionFindingId) resolveNarrativeFinding(pendingSuggestionFindingId)
-    clearNarrativeSuggestions()
+    // 적용한 카드만 없앤다. 나머지는 문장으로 자리를 다시 찾으므로 계속
+    // 판정할 수 있다 (S4).
+    dismissNarrativeSuggestion(suggestion.id)
   }
 
   const handleUploadScript = () => {

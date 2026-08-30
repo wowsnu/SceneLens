@@ -3776,8 +3776,9 @@ const useStore = create((set, get) => ({
   // 제안 자체는 지우지 않는다 — 사용자가 검토 중인 것을 타이핑만으로
   // 날리면 안 된다.
   clearNarrativeResult: () => set({ narrativeAnswered: false }),
-  // 하나를 수락하면 나머지 제안은 버린다. 남은 것들의 인덱스가 이미
-  // 무효라, 이어서 수락하면 엉뚱한 줄에 적용된다.
+  // 목록 전체를 버린다. 새 요청을 시작하거나 대본 구조가 통째로 바뀌어
+  // 지금 제안들이 어느 줄도 가리키지 못할 때만 쓴다 — 하나를 수락하는
+  // 것은 `dismissNarrativeSuggestion`이 그 하나만 지운다.
   clearNarrativeSuggestions: () => set({
     narrativeSuggestions: [], narrativeAnswered: false, pendingSuggestionFindingId: null,
   }),
@@ -4091,6 +4092,9 @@ const useStore = create((set, get) => ({
       // 같이 두면 "여기서는 할 수 없는 요청입니다"가 뜬다. 버린 것은
       // 답이 없던 것이 아니라 감독이 판정한 것이다.
       narrativeAnswered: remaining.length > 0 ? state.narrativeAnswered : false,
+      // 목록이 다 비면 이 요청도 끝난 것이다. 다음 요청이 지난 지적을
+      // 해결로 옮기지 않도록 여기서 놓는다.
+      ...(remaining.length === 0 ? { pendingSuggestionFindingId: null } : {}),
     }
   }),
   

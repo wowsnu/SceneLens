@@ -33,7 +33,13 @@ export function toNarrativeSuggestions(
     if (item.type === 'split-beat') {
       // 이 줄부터 새 Beat다. 첫 줄을 가리키면 나눌 것이 없다.
       const at = Math.max(1, item.line_index)
-      return { ...base, elementIndex: elements[at]?.globalIdx ?? anchor?.globalIdx }
+      return {
+        ...base,
+        elementIndex: elements[at]?.globalIdx ?? anchor?.globalIdx,
+        // 자리를 문장으로도 기억한다. 다른 제안을 먼저 적용하면 줄이
+        // 밀려 인덱스가 무효가 되는데, 문장이 있으면 그때 다시 찾는다.
+        anchorText: elements[at]?.text ?? anchor?.text ?? '',
+      }
     }
 
     if (item.type === 'insert-script-line') {
@@ -44,6 +50,7 @@ export function toNarrativeSuggestions(
       return {
         ...base,
         insertAfterIndex: at + offset,
+        anchorText: anchor?.text ?? '',
         proposedText: item.proposed_text,
         // 수락 핸들러가 이 객체를 그대로 대본에 끼워 넣는다.
         // 없으면 undefined가 들어가 대본이 깨진다.
@@ -56,6 +63,7 @@ export function toNarrativeSuggestions(
         ...base,
         elementIndex: anchor?.globalIdx ?? 0,
         originalText: item.original_text || anchor?.text || '',
+        anchorText: anchor?.text ?? item.original_text ?? '',
         proposedText: item.proposed_text,
       }
     }
