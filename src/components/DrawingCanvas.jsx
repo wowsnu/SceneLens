@@ -2,7 +2,6 @@ import { useRef, useEffect, useCallback, useMemo, useState } from 'react'
 import useStore, {
   buildCutPrompt,
   cutOrderOf,
-  describeLayout,
   sceneOfBeat,
   seamKeyFor,
   selectScenes,
@@ -80,7 +79,6 @@ export default function DrawingCanvas() {
   const sceneStates = useStore(selectSceneStates)
   const panelStylePreset = useStore((s) => s.panelStylePreset)
   const seams = useStore((s) => s.seams)
-  const spatialElements = useStore((s) => s.spatialElements)
   const setComparePreview = useStore((s) => s.setComparePreview)
   const clearComparePreview = useStore((s) => s.clearComparePreview)
 
@@ -147,7 +145,6 @@ export default function DrawingCanvas() {
       // 밀도를 보내지 않으면 서버가 러프를 기본으로 써서, 실사 보드에서
       // 손으로 그린 패널만 스케치로 남는다.
       stylePreset: panelStylePreset,
-      layout: describeLayout(spatialElements),
     }
   }, [
     activeFlowBranch?.shots,
@@ -161,7 +158,6 @@ export default function DrawingCanvas() {
     sceneStates,
     screenplay,
     seams,
-    spatialElements,
   ])
 
   // ── Segmentation state ─────────────────────────────────────

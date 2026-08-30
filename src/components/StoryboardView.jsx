@@ -1,8 +1,6 @@
 import { Fragment, useCallback, useEffect, useRef, useState } from 'react'
 import useStore, {
   buildCutPrompt,
-  describeLayout,
-  layoutToImage,
   selectCutStage,
   RESPONSIBILITY_LEVELS,
   OFFIMAGE_CHANNELS,
@@ -22,7 +20,6 @@ import useStore, {
   PROBLEM_LAYERS,
   PANEL_STYLE_PRESETS,
   selectSceneStates,
-  selectLayoutForCut,
   cutFindingFingerprint,
   characterNamesOfCut,
   castNameMatches,
@@ -422,32 +419,6 @@ const layerRank = (layer) => {
 // 한 장에 20~30초이므로 아홉 장이면 4~5분이고, 그 뒤로는 검토를 시작할 수
 // 있다. 더 필요하면 생성 바에서 이어 그린다.
 const AUTO_DRAFT_LIMIT = 9
-
-// 도면은 상자와 선뿐이라 크게 보낼 이유가 없다. 매 컷에 함께 올라가므로
-// 18장이면 이 크기가 그대로 대기 시간이 된다 — 배치를 읽는 데는 이 정도로
-// 충분하다.
-const LAYOUT_IMAGE_SIZE = 384
-
-const rasterizeLayout = (svgDataUrl) => new Promise((resolve) => {
-  if (!svgDataUrl) return resolve(null)
-  const image = new Image()
-  image.onload = () => {
-    const canvas = document.createElement('canvas')
-    const source = Math.max(image.width || 768, image.height || 768)
-    const scale = Math.min(1, LAYOUT_IMAGE_SIZE / source)
-    canvas.width = Math.round((image.width || 768) * scale)
-    canvas.height = Math.round((image.height || 768) * scale)
-    const context = canvas.getContext('2d')
-    // 투명 배경은 검게 깔린다. 도면은 흰 종이여야 읽힌다.
-    context.fillStyle = '#fff'
-    context.fillRect(0, 0, canvas.width, canvas.height)
-    context.drawImage(image, 0, 0, canvas.width, canvas.height)
-    resolve(canvas.toDataURL('image/png'))
-  }
-  // 도면을 못 만들어도 패널은 나와야 한다.
-  image.onerror = () => resolve(null)
-  image.src = svgDataUrl
-})
 
 // 화면은 data URL로 들고 있고 서버는 base64만 받는다.
 // 파일 경로('/img/x.png')를 들고 있는 레퍼런스도 있어, base64가 아닌 것은
@@ -1580,7 +1551,6 @@ export default function StoryboardView({ onEnterReview = null }) {
   const setSceneFact = useStore((s) => s.setSceneFact)
   const clearCharacterOverride = useStore((s) => s.clearCharacterOverride)
   const addFactChange = useStore((s) => s.addFactChange)
-  const spatialElements = useStore((s) => s.spatialElements)
   const removeFactChange = useStore((s) => s.removeFactChange)
   const activeSceneId = useStore(selectActiveSceneId)
   const requestSceneStates = useStore((s) => s.requestSceneStates)
@@ -2325,7 +2295,7 @@ export default function StoryboardView({ onEnterReview = null }) {
 
   // 이 컷에 걸리는 레퍼런스 그림. 화면에 나오는 인물과 그 씬의 공간만
   // 넣는다 — 씬의 모든 인물을 매 컷에 물리면 없는 사람까지 그려진다.
-  const referencesForCut = (cut, layoutImage = null, stylePreset = 'rough', previousImage = null) => {
+  const referencesForCut = (cut, stylePreset = 'rough', previousImage = null) => {
     const scene = withSharedReferences(sceneStateForCut(cut))
     if (!scene || !cut) return []
     const cast = characterNamesOfCut(cut)
@@ -2383,13 +2353,6 @@ export default function StoryboardView({ onEnterReview = null }) {
         name: '앞 컷',
         kind: 'neighbor-before',
         image: stripDataUrl(previousImage),
-      })
-    }
-    if (layoutImage) {
-      picked.push({
-        name: scene.location?.name || '이 공간',
-        kind: 'layout',
-        image: stripDataUrl(layoutImage),
       })
     }
     return picked
@@ -2596,23 +2559,11 @@ export default function StoryboardView({ onEnterReview = null }) {
     })
 
     const { generatePanelImage } = await import('../services/api')
-    // 도면은 컷마다 다를 수 있다. 인물이 자리를 옮기거나 조명이 꺼지면
-    // 그 컷부터 새 단계가 되고, 감독이 그 단계의 배치를 따로 그린다.
-    // 씬에 하나로 고정하면 그렇게 나눠 그린 수고가 그림에 나타나지 않는다.
-    //
-    // 같은 단계를 여러 컷이 공유하므로 도면 그림은 단계마다 한 번만 만든다.
-    const layoutCache = new Map()
-    const layoutFor = async (cut) => {
-      const elements = cut ? selectLayoutForCut(useStore.getState(), cut.id) : spatialElements
-      const key = JSON.stringify(elements)
-      if (!layoutCache.has(key)) {
-        layoutCache.set(key, {
-          line: describeLayout(elements),
-          image: await rasterizeLayout(layoutToImage(elements)),
-        })
-      }
-      return layoutCache.get(key)
-    }
+    // 2D 배치도는 생성에 넣지 않는다. 그 편집기를 여는 길이 화면에서
+    // 사라져 도면이 늘 기본값이고, 기본값 도면을 "이 공간의 고정 배치"로
+    // 보내면 그리지도 않은 배치를 지키라고 지시하는 셈이 된다.
+    // SpatialMap과 저장 구조는 그대로 남겨 두었다 — 편집기를 다시 열면
+    // 이 자리에 도면을 되돌려 붙이면 된다.
     const failures = []
 
     // 방금 커밋한 설명이 반영된 컷을 쓴다. 이 함수를 감싼 클로저의
@@ -2661,8 +2612,6 @@ export default function StoryboardView({ onEnterReview = null }) {
       try {
         // 프롬프트가 없는 패널은 만들 수 없다. 컷과 이어지지 않은 패널이다.
         if (!prompt?.effective) throw new Error('이 패널에 연결된 컷이 없습니다')
-        // 이 컷이 속한 단계의 배치.
-        const layout = await layoutFor(cut)
         // shared(씬 기준)를 함께 보낸다. 이것을 빼면 컷마다 인물과 공간이
         // 따로 해석돼, 미장센이 기준을 세운 의미가 없어진다.
         // 이 패널에 이미 그림이 있었으면 다시 그리는 것이다. 반복
@@ -2682,7 +2631,7 @@ export default function StoryboardView({ onEnterReview = null }) {
               // 앞뒤 패널을 따로 물리는 경우(삽입·합치기·분할)에는 여기서
               // 앞 컷을 또 넣지 않는다. 아래에서 그 관계로 다시 붙는다.
               ...referencesForCut(
-                cut, layout.image, panelStylePreset,
+                cut, panelStylePreset,
                 neighbors ? null : priorImage,
               ),
               // 값 하나만 바꿔 다시 그리는 중이면 지금 그림을 함께 물린다.
@@ -2718,9 +2667,6 @@ export default function StoryboardView({ onEnterReview = null }) {
           // 화풍은 표현 스타일 하나가 정한다. 글로 받던 그림체 칸은 없앴다 —
           // 앵커 이미지보다 약해서, 어긋나면 어차피 무시되는 쪽이었다.
           stylePreset: panelStylePreset,
-          // 이 컷이 속한 단계의 배치. 컷마다 콘솔이 좌우로 옮겨 다니는 것을
-          // 글로만 막기는 어렵다.
-          layout: layout.line,
           // 생성 바에서 고른 모델을 그대로 보낸다. 재생성도 같은 함수로
           // 들어오므로 새로 고른 기준이 모든 패널에 일관되게 적용된다.
           model: panelImageModel,
