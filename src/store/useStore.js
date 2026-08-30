@@ -1334,6 +1334,19 @@ const settledFacts = (facts = [], cutIndex = null, cutOrder = null) => facts
   .filter(Boolean)
   .join(', ')
 
+// 이름 뒤에 붙는 조사. `@하린이`, `@민준과`처럼 문장으로 쓴 `@태그`를
+// 이름으로 되돌린다. 떼지 않으면 `@민이`가 `민준`에 닿지 못한다.
+const MENTION_PARTICLES = ['이가', '에게서', '한테서', '으로', '에게', '한테', '이랑', '와의', '과의',
+  '은', '는', '이', '가', '을', '를', '의', '도', '만', '과', '와', '랑', '에']
+const stripMentionParticle = (token = '') => {
+  for (const particle of MENTION_PARTICLES) {
+    if (token.length > particle.length && token.endsWith(particle)) {
+      return token.slice(0, -particle.length)
+    }
+  }
+  return token
+}
+
 // `@이름`은 본문이나 추가 프롬프트에서 화면에 등장할 인물을 명시하는
 // 문법이다. 인물 칸에 같은 이름을 다시 적지 않아도 레퍼런스·프롬프트가
 // 같은 대상을 보도록 한곳에서 해석한다.
@@ -1342,9 +1355,15 @@ export const characterNamesOfCut = (cut = {}) => {
     .split(',')
     .map((name) => name.trim().replace(/^@/, ''))
     .filter(Boolean)
+  // 적은 토큰과 조사를 뗀 것을 모두 후보로 둔다. 아래 소비자들이 부분
+  // 일치로 인물을 찾으므로, 둘 중 맞는 쪽이 걸린다.
   const tagged = [cut.content, cut.promptOverride]
     .flatMap((text) => [...String(text || '').matchAll(/@([^\s@,，.。!?…]+)/g)])
-    .map((match) => match[1].trim())
+    .flatMap((match) => {
+      const token = match[1].trim()
+      const bare = stripMentionParticle(token)
+      return bare !== token ? [token, bare] : [token]
+    })
     .filter(Boolean)
   return [...new Set([...declared, ...tagged])]
 }

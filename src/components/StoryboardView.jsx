@@ -114,22 +114,40 @@ const EMPTY_CAST = []
 // `@하`로 뜨면 적용된 것인지 알 수 없다. 아무 인물도 못 찾으면 그 사실을
 // 밝힌다. 매칭 규칙은 실제 생성(`referencesForCut`)과 같다 — 정확히
 // 같은 이름이 있으면 그것만, 없을 때만 부분 일치로 내려간다.
+// 이름 뒤에 붙는 조사. `@하린이`, `@민준과`처럼 문장으로 쓴 것을 이름으로
+// 되돌리는 데 쓴다.
+const MENTION_PARTICLES = ['이가', '에게서', '한테서', '으로', '에게', '한테', '이랑', '와의', '과의',
+  '은', '는', '이', '가', '을', '를', '의', '도', '만', '과', '와', '랑', '에']
+const stripParticle = (token = '') => {
+  for (const particle of MENTION_PARTICLES) {
+    if (token.length > particle.length && token.endsWith(particle)) {
+      return token.slice(0, -particle.length)
+    }
+  }
+  return token
+}
+
 const resolveMentions = (text = '', cast = []) => {
   const typed = [...String(text).matchAll(/@([^\s@,，.。!?…]+)/g)]
     .map((match) => match[1].trim())
     .filter((name, index, names) => name && names.indexOf(name) === index)
   const names = cast.map((character) => character?.name).filter(Boolean)
+  const match = (value) => {
+    const exact = names.find((name) => name === value)
+    if (exact) return exact
+    // `@하린이`처럼 이름 뒤에 문장이 이어 붙은 경우.
+    return names.filter((name) => value.startsWith(name))
+      .sort((left, right) => right.length - left.length)[0] || null
+  }
   return typed.map((token) => {
-    const exact = names.find((name) => name === token)
-    if (exact) return { token, name: exact, matched: true, exact: true }
-    // `@하린이`처럼 조사가 붙은 것은 정상적인 문장이다. 이름으로 시작하면
-    // 조사로 보고 원래 토큰을 따로 알리지 않는다.
-    const suffixed = names.filter((name) => token.startsWith(name))
-      .sort((left, right) => right.length - left.length)[0]
-    if (suffixed) return { token, name: suffixed, matched: true, exact: true }
-    const loose = names.filter((name) => name.includes(token) || token.includes(name))
+    // 적은 그대로 → 조사를 뗀 것 순으로 본다. `@민이`는 `민`으로 줄여 쓴
+    // 것이므로 조사를 떼야 `민준`에 닿는다.
+    const bare = stripParticle(token)
+    const direct = match(token) || (bare !== token ? match(bare) : null)
+    if (direct) return { token, name: direct, matched: true, exact: true }
+    const loose = names.filter((name) => name.includes(bare) || bare.includes(name))
     // 후보가 여럿이면 어느 쪽인지 정할 수 없다. 이름을 더 적으라고 알린다.
-    if (loose.length === 1) return { token, name: loose[0], matched: true, exact: false }
+    if (loose.length === 1) return { token, name: loose[0], matched: true, exact: bare === token }
     return { token, name: null, matched: false, ambiguous: loose.length > 1, options: loose }
   })
 }
