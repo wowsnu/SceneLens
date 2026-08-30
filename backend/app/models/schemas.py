@@ -239,24 +239,29 @@ class ViewerInterpretiveBranch(BaseModel):
     ]
     visible_basis: List[str]
 
-class ViewerReviewPoint(BaseModel):
+class ViewerEngagementSignal(BaseModel):
+    """A change in viewing behavior, not a diagnosis or edit suggestion."""
+
     panel_orders: List[int]
-    issue: str
-    audience_effect: str
-    recommended_change: str = ""
-    issue_kind: Literal[
-        "element_visibility",
-        "spatial_relation",
-        "framing_readability",
-        "cut_connection",
-        "information_order",
+    action: Literal[
+        "continue",
+        "pause",
+        "recheck",
+        "push_through",
+        "exit_risk",
     ]
-    suspected_cause: Literal["mise", "camera", "editing"]
-    # The viewer supplies a symptom and suspected cause. The backend resolves
-    # the final route and range so a model cannot send an unsupported route.
-    routes: List[Literal["mise", "camera", "editing"]] = []
-    scope: Literal["single", "range"] = "single"
-    route_reason: str = ""
+    reason: str
+    # The question, expectation, or concern that still pulls the viewer
+    # forward. It may be empty when the signal is exit_risk.
+    story_pull: str = ""
+
+
+class ViewerRecall(BaseModel):
+    """What remains available after the sequence, without creator context."""
+
+    remembered_event: str
+    remembered_clues: List[str]
+    remaining_question: str
 
 class ViewerInitialReading(BaseModel):
     id: str = "initial-reading"
@@ -269,9 +274,10 @@ class ViewerInitialReading(BaseModel):
     steps: List[ViewerReadingStep]
     interpretive_branches: List[ViewerInterpretiveBranch] = []
     unresolved_questions: List[str] = []
-    review_points: List[ViewerReviewPoint] = []
+    engagement_signals: List[ViewerEngagementSignal] = []
+    recall: ViewerRecall
     # Temporary view compatibility; remove after the Viewer UI consumes the
-    # cumulative fields and review_points directly.
+    # cumulative fields and engagement_signals directly.
     visible_cues: List[str] = []
     inferred_assumptions: List[str] = []
     routes: List[str] = []
@@ -279,31 +285,6 @@ class ViewerInitialReading(BaseModel):
 class ViewerConditionReading(BaseModel):
     condition_id: str
     reading: ViewerInitialReading
-
-class ViewerPerspectiveReading(BaseModel):
-    condition_id: str
-    reading: str
-
-class ViewerPerspectiveDivergence(BaseModel):
-    panel_orders: List[int]
-    shared_cues: List[str]
-    readings: List[ViewerPerspectiveReading]
-    why_it_matters: str
-    issue_kind: Literal[
-        "element_visibility",
-        "spatial_relation",
-        "framing_readability",
-        "cut_connection",
-        "information_order",
-    ]
-    suspected_cause: Literal["mise", "camera", "editing"]
-    routes: List[Literal["mise", "camera", "editing"]] = []
-    scope: Literal["single", "range"] = "single"
-    route_reason: str = ""
-
-class ViewerPerspectiveComparison(BaseModel):
-    common_reading: str
-    divergences: List[ViewerPerspectiveDivergence] = []
 
 # ── Viewer Intent Check: 읽힌 것 ↔ 컷의 목적 ──────────────────
 # 관객은 의도를 모른 채 읽는다(그 원칙은 위 흐름이 지킨다). 대조는 그
@@ -351,7 +332,6 @@ class IntentCheckResponse(BaseModel):
 class ViewerInitialReadingResponse(BaseModel):
     initial_reading: ViewerInitialReading
     readings: List[ViewerConditionReading] = []
-    comparison: Optional[ViewerPerspectiveComparison] = None
 
 
 # ── Segmentation (MobileSAM, click-based) ─────────────────────

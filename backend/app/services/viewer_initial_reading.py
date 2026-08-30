@@ -7,10 +7,6 @@ import os
 from openai import AsyncOpenAI
 
 from app.models.schemas import ViewerInitialReadingRequest, ViewerInitialReadingResponse
-from app.services.viewer_routing_rules import (
-    normalize_viewer_panel_orders,
-    resolve_viewer_route,
-)
 
 
 RESPONSE_SCHEMA = {
@@ -35,7 +31,8 @@ RESPONSE_SCHEMA = {
                     "steps",
                     "interpretive_branches",
                     "unresolved_questions",
-                    "review_points",
+                    "engagement_signals",
+                    "recall",
                 ],
                 "properties": {
                     "id": {"type": "string"},
@@ -92,39 +89,51 @@ RESPONSE_SCHEMA = {
                         },
                     },
                     "unresolved_questions": {"type": "array", "items": {"type": "string"}},
-                    "review_points": {
+                    "engagement_signals": {
                         "type": "array",
+                        "maxItems": 4,
                         "items": {
                             "type": "object",
                             "additionalProperties": False,
                             "required": [
                                 "panel_orders",
-                                "issue",
-                                "audience_effect",
-                                "recommended_change",
-                                "issue_kind",
-                                "suspected_cause",
+                                "action",
+                                "reason",
+                                "story_pull",
                             ],
                             "properties": {
                                 "panel_orders": {"type": "array", "items": {"type": "integer"}},
-                                "issue": {"type": "string"},
-                                "audience_effect": {"type": "string"},
-                                "recommended_change": {"type": "string"},
-                                "issue_kind": {
+                                "action": {
                                     "type": "string",
                                     "enum": [
-                                        "element_visibility",
-                                        "spatial_relation",
-                                        "framing_readability",
-                                        "cut_connection",
-                                        "information_order",
+                                        "continue",
+                                        "pause",
+                                        "recheck",
+                                        "push_through",
+                                        "exit_risk",
                                     ],
                                 },
-                                "suspected_cause": {
-                                    "type": "string",
-                                    "enum": ["mise", "camera", "editing"],
-                                },
+                                "reason": {"type": "string"},
+                                "story_pull": {"type": "string"},
                             },
+                        },
+                    },
+                    "recall": {
+                        "type": "object",
+                        "additionalProperties": False,
+                        "required": [
+                            "remembered_event",
+                            "remembered_clues",
+                            "remaining_question",
+                        ],
+                        "properties": {
+                            "remembered_event": {"type": "string"},
+                            "remembered_clues": {
+                                "type": "array",
+                                "maxItems": 3,
+                                "items": {"type": "string"},
+                            },
+                            "remaining_question": {"type": "string"},
                         },
                     },
                 },
@@ -170,74 +179,6 @@ READING_CONDITIONS = {
 }
 
 
-COMPARISON_SCHEMA = {
-    "name": "viewer_perspective_comparison",
-    "strict": True,
-    "schema": {
-        "type": "object",
-        "additionalProperties": False,
-        "required": ["comparison"],
-        "properties": {
-            "comparison": {
-                "type": "object",
-                "additionalProperties": False,
-                "required": ["common_reading", "divergences"],
-                "properties": {
-                    "common_reading": {"type": "string"},
-                    "divergences": {
-                        "type": "array",
-                        # 갈림은 예외적인 검토 지점이다. 세 개를 허용하면
-                        # 비교 모델이 조건별 표현 차이까지 문제처럼 늘어놓는
-                        # 경향이 있어, 정말 중요한 두 지점까지만 받는다.
-                        "maxItems": 2,
-                        "items": {
-                            "type": "object",
-                            "additionalProperties": False,
-                            "required": [
-                                "panel_orders", "shared_cues", "readings", "why_it_matters",
-                                "issue_kind", "suspected_cause",
-                            ],
-                            "properties": {
-                                "panel_orders": {"type": "array", "items": {"type": "integer"}},
-                                "shared_cues": {
-                                    "type": "array", "minItems": 1, "maxItems": 2,
-                                    "items": {"type": "string"},
-                                },
-                                "readings": {
-                                    "type": "array",
-                                    "minItems": 2,
-                                    "items": {
-                                        "type": "object",
-                                        "additionalProperties": False,
-                                        "required": ["condition_id", "reading"],
-                                        "properties": {
-                                            "condition_id": {"type": "string"},
-                                            "reading": {"type": "string"},
-                                        },
-                                    },
-                                },
-                                "why_it_matters": {"type": "string"},
-                                "issue_kind": {
-                                    "type": "string",
-                                    "enum": [
-                                        "element_visibility", "spatial_relation",
-                                        "framing_readability", "cut_connection", "information_order",
-                                    ],
-                                },
-                                "suspected_cause": {
-                                    "type": "string",
-                                    "enum": ["mise", "camera", "editing"],
-                                },
-                            },
-                        },
-                    },
-                },
-            },
-        },
-    },
-}
-
-
 async def _read_condition(
     client: AsyncOpenAI,
     request: ViewerInitialReadingRequest,
@@ -272,9 +213,15 @@ Follow the viewer's changing thought in strict panel order instead of writing in
 After the steps, summarize the final hypothesis and emotional arc. Pick the one panel that most changed the reading as the turning point. The turning_point_reason must explain how that panel changed what had been understood from earlier panels; it must not cite a later panel or reverse chronology.
 Add an interpretive branch only when the visible sequence supports a genuinely different reading. Do not force one for every panel; zero to two branches is enough. State where it began, what both readings are, which became stronger or whether it remains unresolved, and the visible basis.
 Unresolved questions must contain only matters the supplied pixels leave open.
-Add a review_point only when comprehension or emotional flow may actually suffer and it can be inspected through mise, camera, or editing. A missed minor detail is not automatically a problem. If identity, relationship, goal, or causal meaning is unavailable from the panels, leave it as an open_question instead of making it a review point. Each review point names the affected panel numbers, the possible effect, one recommended_change, an issue_kind, and one suspected_cause. recommended_change must be one short, concrete Korean instruction that tells the creator what to change in the named panels. For editing, say what should be shown earlier, moved earlier, or made continuous; never give abstract labels such as "improve pacing." Zero review points is valid.
-Use issue_kind exactly as follows: element_visibility for a needed person, object, or action that is hard to identify; spatial_relation for blocking, position, gesture, prop placement, or spatial relation; framing_readability for scale, crop, viewpoint, focus, or visual emphasis; cut_connection for an unclear relation across two or more panels; information_order for information revealed too early, too late, or in a confusing order.
-Use suspected_cause for the most direct source: mise, camera, or editing. It is only a hypothesis and will be checked by a routing rule; do not choose more than one.
+After completing the sequence, add only the few moments where viewing behavior meaningfully changes as engagement_signals; zero to four is enough. This is a viewing trace, not criticism. Do not diagnose a directing problem, classify a production cause, or suggest an edit.
+- continue: a new, specific question or expectation makes the viewer want the next panel immediately. Do not add this mechanically for every panel.
+- pause: the viewer momentarily stops to absorb, feel, or reconsider something.
+- recheck: new visible information makes an earlier panel worth checking again. Include the earlier and current panel numbers when both are identifiable.
+- push_through: the connection is not understood, but an existing question or momentum still carries the viewer forward.
+- exit_risk: no concrete question, expectation, or emotional concern remains to pull the viewer forward. This is not a claim that a real person would leave and never a percentage.
+For each signal, reason states the immediate viewing experience in one short Korean sentence. story_pull states the concrete unresolved question, expectation, or concern that carries attention forward; use an empty string when none remains. Never use words such as mise-en-scene, camera, editing, framing, fix, improve, add, remove, move, or change in these fields.
+
+Finally write recall as only what the sequential trace cannot show by itself: what remains after reaching the end, without creator intent. Do not turn recall into a complete recap and do not inspect every panel again as a checklist. remembered_event is the one main event that remains from the sequence as currently understood. remembered_clues contains only up to three concrete visible details still available after the sequence. remaining_question is the one question most likely to carry into what follows, or an empty string. Do not restate the character goal, final hypothesis, emotional arc, or turning point here; those already exist in the sequential reading. Recall must not judge correctness or recommend a change.
 
 Look at each panel before writing about it. Work through it in this order: who or what is in frame and where they stand relative to each other; which way each face and body is turned and where the eyes look; what the hands are doing and what they hold or touch; how much of the subject the frame includes and from what height; what the space and light tell you. Ground every cue you cite in one of these. If something is drawn too roughly to identify, say it is unclear rather than guessing a specific object or expression — a rough storyboard leaves much undrawn, and treating a blank face as an emotion is the most common mistake.
 
@@ -359,73 +306,20 @@ def _normalize_reading(initial: dict, panel_count: int) -> None:
         for cue in step["noticed_cues"][:1]
     ][:3]
     initial["inferred_assumptions"] = initial["unresolved_questions"]
-    for point in initial["review_points"]:
-        point["panel_orders"] = normalize_viewer_panel_orders(
-            point["panel_orders"],
-            point["issue_kind"],
-            panel_count,
-        )
-        routes, scope, route_reason = resolve_viewer_route(
-            point["issue_kind"],
-            point["suspected_cause"],
-            point["panel_orders"],
-        )
-        point["routes"] = routes
-        point["scope"] = scope
-        point["route_reason"] = route_reason
+    # Engagement signals refer only to viewed positions. They never expand a
+    # range or route to a production lens: that diagnosis belongs downstream.
+    valid_signals = []
+    for signal in initial["engagement_signals"]:
+        signal["panel_orders"] = sorted({
+            order for order in signal["panel_orders"] if 1 <= order <= panel_count
+        })
+        if signal["panel_orders"]:
+            valid_signals.append(signal)
+    initial["engagement_signals"] = valid_signals
 
-    initial["routes"] = list(dict.fromkeys(
-        route
-        for point in initial["review_points"]
-        for route in point["routes"]
-    ))[:2]
-
-
-async def _compare_readings(
-    client: AsyncOpenAI,
-    readings: list[dict],
-    condition_definitions: dict[str, dict],
-) -> dict:
-    records = [
-        {
-            "condition_id": item["condition_id"],
-            "condition": condition_definitions[item["condition_id"]]["label"],
-            "summary": item["reading"]["summary"],
-            "steps": [
-                {
-                    "panel_order": step["panel_order"],
-                    "noticed_cues": step["noticed_cues"],
-                    "immediate_reading": step["immediate_reading"],
-                    "current_hypothesis": step["current_hypothesis"],
-                }
-                for step in item["reading"]["steps"]
-            ],
-        }
-        for item in readings
-    ]
-    prompt = """Compare independent, intention-blind storyboard reading records written by different reading conditions. Write Korean in short, everyday sentences for a creator. Do not use academic, critic-like, or demographic language. Say what was seen and how it led to a different reading, rather than naming an abstract analytical concept.
-Do not invent a real audience consensus, demographic fact, screenplay fact, or creator intention. Do not declare a difference a flaw just because the readings differ.
-
-Return one short common_reading only if the records actually share a flow. **The default result is no divergences.** Return at most two divergences, and only after every rule below is satisfied. Divergence ranges must not overlap: one panel or cut connection gets at most one divergence. Order them from the most consequential difference to the least. Each readings item must use the matching condition_id and its differing reading in plain language, at most 60 Korean characters — it is shown in a narrow side panel, so a longer line is cut off. shared_cues must quote one or two short visible-cue phrases already present in the records. why_it_matters explains the concrete decision fork the creator may need to consider, not what they should choose.
-
-A divergence is **not** a difference in interpretation, emphasis, emotion, prediction, or attention. Those differences are expected because the records were deliberately written under different conditions. The default result is therefore an empty divergences list.
-
-Create a divergence only for a concrete, visually checkable contradiction that could make the storyboard communicate two incompatible *facts*: who or what is shown, where it is positioned or facing, what action is visibly happening, whether two adjacent cuts visibly establish a connection, or whether a specific piece of information has appeared. Both records must make opposing, committed claims about the same fact and quote the same visible cue or cut connection. A condition merely omitting a cue, using weaker language, leaving a possibility open, or discussing a different aspect is never a contradiction.
-
-Before creating one, apply this counterfactual: if the condition labels were removed, would a creator still see an explicit factual conflict that must be resolved in the panels? If not, return no divergence. In particular, do NOT create one for different wording, detail level, emotional vocabulary, confidence, tone, one condition mentioning framing while another describes plot, or even competing story interpretations such as “discovery” versus “alarm.” Those are plausible readings, not a failure to flag. Do NOT create one because identity, goal, or causal meaning is unavailable from the panels; leave that uncertainty in the reading records. Only after this threshold is met, use issue_kind and suspected_cause to classify the directly inspectable source: element_visibility for hard-to-identify visible elements; spatial_relation for blocking/props/position; framing_readability for framing or emphasis; cut_connection for an unclear relation across panels; information_order for information visibly revealed too early, too late, or inconsistently.
-
-Here are the independent records:\n""" + json.dumps(records, ensure_ascii=False)
-    response = await client.chat.completions.create(
-        # 이쪽은 이미 쓰인 기록을 비교하는 텍스트 작업이라 그림을 보지 않는다.
-        # 다만 작은 모델은 조건별 **초점 차이**를 해석 갈림으로 과잉 분류했다.
-        # 독립된 읽기가 정말 양립 불가능한지 가리는 판단이므로 읽기와 같은
-        # 기본 모델을 쓴다. 비용을 우선하는 실험에서는 환경 변수로 내릴 수 있다.
-        model=os.getenv("VIEWER_COMPARISON_MODEL", "gpt-5.4"),
-        messages=[{"role": "user", "content": prompt}],
-        response_format={"type": "json_schema", "json_schema": COMPARISON_SCHEMA},
-        max_completion_tokens=2200,
-    )
-    return json.loads(response.choices[0].message.content.strip())["comparison"]
+    # Temporary view compatibility. Engagement evidence itself is intentionally
+    # not converted into a mise/camera/editing recommendation.
+    initial["routes"] = []
 
 
 async def read_initially(request: ViewerInitialReadingRequest) -> ViewerInitialReadingResponse:
@@ -463,26 +357,10 @@ async def read_initially(request: ViewerInitialReadingRequest) -> ViewerInitialR
         _normalize_reading(reading, len(request.panels))
         readings.append({"condition_id": condition_id, "reading": reading})
 
-    comparison = None
-    if len(readings) > 1:
-        comparison = await _compare_readings(client, readings, condition_definitions)
-        for divergence in comparison["divergences"]:
-            divergence["panel_orders"] = normalize_viewer_panel_orders(
-                divergence["panel_orders"],
-                divergence["issue_kind"],
-                len(request.panels),
-            )
-            routes, scope, route_reason = resolve_viewer_route(
-                divergence["issue_kind"],
-                divergence["suspected_cause"],
-                divergence["panel_orders"],
-            )
-            divergence["routes"] = routes
-            divergence["scope"] = scope
-            divergence["route_reason"] = route_reason
-
+    # 관객끼리 읽기가 갈렸는지는 더 이상 보지 않는다. 갈림은 그 자체로
+    # 고칠 것이 아니었고, 감독이 노린 것이 닿았는지는 `viewer_intent_check`가
+    # 컷 목적과 대조해 판정한다. 대조 호출 하나가 통째로 줄었다.
     return ViewerInitialReadingResponse(
         initial_reading=readings[0]["reading"],
         readings=readings,
-        comparison=comparison,
     )
