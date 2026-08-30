@@ -32,20 +32,23 @@ PROMPT = """당신은 스토리보드의 **의도와 읽힘을 대조**합니다
 - `missed` — 목적과 다르게 읽혔다. 또는 목적이 아예 읽히지 않았다.
 - `unknown` — 목적이 비어 있어 견줄 대상이 없다. 이때는 추측하지 말고 이 값을 쓰세요.
 
-reason은 **한 문장**입니다. 관객이 쓴 말과 목적을 이어서, 왜 그렇게 보았는지
-쓰세요. `목적과 다릅니다` 같은 판정의 반복은 쓰지 마세요.
-  ✓ `목적은 체념인데 관객은 결심으로 읽었습니다.`
-  ✗ `목적이 달성되지 않았습니다.`
+`partial`과 `missed`에는 **무엇과 어긋났는지**를 두 짧은 구로 나눠 씁니다.
+화면이 이 둘을 나란히 놓으므로, 둘 다 없으면 감독은 원래 무엇을 의도했는지
+컷 플랜을 다시 찾아봐야 합니다.
+- intended — 감독이 노린 것. 목적을 그대로 옮기지 말고 이 컷에서 무엇이
+  읽혀야 했는지 짧은 구로 쓰세요. `체념`, `되돌릴 수 없다는 감각`
+- read_as — 관객이 대신 읽은 것. 관객의 말에서 가져옵니다. `결심`, `잠시 쉬는 것`
+둘 다 **구**입니다. 문장으로 쓰지 마세요.
+  ✓ intended: `체념` / read_as: `결심`
+  ✗ intended: `목적은 체념이었습니다` / read_as: `관객은 결심으로 읽었습니다`
 
 screen_cause는 `partial`과 `missed`일 때만 채웁니다. **화면의 무엇이** 그렇게
 읽히게 했는지 한 문장으로 쓰세요 — 관객이 근거로 든 것 안에서만 찾습니다.
   ✓ `눈을 크게 뜬 얼굴이 앞서 보여 지친 기색이 묻힙니다.`
   ✗ `클로즈업을 풀어 보세요.` (해결책은 여기서 내지 않습니다)
-`reached`와 `unknown`에는 빈 문자열을 두세요.
 
-summary는 회차 전체를 한 문장으로 말합니다. 컷 하나씩만 보면 흐름이 보이지
-않으므로, 어디서부터 어긋나기 시작하는지처럼 **묶어서** 읽히는 것을 쓰세요.
-어긋난 컷이 없으면 그 사실을 그대로 쓰면 됩니다.
+`reached`와 `unknown`에는 이 세 칸을 모두 빈 문자열로 두세요. 통한 컷은 화면이
+개수만 세므로 설명이 필요 없습니다.
 
 모든 컷에 판정을 하나씩 내세요. 받은 컷을 빠뜨리지 마세요."""
 
@@ -56,22 +59,22 @@ SCHEMA = {
     "schema": {
         "type": "object",
         "additionalProperties": False,
-        "required": ["verdicts", "summary"],
+        "required": ["verdicts"],
         "properties": {
-            "summary": {"type": "string"},
             "verdicts": {
                 "type": "array",
                 "items": {
                     "type": "object",
                     "additionalProperties": False,
-                    "required": ["panel_order", "status", "reason", "screen_cause"],
+                    "required": ["panel_order", "status", "intended", "read_as", "screen_cause"],
                     "properties": {
                         "panel_order": {"type": "integer"},
                         "status": {
                             "type": "string",
                             "enum": ["reached", "partial", "missed", "unknown"],
                         },
-                        "reason": {"type": "string"},
+                        "intended": {"type": "string"},
+                        "read_as": {"type": "string"},
                         "screen_cause": {"type": "string"},
                     },
                 },

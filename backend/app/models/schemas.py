@@ -335,16 +335,17 @@ class IntentCheckVerdict(BaseModel):
     # missed   — 목적과 다르게 읽혔다.
     # unknown  — 목적이 비어 있어 판정할 수 없다.
     status: Literal["reached", "partial", "missed", "unknown"]
-    # 왜 그렇게 보았는가. 관객의 문장과 목적을 잇는 한 문장.
-    reason: str = Field(default="", max_length=200)
+    # 어긋났을 때 **무엇과** 어긋났는지. 화면이 목적과 읽힘을 나란히
+    # 놓으려면 둘 다 있어야 한다 — `다르게 읽혔다`만으로는 원래 무엇을
+    # 의도했는지 감독이 컷 플랜을 다시 찾아봐야 한다.
+    intended: str = Field(default="", max_length=120)
+    read_as: str = Field(default="", max_length=120)
     # 어긋났을 때, 화면의 무엇이 그렇게 읽히게 했는가.
     screen_cause: str = Field(default="", max_length=200)
 
 
 class IntentCheckResponse(BaseModel):
     verdicts: List[IntentCheckVerdict] = Field(default_factory=list)
-    # 회차 전체로 봤을 때 한 문장. 컷 하나씩만 보면 흐름이 안 보인다.
-    summary: str = ""
 
 
 class ViewerInitialReadingResponse(BaseModel):

@@ -4956,7 +4956,6 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
                   </strong>
                   <em>통함 {reached}</em>
                 </header>
-                {intentCheck.summary && <p className="intent-check-summary">{intentCheck.summary}</p>}
                 {/* 어긋난 것만 세로로 둔다. 통한 컷까지 나열하면 볼 것이
                     다시 열다섯 개가 된다. */}
                 {off.length > 0 && (
@@ -4972,7 +4971,13 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
                         >
                           <b>S{verdict.panel_order}</b>
                           <em>{verdict.status === 'missed' ? '다르게 읽힘' : '뒤로 밀림'}</em>
-                          <span>{verdict.reason}</span>
+                          {/* 무엇과 어긋났는지 나란히 둔다. `다르게 읽혔다`만
+                              보면 원래 뭘 노렸는지 컷 플랜을 다시 찾아야 한다. */}
+                          <span className="intent-check-gap">
+                            <b>{verdict.intended}</b>
+                            <i aria-hidden="true">→</i>
+                            <u>{verdict.read_as}</u>
+                          </span>
                           {verdict.screen_cause && <i>{verdict.screen_cause}</i>}
                         </button>
                       </li>
