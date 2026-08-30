@@ -3074,6 +3074,42 @@ const useStore = create((set, get) => ({
     cutPlan: reorderCutPlan(state.cutPlan.filter((item) => item.id !== itemId)),
   })),
 
+  // 이음새에서 `사이에 넣기`/`합치기`/`나누기`를 눌러 빈 패널만 만들고
+  // 프롬프트도 안 넣고 생성도 안 한 채 화면을 떠나면, 그 패널은 그림도
+  // 내용도 없는 애매한 상태로 남는다. 검토가 이 패널을 만나면 관객 검토가
+  // 열리지 않는다(연속 범위 계산이 빈 컷에서 끊긴다).
+  //
+  // 그래서 Panels를 떠날 때(검토로 넘어가기) 이런 미완성 draft 패널을
+  // 정리한다. 내용이 채워졌으면(감독이 프롬프트를 썼으면) 남긴다 — 그건
+  // 의도적으로 둔 것이다. 그림도 내용도 없을 때만 지운다.
+  discardUnbuiltDraftPanels: () => set((state) => {
+    const scene = state.scenes?.[state.activeScene]
+    const branchIndex = scene?.activeBranch ?? 0
+    const shots = scene?.branches?.[branchIndex]?.shots || []
+
+    const orphans = shots.filter((shot) => (
+      (shot.insertDraft || shot.mergedDraft || shot.splitDraft)
+      && !shot.image
+      && !(state.cutPlan.find((item) => item.id === shot.cutPlanItemId)?.content || '').trim()
+    ))
+    if (orphans.length === 0) return {}
+
+    const orphanShotIds = new Set(orphans.map((shot) => shot.id))
+    const orphanCutIds = new Set(orphans.map((shot) => shot.cutPlanItemId).filter(Boolean))
+
+    const next = updateActiveBranchShots(state, (current) => (
+      current.filter((shot) => !orphanShotIds.has(shot.id))
+    ))
+    const nextSeams = { ...state.seams }
+    orphanShotIds.forEach((id) => { delete nextSeams[seamKeyFor(id)] })
+
+    return {
+      ...next,
+      seams: nextSeams,
+      cutPlan: reorderCutPlan(state.cutPlan.filter((item) => !orphanCutIds.has(item.id))),
+    }
+  }),
+
   // 패널에서 컷을 지울 때는 컷 플랜만 남겨 두면 안 된다. 이후 프롬프트가
   // 삭제된 컷을 계속 조립하거나 패널과 컷 번호가 어긋난다. 편집 렌즈의
   // 삭제는 이 세 구조(컷·패널·이음새)를 한 번에 정리한다.

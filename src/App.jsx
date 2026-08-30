@@ -21,6 +21,7 @@ function App() {
   const closeDrawingWorkspace = useStore((s) => s.closeDrawingWorkspace)
   const leaveReview = useStore((s) => s.leaveReview)
   const clearStoryboardShotSelection = useStore((s) => s.clearStoryboardShotSelection)
+  const discardUnbuiltDraftPanels = useStore((s) => s.discardUnbuiltDraftPanels)
   const activeBeat = useStore((s) => s.activeBeat)
   const cutStage = useStore(selectCutStage)
   const zenMode = useStore((s) => s.zenMode)
@@ -101,6 +102,10 @@ function App() {
   }
 
   const enterReview = () => {
+    // 이음새 삽입/합치기로 만들어 놓고 프롬프트도 안 넣고 생성도 안 한
+    // 빈 패널은 검토를 깨뜨린다(관객 검토가 안 열림). 검토로 넘어가기 전에
+    // 정리한다 — 내용이 채워진 것은 남긴다.
+    discardUnbuiltDraftPanels()
     clearStoryboardShotSelection()
     setMaximizedPanel(null)
     setLeftPanelVisible(false)
