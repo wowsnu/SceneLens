@@ -2317,9 +2317,14 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
     return questions.find((question) => {
       if (!question || !Array.isArray(question.lenses) || !Array.isArray(question.targets)) return false
       if (!question.lenses.includes(selectedTrackIssue.origin_lens)) return false
-      return question.targets.some((target) => (
-        typeof target === 'string' && panelIds.has(target.split('.', 1)[0])
-      ))
+      // 한 컷이라도 겹친다는 이유로 질문을 Issue에 붙이면, S2·S3 범위의
+      // 질문이 S3 한 컷 Issue의 검토 방안처럼 보인다. 질문과 Issue가 가리키는
+      // 패널 집합이 정확히 같을 때만 그 Issue 안에 둔다.
+      const questionPanelIds = new Set(question.targets.flatMap((target) => (
+        typeof target === 'string' ? [target.split('.', 1)[0]] : []
+      )))
+      return questionPanelIds.size === panelIds.size
+        && [...questionPanelIds].every((panelId) => panelIds.has(panelId))
     }) || null
   }, [multiReviewRuns, selectedTrackIssue])
   // 키는 Issue가 나온 run을 따른다. 현재 범위로 묶으면, 다른 범위에서
@@ -4921,6 +4926,7 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
               const scene = shotSceneMap[index]
               const startsHere = index === 0 || shotSceneMap[index - 1]?.id !== scene?.id
               const isActive = scene?.id === activeSceneId
+              const sceneLabel = `씬 ${scene?.number ?? 1}`
               return (
                 <button
                   key={shot.id}
@@ -4932,9 +4938,9 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
                     const cut = cutPlan.find((item) => item.id === shot.cutPlanItemId)
                     setActiveBeat(cut?.beat ?? shot.scriptBeat ?? 0)
                   }}
-                  title={scene?.heading?.text || scene?.title || `S${index + 1}`}
+                  title={scene?.heading || scene?.title || sceneLabel}
                 >
-                  {startsHere ? <span>{scene?.heading?.text || scene?.title || `씬 ${index + 1}`}</span> : ''}
+                  {startsHere ? <span>{sceneLabel}</span> : ''}
                 </button>
               )
             })}
@@ -5003,7 +5009,7 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
           aria-pressed={sceneBasisEditing}
           onClick={() => setSceneBasisEditing((current) => !current)}
         >
-          {sceneBasisEditing ? '수정 마치기' : '기준 고치기'}
+          {sceneBasisEditing ? '저장' : '기준 고치기'}
         </button>
       </header>
 
@@ -5020,7 +5026,7 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
         <ul className="scene-basis-stage-changes" aria-label="이 시간 상태에서 달라진 기준">
           {stageChanges.map((change) => (
             <li key={`${change.group}-${change.owner}-${change.label}`}>
-              <span>{change.owner} · {change.label}</span>
+              <span>{change.owner === change.label ? change.label : `${change.owner} · ${change.label}`}</span>
               <strong>{change.value}</strong>
             </li>
           ))}
@@ -5091,7 +5097,7 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
                   </div>
                   {/* 러프 컷은 레퍼런스를 생성에 물리지 않는다. 만들어도
                       안 쓰이므로 버튼도 두지 않는다. */}
-                  {sceneBasisEditing && panelStylePreset !== 'rough' && (
+                  {sceneBasisEditing && panelStylePreset !== 'rough' && !character.image && (
                     <button
                       type="button"
                       className="scene-basis-reference-action"
@@ -5100,7 +5106,7 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
                     >
                       {isReferenceImagePending('character', character.id)
                         ? '레퍼런스 만드는 중…'
-                        : refImage ? '레퍼런스 다시 만들기' : '레퍼런스 만들기'}
+                        : '레퍼런스 만들기'}
                     </button>
                   )}
                 </div>
@@ -5161,7 +5167,7 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
                   </div>
                 })}
               </dl>
-              {sceneBasisEditing && panelStylePreset !== 'rough' && (
+              {sceneBasisEditing && panelStylePreset !== 'rough' && !sceneState.location.image && (
                 <button
                   type="button"
                   className="scene-basis-reference-action"
@@ -5170,7 +5176,7 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
                 >
                   {isReferenceImagePending('location')
                     ? '레퍼런스 만드는 중…'
-                    : refImageFor(sceneState.location) ? '레퍼런스 다시 만들기' : '레퍼런스 만들기'}
+                    : '레퍼런스 만들기'}
                 </button>
               )}
             </div>
@@ -6233,16 +6239,6 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
                                   >
                                     {character.image ? '레퍼런스·정보 보기' : '레퍼런스 만들기'}
                                   </button>
-                                  {character.image && (
-                                    <button
-                                      type="button"
-                                      className="mise-reference-regenerate"
-                                      onClick={() => generateCharacterReference(character.id)}
-                                      disabled={isReferenceImagePending('character', character.id)}
-                                    >
-                                      {isReferenceImagePending('character', character.id) ? '다시 그리는 중…' : '다시 생성'}
-                                    </button>
-                                  )}
                                 </div>
                               </section>
 
@@ -6332,15 +6328,17 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
                                     />
                                   </label>
                                   <div className="mise-reference-gen-actions">
-                                    <button
-                                      type="button"
-                                      onClick={() => generateCharacterReference(character.id)}
-                                      disabled={isReferenceImagePending('character', character.id)}
-                                    >
-                                      {isReferenceImagePending('character', character.id)
-                                        ? '그리는 중…'
-                                        : character.image ? '다시 그리기' : '레퍼런스 그리기'}
-                                    </button>
+                                    {!character.image && (
+                                      <button
+                                        type="button"
+                                        onClick={() => generateCharacterReference(character.id)}
+                                        disabled={isReferenceImagePending('character', character.id)}
+                                      >
+                                        {isReferenceImagePending('character', character.id)
+                                          ? '그리는 중…'
+                                          : '레퍼런스 그리기'}
+                                      </button>
+                                    )}
                                     {/* 직접 고친 문장은 되돌릴 수 있어야 한다. */}
                                     {character.promptOverride && (
                                       <button
@@ -6415,16 +6413,6 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
                             <button type="button" onClick={() => setLocationReferenceOpen(true)}>
                               {sceneState.location.image ? '레퍼런스·정보 보기' : '공간 레퍼런스 만들기'}
                             </button>
-                            {sceneState.location.image && (
-                              <button
-                                type="button"
-                                className="mise-reference-regenerate"
-                                onClick={() => requestReferenceImage('location')}
-                                disabled={isReferenceImagePending('location')}
-                              >
-                                {isReferenceImagePending('location') ? '다시 그리는 중…' : '다시 생성'}
-                              </button>
-                            )}
                           </div>
                         </section>
 
@@ -6463,15 +6451,17 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
                               />
                             </label>
                             <div className="mise-reference-gen-actions">
-                              <button
-                                type="button"
-                                onClick={() => requestReferenceImage('location')}
-                                disabled={isReferenceImagePending('location')}
-                              >
-                                {isReferenceImagePending('location')
-                                  ? '그리는 중…'
-                                  : sceneState.location.image ? '다시 그리기' : '레퍼런스 그리기'}
-                              </button>
+                              {!sceneState.location.image && (
+                                <button
+                                  type="button"
+                                  onClick={() => requestReferenceImage('location')}
+                                  disabled={isReferenceImagePending('location')}
+                                >
+                                  {isReferenceImagePending('location')
+                                    ? '그리는 중…'
+                                    : '레퍼런스 그리기'}
+                                </button>
+                              )}
                               {sceneState.location.promptOverride && (
                                 <button type="button" className="ghost" onClick={() => setReferencePrompt('location', null, '')}>
                                   자동으로 되돌리기

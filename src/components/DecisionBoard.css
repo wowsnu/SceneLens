@@ -4188,9 +4188,8 @@ button.active .lens-glass::after {
   transform: rotateY(180deg);
 }
 
-/* backface-visibility는 보이지 않게만 한다 — 뒤로 돌아간 면의 버튼은 여전히
-   클릭을 받는다. 그래서 `정보 보기`로 넘어간 뒤 앞면의 `다시 생성`이 눌려
-   Cancel을 눌렀는데도 그림이 생성됐다. 안 보이는 면은 클릭도 받지 않는다. */
+/* backface-visibility는 보이지 않게만 한다 — 뒤로 돌아간 면의 조작은 여전히
+   클릭을 받을 수 있으므로, 안 보이는 면은 클릭도 받지 않는다. */
 .mise-character-reference-card .mise-character-card-back { pointer-events: none; }
 .mise-character-reference-card.flipped .mise-character-card-back { pointer-events: auto; }
 .mise-character-reference-card.flipped .mise-character-card-front { pointer-events: none; }
@@ -7190,11 +7189,15 @@ button.active .lens-glass::after {
 .mise-fact-timeline > header > small { color: rgba(148, 163, 184, 0.66); font-size: 8.5px; text-align: right; }
 
 .mise-fact-timeline > ol {
-  display: grid;
-  gap: 0;
+  display: flex;
+  align-items: stretch;
+  gap: 12px;
+  overflow-x: auto;
   margin: 0;
-  padding: 0;
+  padding: 0 0 3px;
   list-style: none;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(126, 200, 160, 0.24) transparent;
 }
 
 .mise-fact-timeline > ol > li {
@@ -7202,6 +7205,7 @@ button.active .lens-glass::after {
   display: grid;
   grid-template-columns: 19px minmax(0, 1fr) auto auto;
   align-items: center;
+  flex: 1 0 170px;
   gap: 6px;
   min-height: 35px;
   padding: 4px 0;
@@ -7210,10 +7214,10 @@ button.active .lens-glass::after {
 .mise-fact-timeline > ol > li + li::before {
   content: '';
   position: absolute;
-  top: -7px;
-  left: 9px;
-  width: 1px;
-  height: 10px;
+  top: 17px;
+  left: -12px;
+  width: 12px;
+  height: 1px;
   background: rgba(126, 200, 160, 0.32);
 }
 
@@ -7528,19 +7532,6 @@ button.active .lens-glass::after {
 }
 
 .mise-reference-gen-actions button:disabled {
-  opacity: 0.45;
-  cursor: default;
-}
-
-/* 이미 만든 기준 그림도 카드 앞면에서 바로 새 변형을 만들 수 있게 둔다.
-   정보·프롬프트 편집은 옆의 "레퍼런스·정보 보기"에서 계속한다. */
-.mise-character-front-copy .mise-reference-regenerate {
-  border-color: rgba(126, 200, 160, 0.36);
-  background: rgba(126, 200, 160, 0.1);
-  color: rgba(150, 216, 182, 0.9);
-}
-
-.mise-character-front-copy .mise-reference-regenerate:disabled {
   opacity: 0.45;
   cursor: default;
 }
