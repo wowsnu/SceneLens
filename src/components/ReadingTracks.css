@@ -198,22 +198,8 @@
   color: color-mix(in srgb, var(--reader), white 34%);
 }
 
-/* 앞 컷에서 생각이 움직인 칸만. **흐름 안에** 둔다 — absolute로 띄우면
-   글자가 배지 아래로 지나가 둘 다 못 읽는다. */
-.reading-cell-turn {
-  flex: none;
-  padding: 1px 6px;
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--reader), transparent 78%);
-  color: color-mix(in srgb, var(--reader), white 40%);
-  font-size: 8px;
-  font-weight: 800;
-  letter-spacing: 0.03em;
-  white-space: nowrap;
-}
-
-/* 생각의 변화와 관람 행동은 같은 순간에 붙는다. 둘을 별도 줄로 쌓으면
-   좁은 칸에서 본문이 밀리므로 한 줄에서 나란히 둔다. */
+/* 관람 행동은 문장 위 한 줄에 둔다. 모델 내부의 생각 변화 상태와 별도
+   배지를 함께 보여 주면 같은 순간을 두 번 말하게 되므로 행동만 남긴다. */
 .reading-cell-meta {
   display: flex;
   align-items: center;

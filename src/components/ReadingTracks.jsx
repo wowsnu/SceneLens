@@ -30,15 +30,6 @@ const parseAnchor = (anchor) => {
     .filter(Boolean)
 }
 
-// 앞 컷에서 생각이 어떻게 움직였는가. 칸 안에 아주 짧게만 적는다 —
-// 문장을 밀어내면 순차 읽기가 안 읽힌다.
-const RELATION_MARKS = {
-  start: '처음',
-  shifted: '생각 바뀜',
-  unsettled: '흔들림',
-  new_question: '새 질문',
-}
-
 const anchorPosition = (finding, indexById) => {
   const indices = parseAnchor(finding.anchor)
     .map((id) => indexById.get(id))
@@ -209,9 +200,6 @@ export default function ReadingTracks({
                 if (!step) {
                   return <span key={order} className="reading-cell empty" style={{ '--pos': index }} />
                 }
-                const turnMark = step.relation_to_previous !== 'reinforced'
-                  ? RELATION_MARKS[step.relation_to_previous] || ''
-                  : ''
                 const signal = engagementSignalAt(
                   readings.find((entry) => entry.id === condition.id)?.reading,
                   order,
@@ -229,26 +217,17 @@ export default function ReadingTracks({
                     aria-pressed={Boolean(selected)}
                     title={`S${order} · ${step.immediate_reading}`}
                   >
-                    {/* 생각이 바뀐 칸만 표시한다. 매 칸에 붙이면 아무것도
-                        말하지 않는 라벨이 된다.
-
-                        문장 위에 띄우지 않는다 — absolute로 올리면 글자가
-                        배지 아래로 지나가 둘 다 못 읽는다(실제로 그랬다). */}
-                    {(turnMark || action) && (
+                    {/* 변화 상태를 두 문법으로 말하지 않는다. 모델 내부의
+                        relation_to_previous는 유지하되 화면에는 실제 관람
+                        행동만 표시한다. */}
+                    {action && (
                       <span className="reading-cell-meta">
-                        {turnMark && (
-                          <span className={`reading-cell-turn turn-${step.relation_to_previous}`}>
-                            {turnMark}
-                          </span>
-                        )}
-                        {action && (
-                          <span
-                            className={`reading-cell-action action-${signal.action}`}
-                            title={signal.reason}
-                          >
-                            <b aria-hidden="true">{action.mark}</b>{action.label}
-                          </span>
-                        )}
+                        <span
+                          className={`reading-cell-action action-${signal.action}`}
+                          title={signal.reason}
+                        >
+                          <b aria-hidden="true">{action.mark}</b>{action.label}
+                        </span>
                       </span>
                     )}
                     {/* 순차 읽기는 이 칸이 다 맡는다. 읽은 것과 그때 든
