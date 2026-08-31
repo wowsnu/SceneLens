@@ -2613,12 +2613,20 @@ export default function StoryboardView({ onEnterReview = null }) {
         if (!prompt?.effective) throw new Error('이 패널에 연결된 컷이 없습니다')
         // shared(씬 기준)를 함께 보낸다. 이것을 빼면 컷마다 인물과 공간이
         // 따로 해석돼, 미장센이 기준을 세운 의미가 없어진다.
-        // 이 패널에 이미 그림이 있었으면 다시 그리는 것이다. 반복
-        // 재생성 횟수는 이 시스템이 패널 재생성에 얼마나 기대는지를
-        // 재는 값이라 생성 전에 남겨야 한다.
+        // 이 패널을 **참가자가 이미 만들어 본 적이 있으면** 다시 그리는
+        // 것이다. 반복 재생성 횟수는 이 시스템이 패널 재생성에 얼마나
+        // 기대는지를 재는 값이라 생성 전에 남겨야 한다.
+        //
+        // 그림이 있는지(`shot.image`)로 판정하면 안 된다. 시작 대본에는
+        // 예시 그림이 미리 붙어 있는 컷이 있어(`DEMO_PANEL_IMAGES`),
+        // 참가자가 그 칸을 **처음** 생성해도 재생성으로 세어졌다. 실측
+        // 로그에서 첫 세 번의 생성이 전부 그렇게 기록됐다.
+        //
+        // 참가자가 만든 그림에만 `isAIGenerated`가 붙는다 — 예시 그림에는
+        // 없다. 손으로 그린 것도 재생성의 근거는 아니므로 함께 제외된다.
         logEvent('panel_generate', {
           target: shot.cutPlanItemId || shot.id,
-          repeat: Boolean(shot.image),
+          repeat: Boolean(shot.image) && Boolean(shot.isAIGenerated),
         })
         const image = await generatePanelImage(prompt.effective, {
           shared: prompt.shared || '',
