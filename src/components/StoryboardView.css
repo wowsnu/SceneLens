@@ -139,6 +139,15 @@
   font-size: 13px;
 }
 
+/* 위 문단이 `대사도 괜찮습니다`로 끝나므로 곧바로 이어 붙인다 — 사이가
+   벌어지면 다른 이야기로 읽힌다. */
+.editor-header p:not(.script-dialogue-hint) + .script-dialogue-hint {
+  margin: -18px 0 24px 0;
+  color: #8b8b93;
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+
 .inline-script-editor .screenplay-input {
   width: 100%;
   height: 400px;

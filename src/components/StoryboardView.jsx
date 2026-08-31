@@ -3353,6 +3353,14 @@ export default function StoryboardView({ onEnterReview = null }) {
                     장면을 적거나 붙여넣으세요. 완성된 대본이 아니어도 됩니다 —
                     거친 메모나 간단한 대사도 괜찮습니다.
                   </p>
+                  {/* 대사를 그대로 쓰는 사람이 많은데, 나누는 과정에서 화면
+                    행동으로 바뀐다. 위에서 `대사도 괜찮습니다`라고 해 놓고
+                    말이 사라지면 지워진 것으로 읽는다 — 무엇이 될지 미리
+                    말해 둔다. */}
+                  <p className="script-dialogue-hint">
+                    대사는 그림으로 그릴 수 있는 행동·표정으로 바뀝니다.
+                    스토리보드에는 말풍선을 넣지 않습니다.
+                  </p>
                 </div>
                 <label className="scene-intention-field">
                   <span>Scene intention <em>optional</em></span>
