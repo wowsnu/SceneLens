@@ -8,7 +8,11 @@
  *                            level !== 'element' 인 것의 비율
  *   3. 재생성 의존도         panel_generate 횟수. 같은 패널에 두 번째
  *                            이상이면 repeat=true
- *   4. Viewer 활용           viewer_read 뒤에 온 edit. 그 edit의 level 분포
+ *   4. Viewer 활용           viewer_read 뒤에 온 edit. 그 edit의 level 분포.
+ *                            의도 대조가 어긋난 자리를 몇 냈는지는
+ *                            intent_check 이벤트가 따로 든다 — 낼 것이
+ *                            없어서 안 고친 것과 보고도 안 고친 것을
+ *                            가르는 데 그 수가 필요하다
  *   5. 창작 지원 경험 (CSI)  설문. 로그가 아니라 세션 끝에 붙인다
  *   6. 주관 평가             설문. 위와 같다
  *
@@ -23,6 +27,7 @@
 const STORAGE_KEY = 'scenelens.study.log'
 const SESSION_KEY = 'scenelens.study.session'
 const CONDITION_KEY = 'scenelens.study.condition'
+const ORDER_KEY = 'scenelens.study.order'
 
 /** 이 수정이 패널 안의 일인가, 그 너머인가. */
 export const BEYOND_PANEL_LEVELS = ['shot', 'seam', 'sequence']
@@ -86,6 +91,21 @@ export const setCondition = (value) => {
   return value
 }
 
+/**
+ * 이 조건이 이 참가자의 몇 번째인가 (1 또는 2).
+ *
+ * within-subjects라 같은 사람이 두 조건을 다 한다. 순서 효과 — 두 번째
+ * 조건에서는 이미 이야기와 도구에 익숙해져 있다 — 를 통제하려면 조건
+ * 이름만으로는 부족하고, 그것이 먼저였는지 나중이었는지가 있어야 한다.
+ * 조건과 같은 방식으로 URL(`?order=1`)이나 Ctrl+Shift+C에서 정한다.
+ */
+export const conditionOrder = () => readJSON(ORDER_KEY, null) || 'unset'
+
+export const setConditionOrder = (value) => {
+  writeJSON(ORDER_KEY, value)
+  return value
+}
+
 export const readLog = () => readJSON(STORAGE_KEY, [])
 
 /**
@@ -97,7 +117,9 @@ export const readLog = () => readJSON(STORAGE_KEY, [])
  *   viewer_read      Viewer Agent 확인
  *   review           검토 실행 (단일 렌즈 / 다관점 / 관계)
  *   route            진단에서 고칠 자리로 이동한 것. 아직 수정은 아니다
- *   verdict          revise / retain / defer 판정
+ *   verdict          keep / applied 판정. 버튼으로 받지 않고 실제
+ *                    행동(그대로 둠 / 적용함)에서 나온다
+ *   intent_check     의도와 읽힘 대조 결과. 어긋난 컷 수와 그 자리
  */
 export const logEvent = (type, payload = {}) => {
   if (typeof window === 'undefined') return null
@@ -109,6 +131,7 @@ export const logEvent = (type, payload = {}) => {
     t: Date.now(),
     session: sessionId(),
     condition: condition(),
+    conditionOrder: conditionOrder(),
     type,
     ...payload,
   }
@@ -228,6 +251,7 @@ export const summarize = (log = readLog()) => {
   return {
     session: sessionId(),
     condition: condition(),
+    conditionOrder: conditionOrder(),
     events: log.length,
     // 어떤 기능을 얼마나 썼는가. 제안을 받아들였는가 버렸는가.
     scaffolding: {
@@ -302,6 +326,38 @@ export const summarize = (log = readLog()) => {
         byScopeMode: count(rows, 'scopeMode'),
       }
     })(),
+    /* 의도 대조가 무엇을 냈고, 그 뒤에 무엇이 일어났는가.
+     *
+     * 프로토콜 5.3이 재려는 것은 관객 읽기가 **재검토와 수정으로
+     * 이어졌는가**다. 어긋난 자리가 몇이었는지가 없으면 "고칠 게 없어서
+     * 안 고쳤다"와 "보고도 안 고쳤다"가 갈리지 않는다 — 앞은 시스템이
+     * 통과시킨 것이고 뒤는 감독이 감수한 것이라 전혀 다른 사건이다.
+     */
+    intentCheck: (() => {
+      const runs = log.filter((e) => e.type === 'intent_check')
+      return {
+        runs: runs.length,
+        // 어긋난 자리를 한 번이라도 받았는가. 0이면 아래 `수정 없음`은
+        // 감독의 판단이 아니라 시스템이 낼 것이 없었다는 뜻이다.
+        offTotal: runs.reduce((acc, run) => acc + (run.off || 0), 0),
+        reachedTotal: runs.reduce((acc, run) => acc + (run.reached || 0), 0),
+        byRun: runs.map((run) => {
+          const at = log.indexOf(run)
+          const next = edits.find((edit) => log.indexOf(edit) > at)
+          return {
+            intent_check_id: run.id,
+            panels: run.panels || 0,
+            off: run.off || 0,
+            offPanels: run.offPanels || [],
+            storyboard_version: run.storyboard_version || null,
+            // 이 대조 뒤 처음 고친 것. 없으면 보고 그대로 둔 것이다.
+            subsequent_edit_id: next?.id || null,
+            level: next?.level || null,
+            lens: next?.lens || null,
+          }
+        }),
+      }
+    })(),
     viewer: {
       reads: log.filter((e) => e.type === 'viewer_read').length,
       verdicts: count(log.filter((e) => e.type === 'verdict'), 'verdict'),
@@ -321,7 +377,12 @@ export const exportLog = ({ finalSnapshot = null, metadata = {} } = {}) => {
   const payload = {
     schema_version: '2.0',
     exported_at: new Date().toISOString(),
-    metadata: { session_id: sessionId(), condition: condition(), ...metadata },
+    metadata: {
+      session_id: sessionId(),
+      condition: condition(),
+      condition_order: conditionOrder(),
+      ...metadata,
+    },
     summary: summarize(log),
     events: log,
     // 분석 중 think-aloud/video의 특정 시점을 마지막 산출물과 연결할 수
@@ -348,6 +409,7 @@ export const resetLog = () => {
     window.localStorage.removeItem(STORAGE_KEY)
     window.localStorage.removeItem(SESSION_KEY)
     window.localStorage.removeItem(CONDITION_KEY)
+    window.localStorage.removeItem(ORDER_KEY)
   } catch {
     // 못 지워도 앱은 계속 돌아간다.
   }

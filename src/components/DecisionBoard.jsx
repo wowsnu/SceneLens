@@ -3820,6 +3820,26 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
       const result = await checkViewerIntent({ cuts, sceneIntention: sceneIntention || '' })
       setIntentCheck(result)
       setIntentCheckStatus('ready')
+      // 의도 대조가 무엇을 냈는가. 프로토콜 5.3이 재려는 것은 관객 읽기가
+      // **실제 재검토와 수정으로 이어졌는가**인데, 어긋난 자리가 몇이었는지
+      // 없으면 "고칠 게 없어서 안 고쳤다"와 "보고도 안 고쳤다"가 갈리지
+      // 않는다. 어느 컷이었는지까지 남겨야 뒤따라온 수정과 맞춰볼 수 있다.
+      const verdicts = Array.isArray(result?.verdicts) ? result.verdicts : []
+      const offVerdicts = verdicts.filter((verdict) => (
+        (verdict?.status === 'missed' || verdict?.status === 'partial')
+        && verdict.intended && verdict.read_as
+      ))
+      logEvent('intent_check', {
+        panels: verdicts.length,
+        off: offVerdicts.length,
+        reached: verdicts.filter((verdict) => verdict?.status === 'reached').length,
+        byStatus: verdicts.reduce((acc, verdict) => ({
+          ...acc,
+          [verdict?.status || 'unspecified']: (acc[verdict?.status || 'unspecified'] || 0) + 1,
+        }), {}),
+        offPanels: offVerdicts.map((verdict) => verdict.panel_order),
+        storyboard_version: storyboardVersion(selectedSnapshotShots),
+      })
     } catch {
       // 대조에 실패해도 읽기 자체는 남는다. 그쪽이 본 것이고, 이것은
       // 그 위에 얹는 판정이다.

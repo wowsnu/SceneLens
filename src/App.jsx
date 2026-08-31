@@ -4,7 +4,10 @@ import DecisionBoard from './components/DecisionBoard'
 import StudyLogPanel from './components/StudyLogPanel'
 import CenterPanel from './components/CenterPanel'
 import useStore, { selectCutStage } from './store/useStore'
-import { exportLog, summarize, resetLog, setCondition, condition } from './store/studyLog'
+import {
+  exportLog, summarize, resetLog,
+  setCondition, condition, setConditionOrder, conditionOrder,
+} from './store/studyLog'
 import './App.css'
 
 function App() {
@@ -35,8 +38,14 @@ function App() {
   // 실험 조건은 세션이 시작되기 전에 정해져야 한다. URL로 넘기면
   // 참가자를 앉히기 전에 정해지므로 가장 안전하다.
   useEffect(() => {
-    const fromUrl = new URLSearchParams(window.location.search).get('condition')
+    const params = new URLSearchParams(window.location.search)
+    const fromUrl = params.get('condition')
     if (fromUrl) setCondition(fromUrl)
+    // within-subjects라 같은 사람이 두 조건을 다 한다. 두 번째 조건은
+    // 이미 도구와 이야기에 익숙해진 상태이므로, 순서를 남기지 않으면
+    // 조건 차이와 순서 효과가 섞인다.
+    const orderFromUrl = params.get('order')
+    if (orderFromUrl) setConditionOrder(orderFromUrl)
   }, [])
 
   useEffect(() => {
@@ -46,6 +55,8 @@ function App() {
         event.preventDefault()
         const next = window.prompt('실험 조건', condition())
         if (next) setCondition(next)
+        const nextOrder = window.prompt('이 참가자의 몇 번째 조건인가 (1 / 2)', conditionOrder())
+        if (nextOrder) setConditionOrder(nextOrder)
       }
       if (event.key === 'L' || event.key === 'l') {
         event.preventDefault()

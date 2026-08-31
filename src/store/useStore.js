@@ -2430,6 +2430,13 @@ const useStore = create((set, get) => ({
   // 상태 변화를 더한다. 처음 값은 남기고 구간만 얹는다 —
   // 값을 덮어쓰면 앞 컷들이 무엇이었는지 알 수 없게 된다.
   addFactChange: (group, label, cutId, value, { characterId = null, sceneId = null } = {}) => {
+    // 장면 기준은 이 씬의 컷 전체를 가로지른다 — 한 컷을 고치는 것이
+    // 아니라 장면이 무엇을 전제하는지를 바꾸는 일이므로 `sequence`다.
+    // 프로토콜 5.2의 3범주 중 `장면` 칸이 이것으로 채워진다.
+    logEdit({
+      level: 'sequence', target: `${group}:${label}`, action: 'fact_change',
+      source: 'scene_basis',
+    })
     const patchFacts = (facts = []) => facts.map((fact) => {
       if (fact.label !== label) return fact
       // 같은 컷에 두 번 얹지 않는다. 다시 넣으면 값만 바뀐다.
@@ -2454,6 +2461,10 @@ const useStore = create((set, get) => ({
   },
 
   removeFactChange: (group, label, cutId, { characterId = null, sceneId = null } = {}) => {
+    logEdit({
+      level: 'sequence', target: `${group}:${label}`, action: 'fact_change_remove',
+      source: 'scene_basis',
+    })
     const patchFacts = (facts = []) => facts.map((fact) => (
       fact.label === label
         ? { ...fact, changes: (fact.changes || []).filter((change) => change.cutId !== cutId) }
@@ -2485,8 +2496,16 @@ const useStore = create((set, get) => ({
       fact.label === label ? { ...fact, value, open: !value } : fact
     ))
 
+    // 위임하는 갈래에서는 남기지 않는다 — `setCharacterOverride`가 이미
+    // 남기므로 여기서 또 남기면 한 번의 수정이 두 건으로 세어진다.
+    const logBasisEdit = () => logEdit({
+      level: 'sequence', target: `${group}:${label}`, action: 'fact_set',
+      source: 'scene_basis',
+    })
+
     if (group === 'character') {
       if (!scoped) {
+        logBasisEdit()
         set((state) => ({
           cast: state.cast.map((character) => (
             character.id === characterId
@@ -2500,6 +2519,7 @@ const useStore = create((set, get) => ({
       return
     }
 
+    logBasisEdit()
     get().updateSceneStateAt(sceneId || selectActiveSceneId(get()), (scene) => (
       { ...scene, [group]: { ...scene[group], facts: patchFacts(scene[group]?.facts) } }
     ))
@@ -2508,6 +2528,10 @@ const useStore = create((set, get) => ({
   // 이 씬에서만 달라지는 인물 항목. 기준과 같아지면 덮어쓰기를 지운다 —
   // 같은 값을 남겨 두면 나중에 기준을 고쳤을 때 이 씬만 따라오지 않는다.
   setCharacterOverride: (characterId, label, value, { sceneId = null } = {}) => {
+    logEdit({
+      level: 'sequence', target: `character:${label}`, action: 'scene_override',
+      source: 'scene_basis',
+    })
     const state = get()
     const targetScene = sceneId || selectActiveSceneId(state)
     const base = state.cast.find((entry) => entry.id === characterId)
@@ -2528,6 +2552,10 @@ const useStore = create((set, get) => ({
 
   // 이 씬의 덮어쓰기를 지우고 기준으로 되돌린다.
   clearCharacterOverride: (characterId, label = null, { sceneId = null } = {}) => {
+    logEdit({
+      level: 'sequence', target: `character:${label || 'all'}`, action: 'scene_override_clear',
+      source: 'scene_basis',
+    })
     get().updateSceneStateAt(sceneId || selectActiveSceneId(get()), (scene) => {
       const overrides = { ...(scene.characterOverrides || {}) }
       if (!label) {
@@ -3004,9 +3032,13 @@ const useStore = create((set, get) => ({
     const proposal = get().cutInsertProposal
     if (!proposal) return
 
+    // 컷 삽입은 **컷 수가 바뀌는 일**이므로 `shot`이다. 이음새에서
+    // 시작했다는 것은 `source`가 말한다 — 그것 때문에 층위를 `seam`으로
+    // 두면 같은 `컷 삽입`이 경로에 따라 다른 칸에 떨어져, 프로토콜
+    // 5.2가 두 도구를 견주려는 `컷 삽입·삭제`가 갈라진다.
     logEdit({
       lens: 'editing',
-      level: 'seam',
+      level: 'shot',
       target: proposal.afterCutId,
       action: 'insert',
       source: 'seam',
@@ -3070,9 +3102,18 @@ const useStore = create((set, get) => ({
 
   rejectCutInsert: () => set({ cutInsertProposal: null, cutInsertError: null }),
 
-  removeCutPlanItem: (itemId) => set((state) => ({
-    cutPlan: reorderCutPlan(state.cutPlan.filter((item) => item.id !== itemId)),
-  })),
+  // 컷 플랜에서 컷을 지우는 것도 삭제다. `deleteCut`만 남기면 확정 전에
+  // 지운 컷이 통째로 빠져, 두 도구의 `컷 삽입·삭제` 비교에서 이쪽만
+  // 적게 세어진다.
+  removeCutPlanItem: (itemId) => {
+    logEdit({
+      lens: 'editing', level: 'shot', target: itemId,
+      action: 'delete', source: 'cut_plan',
+    })
+    return set((state) => ({
+      cutPlan: reorderCutPlan(state.cutPlan.filter((item) => item.id !== itemId)),
+    }))
+  },
 
   // 이음새에서 `사이에 넣기`/`합치기`/`나누기`를 눌러 빈 패널만 만들고
   // 프롬프트도 안 넣고 생성도 안 한 채 화면을 떠나면, 그 패널은 그림도

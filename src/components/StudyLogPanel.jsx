@@ -18,6 +18,7 @@ const TYPE_LABELS = {
   panel_generate: '패널 생성',
   viewer_read: '관객 읽기',
   viewer_result: '관객 결과',
+  intent_check: '의도 대조',
   verdict: '판정',
   review: '검토 실행',
   route: '이동',
