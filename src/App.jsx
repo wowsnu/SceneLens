@@ -7,7 +7,7 @@ import useStore, { selectCutStage } from './store/useStore'
 import {
   summarize, resetLog,
   setCondition, condition, setConditionOrder, conditionOrder,
-  phase, startTask, endTask, exportedAt,
+  phase, startTask, endTask, exportedAt, uploadedAt,
 } from './store/studyLog'
 import { runStudyExportWithAlert } from './store/studyExport'
 import './App.css'
@@ -19,6 +19,8 @@ function App() {
   // 측정 중인지를 바깥 점에도 물려 둔다. 패널을 열지 않아도 보이게.
   const [studyPhase, setStudyPhase] = useState(() => phase())
   const [exporting, setExporting] = useState(false)
+  // 서버 저장이 확인됐는가. 이것이 있어야 `다음 참가자 준비`를 내놓는다.
+  const [uploaded, setUploaded] = useState(() => Boolean(uploadedAt()))
   const maximizedPanel = useStore((s) => s.maximizedPanel)
   const setMaximizedPanel = useStore((s) => s.setMaximizedPanel)
   const leftPanelVisible = useStore((s) => s.leftPanelVisible)
@@ -103,7 +105,7 @@ function App() {
             : '⚠️ 이 세션은 한 번도 내보내지 않았습니다.\n지우면 기록이 사라집니다.\n\n')
           + `수정 ${edits.total}건, 생성 ${regeneration.total}건의 기록을 지웁니다. 계속할까요?`,
         )
-        if (ok) { resetLog(); setStudyPhase(phase()) }
+        if (ok) { resetLog(); setStudyPhase(phase()); setUploaded(false) }
       }
     }
     window.addEventListener('keydown', onKey)
@@ -287,7 +289,12 @@ function App() {
               endTask()
               setStudyPhase(phase())
               setExporting(true)
-              try { await runStudyExportWithAlert() } finally { setExporting(false) }
+              try {
+                await runStudyExportWithAlert()
+              } finally {
+                setExporting(false)
+                setUploaded(Boolean(uploadedAt()))
+              }
             }}>
               {exporting ? '내보내는 중…' : '과제 종료 · 내보내기'}
             </button>
@@ -298,9 +305,31 @@ function App() {
         {studyPhase === 'done' && (
           <button type="button" className="study-bar-export" disabled={exporting} onClick={async () => {
             setExporting(true)
-            try { await runStudyExportWithAlert() } finally { setExporting(false) }
+            try {
+              await runStudyExportWithAlert()
+            } finally {
+              setExporting(false)
+              setUploaded(Boolean(uploadedAt()))
+            }
           }}>
             {exporting ? '내보내는 중…' : '결과 다시 내보내기'}
+          </button>
+        )}
+        {/* 다음 사람으로 넘어가기. **서버에 올라간 것이 확인된 뒤에만**
+            내놓는다 — 파일은 실험자 컴퓨터에 있지만 그것이 제자리에
+            있는지 시스템은 알 수 없다. 업로드가 실패했으면 이 버튼이
+            아예 안 떠서, 지울 수 없는 상태가 눈에 보인다. */}
+        {studyPhase === 'done' && uploaded && (
+          <button type="button" className="study-bar-next" onClick={() => {
+            if (!window.confirm(
+              '이 세션을 지우고 다음 참가자(또는 다음 조건)를 준비합니다.\n'
+              + '서버 저장은 확인됐습니다. 계속할까요?',
+            )) return
+            resetLog()
+            setStudyPhase(phase())
+            setUploaded(false)
+          }}>
+            다음 참가자 · 조건 준비
           </button>
         )}
       </div>

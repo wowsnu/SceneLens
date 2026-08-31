@@ -8,7 +8,7 @@
  */
 
 import useStore from './useStore'
-import { exportLog } from './studyLog'
+import { exportLog, markUploaded } from './studyLog'
 
 /**
  * 마지막 산출물. 분석 중 think-aloud/영상의 한 시점을 결과물과 이을 수
@@ -56,7 +56,12 @@ export const runStudyExport = async () => {
         payload,
       }),
     })
-    if (response.ok) return { payload, uploaded: true }
+    if (response.ok) {
+      // 서버에 닿은 것이 확인된 뒤에만 남긴다. 이 표시가 있어야
+      // `다음 참가자 준비`(비우기)를 내놓는다.
+      markUploaded()
+      return { payload, uploaded: true }
+    }
     const detail = await response.text().catch(() => '')
     return { payload, uploaded: false, reason: `${response.status} ${detail.slice(0, 200)}` }
   } catch (error) {

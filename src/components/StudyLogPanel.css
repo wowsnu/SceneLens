@@ -391,6 +391,19 @@
 
 .study-bar-export:hover:not(:disabled) { background: rgba(167, 139, 250, 0.26); }
 
+/* 다음 사람으로. 서버 저장이 확인된 뒤에만 나타나므로, 이 버튼이 보인다는
+   것 자체가 "지워도 안전하다"는 신호다. */
+.study-bar-next {
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.62);
+}
+
+.study-bar-next:hover {
+  border-color: rgba(255, 255, 255, 0.34);
+  color: rgba(255, 255, 255, 0.9);
+}
+
 /* 내보내기 — 파일과 서버 양쪽으로 나간다. */
 .study-log-export:disabled {
   opacity: 0.55;

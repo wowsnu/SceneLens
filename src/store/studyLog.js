@@ -31,6 +31,7 @@ const ORDER_KEY = 'scenelens.study.order'
 const PHASE_KEY = 'scenelens.study.phase'
 const TASK_START_KEY = 'scenelens.study.task_started_at'
 const EXPORTED_KEY = 'scenelens.study.exported_at'
+const UPLOADED_KEY = 'scenelens.study.uploaded_at'
 
 /** 이 수정이 패널 안의 일인가, 그 너머인가. */
 export const BEYOND_PANEL_LEVELS = ['shot', 'seam', 'sequence']
@@ -143,6 +144,21 @@ export const readLog = () => readJSON(STORAGE_KEY, [])
 
 /** 마지막으로 내보낸 시각. 한 번도 안 내보냈으면 null. */
 export const exportedAt = () => readJSON(EXPORTED_KEY, null)
+
+/**
+ * 서버에 **실제로 올라간** 시각. 파일만 받은 것과 구분한다.
+ *
+ * 비우기를 이 값으로 가른다 — 파일은 실험자 컴퓨터에 있지만, 그것이
+ * 제자리에 있는지 시스템은 알 수 없다. 서버 저장이 확인된 세션만
+ * 지워도 안전하다고 본다.
+ */
+export const uploadedAt = () => readJSON(UPLOADED_KEY, null)
+
+export const markUploaded = () => {
+  const at = Date.now()
+  writeJSON(UPLOADED_KEY, at)
+  return at
+}
 
 /**
  * 이벤트 하나를 남긴다.
@@ -478,6 +494,7 @@ export const resetLog = () => {
     window.localStorage.removeItem(PHASE_KEY)
     window.localStorage.removeItem(TASK_START_KEY)
     window.localStorage.removeItem(EXPORTED_KEY)
+    window.localStorage.removeItem(UPLOADED_KEY)
   } catch {
     // 못 지워도 앱은 계속 돌아간다.
   }
