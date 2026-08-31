@@ -7,6 +7,7 @@ import useStore, { selectCutStage } from './store/useStore'
 import {
   exportLog, summarize, resetLog,
   setCondition, condition, setConditionOrder, conditionOrder,
+  phase, startTask, endTask,
 } from './store/studyLog'
 import './App.css'
 
@@ -32,6 +33,7 @@ function App() {
 
   // 실험 로그 내보내기. 참가자에게 보이는 버튼을 두면 과제 중에 눈에
   // 걸리므로 단축키로만 연다 — 실험자가 세션 끝에 누른다.
+  //   Ctrl+Shift+S  본 과제 시작·종료 (튜토리얼과 측정 구간을 가른다)
   //   Ctrl+Shift+L  로그 창 열기·닫기
   //   Ctrl+Shift+E  내보내기 (요약은 콘솔에도 찍는다)
   //   Ctrl+Shift+R  다음 참가자를 위해 비우기 (확인을 받는다)
@@ -61,6 +63,20 @@ function App() {
       if (event.key === 'L' || event.key === 'l') {
         event.preventDefault()
         setStudyLogOpen((open) => !open)
+      }
+      // 튜토리얼과 본 과제를 가른다. 누르지 않으면 측정이 시작되지
+      // 않으므로, 무엇이 일어났는지 눌린 뒤에 바로 알려 준다.
+      if (event.key === 'S' || event.key === 's') {
+        event.preventDefault()
+        if (phase() === 'tutorial') {
+          startTask()
+          window.alert('본 과제를 시작했습니다. 여기부터 측정합니다.')
+        } else if (phase() === 'task') {
+          const ok = window.confirm('본 과제를 종료할까요? 이 뒤의 조작은 측정에서 빠집니다.')
+          if (ok) endTask()
+        } else {
+          window.alert('이미 종료된 과제입니다. 다음 참가자는 Ctrl+Shift+R로 비우세요.')
+        }
       }
       if (event.key === 'E' || event.key === 'e') {
         event.preventDefault()

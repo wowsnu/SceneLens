@@ -28,6 +28,8 @@ const STORAGE_KEY = 'scenelens.study.log'
 const SESSION_KEY = 'scenelens.study.session'
 const CONDITION_KEY = 'scenelens.study.condition'
 const ORDER_KEY = 'scenelens.study.order'
+const PHASE_KEY = 'scenelens.study.phase'
+const TASK_START_KEY = 'scenelens.study.task_started_at'
 
 /** 이 수정이 패널 안의 일인가, 그 너머인가. */
 export const BEYOND_PANEL_LEVELS = ['shot', 'seam', 'sequence']
@@ -106,6 +108,36 @@ export const setConditionOrder = (value) => {
   return value
 }
 
+/**
+ * 튜토리얼인가 본 과제인가.
+ *
+ * 프로토콜은 본 과제 전에 튜토리얼을 10분 한다. 그때 누른 것도 그대로
+ * 쌓이므로, 나누지 않으면 튜토리얼의 수정이 과제 측정값에 섞인다.
+ *
+ * **지우지 않고 표시만 한다.** 실험자가 시작을 누르는 것을 깜빡해도
+ * 데이터가 사라지면 안 되고, 튜토리얼에서 무엇을 했는지도 나중에 볼
+ * 이유가 있다. 분석에서 `phase === 'task'`만 세면 된다.
+ */
+export const phase = () => readJSON(PHASE_KEY, null) || 'tutorial'
+
+export const taskStartedAt = () => readJSON(TASK_START_KEY, null)
+
+/** 실험자가 `과제 시작`을 누른 시점. 이 뒤의 이벤트가 측정 대상이다. */
+export const startTask = () => {
+  writeJSON(PHASE_KEY, 'task')
+  const at = Date.now()
+  writeJSON(TASK_START_KEY, at)
+  logEvent('phase_start', { phase: 'task' })
+  return at
+}
+
+/** 과제를 끝낸다. 이 뒤의 조작은 다시 측정 대상이 아니다. */
+export const endTask = () => {
+  logEvent('phase_end', { phase: 'task' })
+  writeJSON(PHASE_KEY, 'done')
+  return true
+}
+
 export const readLog = () => readJSON(STORAGE_KEY, [])
 
 /**
@@ -132,6 +164,8 @@ export const logEvent = (type, payload = {}) => {
     session: sessionId(),
     condition: condition(),
     conditionOrder: conditionOrder(),
+    // 이 이벤트가 튜토리얼에서 나온 것인가 본 과제에서 나온 것인가.
+    phase: phase(),
     type,
     ...payload,
   }
@@ -191,7 +225,15 @@ export const logScaffold = ({ feature, action, target = null, ...rest }) => (
 )
 
 /** 실험자가 세션 끝에 받아 가는 것. */
-export const summarize = (log = readLog()) => {
+export const summarize = (fullLog = readLog()) => {
+  // **측정값은 본 과제 것만 센다.** 튜토리얼에서 누른 것이 섞이면
+  // 수정 건수도 층위 분포도 부풀고, 그건 분석 때 알아채기 어렵다.
+  // 튜토리얼 기록은 지우지 않고 `tutorial`에 따로 담아 둔다.
+  const tutorialEvents = fullLog.filter((e) => e.phase === 'tutorial')
+  // `task`만 센다. `done`을 빼지 않으면 과제를 끝낸 뒤 실험자가 화면을
+  // 정리하며 누른 것까지 측정에 들어간다 — 그건 참가자의 작업이 아니다.
+  const log = fullLog.filter((e) => e.phase === 'task')
+  const afterEvents = fullLog.filter((e) => e.phase === 'done')
   const edits = log.filter((e) => e.type === 'edit')
   const generates = log.filter((e) => e.type === 'panel_generate')
   const count = (items, key) => items.reduce((acc, item) => {
@@ -252,7 +294,23 @@ export const summarize = (log = readLog()) => {
     session: sessionId(),
     condition: condition(),
     conditionOrder: conditionOrder(),
+    phase: phase(),
+    task_started_at: taskStartedAt(),
     events: log.length,
+    /* 본 과제 전에 일어난 것. 측정에서는 빠지지만 지우지는 않는다 —
+     * 실험자가 `과제 시작`을 깜빡했을 때 여기 수가 크면 바로 드러나고,
+     * 그때는 이 기록으로 시점을 되짚을 수 있다. */
+    tutorial: {
+      events: tutorialEvents.length,
+      edits: tutorialEvents.filter((e) => e.type === 'edit').length,
+      generates: tutorialEvents.filter((e) => e.type === 'panel_generate').length,
+    },
+    // 과제를 끝낸 뒤에 일어난 것. 참가자의 작업이 아니므로 측정에서
+    // 빠지지만, 종료를 잘못 눌렀을 때 여기 수가 크면 바로 보인다.
+    afterTask: {
+      events: afterEvents.length,
+      edits: afterEvents.filter((e) => e.type === 'edit').length,
+    },
     // 어떤 기능을 얼마나 썼는가. 제안을 받아들였는가 버렸는가.
     scaffolding: {
       total: scaffolds.length,
@@ -410,6 +468,8 @@ export const resetLog = () => {
     window.localStorage.removeItem(SESSION_KEY)
     window.localStorage.removeItem(CONDITION_KEY)
     window.localStorage.removeItem(ORDER_KEY)
+    window.localStorage.removeItem(PHASE_KEY)
+    window.localStorage.removeItem(TASK_START_KEY)
   } catch {
     // 못 지워도 앱은 계속 돌아간다.
   }

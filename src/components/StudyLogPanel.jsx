@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import {
   readLog, summarize, exportLog, resetLog, condition, setCondition,
+  phase, startTask, endTask, taskStartedAt,
 } from '../store/studyLog'
 import './StudyLogPanel.css'
 
@@ -19,6 +20,8 @@ const TYPE_LABELS = {
   viewer_read: '관객 읽기',
   viewer_result: '관객 결과',
   intent_check: '의도 대조',
+  phase_start: '과제 시작',
+  phase_end: '과제 종료',
   verdict: '판정',
   review: '검토 실행',
   route: '이동',
@@ -48,6 +51,8 @@ export default function StudyLogPanel({ onClose }) {
   }, [onClose])
 
   const recent = [...log].reverse().slice(0, 40)
+  const currentPhase = phase()
+  const startedAt = taskStartedAt()
 
   return (
     <div className="study-log-panel" data-tick={tick}>
@@ -71,6 +76,56 @@ export default function StudyLogPanel({ onClose }) {
         </div>
         <button type="button" onClick={onClose} aria-label="닫기">✕</button>
       </header>
+
+      {/* 측정이 시작됐는가.
+
+          튜토리얼에서 누른 것도 그대로 쌓이므로, 시작을 누르기 전까지는
+          측정 대상이 아니라고 화면이 먼저 말해야 한다. 실험자가 이 줄을
+          보고 누르지 않으면 아래 숫자는 계속 0에 머문다 — 조용히 섞이는
+          것보다 눈에 띄게 비어 있는 편이 낫다. */}
+      <section className={`study-log-phase is-${currentPhase}`}>
+        {currentPhase === 'tutorial' ? (
+          <>
+            <div>
+              <strong>튜토리얼 (측정 안 함)</strong>
+              <small>
+                {summary.tutorial.events > 0
+                  ? `지금까지 ${summary.tutorial.events}건은 기록만 되고 측정에서 빠집니다.`
+                  : '본 과제를 시작하면 여기부터 측정합니다.'}
+              </small>
+            </div>
+            <button
+              type="button"
+              className="study-log-start"
+              onClick={() => { startTask(); setTick((n) => n + 1) }}
+            >
+              과제 시작
+            </button>
+          </>
+        ) : (
+          <>
+            <div>
+              <strong>{currentPhase === 'task' ? '과제 진행 중' : '과제 종료됨'}</strong>
+              <small>
+                {startedAt
+                  ? `${timeOf(startedAt)} 시작`
+                  : '시작 시각이 기록되지 않았습니다.'}
+                {summary.tutorial.events > 0 && ` · 시작 전 ${summary.tutorial.events}건 제외`}
+                {summary.afterTask.events > 0 && ` · 종료 후 ${summary.afterTask.events}건 제외`}
+              </small>
+            </div>
+            {currentPhase === 'task' && (
+              <button
+                type="button"
+                className="study-log-end"
+                onClick={() => { endTask(); setTick((n) => n + 1) }}
+              >
+                과제 종료
+              </button>
+            )}
+          </>
+        )}
+      </section>
 
       <div className="study-log-body">
         <section>
