@@ -118,7 +118,7 @@
    | Key | 값 |
    | --- | --- |
    | `SUPABASE_URL` | `https://<프로젝트ref>.supabase.co` |
-   | `SUPABASE_SECRET_KEY` | Settings → API의 **`service_role`** 키 (anon 아님) |
+   | `SUPABASE_SECRET_KEY` | Settings → API의 **Secret API key** (`sb_secret_...`) 또는 `service_role` JWT (`eyJ...`). 둘 다 된다. **anon / publishable 키는 안 된다** — RLS에 막힌다. |
 
 **확인.** Ctrl+Shift+L로 로그 창을 열었을 때 빨간 `서버 저장 불가` 줄이 없으면 저장이 되는 상태다. 있으면 그 줄이 이유를 말한다(환경변수 누락 / 테이블 없음 / 연결 실패). 이 줄이 보이면 **실험을 시작하기 전에** 고친다 — 그대로 진행하면 그 참가자 기록은 다운로드 파일 하나에만 남는다.
 

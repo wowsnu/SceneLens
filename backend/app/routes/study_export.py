@@ -6,6 +6,23 @@ from pydantic import BaseModel
 
 router = APIRouter()
 
+
+def _auth_headers(key: str) -> dict[str, str]:
+    """Supabase 인증 헤더.
+
+    키 형식이 두 가지다. 구형 `service_role`은 JWT(`eyJ...`)이고 PostgREST가
+    `Authorization: Bearer`에서 역할을 읽는다. 신형 Secret API key
+    (`sb_secret_...`)는 JWT가 아니므로 Bearer로 보내면 파싱에 실패해 401이
+    난다 — 이쪽은 `apikey`만으로 권한이 붙는다.
+
+    그래서 형식을 보고 붙인다. 둘 다 되게 해 두면 키를 바꿔 끼워도
+    코드를 다시 고칠 일이 없다.
+    """
+    headers = {'apikey': key}
+    if key.startswith('eyJ'):
+        headers['Authorization'] = f'Bearer {key}'
+    return headers
+
 class StudyExport(BaseModel):
     tool: str
     participant_id: str | None = None
@@ -37,7 +54,7 @@ async def study_export_health():
             response = await client.get(
                 f'{url}/rest/v1/study_sessions',
                 params={'select': 'id', 'limit': '1'},
-                headers={'apikey': key, 'Authorization': f'Bearer {key}'},
+                headers=_auth_headers(key),
             )
     except httpx.HTTPError as error:
         return {'ready': False, 'reason': f'cannot reach Supabase: {error}'}
@@ -64,10 +81,7 @@ async def save_study_export(body: StudyExport):
         response = await client.post(
             f'{url}/rest/v1/study_sessions', json=row,
             headers={
-                'apikey': key,
-                # RLS를 켜 두므로 service_role 권한이 실제로 붙어야 한다.
-                # apikey만 보내면 익명으로 취급되어 정책에 막힌다.
-                'Authorization': f'Bearer {key}',
+                **_auth_headers(key),
                 'Content-Type': 'application/json',
                 'Prefer': 'return=minimal',
             },
