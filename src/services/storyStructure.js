@@ -28,6 +28,10 @@ export function toStructureDraft(data, story = '') {
           // 문장에서 이름을 찾는 것보다 정확하다 — 이름이 문장에 안 적힌
           // 줄("문이 열린다")에도 누가 있는지가 남는다.
           characters: line.characters || [],
+          // 이 줄이 옮긴 대사. 그림에는 넣지 않고 패널 옆에 적는다 —
+          // 스토리보드 관행이 그렇고, 전에는 행동으로 바꾸고 버려서
+          // 정보를 나르던 말이 통째로 사라졌다.
+          dialogue: line.dialogue || '',
         })
       })
     })

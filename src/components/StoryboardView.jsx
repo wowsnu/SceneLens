@@ -104,6 +104,15 @@ const layerOfCheckFinding = (finding) => {
 const EMPTY_SHOTS = []
 const EMPTY_CAST = []
 
+// 첫 화면의 예시는 완성된 대본이 아니라, 사용자가 그대로 다듬어 씬·구간
+// 구조화에 넘길 수 있는 짧은 시놉시스다. 구조화 결과는 별도 확인 단계를
+// 거치므로, 예시를 눌렀다고 AI가 쓴 줄콘티가 곧바로 작업물로 들어가지 않는다.
+const EXAMPLE_SYNOPSIS = `유나와 도현은 학교 과제를 위해 건물 곳곳을 돌아다니며 짧은 영상을 촬영한 뒤, 촬영실로 돌아와 장비와 촬영본을 정리한다.
+
+나가려던 두 사람은 촬영실 문이 밖에서 잠겨 있다는 사실을 발견한다.
+
+도움을 기다리며 촬영본을 확인하던 중, 두 사람은 촬영할 당시에는 알아차리지 못했던 뜻밖의 장면이 영상에 담겨 있다는 것을 발견한다.`
+
 // 이름 뒤에 붙는 조사. `@하린이`, `@민준과`처럼 문장으로 쓴 것을 이름으로
 // 되돌리는 데 쓴다.
 const MENTION_PARTICLES = ['이가', '에게서', '한테서', '으로', '에게', '한테', '이랑', '와의', '과의',
@@ -1569,7 +1578,6 @@ export default function StoryboardView({ onEnterReview = null }) {
   const panelToolRequest = useStore((s) => s.panelToolRequest)
   const clearPanelToolRequest = useStore((s) => s.clearPanelToolRequest)
   const addBeatAfter = useStore((s) => s.addBeatAfter)
-  const loadExampleScreenplay = useStore((s) => s.loadExampleScreenplay)
   const structureDraft = useStore((s) => s.structureDraft)
   const requestStoryStructure = useStore((s) => s.requestStoryStructure)
   const structurePending = useStore((s) => s.structurePending)
@@ -1716,6 +1724,12 @@ export default function StoryboardView({ onEnterReview = null }) {
   // 파생시켜 두 값이 어긋날 수 없게 한다.
   const hasScreenplay = screenplay.length > 0
   const showWriteScene = isEditingRaw || !hasScreenplay
+  // 시놉시스가 씬·구간으로 정리된 뒤에는, 좌측 패널을 최대화하지 않아도
+  // Narrative에 요청할 수 있어야 한다. 이전에는 `isExpanded`가 이 rail까지
+  // 막아 분할 화면의 Story 단계에서 협업 기능이 사라졌다.
+  const narrativeRailAvailable = !drawingWorkspaceOpen
+    && cutStage !== 'panels'
+    && (isExpanded || (cutStage === 'script' && !showWriteScene))
   const isCutPlanStage = cutStage === 'cutplan' && isExpanded && !drawingWorkspaceOpen && !showWriteScene
   const isPanelPreparationStage = cutStage === 'preparation' && isExpanded && !drawingWorkspaceOpen && !showWriteScene
   // Script 단계에서는 대본을 읽기 전용으로 두지 않고 그 자리에서 고친다.
@@ -2904,7 +2918,7 @@ export default function StoryboardView({ onEnterReview = null }) {
   // 문제인지만 말하고, 무엇으로 고칠지는 제안이 낸다.
   // 대본 점검과 컷 구성 점검은 같은 규칙을 쓰고 같은 모양으로 보인다.
   // 다른 것은 무엇을 보느냐뿐이다 — 대본의 줄이냐, 컷 플랜의 컷이냐.
-  const renderNarrativeCheck = (stage) => {
+  const _renderNarrativeCheck = (stage) => {
     const isScript = stage === 'script'
     // 다른 단계에서 받은 결과가 남아 있으면 지금 화면의 것이 아니다.
     const rawResult = narrativeCheck?.stage === stage ? narrativeCheck : null
@@ -2925,16 +2939,16 @@ export default function StoryboardView({ onEnterReview = null }) {
           disabled={narrativeCheckPending}
         >
           {narrativeCheckPending
-            ? (isScript ? '대본 보는 중…' : '컷 구성 보는 중…')
+            ? (isScript ? '시놉시스 보는 중…' : '컷 구성 보는 중…')
             : isScript && narrativeCheckStale
               ? '변경됨 · 다시 점검'
               : result
-                ? (isScript ? '대본 다시 점검' : '컷 구성 다시 점검')
-                : (isScript ? '대본 구성 점검' : '컷 구성 점검')}
+                ? (isScript ? '시놉시스 다시 점검' : '컷 구성 다시 점검')
+                : (isScript ? '시놉시스 구성 점검' : '컷 구성 점검')}
         </button>
         {isScript && narrativeCheckStale && (
           <p className="narrative-rail-check-stale">
-            대본이 바뀌어 아래 결과는 이전 버전 기준입니다.
+            시놉시스가 바뀌어 아래 결과는 이전 버전 기준입니다.
           </p>
         )}
         {narrativeCheckError && (
@@ -3022,36 +3036,6 @@ export default function StoryboardView({ onEnterReview = null }) {
   // 서너 줄뿐이면 아직 윤곽이 아니다.
   const scriptBeatCount = new Set(scriptLines.map((element) => element.beat ?? 0)).size
   const scriptHasShape = scriptBeatCount >= 2 && scriptLines.length >= 5
-
-  // 대본을 씬·Beat로 정리한 직후에는 Narrative가 먼저 한 번 본다. 타이핑
-  // 중에는 다시 부르지 않는다 — 이후 수정은 stale 표시만 남기고, 감독이
-  // `다시 점검`을 눌렀을 때 새 결과를 받는다.
-  const autoCheckedScriptKey = useRef(null)
-  useEffect(() => {
-    if (cutStage !== 'script'
-      || !scriptHasShape
-      || showWriteScene
-      || structurePending
-      || narrativeCheckPending
-      || narrativeCheckStale) return
-    if (narrativeCheck?.stage === 'script') return
-    const scriptKey = screenplay
-      .map((element) => `${element.type}:${element.beat ?? 0}:${element.text}`)
-      .join('\n')
-    if (!scriptKey || autoCheckedScriptKey.current === scriptKey) return
-    autoCheckedScriptKey.current = scriptKey
-    requestNarrativeCheck('script')
-  }, [
-    cutStage,
-    narrativeCheck,
-    narrativeCheckPending,
-    narrativeCheckStale,
-    requestNarrativeCheck,
-    screenplay,
-    scriptHasShape,
-    showWriteScene,
-    structurePending,
-  ])
 
   // 점검이 짚은 줄을 대본에서 표시한다. 번호만 주면 감독이 세어 찾아야
   // 한다. lineIndexes는 헤딩을 뺀 순번이므로 전체 순번으로 옮긴다.
@@ -3266,7 +3250,7 @@ export default function StoryboardView({ onEnterReview = null }) {
   }
 
   return (
-    <div className={`storyboard-view ${isExpanded && !drawingWorkspaceOpen ? 'with-narrative-rail' : ''}`}>
+    <div className={`storyboard-view ${narrativeRailAvailable ? 'with-narrative-rail' : ''}`}>
       <div className="storyboard-main">
         {isExpanded && !drawingWorkspaceOpen && (
           <nav className="cut-plan-stages" aria-label="Storyboard stages">
@@ -3280,7 +3264,7 @@ export default function StoryboardView({ onEnterReview = null }) {
                 >
                   <span className="stage-index">1</span>
                   <div>
-                    <strong>Script</strong>
+                    <strong>Synopsis</strong>
                     <em>{screenplay.length} lines · {beats.length} moments</em>
                   </div>
                 </button>
@@ -3348,19 +3332,15 @@ export default function StoryboardView({ onEnterReview = null }) {
             {showWriteScene && (
               <div className="inline-script-editor">
                 <div className="editor-header">
-                  <h3>Story</h3>
+                  <h3>Synopsis</h3>
                   <p>
-                    장면을 적거나 붙여넣으세요. 완성된 대본이 아니어도 됩니다 —
-                    거친 메모나 간단한 대사도 괜찮습니다.
+                    이야기의 흐름을 짧게 적거나 붙여넣으세요. 완성된 대본이 아니라
+                    시놉시스나 거친 메모여도 됩니다.
                   </p>
                   {/* 대사를 그대로 쓰는 사람이 많은데, 나누는 과정에서 화면
                     행동으로 바뀐다. 위에서 `대사도 괜찮습니다`라고 해 놓고
                     말이 사라지면 지워진 것으로 읽는다 — 무엇이 될지 미리
                     말해 둔다. */}
-                  <p className="script-dialogue-hint">
-                    대사는 그림으로 그릴 수 있는 행동·표정으로 바뀝니다.
-                    스토리보드에는 말풍선을 넣지 않습니다.
-                  </p>
                 </div>
                 <label className="scene-intention-field">
                   <span>Scene intention <em>optional</em></span>
@@ -3374,7 +3354,7 @@ export default function StoryboardView({ onEnterReview = null }) {
                 </label>
                 <textarea
                   className="screenplay-input"
-                  placeholder={'물리학과 실험실, 밤\n\n하린이 노트북 화면을 들여다본다.\n노트에 식을 적다 지운다.\n\n하린이 연필을 내려놓고 등을 기댄다.'}
+                  placeholder={EXAMPLE_SYNOPSIS}
                   value={rawText}
                   onChange={(e) => setRawText(e.target.value)}
                 />
@@ -3384,11 +3364,10 @@ export default function StoryboardView({ onEnterReview = null }) {
                       type="button"
                       className="example-btn"
                       onClick={() => {
-                        loadExampleScreenplay()
-                        setIsEditingRaw(false)
+                        setRawText(EXAMPLE_SYNOPSIS)
                       }}
                     >
-                      예시 대본 불러오기
+                      예시 시놉시스 불러오기
                     </button>
                   )}
                   {hasScreenplay && (
@@ -4057,6 +4036,13 @@ export default function StoryboardView({ onEnterReview = null }) {
                           </button>
                         )}
                         {!isInsertedBlankPanel && <em>{cut?.content || ''}</em>}
+                        {/* 대사는 그림 밖 텍스트로 둔다 — 콘티의 대사 칸과
+                            같은 자리다. 그림 안에는 넣지 않는다
+                            (`image_generator.py`가 따로 막고, 프롬프트는
+                            `cut.content`만 읽는다). */}
+                        {!isInsertedBlankPanel && cut?.dialogue && (
+                          <q className="sb-panel-dialogue">{cut.dialogue}</q>
+                        )}
                       </div>
                       {/* 이제 이 줄에는 `그리기`와 삭제 확인만 온다. 둘 다
                           없으면 줄 자체를 두지 않는다 — 빈 줄이 카드마다
@@ -5294,7 +5280,7 @@ export default function StoryboardView({ onEnterReview = null }) {
       </div>
       {/* Panels에는 rail을 두지 않는다. 인스펙터와 나란히 서면 rail이 둘로
           보이고, 보드도 630px 좁아진다. 샷은 컷 플랜에서 이미 정해진다. */}
-      {isExpanded && !drawingWorkspaceOpen && cutStage !== 'panels' && (
+      {narrativeRailAvailable && (
         <aside
           className={`storyboard-narrative-rail ${narrativeRailOpen ? 'open' : 'collapsed'}`}
           aria-label="Agents"
@@ -5386,7 +5372,7 @@ export default function StoryboardView({ onEnterReview = null }) {
                             if (narrativeAnswered) clearNarrativeResult()
                           }}
                           onKeyDown={narrativeRequestRecall.onKeyDown}
-                          placeholder="예: 이 Scene의 정보 공개 흐름이 자연스러운지 봐줘."
+                          placeholder="예: 문이 잠긴 걸 알아차리는 순간을 더 또렷하게 보여줘."
                           aria-label={`Narrative request for ${activeScriptSceneTitle}`}
                           rows={3}
                         />
@@ -5404,11 +5390,6 @@ export default function StoryboardView({ onEnterReview = null }) {
                           </button>
                         </div>
                       </div>
-
-                      {/* Request가 감독이 묻는 쪽이면 이쪽은 서사가 먼저 짚는
-                  쪽이다. 같은 일의 두 방향이므로 붙여 둔다.
-                  컷 구성 점검은 Editing으로 갔다 — 여기는 대본만 본다. */}
-                      {scriptLines.length > 0 && renderNarrativeCheck('script')}
 
                       {/* 요청을 넘긴 뒤 칸이 비므로, 무엇이 진행 중인지 여기서
                   보인다. 아니면 아무 일도 없는 것처럼 보인다. */}
@@ -6044,8 +6025,8 @@ export default function StoryboardView({ onEnterReview = null }) {
                   <>
                     <p>
                       {scriptHasShape
-                        ? '대본이 준비됐습니다. 그림 전에 이 장면을 몇 개의 컷으로 나눌지 정하고, 이어서 촬영이 각 컷의 샷을 정합니다.'
-                        : '아직 윤곽이 잡히기 전입니다. 위에서 대본을 손보고 나면 컷으로 나눌 수 있습니다.'}
+                        ? '시놉시스가 준비됐습니다. 그림 전에 이 장면을 몇 개의 컷으로 나눌지 정하고, 이어서 촬영이 각 컷의 샷을 정합니다.'
+                        : '아직 윤곽이 잡히기 전입니다. 위에서 시놉시스를 손보고 나면 컷으로 나눌 수 있습니다.'}
                     </p>
 
                     {/* 나눌 것이 생긴 뒤에 뜬다. 처음부터 두면 뼈대인 채로

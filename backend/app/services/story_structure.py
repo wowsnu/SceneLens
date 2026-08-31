@@ -57,7 +57,7 @@ RESPONSE_SCHEMA = {
                                         "items": {
                                             "type": "object",
                                             "additionalProperties": False,
-                                            "required": ["text", "filled", "source_evidence", "characters", "shot_size", "perspective"],
+                                            "required": ["text", "filled", "source_evidence", "characters", "dialogue", "dialogue_carries_info", "shot_size", "perspective"],
                                             "properties": {
                                                 "text": {"type": "string"},
                                                 # 사용자가 쓴 것인가, 채운 것인가.
@@ -73,6 +73,13 @@ RESPONSE_SCHEMA = {
                                                     "type": "array",
                                                     "items": {"type": "string"},
                                                 },
+                                                # 이 줄이 옮긴 대사. 그림 밖 텍스트로
+                                                # 남긴다 — 그림 안에는 넣지 않는다.
+                                                "dialogue": {"type": "string"},
+                                                # 그 대사가 그림으로는 전달되지 않는
+                                                # 정보를 나르는가. 관객이 못 읽는 것이
+                                                # 연출 실패인지 가르는 값이다.
+                                                "dialogue_carries_info": {"type": "boolean"},
                                                 "shot_size": {
                                                     "type": "string",
                                                     "enum": ["Extreme Wide Shot", "Wide Shot", "Full Shot", "Medium Shot", "Medium Close-Up", "Close-Up", "Extreme Close-Up"],
@@ -185,8 +192,28 @@ PROMPT = """당신은 스토리보드 작업의 첫 단계를 돕습니다.
 
 
 나머지 규칙:
-1. 대사를 쓰지 마세요. 스토리보드는 정지 이미지이므로 말은 담을 수 없습니다.
+1. `text`에는 대사를 쓰지 마세요 — 거기에는 **화면에 보이는 것**만 적습니다.
    말하는 장면은 말하는 모습으로 적으세요. ("B가 뒤돌아보지 않은 채 입을 연다")
+   다만 **대사를 버리지는 마세요.** 원문의 대사는 `dialogue`에 그대로 옮깁니다.
+   스토리보드는 그림 안에 말풍선을 넣지 않을 뿐, 대사는 패널 옆 텍스트로
+   함께 둡니다.
+   - `dialogue`: 그 줄이 옮긴 대사를 원문 그대로. 인물 이름은 빼고 말만
+     적으세요. 대사가 없는 줄은 빈 문자열입니다.
+   - `dialogue_carries_info`: 판정 기준은 하나입니다 —
+     **이 대사를 지우고 그림만 남기면, 관객이 알 수 없게 되는 사실이 있는가.**
+     있으면 true, 없으면 false입니다.
+     그 대사가 처음 꺼내는 **구체적인 사실**(장소, 시각, 이름, 숫자, 사물,
+     이미 일어난 사건)이 있을 때만 true입니다. 묻고 답하는 형식이라는
+     이유만으로 true가 아닙니다.
+     ✓ true  — "왜 CCTV에 네 차가 찍혔을까"  (CCTV·차 — 그림에 없는 단서)
+     ✓ true  — "그 사람은 어제 죽었어"        (화면 밖에서 일어난 사건)
+     ✗ false — "9시에 어디 있었지?"           (묻는 행위는 자세로 보인다)
+     ✗ false — "집에 있었습니다."             (답하는 행위는 자세로 보인다)
+     ✗ false — "오래 기다렸어?"               (태도)
+     ✗ false — "...뭐라고?"                   (반응)
+     망설여지면 false로 두세요. 여기서 true가 남발되면 그림으로 충분히
+     전달되는 컷까지 `대사에 기댄다`고 표시됩니다.
+   한 `text`에 대사 두 줄을 합치지 마세요. 말이 오가면 줄을 나눕니다.
 2. 이야기 말투를 서술로 바꾸세요. "들어감" → "들어간다", "기다리고 있었음" → "기다리고 있었다".
 3. 한 줄은 **하나의 화면 행동 또는 정보 단위**입니다. 이후 컷 플랜은 이 줄을
    나누거나 합칠 수 있으므로, 한 줄을 반드시 그림 한 장이나 원문 한 문장에 맞출
@@ -218,7 +245,7 @@ async def structure_story(request: StoryStructureRequest) -> StoryStructureRespo
 
     client = AsyncOpenAI(api_key=api_key)
     response = await client.chat.completions.create(
-        model="gpt-5.4-nano",
+        model="gpt-5.4-mini",
         messages=[
             {"role": "system", "content": PROMPT},
             {"role": "user", "content": user_content},

@@ -536,6 +536,10 @@ const createCutPlanItem = ({
   //   Tentative → provenance가 'AI'로 남아 있는 것이 곧 미검토 상태다.
   // 검토 여부는 provenance가 말한다. 사용자가 손대면 'User'로 바뀐다.
   provenance = 'AI',
+  // 이 컷이 옮긴 대사. 그림에는 넣지 않고 패널 옆에 적는다 — 스토리보드
+  // 관행이 그렇다. 전에는 대사를 화면 행동으로 바꾸고 버려서, 정보를
+  // 나르던 말("왜 CCTV에 네 차가 찍혔을까")이 통째로 사라졌다.
+  dialogue = '',
   requirements = {},
 } = {}) => {
   const id = createCutPlanItemId()
@@ -557,6 +561,7 @@ const createCutPlanItem = ({
     duration,
     promptOverride,
     provenance,
+    dialogue,
     requirements: createCutRequirements(id, requirements, provenance),
   }
 }
@@ -685,6 +690,7 @@ const createMockCutPlan = (state) => {
       push({
         content: actions[0]?.text || heading.text,
         purpose: '공간 설정',
+        dialogue: actions[0]?.dialogue || '',
       })
     }
 
@@ -705,6 +711,7 @@ const createMockCutPlan = (state) => {
         purpose: subject.length > 1 ? '관계' : '행동 강조',
         characters: subject.join(', '),
         shotSize,
+        dialogue: action.dialogue || '',
       })
     })
   })

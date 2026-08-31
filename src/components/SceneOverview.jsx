@@ -75,8 +75,8 @@ function SplitShotFocus({ shotIndex, shotPreview, draftImages, draftVersions, on
 
       {!minimal && <>
       {scriptText && (
-        <section className="split-shot-script" aria-label={`S${shotIndex + 1} 대본`}>
-          <span>대본</span>
+        <section className="split-shot-script" aria-label={`S${shotIndex + 1} 시놉시스`}>
+          <span>시놉시스</span>
           <p>{scriptText}</p>
         </section>
       )}

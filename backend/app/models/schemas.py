@@ -458,6 +458,20 @@ class StoryLine(BaseModel):
     # 구조화 과정에서 빠지지 않았는지 사용자가 대조할 수 있게 남긴다.
     source_evidence: List[str] = []
     characters: List[str] = []              # 이 화면 행동에 등장하는 인물/역할
+    # 이 줄이 옮긴 대사. 스토리보드 관행대로 **그림 밖 텍스트**로 남긴다 —
+    # 그림 안에는 넣지 않는다(`image_generator.py`가 따로 막는다).
+    #
+    # 전에는 대사를 행동으로 바꾸고 버렸다. 태도를 담은 대사는 표정·자세로
+    # 옮겨지지만, **정보를 나르는 대사**는 그릴 수가 없어 증발했다.
+    # ("왜 CCTV에 네 차가 찍혔을까" → "추궁하는 손동작") 장면이 걸린
+    # 단서가 통째로 사라진다.
+    dialogue: str = ""
+    # 그 대사가 **그림으로는 전달되지 않는 정보**를 나르는가.
+    #
+    # 관객 읽기는 화면만 본다. 이 줄이 참이면 관객이 못 읽는 것이 당연하고,
+    # 그것은 연출 실패가 아니다 — 감독이 그림을 고쳐도 해결되지 않는다.
+    # 이 값이 있어야 그 둘을 갈라 말할 수 있다.
+    dialogue_carries_info: bool = False
     shot_size: str = "Medium Shot"          # baseline 카드의 기본 샷 크기
     perspective: str = "Eye Level"          # baseline 카드의 기본 시점/앵글
 
