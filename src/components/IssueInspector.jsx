@@ -144,11 +144,38 @@ export default function IssueInspector({
     )
   }
 
+  // 같은 자리를 같은 이름으로 짚은 **다른 렌즈의 Issue**도 함께 읽는다.
+  //
+  // 렌즈는 각각 따로 호출되고(`mode: 'mise' | 'camera' | 'editing'`), 그
+  // 경로는 관계 없이 Issue를 만든다(`_build_issues([], …)`). 그래서 미장센의
+  // `S3 · 작은 그래프`와 촬영의 `S3 · 작은 그래프`가 끝까지 별개로 남는다.
+  // 트랙에는 마커가 둘 뜨는데 Inspector는 하나만 알고, 이미 진단을 낸
+  // 렌즈를 `다른 렌즈로 검토하기`에 다시 권하게 된다.
+  //
+  // 데이터를 합치지는 않는다 — 묶을지는 관계를 보고 정할 일이고(`relate`),
+  // 제목이 같다는 것만으로 서로 다른 문제를 한 카드에 넣으면 무엇을
+  // 판정하는지 흐려진다. 여기서는 **읽는 자리에서만** 나란히 놓는다.
+  const siblingIssues = (issues || []).filter((entry) => (
+    entry.id !== issue.id
+    && entry.anchor === issue.anchor
+    && entry.anchor_kind === issue.anchor_kind
+    && entry.title === issue.title
+  ))
   const diagnosisIds = new Set(issue.diagnosis_ids || [])
+  const siblingDiagnosisOf = (lensId) => {
+    for (const entry of siblingIssues) {
+      const found = (entry.diagnosis_ids || [])
+        .map((id) => diagnosisMap.get(id))
+        .find((diagnosis) => diagnosis?.lens === lensId)
+      if (found) return found
+    }
+    return null
+  }
   const perspectives = LENSES.map((lens) => {
     const diagnosis = [...diagnosisIds]
       .map((id) => diagnosisMap.get(id))
       .find((entry) => entry?.lens === lens.id)
+      || siblingDiagnosisOf(lens.id)
     return { lens, diagnosis, check: lensChecks[lens.id] || null }
   })
   // 관객이 짚은 자리는 먼저 발견한 렌즈가 없다. 그때 `perspectives[0]`로
