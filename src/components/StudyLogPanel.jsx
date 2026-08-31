@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import {
   readLog, summarize, resetLog, condition, setCondition,
   conditionOrder, setConditionOrder,
-  phase, startTask, endTask, taskStartedAt,
+  phase, startTask, endTask, taskStartedAt, exportedAt,
 } from '../store/studyLog'
 import { runStudyExportWithAlert } from '../store/studyExport'
 import './StudyLogPanel.css'
@@ -266,9 +266,13 @@ export default function StudyLogPanel({ onClose, onPhaseChange }) {
           type="button"
           className="study-log-reset"
           onClick={() => {
+            // 내보낸 적 없는 세션을 지우는 것이 가장 위험하다. 그
+            // 사실을 조건문이 아니라 맨 앞에 세운다.
             const ok = window.confirm(
-              `수정 ${summary.edits.total}건, 생성 ${summary.regeneration.total}건의 기록을 지웁니다.\n`
-              + '내보내지 않았다면 되돌릴 수 없습니다. 계속할까요?',
+              (exportedAt()
+                ? `마지막 내보내기: ${new Date(exportedAt()).toLocaleString('ko-KR')}\n\n`
+                : '⚠️ 이 세션은 한 번도 내보내지 않았습니다.\n지우면 기록이 사라집니다.\n\n')
+              + `수정 ${summary.edits.total}건, 생성 ${summary.regeneration.total}건의 기록을 지웁니다. 계속할까요?`,
             )
             if (ok) {
               resetLog()

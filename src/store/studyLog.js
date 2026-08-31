@@ -30,6 +30,7 @@ const CONDITION_KEY = 'scenelens.study.condition'
 const ORDER_KEY = 'scenelens.study.order'
 const PHASE_KEY = 'scenelens.study.phase'
 const TASK_START_KEY = 'scenelens.study.task_started_at'
+const EXPORTED_KEY = 'scenelens.study.exported_at'
 
 /** 이 수정이 패널 안의 일인가, 그 너머인가. */
 export const BEYOND_PANEL_LEVELS = ['shot', 'seam', 'sequence']
@@ -139,6 +140,9 @@ export const endTask = () => {
 }
 
 export const readLog = () => readJSON(STORAGE_KEY, [])
+
+/** 마지막으로 내보낸 시각. 한 번도 안 내보냈으면 null. */
+export const exportedAt = () => readJSON(EXPORTED_KEY, null)
 
 /**
  * 이벤트 하나를 남긴다.
@@ -448,6 +452,9 @@ export const exportLog = ({ finalSnapshot = null, metadata = {} } = {}) => {
     // 식별자·설명만 둔다.
     final_snapshot: finalSnapshot,
   }
+  // 한 번이라도 내보냈는지 남긴다. 비우기는 되돌릴 수 없으므로, 내보낸
+  // 적 없는 세션을 지우려 할 때 그 사실을 경고할 수 있어야 한다.
+  writeJSON(EXPORTED_KEY, Date.now())
   const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' })
   const url = URL.createObjectURL(blob)
   const link = document.createElement('a')
@@ -470,6 +477,7 @@ export const resetLog = () => {
     window.localStorage.removeItem(ORDER_KEY)
     window.localStorage.removeItem(PHASE_KEY)
     window.localStorage.removeItem(TASK_START_KEY)
+    window.localStorage.removeItem(EXPORTED_KEY)
   } catch {
     // 못 지워도 앱은 계속 돌아간다.
   }

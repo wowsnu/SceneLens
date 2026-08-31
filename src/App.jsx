@@ -7,7 +7,7 @@ import useStore, { selectCutStage } from './store/useStore'
 import {
   summarize, resetLog,
   setCondition, condition, setConditionOrder, conditionOrder,
-  phase, startTask, endTask,
+  phase, startTask, endTask, exportedAt,
 } from './store/studyLog'
 import { runStudyExportWithAlert } from './store/studyExport'
 import './App.css'
@@ -94,11 +94,16 @@ function App() {
         event.preventDefault()
         // 지우면 되돌릴 수 없다. 요약을 먼저 보여 주고 묻는다.
         const { edits, regeneration } = summarize()
+        // 내보낸 적이 없으면 그 사실을 앞에 세운다. 지우면 되돌릴 수
+        // 없는데, `내보내지 않았다면`이라는 조건문은 실험자가 방금
+        // 내보냈는지를 스스로 기억해야만 읽을 수 있다.
         const ok = window.confirm(
-          `수정 ${edits.total}건, 생성 ${regeneration.total}건의 기록을 지웁니다.\n`
-          + '내보내지 않았다면 되돌릴 수 없습니다. 계속할까요?',
+          (exportedAt()
+            ? `마지막 내보내기: ${new Date(exportedAt()).toLocaleString('ko-KR')}\n\n`
+            : '⚠️ 이 세션은 한 번도 내보내지 않았습니다.\n지우면 기록이 사라집니다.\n\n')
+          + `수정 ${edits.total}건, 생성 ${regeneration.total}건의 기록을 지웁니다. 계속할까요?`,
         )
-        if (ok) resetLog()
+        if (ok) { resetLog(); setStudyPhase(phase()) }
       }
     }
     window.addEventListener('keydown', onKey)
@@ -271,24 +276,31 @@ function App() {
         {studyPhase === 'task' && (
           <>
             <span className="study-bar-state">진행 중</span>
-            <button type="button" className="study-bar-end" onClick={() => {
-              if (!window.confirm('과제를 끝낼까요?')) return
+            {/* 끝내면 **그 자리에서 내보낸다.** 두 걸음으로 두면 종료만
+                누르고 내보내기를 잊을 수 있는데, 그 상태에서 다음
+                참가자를 위해 비우면 기록이 통째로 사라진다.
+
+                반드시 `endTask()`를 먼저 부른다 — 내보내기가 앞서면 그
+                순간까지가 `task`로 잡혀 측정 구간의 끝이 흐려진다. */}
+            <button type="button" className="study-bar-end" disabled={exporting} onClick={async () => {
+              if (!window.confirm('과제를 끝내고 결과를 내보낼까요?')) return
               endTask()
               setStudyPhase(phase())
+              setExporting(true)
+              try { await runStudyExportWithAlert() } finally { setExporting(false) }
             }}>
-              과제 종료
+              {exporting ? '내보내는 중…' : '과제 종료 · 내보내기'}
             </button>
           </>
         )}
-        {/* 내보내기는 과제가 끝난 뒤 쓰는 것이지만, 진행 중에도 필요할
-            수 있으므로 시작 전만 빼고 늘 둔다. 시작 전에는 내보낼 것이
-            없다. */}
-        {studyPhase !== 'tutorial' && (
+        {/* 끝난 뒤 다시 받을 수 있게 남겨 둔다 — 업로드가 실패했거나
+            파일을 잃었을 때 이것이 유일한 경로다. */}
+        {studyPhase === 'done' && (
           <button type="button" className="study-bar-export" disabled={exporting} onClick={async () => {
             setExporting(true)
             try { await runStudyExportWithAlert() } finally { setExporting(false) }
           }}>
-            {exporting ? '내보내는 중…' : '결과 내보내기'}
+            {exporting ? '내보내는 중…' : '결과 다시 내보내기'}
           </button>
         )}
       </div>
