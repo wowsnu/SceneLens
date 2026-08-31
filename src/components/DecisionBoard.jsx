@@ -4496,6 +4496,19 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
     return `S${orders[0]}→S${orders[orders.length - 1]}`
   }
 
+  // 의도가 몇 군데서 어긋났는가. 트랙 칸이 **무엇이** 어긋났는지를 말하므로
+  // 남는 것은 개수뿐이다 — 그건 트랙을 끝까지 훑어야만 알 수 있고, 컷이
+  // 열다섯이면 감독이 끝까지 세지 못한다.
+  const intentTally = useMemo(() => {
+    const verdicts = Array.isArray(intentCheck?.verdicts) ? intentCheck.verdicts : []
+    return {
+      off: verdicts.filter((v) => (
+        (v?.status === 'missed' || v?.status === 'partial') && v.intended && v.read_as
+      )).length,
+      reached: verdicts.filter((v) => v?.status === 'reached').length,
+    }
+  }, [intentCheck])
+
   const readingFindings = useMemo(() => {
     if (!viewerReport) return []
     const scopeKey = `${scene?.id || activeScene}:${branch?.id || activeBranch}`
@@ -4834,6 +4847,24 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
                   ? '다시 읽기'
                   : `${selectedReadingConditionIds.length}명 관객으로 읽기`}
           </button>
+
+          {/* 의도가 닿았는가. 트랙을 설명하는 값이므로 트랙의 바 안에 둔다 —
+              아래에 따로 띠를 두면 감독이 볼 자리가 하나 더 늘고, 정작
+              내용은 위 칸에 있어 시선이 두 번 오간다.
+
+              여기 있는 것은 개수뿐이다. 어느 컷인지·무엇이 어긋났는지는
+              트랙의 칸이 색과 문장으로 이미 말한다. */}
+          {viewerReport && intentCheckStatus !== 'idle' && (
+            <span className={`intent-check-readout is-${intentCheckStatus}`} role="status">
+              {intentCheckStatus === 'loading' && '의도와 맞춰 보는 중…'}
+              {intentCheckStatus === 'error' && '대조 실패 · 읽기는 그대로'}
+              {intentCheckStatus === 'ready' && (
+                intentTally.off > 0
+                  ? <><b>{intentTally.off}컷</b> 다르게 읽힘<i>통함 {intentTally.reached}</i></>
+                  : <>의도대로 읽힘<i>통함 {intentTally.reached}</i></>
+              )}
+            </span>
+          )}
         </div>
 
         <div className="reading-review-shared-scroll" ref={readingSequenceScrollRef}>
@@ -4891,54 +4922,6 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
       <div className="reading-condition-feedback" aria-live="polite">
         {viewerError && <p className="viewer-error">{viewerError}</p>}
       </div>
-
-      {/* 읽힌 것과 컷의 목적이 맞았는가. 읽기 결과만 주면 감독이 컷마다
-          혼자 판정해야 하고, 열다섯 컷이면 끝까지 하지 못한다. 어긋난 것을
-          먼저 세어 보여, 어디부터 볼지가 정해지게 한다. */}
-      {viewerReport && intentCheckStatus !== 'idle' && (
-        <section className="intent-check" aria-label="의도와 읽힘 대조">
-          {intentCheckStatus === 'loading' && (
-            <p className="intent-check-status">읽힌 것과 컷의 목적을 맞춰 보는 중…</p>
-          )}
-          {intentCheckStatus === 'error' && (
-            <p className="intent-check-status">대조하지 못했습니다. 읽기 결과는 아래에 그대로 있습니다.</p>
-          )}
-          {intentCheckStatus === 'ready' && intentCheck && (() => {
-            const verdicts = Array.isArray(intentCheck.verdicts) ? intentCheck.verdicts : []
-            const off = verdicts.filter((v) => (
-              (v?.status === 'missed' || v?.status === 'partial') && v.intended && v.read_as
-            ))
-            const reached = verdicts.filter((v) => v?.status === 'reached').length
-            return (
-              <>
-                <header className="intent-check-head">
-                  <span>의도와 읽힘</span>
-                  <strong>
-                    {off.length > 0
-                      ? `${off.length}개 컷이 다르게 읽혔습니다`
-                      : '모든 컷이 의도대로 읽혔습니다'}
-                  </strong>
-                  <em>통함 {reached}</em>
-                </header>
-                {/* 어긋난 내용은 여기서 다시 늘어놓지 않는다. 노린 것과
-                    읽힌 것은 위 트랙의 **그 칸 안에** 있고, 같은 말을 두
-                    자리에 두면 감독은 어느 쪽이 지금 보는 자리인지 모른다.
-
-                    여기 남는 것은 칸이 할 수 없는 것 하나뿐이다 — **개수**.
-                    어긋난 컷이 몇이고 통한 컷이 몇인지는 트랙을 끝까지
-                    훑어야만 알 수 있는데, 그걸 세는 일을 감독이 하게 두면
-                    열다섯 컷에서는 끝까지 못 센다. 어느 컷인지는 위 머리글의
-                    S번호가 가리키고, 누르는 것도 그 칸에서 한다. */}
-                {off.length > 0 && (
-                  <p className="intent-check-where">
-                    {off.map((verdict) => `S${verdict.panel_order}`).join(' · ')} — 위 트랙에서 그 칸을 보세요.
-                  </p>
-                )}
-              </>
-            )
-          })()}
-        </section>
-      )}
 
       {/* ③ Workbench. 트랙과 같이 결과가 없어도 자리를 지킨다. */}
       {viewerReport && (
