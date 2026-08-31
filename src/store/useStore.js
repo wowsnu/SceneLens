@@ -4902,7 +4902,31 @@ const useStore = create((set, get) => ({
     }
   }),
 
-  flowRemoveShot: (branchIdx, shotIdx) => set((state) => {
+  // 컷 플랜을 거치지 않은 컷을 지우는 길. `deleteCut`은 `cutPlanItemId`가
+  // 있는 컷만 맡고, 없으면 화면들이 전부 이쪽으로 떨어진다 (GridView의 ×,
+  // StoryboardView의 삭제, FlowTab 메뉴·단축키, SequenceTimeline).
+  //
+  // 여기에 기록이 없어서 그 삭제가 로그에 한 줄도 남지 않았다 — 파일럿
+  // 로그에 delete가 딱 하나뿐이었던 이유다. `removeCutPlanItem`이 이미
+  // 적어 둔 것과 같은 문제다: 삭제하는 길이 여럿인데 한 길만 세면 두
+  // 도구의 `컷 삽입·삭제` 비교에서 이쪽만 적게 세어진다.
+  flowRemoveShot: (branchIdx, shotIdx) => {
+    // 실제로 지워질 때만 적는다. 마지막 한 컷은 아래에서 지워지지
+    // 않으므로(길이 <= 1) 누른 것을 삭제로 세면 안 된다.
+    //
+    // `set` 안이 아니라 밖에서 적는다 — 업데이터는 다시 실행될 수 있어
+    // 안에서 적으면 같은 삭제가 두 번 세어진다. 다른 기록도 모두 이 자리에
+    // 있다(`addFactChange` 등).
+    const state = get()
+    const branch = state.scenes[state.activeScene]?.branches?.[branchIdx]
+    if ((branch?.shots?.length ?? 0) > 1) {
+      logEdit({
+        lens: 'editing', level: 'shot',
+        target: branch.shots[shotIdx]?.id || null,
+        action: 'delete', source: 'panel',
+      })
+    }
+    return set((state) => {
     const scenes = state.scenes.map((s, si) => {
       if (si !== state.activeScene) return s
       const branches = s.branches.map((b, bi) => {
@@ -4921,9 +4945,18 @@ const useStore = create((set, get) => ({
       activeShot: scenes[state.activeScene]?.activeShot ?? state.activeShot,
       activeBeat: scenes[state.activeScene]?.branches?.[branchIdx]?.shots?.[scenes[state.activeScene]?.activeShot ?? 0]?.scriptBeat ?? state.activeBeat,
     }
-  }),
+    })
+  },
 
-  flowInsertShot: (branchIdx, afterShotIdx, shot) => set((state) => {
+  // 삽입도 같은 이유로 적는다. 삭제만 세고 삽입을 빼면 `컷 삽입·삭제`가
+  // 한쪽으로만 기울어 비대칭이 된다.
+  flowInsertShot: (branchIdx, afterShotIdx, shot) => {
+    logEdit({
+      lens: 'editing', level: 'shot',
+      target: shot?.id || null,
+      action: 'insert', source: 'panel',
+    })
+    return set((state) => {
     let insertedIdx = afterShotIdx + 1
     let insertedBeat = state.activeBeat ?? 0
     const scenes = state.scenes.map((s, si) => {
@@ -4954,7 +4987,8 @@ const useStore = create((set, get) => ({
       activeShot: insertedIdx,
       activeBeat: insertedBeat,
     }
-  }),
+    })
+  },
 
   flowSplitBranch: (branchIdx, atShotIdx) => set((state) => {
     const scenes = state.scenes.map((s, si) => {
