@@ -327,28 +327,40 @@
 
 .study-log-launcher {
   position: fixed;
-  right: 12px;
-  bottom: 12px;
-  z-index: 900;
-  display: grid;
-  width: 22px;
-  height: 22px;
-  place-items: center;
-  padding: 0;
-  border: 1px solid rgba(255, 255, 255, 0.16);
-  border-radius: 50%;
-  background: rgba(12, 14, 20, 0.82);
+  right: 16px;
+  bottom: 16px;
+  /* 패널(9000)보다 위. 아래에 두면 창을 연 순간 이 버튼이 창 밑으로
+     사라져, 무엇을 눌러 열었는지도 안 보인다. */
+  z-index: 9100;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 999px;
+  background: rgba(12, 14, 20, 0.94);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.4);
+  color: rgba(255, 255, 255, 0.78);
+  font-family: inherit;
+  font-size: 10.5px;
+  font-weight: 800;
+  white-space: nowrap;
   cursor: pointer;
-  opacity: 0.5;
-  transition: opacity 0.15s, transform 0.15s;
+  transition: border-color 0.15s, color 0.15s;
 }
 
 .study-log-launcher:hover {
-  opacity: 1;
-  transform: scale(1.12);
+  border-color: rgba(255, 255, 255, 0.4);
+  color: #fff;
+}
+
+/* 창이 열려 있으면 그 위에 겹치지 않게 옆으로 비켜 준다. */
+.study-log-launcher.is-open {
+  right: 452px;
 }
 
 .study-log-launcher > span {
+  flex: none;
   width: 8px;
   height: 8px;
   border-radius: 50%;
@@ -356,8 +368,8 @@
 
 /* 아직 측정 전. 노랑이 눈에 걸려야 `과제 시작`을 누르게 된다. */
 .study-log-launcher.is-tutorial {
-  opacity: 0.9;
-  border-color: rgba(251, 191, 36, 0.5);
+  border-color: rgba(251, 191, 36, 0.55);
+  color: #fcd34d;
 }
 .study-log-launcher.is-tutorial > span {
   background: #fbbf24;
@@ -365,8 +377,16 @@
   animation: study-log-pulse 2.4s ease-in-out infinite;
 }
 
+.study-log-launcher.is-task {
+  border-color: rgba(74, 222, 128, 0.5);
+  color: #86efac;
+}
 .study-log-launcher.is-task > span { background: #4ade80; }
 .study-log-launcher.is-done > span { background: rgba(255, 255, 255, 0.35); }
+
+@media (max-width: 900px) {
+  .study-log-launcher.is-open { right: 16px; bottom: auto; top: 16px; }
+}
 
 @keyframes study-log-pulse {
   0%, 100% { opacity: 1; }

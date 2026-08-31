@@ -262,16 +262,16 @@ function App() {
           작업을 가리지 않되, 실험자는 눈으로 훑어 확인할 수 있다. */}
       <button
         type="button"
-        className={`study-log-launcher is-${studyPhase}`}
+        className={`study-log-launcher is-${studyPhase}${studyLogOpen ? ' is-open' : ''}`}
         onClick={() => setStudyLogOpen((open) => !open)}
-        title={
-          studyPhase === 'task' ? '측정 중 — 실험 로그 열기'
-            : studyPhase === 'done' ? '과제 종료됨 — 실험 로그 열기'
-              : '아직 측정 전 (튜토리얼) — 실험 로그 열기'
-        }
-        aria-label="실험 로그"
+        title="실험 로그 — 과제 시작·종료, 내보내기, 비우기"
       >
         <span aria-hidden="true" />
+        {/* 점만 두면 무엇을 누르는 것인지 모른다. 상태를 글로도 적어,
+            `과제 시작`을 아직 안 눌렀다는 것이 읽히게 한다. */}
+        {studyPhase === 'task' ? '측정 중'
+          : studyPhase === 'done' ? '과제 종료됨'
+            : '실험 로그 · 측정 전'}
       </button>
 
       {studyLogOpen && (
