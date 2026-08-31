@@ -4920,37 +4920,19 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
                   </strong>
                   <em>통함 {reached}</em>
                 </header>
-                {/* 어긋난 것만 세로로 둔다. 통한 컷까지 나열하면 볼 것이
-                    다시 열다섯 개가 된다. */}
+                {/* 어긋난 내용은 여기서 다시 늘어놓지 않는다. 노린 것과
+                    읽힌 것은 위 트랙의 **그 칸 안에** 있고, 같은 말을 두
+                    자리에 두면 감독은 어느 쪽이 지금 보는 자리인지 모른다.
+
+                    여기 남는 것은 칸이 할 수 없는 것 하나뿐이다 — **개수**.
+                    어긋난 컷이 몇이고 통한 컷이 몇인지는 트랙을 끝까지
+                    훑어야만 알 수 있는데, 그걸 세는 일을 감독이 하게 두면
+                    열다섯 컷에서는 끝까지 못 센다. 어느 컷인지는 위 머리글의
+                    S번호가 가리키고, 누르는 것도 그 칸에서 한다. */}
                 {off.length > 0 && (
-                  <ul className="intent-check-list">
-                    {off.map((verdict) => (
-                      <li key={verdict.panel_order} className={`is-${verdict.status}`}>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            // 읽고 나서 컷을 지웠으면 그 자리가 없다.
-                            // 없는 컷으로 옮기면 아래가 빈 자리를 짚는다.
-                            if (verdict.panel_order > shots.length) return
-                            setViewerPanelOrder(verdict.panel_order)
-                            setFlowActiveShot(verdict.panel_order - 1)
-                          }}
-                          disabled={verdict.panel_order > shots.length}
-                        >
-                          <b>S{verdict.panel_order}</b>
-                          <em>{verdict.status === 'missed' ? '다르게 읽힘' : '뒤로 밀림'}</em>
-                          {/* 무엇과 어긋났는지 나란히 둔다. `다르게 읽혔다`만
-                              보면 원래 뭘 노렸는지 컷 플랜을 다시 찾아야 한다. */}
-                          <span className="intent-check-gap">
-                            <b>{verdict.intended}</b>
-                            <i aria-hidden="true">→</i>
-                            <u>{verdict.read_as}</u>
-                          </span>
-                          {verdict.screen_cause && <i>{verdict.screen_cause}</i>}
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
+                  <p className="intent-check-where">
+                    {off.map((verdict) => `S${verdict.panel_order}`).join(' · ')} — 위 트랙에서 그 칸을 보세요.
+                  </p>
                 )}
               </>
             )

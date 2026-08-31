@@ -8786,92 +8786,12 @@ button.active .lens-glass::after {
   font-weight: 800;
 }
 
-.intent-check-list {
-  display: grid;
-  gap: 6px;
+/* 어긋난 컷이 어디인가. 내용은 위 트랙의 칸이 말하므로 여기서는
+   자리만 가리킨다 — 한 줄이면 충분하고, 카드로 키우면 트랙의 칸과
+   같은 것을 두 번 보여 주게 된다. */
+.intent-check-where {
   margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.intent-check-list button {
-  display: grid;
-  grid-template-columns: auto auto minmax(0, 1fr);
-  align-items: baseline;
-  gap: 4px 8px;
-  width: 100%;
-  padding: 9px 10px;
-  border: 1px solid var(--intent-edge, rgba(252, 211, 77, 0.34));
-  border-radius: 6px;
-  background: var(--intent-fill, rgba(120, 83, 8, 0.14));
-  color: rgba(226, 232, 240, 0.82);
-  font: inherit;
-  font-size: 12px;
-  line-height: 1.5;
-  text-align: left;
-  cursor: pointer;
-}
-
-/* 다르게 읽힌 것과, 읽히긴 했으나 뒤로 밀린 것을 색으로 가른다. */
-.intent-check-list .is-missed button {
-  --intent-edge: rgba(248, 113, 113, 0.4);
-  --intent-fill: rgba(127, 29, 29, 0.18);
-}
-
-.intent-check-list button:hover { filter: brightness(1.15); }
-
-.intent-check-list b {
-  color: rgba(248, 250, 252, 0.94);
-  font-size: 12px;
-  font-weight: 850;
-}
-
-.intent-check-list em {
-  padding: 1px 6px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.08);
-  color: rgba(248, 250, 252, 0.8);
-  font-size: 10px;
-  font-style: normal;
-  font-weight: 800;
-  white-space: nowrap;
-}
-
-/* 무엇과 어긋났는가. 의도와 읽힘을 한 줄에 나란히 둔다. */
-.intent-check-gap {
-  display: inline-flex;
-  align-items: baseline;
-  gap: 6px;
-  min-width: 0;
-}
-
-.intent-check-gap > b {
-  color: rgba(248, 250, 252, 0.9);
-  font-size: 12px;
-  font-weight: 750;
-}
-
-.intent-check-gap > i {
-  color: rgba(226, 232, 240, 0.4);
-  font-size: 11px;
-  font-style: normal;
-}
-
-/* 관객이 대신 읽은 것. 어긋난 쪽이라 판정 색을 그대로 쓴다. */
-.intent-check-gap > u {
-  color: var(--intent-read, #fcd34d);
-  font-size: 12px;
-  font-weight: 750;
-  text-decoration: none;
-}
-
-.intent-check-list .is-missed button { --intent-read: #fca5a5; }
-
-/* 화면의 무엇이 그렇게 읽히게 했는가. 판정 아래 한 줄로 붙인다. */
-.intent-check-list > li > button > i {
-  grid-column: 1 / -1;
-  color: rgba(226, 232, 240, 0.56);
+  color: rgba(226, 232, 240, 0.58);
   font-size: 11.5px;
-  font-style: normal;
-  line-height: 1.45;
+  line-height: 1.5;
 }
