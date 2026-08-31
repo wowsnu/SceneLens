@@ -5,16 +5,19 @@ import StudyLogPanel from './components/StudyLogPanel'
 import CenterPanel from './components/CenterPanel'
 import useStore, { selectCutStage } from './store/useStore'
 import {
-  exportLog, summarize, resetLog,
+  summarize, resetLog,
   setCondition, condition, setConditionOrder, conditionOrder,
   phase, startTask, endTask,
 } from './store/studyLog'
+import { runStudyExportWithAlert } from './store/studyExport'
 import './App.css'
 
 function App() {
   const [isFullscreen, setIsFullscreen] = useState(false)
   // 실험자만 여는 창. 로그가 쌓이는지 세션 중에 확인할 수 있어야 한다.
   const [studyLogOpen, setStudyLogOpen] = useState(false)
+  // 측정 중인지를 바깥 점에도 물려 둔다. 패널을 열지 않아도 보이게.
+  const [studyPhase, setStudyPhase] = useState(() => phase())
   const maximizedPanel = useStore((s) => s.maximizedPanel)
   const setMaximizedPanel = useStore((s) => s.setMaximizedPanel)
   const leftPanelVisible = useStore((s) => s.leftPanelVisible)
@@ -70,67 +73,21 @@ function App() {
         event.preventDefault()
         if (phase() === 'tutorial') {
           startTask()
+          setStudyPhase(phase())
           window.alert('본 과제를 시작했습니다. 여기부터 측정합니다.')
         } else if (phase() === 'task') {
           const ok = window.confirm('본 과제를 종료할까요? 이 뒤의 조작은 측정에서 빠집니다.')
-          if (ok) endTask()
+          if (ok) { endTask(); setStudyPhase(phase()) }
         } else {
           window.alert('이미 종료된 과제입니다. 다음 참가자는 Ctrl+Shift+R로 비우세요.')
         }
       }
       if (event.key === 'E' || event.key === 'e') {
         event.preventDefault()
-        const state = useStore.getState()
-        const finalSnapshot = {
-          captured_at: new Date().toISOString(),
-          screenplay: state.screenplay,
-          active_scene: state.activeScene,
-          scenes: (state.scenes || []).map((scene, sceneIndex) => ({
-            id: scene.id || `scene-${sceneIndex + 1}`,
-            title: scene.title || '',
-            active_branch: scene.activeBranch ?? 0,
-            shots: (scene.branches?.[scene.activeBranch ?? 0]?.shots || []).map((shot, order) => ({
-              id: shot.id, order: order + 1, label: shot.label || shot.intent || '',
-              image: shot.image || null, beat: shot.scriptBeat ?? shot.beat ?? null,
-            })),
-          })),
-        }
-        const payload = exportLog({ finalSnapshot, metadata: { tool: 'SceneLens' } })
-        console.log('[study] exported', payload.summary)
-        // 서버 저장은 **성공했는지 말해 줘야 한다.** 조용히 삼키면
-        // 키를 잘못 넣었거나 테이블이 없어도 실험자가 모르고 넘어가고,
-        // 그걸 실험이 다 끝난 뒤에 알게 된다. 파일은 이미 받았으므로
-        // 복구는 되지만, 그러려면 실패한 사실을 알아야 한다.
-        fetch('/api/study/export', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            tool: 'scenelens',
-            participant_id: payload.metadata.session_id,
-            condition: payload.metadata.condition,
-            payload,
-          }),
-        })
-          .then(async (response) => {
-            if (response.ok) {
-              window.alert('내보내기 완료 — 파일 저장됨, 서버에도 올라갔습니다.')
-              return
-            }
-            // 서버가 이유를 말해 준다 (설정 없음 503 / 저장 실패 502).
-            const detail = await response.text().catch(() => '')
-            window.alert(
-              `파일은 저장됐지만 서버 업로드에 실패했습니다 (${response.status}).\n`
-              + `${detail.slice(0, 200)}\n\n`
-              + '다운로드된 JSON 파일을 반드시 보관하세요.',
-            )
-          })
-          .catch((error) => {
-            window.alert(
-              '파일은 저장됐지만 서버에 연결하지 못했습니다.\n'
-              + `${String(error).slice(0, 200)}\n\n`
-              + '다운로드된 JSON 파일을 반드시 보관하세요.',
-            )
-          })
+        // 로그 창의 `내보내기` 버튼과 **같은 것을 부른다.** 각자 내보내면
+        // 어느 쪽으로 눌렀느냐에 따라 서버에 올라가고 안 올라가고가
+        // 갈린다 — 실제로 그랬다.
+        runStudyExportWithAlert()
       }
       if (event.key === 'R' || event.key === 'r') {
         event.preventDefault()
@@ -294,7 +251,35 @@ function App() {
 
       </main>
 
-      {studyLogOpen && <StudyLogPanel onClose={() => setStudyLogOpen(false)} />}
+      {/* 실험 로그를 여는 자리.
+
+          전에는 Ctrl+Shift+L로만 열렸다. 단축키는 외우지 않으면 없는 것과
+          같고, 무엇보다 **측정이 시작됐는지**를 확인할 방법이 그 안에만
+          있었다 — 열어 보지 않으면 튜토리얼인 채로 20분이 지나간다.
+
+          그래서 이 점 하나를 늘 띄워 둔다. 색이 곧 상태다:
+          노랑이면 아직 측정 전, 초록이면 측정 중. 참가자에게는 작게 두어
+          작업을 가리지 않되, 실험자는 눈으로 훑어 확인할 수 있다. */}
+      <button
+        type="button"
+        className={`study-log-launcher is-${studyPhase}`}
+        onClick={() => setStudyLogOpen((open) => !open)}
+        title={
+          studyPhase === 'task' ? '측정 중 — 실험 로그 열기'
+            : studyPhase === 'done' ? '과제 종료됨 — 실험 로그 열기'
+              : '아직 측정 전 (튜토리얼) — 실험 로그 열기'
+        }
+        aria-label="실험 로그"
+      >
+        <span aria-hidden="true" />
+      </button>
+
+      {studyLogOpen && (
+        <StudyLogPanel
+          onClose={() => setStudyLogOpen(false)}
+          onPhaseChange={() => setStudyPhase(phase())}
+        />
+      )}
     </div>
   )
 }

@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react'
 import {
-  readLog, summarize, exportLog, resetLog, condition, setCondition,
+  readLog, summarize, resetLog, condition, setCondition,
+  conditionOrder, setConditionOrder,
   phase, startTask, endTask, taskStartedAt,
 } from '../store/studyLog'
+import { runStudyExportWithAlert } from '../store/studyExport'
 import './StudyLogPanel.css'
 
 /**
@@ -31,7 +33,7 @@ const pct = (value) => `${Math.round(value * 100)}%`
 
 const timeOf = (t) => new Date(t).toLocaleTimeString('ko-KR', { hour12: false })
 
-export default function StudyLogPanel({ onClose }) {
+export default function StudyLogPanel({ onClose, onPhaseChange }) {
   const [tick, setTick] = useState(0)
   const log = readLog()
   const summary = summarize(log)
@@ -46,6 +48,7 @@ export default function StudyLogPanel({ onClose }) {
   // 세션이 끝난 뒤 설정이 빠진 것을 알면 그 참가자 기록은 파일 하나에만
   // 남는다. 패널을 열 때 한 번 물어본다.
   const [storage, setStorage] = useState(null)
+  const [exporting, setExporting] = useState(false)
   useEffect(() => {
     let alive = true
     fetch('/api/study/export/health')
@@ -80,11 +83,24 @@ export default function StudyLogPanel({ onClose }) {
               type="button"
               className="study-log-condition"
               onClick={() => {
-                const next = window.prompt('실험 조건', condition())
-                if (next) setCondition(next)
+                const next = window.prompt('실험 조건 (baseline / scenelens)', condition())
+                if (next) { setCondition(next); setTick((n) => n + 1) }
               }}
             >
               {summary.condition}
+            </button>
+            {' · '}
+            {/* 몇 번째 조건인가. within-subjects라 순서 효과를 조건 차이와
+                갈라야 하는데, 이것도 안 정하면 `unset`으로 남는다. */}
+            <button
+              type="button"
+              className="study-log-condition"
+              onClick={() => {
+                const next = window.prompt('이 참가자의 몇 번째 조건인가 (1 / 2)', conditionOrder())
+                if (next) { setConditionOrder(next); setTick((n) => n + 1) }
+              }}
+            >
+              {summary.conditionOrder === 'unset' ? '순서?' : `${summary.conditionOrder}번째`}
             </button>
             {` · 이벤트 ${summary.events}건`}
           </span>
@@ -112,7 +128,7 @@ export default function StudyLogPanel({ onClose }) {
             <button
               type="button"
               className="study-log-start"
-              onClick={() => { startTask(); setTick((n) => n + 1) }}
+              onClick={() => { startTask(); setTick((n) => n + 1); onPhaseChange?.() }}
             >
               과제 시작
             </button>
@@ -133,7 +149,7 @@ export default function StudyLogPanel({ onClose }) {
               <button
                 type="button"
                 className="study-log-end"
-                onClick={() => { endTask(); setTick((n) => n + 1) }}
+                onClick={() => { endTask(); setTick((n) => n + 1); onPhaseChange?.() }}
               >
                 과제 종료
               </button>
@@ -228,7 +244,24 @@ export default function StudyLogPanel({ onClose }) {
       </div>
 
       <footer>
-        <button type="button" onClick={() => exportLog()}>JSON 내보내기</button>
+        {/* 단축키(Ctrl+Shift+E)와 **같은 것을 부른다.** 전에는 이 버튼이
+            `exportLog()`만 불러 파일만 받고 서버에는 안 올라갔다. */}
+        <button
+          type="button"
+          className="study-log-export"
+          disabled={exporting}
+          onClick={async () => {
+            setExporting(true)
+            try {
+              await runStudyExportWithAlert()
+            } finally {
+              setExporting(false)
+              setTick((n) => n + 1)
+            }
+          }}
+        >
+          {exporting ? '내보내는 중…' : '내보내기 (파일 + 서버)'}
+        </button>
         <button
           type="button"
           className="study-log-reset"
@@ -240,6 +273,7 @@ export default function StudyLogPanel({ onClose }) {
             if (ok) {
               resetLog()
               setTick((n) => n + 1)
+              onPhaseChange?.()
             }
           }}
         >
