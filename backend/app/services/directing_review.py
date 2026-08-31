@@ -984,7 +984,9 @@ def _validate_referenced_panels(
     request: DirectingReviewRequest,
     result: DirectingLensResult,
     questions: list[DirectingQuestion],
-) -> None:
+    *,
+    questions_are_fatal: bool = True,
+) -> list[DirectingQuestion]:
     """Keep regular analyses explicit about every panel they diagnose.
 
     A focused cross-lens check is different: its targets name the *existing
@@ -992,6 +994,15 @@ def _validate_referenced_panels(
     For example, an Editing check of an S3 camera Issue may naturally compare
     S2 to S3, while it must still target S3 only so it cannot create a new S2
     Issue. Requiring S2 in targets here conflicts with `_validate_issue_focus`.
+
+    `questions_are_fatal=False`로 부르면 규칙을 어긴 **질문만 빼고** 나머지를
+    돌려준다. 마지막 시도에서 쓴다 — 질문은 덧붙는 것이고 진단이 결과물이라,
+    질문 하나가 어긋났다고 렌즈 판단을 통째로 버리면 감독의 화면이 빈다.
+    실측에서 렌즈 호출의 1/3이 이 두 규칙으로 죽었다. 진단 자체의 위반은
+    그대로 치명적이다 — 틀린 진단을 감독에게 보여 줄 수는 없다.
+
+    Returns:
+        살아남은 질문들.
     """
     panel_ids = {panel.id for panel in request.panels}
     diagnosis_items = [
@@ -1013,7 +1024,10 @@ def _validate_referenced_panels(
         *((item, text, False) for item, text in diagnosis_items),
         *((question, question.prompt, True) for question in questions),
     ]
+    kept_questions: list[DirectingQuestion] = []
     for item, text, is_question in items:
+        # 이 항목이 어긴 규칙. 질문이고 치명적이지 않으면 빼고 넘어간다.
+        violation = ""
         target_panel_ids = {
             panel_id
             for target in item.targets
@@ -1033,7 +1047,7 @@ def _validate_referenced_panels(
         if request.focus:
             missing_targets -= panel_ids - set(request.focus.panel_ids)
         if missing_targets:
-            raise ValueError(
+            violation = (
                 "every panel discussed in a diagnosis or question must appear in targets: "
                 + ", ".join(sorted(missing_targets))
             )
@@ -1042,16 +1056,28 @@ def _validate_referenced_panels(
         # 그 질문을 S3 Issue의 검토 방안으로 연결할 수 있다. 컷 번호를 쓰지
         # 않은 "두 컷의 연결" 같은 질문은 기존처럼 level/targets로 판단한다.
         if (
-            not request.focus
+            not violation
+            and not request.focus
             and is_question
             and referenced_panel_ids
             and target_panel_ids != referenced_panel_ids
         ):
-            raise ValueError(
+            violation = (
                 "a question that names panel ids must target exactly those panels: "
                 f"named={', '.join(sorted(referenced_panel_ids))}; "
                 f"targets={', '.join(sorted(target_panel_ids))}"
             )
+
+        if not violation:
+            if is_question:
+                kept_questions.append(item)
+            continue
+        # 진단이 어겼으면 언제나 치명적이다.
+        if not is_question or questions_are_fatal:
+            raise ValueError(violation)
+        print(f"[directing-review] dropped a malformed question: {violation}")
+
+    return kept_questions
 
 
 def _validate_remedy_scope(lens: DirectingLens, result: DirectingLensResult) -> None:
@@ -1315,12 +1341,24 @@ async def analyze_lens(
                     "type": "text",
                     "text": (
                         "[응답 검증 실패 — 이전 응답을 고쳐 전체 JSON을 다시 작성하세요]\n"
-                        f"{validation_note}\n"
+                        f"고쳐야 할 것: {validation_note}\n"
                         f"[이전 응답]\n{previous_output}\n"
-                        "특히 shot_relation은 선택 범위에서 앞→뒤 순서로 붙어 있는 정확히 두 "
+                        # 무엇이 틀렸는지 위에 이미 적혀 있다. 아래는 자주
+                        # 틀리는 규칙을 다시 말해 주는 것뿐인데, 실측에서
+                        # 걸린 두 가지가 여기 빠져 있었다 — 그래서 모델이
+                        # 같은 실수를 세 번 반복하고 렌즈가 통째로 죽었다.
+                        # 걸린 규칙을 실제로 적어 준다.
+                        "\n[자주 틀리는 규칙]\n"
+                        "- 문장에서 컷 번호(S1, S2…)를 말했다면 그 컷이 전부 targets에 있어야 "
+                        "합니다. 근거로 잠깐 언급한 컷도 마찬가지입니다 — 언급하지 않을 것이 "
+                        "아니라면 targets에 넣으세요.\n"
+                        "- 질문(questions)이 컷 번호를 말했다면 targets는 **말한 그 컷만** "
+                        "가리켜야 합니다. 더도 덜도 안 됩니다. 두 컷을 함께 묻고 싶으면 "
+                        "질문에 두 컷을 모두 쓰고 targets에도 두 컷을 모두 넣으세요.\n"
+                        "- shot_relation은 선택 범위에서 앞→뒤 순서로 붙어 있는 정확히 두 "
                         "패널만 targets에 포함해야 합니다. scene_structure는 서로 다른 패널을 2개 이상 "
                         "targets에 포함해야 합니다. 한 패널 내부 문제라면 level을 attribute로 "
-                        f"고치세요. 모든 id는 `{lens}-`로 시작해야 합니다. targets는 선택된 "
+                        f"고치세요.\n- 모든 id는 `{lens}-`로 시작해야 합니다. targets는 선택된 "
                         "컷 ID 또는 점(.)으로 이어지는 요소 경로만 사용하세요."
                     ),
                 },
@@ -1359,7 +1397,13 @@ async def analyze_lens(
             _validate_seam_targets(request, result, questions)
             _validate_issue_focus(request, result, questions)
             _validate_theory_sources(lens, result, theory_packet)
-            _validate_referenced_panels(request, result, questions)
+            # 마지막 시도에서는 어긋난 **질문만** 버리고 진단은 살린다.
+            # 앞선 두 번은 그대로 실패시켜 모델이 고쳐 오게 한다 — 곧바로
+            # 봐주면 질문 규칙이 사실상 없는 것이 된다.
+            questions = _validate_referenced_panels(
+                request, result, questions,
+                questions_are_fatal=attempt < 2,
+            )
             _validate_remedy_scope(lens, result)
             _ensure_theory_source_basis(result)
             return result, questions
