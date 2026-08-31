@@ -8489,7 +8489,7 @@ button.active .lens-glass::after {
   padding: 5px 12px 0;
 }
 
-.reading-review-sequence-controls > span:not(.intent-check-readout) {
+.reading-review-sequence-controls > span {
   flex: none;
   color: rgba(226, 232, 240, 0.38);
   font-size: 9px;
@@ -8740,40 +8740,3 @@ button.active .lens-glass::after {
   line-height: 1.5;
 }
 .multi-review-full-analysis { display: none; }
-
-/* 의도가 닿았는가 — 실행 바 안의 한 줄 읽기값.
-
-   따로 띠를 두지 않는다. 무엇이 어긋났는지는 트랙의 칸이 색과 문장으로
-   이미 말하므로, 여기 남는 것은 칸이 못 하는 **개수**뿐이다. 트랙을
-   설명하는 값이니 트랙의 바 안에 있어야 시선이 두 번 오가지 않는다. */
-.intent-check-readout {
-  display: inline-flex;
-  align-items: baseline;
-  flex: none;
-  gap: 7px;
-  padding: 3px 10px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 999px;
-  background: rgba(4, 5, 7, 0.4);
-  color: rgba(226, 232, 240, 0.7);
-  font-size: 10.5px;
-  line-height: 1.5;
-  white-space: nowrap;
-}
-
-.intent-check-readout > b {
-  color: #fca5a5;
-  font-size: 11.5px;
-  font-weight: 850;
-}
-
-.intent-check-readout > i {
-  color: rgba(110, 231, 183, 0.75);
-  font-size: 10px;
-  font-style: normal;
-  font-weight: 800;
-}
-
-/* 어긋난 것이 없으면 조용히 둔다. 통과를 빨갛게 알릴 이유가 없다. */
-.intent-check-readout.is-error { color: rgba(252, 165, 165, 0.8); }
-.intent-check-readout.is-loading { color: rgba(226, 232, 240, 0.5); }

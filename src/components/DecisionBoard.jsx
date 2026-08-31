@@ -4496,19 +4496,6 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
     return `S${orders[0]}→S${orders[orders.length - 1]}`
   }
 
-  // 의도가 몇 군데서 어긋났는가. 트랙 칸이 **무엇이** 어긋났는지를 말하므로
-  // 남는 것은 개수뿐이다 — 그건 트랙을 끝까지 훑어야만 알 수 있고, 컷이
-  // 열다섯이면 감독이 끝까지 세지 못한다.
-  const intentTally = useMemo(() => {
-    const verdicts = Array.isArray(intentCheck?.verdicts) ? intentCheck.verdicts : []
-    return {
-      off: verdicts.filter((v) => (
-        (v?.status === 'missed' || v?.status === 'partial') && v.intended && v.read_as
-      )).length,
-      reached: verdicts.filter((v) => v?.status === 'reached').length,
-    }
-  }, [intentCheck])
-
   const readingFindings = useMemo(() => {
     if (!viewerReport) return []
     const scopeKey = `${scene?.id || activeScene}:${branch?.id || activeBranch}`
@@ -4848,23 +4835,6 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
                   : `${selectedReadingConditionIds.length}명 관객으로 읽기`}
           </button>
 
-          {/* 의도가 닿았는가. 트랙을 설명하는 값이므로 트랙의 바 안에 둔다 —
-              아래에 따로 띠를 두면 감독이 볼 자리가 하나 더 늘고, 정작
-              내용은 위 칸에 있어 시선이 두 번 오간다.
-
-              여기 있는 것은 개수뿐이다. 어느 컷인지·무엇이 어긋났는지는
-              트랙의 칸이 색과 문장으로 이미 말한다. */}
-          {viewerReport && intentCheckStatus !== 'idle' && (
-            <span className={`intent-check-readout is-${intentCheckStatus}`} role="status">
-              {intentCheckStatus === 'loading' && '의도와 맞춰 보는 중…'}
-              {intentCheckStatus === 'error' && '대조 실패 · 읽기는 그대로'}
-              {intentCheckStatus === 'ready' && (
-                intentTally.off > 0
-                  ? <><b>{intentTally.off}컷</b> 다르게 읽힘<i>통함 {intentTally.reached}</i></>
-                  : <>의도대로 읽힘<i>통함 {intentTally.reached}</i></>
-              )}
-            </span>
-          )}
         </div>
 
         <div className="reading-review-shared-scroll" ref={readingSequenceScrollRef}>

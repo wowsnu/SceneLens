@@ -214,25 +214,36 @@ export default function ReadingWorkbench({
                 </section>
               )}
 
+              {/* 의도가 안 닿았는가. **여기까지 보고 든 생각 바로 아래**에
+                  둔다 — 감독이 방금 읽은 것이 관객의 생각이므로, 그것과
+                  목적을 견주는 자리는 그 문장 옆이어야 눈이 옮겨가지 않는다.
+
+                  감독에게 묻지는 않는다. 관객 읽기는 의도를 모르는 것이
+                  원칙이라(7장) 답을 받아도 되먹일 수 없다. 고치는 일은
+                  연출 검토가 렌즈로 맡는다. */}
+              {finding?.intent?.intended && finding.intent.read_as && (
+                <section className="reading-intent-gap">
+                  <h4>의도와 다르게 읽힘</h4>
+                  <dl>
+                    <div>
+                      <dt>노린 것</dt>
+                      <dd>{finding.intent.intended}</dd>
+                    </div>
+                    <div>
+                      <dt>읽힌 것</dt>
+                      <dd>{finding.intent.read_as}</dd>
+                    </div>
+                  </dl>
+                  {finding.why_it_matters && (
+                    <p className="reading-intent-cause">{finding.why_it_matters}</p>
+                  )}
+                </section>
+              )}
+
               {activeStep?.open_question && (
                 <section className="reading-question">
                   <h4>궁금한 채로 남은 것</h4>
                   <p>{activeStep.open_question}</p>
-                </section>
-              )}
-
-              {/* 노린 것과 읽힌 것은 **트랙의 칸 안에** 있다 — 어긋남은
-                  그 컷의 성질이라 읽은 문장 옆을 떠나면 대조가 안 된다.
-                  여기서 다시 늘어놓으면 같은 말이 두 자리에 있게 되므로,
-                  이 자리는 화면의 무엇이 그렇게 읽히게 했는지만 받는다.
-
-                  감독에게 묻지는 않는다 — 관객 읽기는 의도를 모르는 것이
-                  원칙이라(7장) 답을 받아도 되먹일 수 없다. 고치는 일은
-                  연출 검토가 렌즈로 맡는다. */}
-              {finding?.intent && finding.why_it_matters && (
-                <section className="reading-intent-cause-box">
-                  <h4>이렇게 읽힌 이유</h4>
-                  <p>{finding.why_it_matters}</p>
                 </section>
               )}
             </aside>
