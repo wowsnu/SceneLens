@@ -28,7 +28,13 @@ const finalSnapshot = () => {
         id: shot.id,
         order: order + 1,
         label: shot.label || shot.intent || '',
-        image: shot.image || null,
+        // 그림 자체는 넣지 않는다. base64로 박으면 패널 열댓 장에 수십
+        // MB가 되어 서버가 거부하고, 그러면 **행동 로그까지 함께** 못
+        // 올라간다 (baseline에서 67MB가 반려됐다). 로그는 수십 KB다.
+        //
+        // 분석에 필요한 것은 "그림이 있었나"이지 그림 자체가 아니다 —
+        // 최종 산출물은 화면 녹화와 파일로 따로 남는다.
+        has_image: Boolean(shot.image),
         beat: shot.scriptBeat ?? shot.beat ?? null,
       })),
     })),
@@ -45,18 +51,22 @@ export const runStudyExport = async () => {
   const payload = exportLog({ finalSnapshot: finalSnapshot(), metadata: { tool: 'SceneLens' } })
   console.log('[study] exported', payload.summary)
 
+  // 보낼 것이 얼마나 큰지 먼저 본다. 서버가 큰 본문을 거부하면 로그가
+  // 통째로 안 올라가는데, 그 이유가 크기라는 것을 실패 메시지만 보고는
+  // 알 수 없다. 미리 재서 사람에게 알린다.
+  const body = JSON.stringify({
+    tool: 'scenelens',
+    participant_id: payload.metadata.participant_id || payload.metadata.session_id,
+    condition: payload.metadata.condition,
+    payload,
+  })
+  const megabytes = new Blob([body]).size / 1048576
+
   try {
     const response = await fetch('/api/study/export', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        tool: 'scenelens',
-        // 참가자 번호가 두 조건을 잇는다. 실험자가 안 넣었으면 세션
-        // id로 떨어지되, 그때는 두 조건이 안 이어진다.
-        participant_id: payload.metadata.participant_id || payload.metadata.session_id,
-        condition: payload.metadata.condition,
-        payload,
-      }),
+      body,
     })
     if (response.ok) {
       // 서버에 닿은 것이 확인된 뒤에만 남긴다. 이 표시가 있어야
@@ -65,7 +75,12 @@ export const runStudyExport = async () => {
       return { payload, uploaded: true }
     }
     const detail = await response.text().catch(() => '')
-    return { payload, uploaded: false, reason: `${response.status} ${detail.slice(0, 200)}` }
+    return {
+      payload,
+      uploaded: false,
+      reason: `${response.status} ${detail.slice(0, 200)}`
+        + (megabytes > 4 ? ` (보낸 크기 ${megabytes.toFixed(1)}MB — 너무 커서 거부됐을 수 있습니다)` : ''),
+    }
   } catch (error) {
     return { payload, uploaded: false, reason: `서버에 연결 못 함 — ${String(error).slice(0, 200)}` }
   }
