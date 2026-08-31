@@ -316,86 +316,80 @@
 }
 
 
-/* --- 로그 여는 점 ----------------------------------------------------
+/* --- 참가자가 쓰는 줄 ------------------------------------------------
 
-   늘 떠 있다. 단축키만 두면 외우지 않은 사람에게는 없는 기능이고,
-   무엇보다 **측정이 시작됐는지**를 확인할 길이 패널 안에만 있었다 —
-   열어 보지 않으면 튜토리얼인 채로 20분이 지나간다.
+   과제를 시작하고, 끝나면 내보낸다. 그게 전부다. 측정값은 두지 않는다 —
+   참가자에게 의미가 없고, 무엇이 세어지는지 보이면 행동이 그쪽으로
+   바뀐다(실험 타당성). 통계는 실험자가 Ctrl+Shift+L로 따로 본다.
 
-   색이 곧 상태다. 참가자 눈에는 작은 점이라 작업을 가리지 않고,
-   실험자는 훑어서 확인한다. */
+   오른쪽 아래는 캔버스 확대 버튼이 쓰는 자리라 **왼쪽 아래**에 둔다. */
 
-.study-log-launcher {
+.study-bar {
   position: fixed;
-  right: 16px;
-  bottom: 16px;
-  /* 패널(9000)보다 위. 아래에 두면 창을 연 순간 이 버튼이 창 밑으로
-     사라져, 무엇을 눌러 열었는지도 안 보인다. */
-  z-index: 9100;
+  left: 14px;
+  bottom: 14px;
+  z-index: 8000;
   display: flex;
   align-items: center;
-  gap: 7px;
-  padding: 7px 12px;
-  border: 1px solid rgba(255, 255, 255, 0.18);
+  gap: 8px;
+}
+
+.study-bar button {
+  padding: 7px 14px;
   border-radius: 999px;
-  background: rgba(12, 14, 20, 0.94);
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.4);
-  color: rgba(255, 255, 255, 0.78);
   font-family: inherit;
-  font-size: 10.5px;
+  font-size: 11.5px;
   font-weight: 800;
-  white-space: nowrap;
   cursor: pointer;
-  transition: border-color 0.15s, color 0.15s;
 }
 
-.study-log-launcher:hover {
-  border-color: rgba(255, 255, 255, 0.4);
-  color: #fff;
+.study-bar button:disabled { opacity: 0.55; cursor: default; }
+
+/* 아직 시작 전. 눌러야 할 것이 하나뿐이라 이것만 또렷하게 둔다. */
+.study-bar-start {
+  border: 1px solid rgba(74, 222, 128, 0.5);
+  background: rgba(74, 222, 128, 0.16);
+  color: #bbf7d0;
 }
 
-/* 창이 열려 있으면 그 위에 겹치지 않게 옆으로 비켜 준다. */
-.study-log-launcher.is-open {
-  right: 452px;
+.study-bar-start:hover { background: rgba(74, 222, 128, 0.26); }
+
+/* 진행 중에는 조용히 둔다. 작업 중이므로 눈에 걸리면 안 된다. */
+.study-bar-state {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: rgba(255, 255, 255, 0.32);
+  font-size: 10.5px;
+  font-weight: 700;
 }
 
-.study-log-launcher > span {
-  flex: none;
-  width: 8px;
-  height: 8px;
+.study-bar-state::before {
+  content: '';
+  width: 6px;
+  height: 6px;
   border-radius: 50%;
+  background: #4ade80;
 }
 
-/* 아직 측정 전. 노랑이 눈에 걸려야 `과제 시작`을 누르게 된다. */
-.study-log-launcher.is-tutorial {
-  border-color: rgba(251, 191, 36, 0.55);
-  color: #fcd34d;
-}
-.study-log-launcher.is-tutorial > span {
-  background: #fbbf24;
-  /* 안 눌린 상태를 조용히 두지 않는다. */
-  animation: study-log-pulse 2.4s ease-in-out infinite;
+.study-bar-end {
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: transparent;
+  color: rgba(255, 255, 255, 0.5);
 }
 
-.study-log-launcher.is-task {
-  border-color: rgba(74, 222, 128, 0.5);
-  color: #86efac;
-}
-.study-log-launcher.is-task > span { background: #4ade80; }
-.study-log-launcher.is-done > span { background: rgba(255, 255, 255, 0.35); }
-
-@media (max-width: 900px) {
-  .study-log-launcher.is-open { right: 16px; bottom: auto; top: 16px; }
+.study-bar-end:hover {
+  border-color: rgba(255, 255, 255, 0.32);
+  color: rgba(255, 255, 255, 0.8);
 }
 
-@keyframes study-log-pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.35; }
+.study-bar-export {
+  border: 1px solid rgba(167, 139, 250, 0.5);
+  background: rgba(167, 139, 250, 0.16);
+  color: #ddd6fe;
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .study-log-launcher.is-tutorial > span { animation: none; }
-}
+.study-bar-export:hover:not(:disabled) { background: rgba(167, 139, 250, 0.26); }
 
 /* 내보내기 — 파일과 서버 양쪽으로 나간다. */
 .study-log-export:disabled {

@@ -18,6 +18,7 @@ function App() {
   const [studyLogOpen, setStudyLogOpen] = useState(false)
   // 측정 중인지를 바깥 점에도 물려 둔다. 패널을 열지 않아도 보이게.
   const [studyPhase, setStudyPhase] = useState(() => phase())
+  const [exporting, setExporting] = useState(false)
   const maximizedPanel = useStore((s) => s.maximizedPanel)
   const setMaximizedPanel = useStore((s) => s.setMaximizedPanel)
   const leftPanelVisible = useStore((s) => s.leftPanelVisible)
@@ -188,14 +189,6 @@ function App() {
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
         )}
       </button>
-      <button
-        className="floating-fullscreen-btn"
-        style={{ left: 12, right: 'auto', width: 'auto', padding: '0 10px' }}
-        onClick={() => window.dispatchEvent(new KeyboardEvent('keydown', { key: 'E', ctrlKey: true, shiftKey: true }))}
-        title="실험 데이터 내보내기"
-      >
-        내보내기
-      </button>
       <main className={`unified-workspace${cutStage === 'script' ? ' script-stage-workspace' : ''}`}>
 
         {/* LEFT */}
@@ -260,19 +253,45 @@ function App() {
           그래서 이 점 하나를 늘 띄워 둔다. 색이 곧 상태다:
           노랑이면 아직 측정 전, 초록이면 측정 중. 참가자에게는 작게 두어
           작업을 가리지 않되, 실험자는 눈으로 훑어 확인할 수 있다. */}
-      <button
-        type="button"
-        className={`study-log-launcher is-${studyPhase}${studyLogOpen ? ' is-open' : ''}`}
-        onClick={() => setStudyLogOpen((open) => !open)}
-        title="실험 로그 — 과제 시작·종료, 내보내기, 비우기"
-      >
-        <span aria-hidden="true" />
-        {/* 점만 두면 무엇을 누르는 것인지 모른다. 상태를 글로도 적어,
-            `과제 시작`을 아직 안 눌렀다는 것이 읽히게 한다. */}
-        {studyPhase === 'task' ? '측정 중'
-          : studyPhase === 'done' ? '과제 종료됨'
-            : '실험 로그 · 측정 전'}
-      </button>
+      {/* 참가자가 쓰는 것은 둘뿐이다 — 과제를 시작하고, 끝나면 내보낸다.
+          측정값(수정 건수·층위 분포 따위)은 여기 두지 않는다. 참가자에게
+          의미가 없을뿐더러, 무엇이 세어지는지 보이면 행동이 그쪽으로
+          바뀐다. 그 통계는 실험자가 Ctrl+Shift+L로 따로 본다.
+
+          오른쪽 아래는 캔버스 조작 버튼이 쓰는 자리라 왼쪽 아래에 둔다. */}
+      <div className={`study-bar is-${studyPhase}`}>
+        {studyPhase === 'tutorial' && (
+          <button type="button" className="study-bar-start" onClick={() => {
+            startTask()
+            setStudyPhase(phase())
+          }}>
+            과제 시작
+          </button>
+        )}
+        {studyPhase === 'task' && (
+          <>
+            <span className="study-bar-state">진행 중</span>
+            <button type="button" className="study-bar-end" onClick={() => {
+              if (!window.confirm('과제를 끝낼까요?')) return
+              endTask()
+              setStudyPhase(phase())
+            }}>
+              과제 종료
+            </button>
+          </>
+        )}
+        {/* 내보내기는 과제가 끝난 뒤 쓰는 것이지만, 진행 중에도 필요할
+            수 있으므로 시작 전만 빼고 늘 둔다. 시작 전에는 내보낼 것이
+            없다. */}
+        {studyPhase !== 'tutorial' && (
+          <button type="button" className="study-bar-export" disabled={exporting} onClick={async () => {
+            setExporting(true)
+            try { await runStudyExportWithAlert() } finally { setExporting(false) }
+          }}>
+            {exporting ? '내보내는 중…' : '결과 내보내기'}
+          </button>
+        )}
+      </div>
 
       {studyLogOpen && (
         <StudyLogPanel
