@@ -4786,7 +4786,17 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
           {scopeSummary}
           {/* 조건은 실행 버튼과 같은 흐름에 두되, 평소에는 한 단계 접어
               두어 실행 바가 버튼 목록으로 늘어나지 않게 한다. */}
-          <details className="reading-condition-depth">
+          <details
+            className="reading-condition-depth"
+            /* 메뉴 높이의 기준점을 잡아 둔다. 트리거가 화면 어디에
+               있느냐에 따라 아래 남는 공간이 달라지므로, CSS만으로는
+               "창 밖으로 넘지 마라"를 쓸 수 없다. 열 때 한 번 잰다. */
+            onToggle={(event) => {
+              if (!event.currentTarget.open) return
+              const box = event.currentTarget.getBoundingClientRect()
+              event.currentTarget.style.setProperty('--depth-menu-top', `${box.bottom}px`)
+            }}
+          >
             <summary>
               <span>관객 구성</span>
               <strong>{selectedReadingConditionIds.length}명 선택</strong>

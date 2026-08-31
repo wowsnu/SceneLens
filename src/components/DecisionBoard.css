@@ -8595,6 +8595,16 @@ button.active .lens-glass::after {
   border-radius: 7px;
   background: rgba(15, 23, 42, 0.98);
   box-shadow: 0 12px 28px rgba(2, 6, 23, 0.34);
+  /* 메뉴 자체가 창 밖으로 자라지 않게 막는다. 안쪽 목록에만 스크롤을
+     두면, `새 읽기 조건 만들기`를 펼쳤을 때 메뉴가 창 아래로 넘어가
+     **닿을 방법이 없어진다** — 스크롤이 걸린 것은 안쪽인데 넘친 것은
+     바깥이라, 감독은 만들기 칸을 아예 못 본다.
+
+     기준은 트리거 아래 남은 높이다. `top`이 트리거 바닥 + 5px이므로
+     그만큼 빼고, 창 아래 여백 12px을 더 둔다. */
+  max-height: calc(100vh - var(--depth-menu-top, 0px) - 17px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 .reading-condition-depth-menu .viewer-more-perspectives {
@@ -8607,9 +8617,12 @@ button.active .lens-glass::after {
   padding: 8px 9px;
 }
 
+/* 안쪽에는 스크롤을 두지 않는다. 바깥 메뉴가 이미 창 높이에 맞춰
+   스크롤하므로, 여기도 스크롤이면 감독이 어느 쪽을 굴리는지에 따라
+   내용이 다르게 움직인다 — 만들기 칸까지 내려가려다 안쪽만 굴려서
+   제자리인 것처럼 보이는 것이 원래 증상이었다. */
 .reading-condition-depth-menu .viewer-reading-conditions {
-  max-height: min(55vh, 470px);
-  overflow-y: auto;
+  min-height: 0;
 }
 
 @media (max-width: 520px) {
