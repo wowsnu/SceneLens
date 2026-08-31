@@ -29,8 +29,10 @@ export default function Header() {
     <header className="app-header">
       <div className="header-left">
         <div className="logo">
-          <span className="logo-icon">🎬</span>
-          <span className="logo-text">SceneLens <span className="logo-v">v2</span></span>
+          {/* 도구 이름을 화면에 드러내지 않는다. baseline이 `Storyboard`이므로
+              같은 이름으로 맞춘다 — 참가자가 두 조건을 브랜드로 구분하면
+              도구 차이가 아니라 이름에 반응한 것이 섞인다. */}
+          <span className="logo-text">Storyboard</span>
         </div>
         <div className="header-divider"></div>
         <div className="current-context">

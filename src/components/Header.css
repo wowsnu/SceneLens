@@ -22,9 +22,7 @@
   gap: 8px;
 }
 
-.logo-icon { font-size: 18px; }
 .logo-text { font-size: 13px; font-weight: 800; letter-spacing: -0.5px; }
-.logo-v { font-size: 10px; color: var(--accent-blue); vertical-align: super; margin-left: 2px; }
 
 .header-divider {
   width: 1px;

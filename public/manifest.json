@@ -1,6 +1,6 @@
 {
-  "name": "SceneLens",
-  "short_name": "SceneLens",
+  "name": "Storyboard",
+  "short_name": "Storyboard",
   "display": "fullscreen",
   "start_url": "/",
   "background_color": "#000000",
