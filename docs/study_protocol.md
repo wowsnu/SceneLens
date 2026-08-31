@@ -89,6 +89,43 @@
 | 조건 종료 후 | **Ctrl+Shift+E** (내보내기) | JSON 파일로 받는다. 반드시 비우기 전에 |
 | 다음 조건 전 | **Ctrl+Shift+R** (비우기) | 세션·조건·로그를 지운다. 되돌릴 수 없으므로 내보낸 뒤에만 |
 
+### 3.2 로그 저장소 (Supabase) 설정
+
+내보내기는 **두 곳**으로 나간다 — 실험자 컴퓨터에 JSON 파일, 그리고 Supabase의 `study_sessions` 테이블. 서버(Render)는 중계만 하므로 재배포·재시작과 무관하다.
+
+**한 번만 하면 되는 설정:**
+
+1. Supabase 프로젝트의 SQL Editor에서 테이블을 만든다.
+
+   ```sql
+   create table study_sessions (
+     id             bigserial primary key,
+     created_at     timestamptz not null default now(),
+     tool           text not null,
+     participant_id text,
+     condition      text,
+     story_id       text,
+     payload        jsonb not null
+   );
+
+   -- 정책을 만들지 않는다. service_role만 RLS를 우회하므로,
+   -- 키가 새더라도 익명으로는 읽히지 않는다.
+   alter table study_sessions enable row level security;
+   ```
+
+2. Render 대시보드 → 서비스 → Environment에 두 개를 넣는다.
+
+   | Key | 값 |
+   | --- | --- |
+   | `SUPABASE_URL` | `https://<프로젝트ref>.supabase.co` |
+   | `SUPABASE_SECRET_KEY` | Settings → API의 **`service_role`** 키 (anon 아님) |
+
+**확인.** Ctrl+Shift+L로 로그 창을 열었을 때 빨간 `서버 저장 불가` 줄이 없으면 저장이 되는 상태다. 있으면 그 줄이 이유를 말한다(환경변수 누락 / 테이블 없음 / 연결 실패). 이 줄이 보이면 **실험을 시작하기 전에** 고친다 — 그대로 진행하면 그 참가자 기록은 다운로드 파일 하나에만 남는다.
+
+내보낼 때(Ctrl+Shift+E)도 성공·실패를 창으로 알린다. 실패해도 파일은 이미 받았으므로, 그 JSON을 보관하면 나중에 넣을 수 있다.
+
+---
+
 **확인 방법.** Ctrl+Shift+L로 로그 창을 열면 맨 위 띠가 현재 상태를 말한다 — 노란색 `튜토리얼 (측정 안 함)`이면 아직 안 눌린 것이고, 초록색 `과제 진행 중`이면 측정 중이다. 시작을 깜빡했더라도 그 기록은 지워지지 않고 `tutorial`로 남으므로, 내보낸 JSON의 `summary.tutorial.events`가 비정상적으로 크면 그 세션은 시점을 되짚어 복구할 수 있다.
 
 ---

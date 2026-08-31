@@ -96,11 +96,41 @@ function App() {
           })),
         }
         const payload = exportLog({ finalSnapshot, metadata: { tool: 'SceneLens' } })
-        fetch('/api/study/export', {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ tool: 'scenelens', condition: payload.metadata.condition, payload }),
-        }).catch(() => console.warn('[study] server export failed'))
         console.log('[study] exported', payload.summary)
+        // 서버 저장은 **성공했는지 말해 줘야 한다.** 조용히 삼키면
+        // 키를 잘못 넣었거나 테이블이 없어도 실험자가 모르고 넘어가고,
+        // 그걸 실험이 다 끝난 뒤에 알게 된다. 파일은 이미 받았으므로
+        // 복구는 되지만, 그러려면 실패한 사실을 알아야 한다.
+        fetch('/api/study/export', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            tool: 'scenelens',
+            participant_id: payload.metadata.session_id,
+            condition: payload.metadata.condition,
+            payload,
+          }),
+        })
+          .then(async (response) => {
+            if (response.ok) {
+              window.alert('내보내기 완료 — 파일 저장됨, 서버에도 올라갔습니다.')
+              return
+            }
+            // 서버가 이유를 말해 준다 (설정 없음 503 / 저장 실패 502).
+            const detail = await response.text().catch(() => '')
+            window.alert(
+              `파일은 저장됐지만 서버 업로드에 실패했습니다 (${response.status}).\n`
+              + `${detail.slice(0, 200)}\n\n`
+              + '다운로드된 JSON 파일을 반드시 보관하세요.',
+            )
+          })
+          .catch((error) => {
+            window.alert(
+              '파일은 저장됐지만 서버에 연결하지 못했습니다.\n'
+              + `${String(error).slice(0, 200)}\n\n`
+              + '다운로드된 JSON 파일을 반드시 보관하세요.',
+            )
+          })
       }
       if (event.key === 'R' || event.key === 'r') {
         event.preventDefault()

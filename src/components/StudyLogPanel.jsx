@@ -42,6 +42,21 @@ export default function StudyLogPanel({ onClose }) {
     return () => clearInterval(timer)
   }, [])
 
+  // 서버 저장이 될 상태인가. **실험을 시작하기 전에** 알아야 한다 —
+  // 세션이 끝난 뒤 설정이 빠진 것을 알면 그 참가자 기록은 파일 하나에만
+  // 남는다. 패널을 열 때 한 번 물어본다.
+  const [storage, setStorage] = useState(null)
+  useEffect(() => {
+    let alive = true
+    fetch('/api/study/export/health')
+      .then((response) => response.json())
+      .then((result) => { if (alive) setStorage(result) })
+      .catch((error) => {
+        if (alive) setStorage({ ready: false, reason: `서버에 연결 못 함: ${error}` })
+      })
+    return () => { alive = false }
+  }, [])
+
   useEffect(() => {
     const onKey = (event) => {
       if (event.key === 'Escape') onClose()
@@ -126,6 +141,15 @@ export default function StudyLogPanel({ onClose }) {
           </>
         )}
       </section>
+
+      {/* 서버 저장이 될 상태인가. 안 되면 파일 다운로드만 남으므로,
+          그 사실을 실험 **전에** 알아야 한다. */}
+      {storage && !storage.ready && (
+        <p className="study-log-storage-warn">
+          서버 저장 불가 — {storage.reason}
+          <small>내보내기는 파일로만 됩니다. JSON을 반드시 보관하세요.</small>
+        </p>
+      )}
 
       <div className="study-log-body">
         <section>

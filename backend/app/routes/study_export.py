@@ -13,17 +13,64 @@ class StudyExport(BaseModel):
     story_id: str | None = None
     payload: dict
 
+
+@router.get('/study/export/health')
+async def study_export_health():
+    """저장이 될 상태인가.
+
+    실험을 시작하기 전에 확인할 수 있어야 한다. 세션이 끝난 뒤에야
+    설정이 빠진 것을 알면 그 참가자의 기록은 파일 하나에만 남는다.
+    """
+    url = os.getenv('SUPABASE_URL', '').rstrip('/')
+    key = os.getenv('SUPABASE_SECRET_KEY', '')
+    if not url or not key:
+        missing = [
+            name for name, value in
+            (('SUPABASE_URL', url), ('SUPABASE_SECRET_KEY', key))
+            if not value
+        ]
+        return {'ready': False, 'reason': f'missing env: {", ".join(missing)}'}
+    # 테이블에 실제로 닿는지까지 본다. 환경변수만 있고 테이블 이름이
+    # 다르면 저장할 때가 되어서야 터진다.
+    try:
+        async with httpx.AsyncClient(timeout=10) as client:
+            response = await client.get(
+                f'{url}/rest/v1/study_sessions',
+                params={'select': 'id', 'limit': '1'},
+                headers={'apikey': key, 'Authorization': f'Bearer {key}'},
+            )
+    except httpx.HTTPError as error:
+        return {'ready': False, 'reason': f'cannot reach Supabase: {error}'}
+    if response.status_code >= 300:
+        return {'ready': False, 'reason': f'{response.status_code} {response.text[:200]}'}
+    return {'ready': True}
+
+
 @router.post('/study/export')
 async def save_study_export(body: StudyExport):
     url = os.getenv('SUPABASE_URL', '').rstrip('/')
     key = os.getenv('SUPABASE_SECRET_KEY', '')
     if not url or not key:
-        raise HTTPException(503, 'Study export storage is not configured')
+        # 무엇이 빠졌는지 말한다. `설정되지 않음`만으로는 URL이 문제인지
+        # 키가 문제인지 알 수 없어 Render 대시보드를 헤매게 된다.
+        missing = [
+            name for name, value in
+            (('SUPABASE_URL', url), ('SUPABASE_SECRET_KEY', key))
+            if not value
+        ]
+        raise HTTPException(503, f'Study export storage is not configured (missing {", ".join(missing)})')
     row = body.model_dump()
     async with httpx.AsyncClient(timeout=15) as client:
         response = await client.post(
             f'{url}/rest/v1/study_sessions', json=row,
-            headers={'apikey': key, 'Content-Type': 'application/json', 'Prefer': 'return=minimal'},
+            headers={
+                'apikey': key,
+                # RLS를 켜 두므로 service_role 권한이 실제로 붙어야 한다.
+                # apikey만 보내면 익명으로 취급되어 정책에 막힌다.
+                'Authorization': f'Bearer {key}',
+                'Content-Type': 'application/json',
+                'Prefer': 'return=minimal',
+            },
         )
     if response.status_code >= 300:
         raise HTTPException(502, f'Study export storage failed: {response.text[:300]}')
