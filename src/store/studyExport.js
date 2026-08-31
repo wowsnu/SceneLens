@@ -51,7 +51,9 @@ export const runStudyExport = async () => {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         tool: 'scenelens',
-        participant_id: payload.metadata.session_id,
+        // 참가자 번호가 두 조건을 잇는다. 실험자가 안 넣었으면 세션
+        // id로 떨어지되, 그때는 두 조건이 안 이어진다.
+        participant_id: payload.metadata.participant_id || payload.metadata.session_id,
         condition: payload.metadata.condition,
         payload,
       }),

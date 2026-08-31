@@ -32,6 +32,7 @@ const PHASE_KEY = 'scenelens.study.phase'
 const TASK_START_KEY = 'scenelens.study.task_started_at'
 const EXPORTED_KEY = 'scenelens.study.exported_at'
 const UPLOADED_KEY = 'scenelens.study.uploaded_at'
+const PARTICIPANT_KEY = 'scenelens.study.participant'
 
 /** 이 수정이 패널 안의 일인가, 그 너머인가. */
 export const BEYOND_PANEL_LEVELS = ['shot', 'seam', 'sequence']
@@ -88,6 +89,22 @@ export const sessionId = () => {
  * Ctrl+Shift+C로 입력한다. 정하지 않으면 'unset'으로 남아, 분석 때
  * 조건 없는 세션을 바로 골라낼 수 있다.
  */
+/**
+ * 참가자 번호 (P01 …). **실험자가 정한다.**
+ *
+ * within-subjects라 한 사람이 두 조건을 다 하는데, 두 도구는 서로 다른
+ * 도메인이라 localStorage가 분리되고 세션 id도 따로 생긴다. 그래서 이
+ * 번호가 없으면 Supabase에서 같은 사람의 두 행을 이을 방법이 없다.
+ *
+ * 세션 id는 그 브라우저의 것일 뿐이라 이 자리를 대신하지 못한다.
+ */
+export const participantId = () => readJSON(PARTICIPANT_KEY, null) || ''
+
+export const setParticipantId = (value) => {
+  writeJSON(PARTICIPANT_KEY, value)
+  return value
+}
+
 export const condition = () => readJSON(CONDITION_KEY, null) || 'unset'
 
 export const setCondition = (value) => {
@@ -182,6 +199,7 @@ export const logEvent = (type, payload = {}) => {
     id: `e${log.length + 1}`,
     t: Date.now(),
     session: sessionId(),
+    participant: participantId(),
     condition: condition(),
     conditionOrder: conditionOrder(),
     // 이 이벤트가 튜토리얼에서 나온 것인가 본 과제에서 나온 것인가.
@@ -312,6 +330,7 @@ export const summarize = (fullLog = readLog()) => {
 
   return {
     session: sessionId(),
+    participant: participantId(),
     condition: condition(),
     conditionOrder: conditionOrder(),
     phase: phase(),
@@ -457,6 +476,7 @@ export const exportLog = ({ finalSnapshot = null, metadata = {} } = {}) => {
     exported_at: new Date().toISOString(),
     metadata: {
       session_id: sessionId(),
+      participant_id: participantId(),
       condition: condition(),
       condition_order: conditionOrder(),
       ...metadata,
@@ -484,6 +504,13 @@ export const exportLog = ({ finalSnapshot = null, metadata = {} } = {}) => {
 /**
  * 다음 참가자를 위해 비운다. 내보낸 뒤에만 부른다 —
  * 되돌릴 수 없으므로 호출부에서 확인을 받는다.
+ */
+/**
+ * 다음 세션을 위해 비운다.
+ *
+ * **참가자 번호는 지우지 않는다.** 같은 사람이 두 번째 조건을 이어서
+ * 하므로, 여기서 지우면 실험자가 매번 다시 입력해야 하고 한 번 빠뜨리면
+ * 두 조건이 영영 안 이어진다. 사람이 바뀔 때는 번호를 새로 입력한다.
  */
 export const resetLog = () => {
   try {

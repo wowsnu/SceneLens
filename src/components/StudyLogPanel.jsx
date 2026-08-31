@@ -3,6 +3,7 @@ import {
   readLog, summarize, resetLog, condition, setCondition,
   conditionOrder, setConditionOrder,
   phase, startTask, endTask, taskStartedAt, exportedAt,
+  participantId, setParticipantId,
 } from '../store/studyLog'
 import { runStudyExportWithAlert } from '../store/studyExport'
 import './StudyLogPanel.css'
@@ -78,7 +79,20 @@ export default function StudyLogPanel({ onClose, onPhaseChange }) {
         <div>
           <strong>실험 로그</strong>
           <span>
-            {`세션 ${summary.session} · 조건 `}
+            {'참가자 '}
+            {/* 두 도구가 다른 도메인이라 이 번호가 없으면 같은 사람의
+                두 조건을 이을 수 없다. 비어 있으면 눈에 띄게 둔다. */}
+            <button
+              type="button"
+              className={`study-log-condition${summary.participant ? '' : ' is-unset'}`}
+              onClick={() => {
+                const next = window.prompt('참가자 번호 (예: P01)', participantId())
+                if (next) { setParticipantId(next); setTick((n) => n + 1) }
+              }}
+            >
+              {summary.participant || '번호?'}
+            </button>
+            {` · 조건 `}
             <button
               type="button"
               className="study-log-condition"

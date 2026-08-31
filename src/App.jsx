@@ -8,6 +8,7 @@ import {
   summarize, resetLog,
   setCondition, condition, setConditionOrder, conditionOrder,
   phase, startTask, endTask, exportedAt, uploadedAt,
+  participantId, setParticipantId,
 } from './store/studyLog'
 import { runStudyExportWithAlert } from './store/studyExport'
 import './App.css'
@@ -47,6 +48,10 @@ function App() {
   // 참가자를 앉히기 전에 정해지므로 가장 안전하다.
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
+    // 참가자 번호. 두 도구가 다른 도메인이라 localStorage가 분리되므로,
+    // 이 번호가 있어야 같은 사람의 두 조건을 Supabase에서 이을 수 있다.
+    const participant = params.get('participant') || params.get('p')
+    if (participant) setParticipantId(participant)
     const fromUrl = params.get('condition')
     if (fromUrl) setCondition(fromUrl)
     // within-subjects라 같은 사람이 두 조건을 다 한다. 두 번째 조건은
@@ -61,7 +66,9 @@ function App() {
       if (!event.ctrlKey || !event.shiftKey) return
       if (event.key === 'C' || event.key === 'c') {
         event.preventDefault()
-        const next = window.prompt('실험 조건', condition())
+        const who = window.prompt('참가자 번호 (예: P01)', participantId())
+        if (who) setParticipantId(who)
+        const next = window.prompt('실험 조건 (baseline / scenelens)', condition())
         if (next) setCondition(next)
         const nextOrder = window.prompt('이 참가자의 몇 번째 조건인가 (1 / 2)', conditionOrder())
         if (nextOrder) setConditionOrder(nextOrder)

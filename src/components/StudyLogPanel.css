@@ -149,6 +149,14 @@
   font-weight: 500;
 }
 
+/* 아직 안 정한 값. 참가자 번호가 비면 두 조건이 안 이어지므로 조용히
+   두지 않는다. */
+.study-log-condition.is-unset {
+  border-color: rgba(251, 191, 36, 0.55);
+  background: rgba(251, 191, 36, 0.14);
+  color: #fcd34d;
+}
+
 .study-log-body {
   flex: 1;
   overflow-y: auto;
