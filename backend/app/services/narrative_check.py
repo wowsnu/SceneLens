@@ -246,13 +246,9 @@ async def check_narrative(request: NarrativeCheckRequest) -> NarrativeCheckRespo
         **json.loads(response.choices[0].message.content.strip())
     )
 
-    # Cut Plan의 카드는 질문만 남기지 않는다. 처분을 고르지 못한 지적은
-    # 감독이 할 수 있는 일이 없으므로 여기서는 내지 않는다.
-    if checking_cuts:
-        result.findings = [
-            finding for finding in result.findings
-            if finding.operation != "keep"
-        ]
+    # 컷 플랜 점검의 `keep`은 “진단만 제시하고, AI가 삭제·삽입 같은
+    # 처분을 대신 고르지는 않는다”는 뜻이다. finding을 버리라는 뜻이 아니다.
+    # 이전에는 여기서 keep을 제거해 모든 컷 플랜 진단이 빈 결과가 됐다.
 
     # 없는 것을 가리키는 지적은 감독이 확인할 수 없다.
     if checking_cuts:

@@ -1409,6 +1409,31 @@
   width: 100%;
 }
 
+/* 대사 — `내용` 칸 아래에 딸린다. 행동 문장과 색·크기로 갈라 두 값이
+   섞여 읽히지 않게 한다. 그림에 들어가는 것은 위의 `내용`뿐이다. */
+.cut-plan-dialogue-input {
+  width: 100%;
+  margin-top: 3px;
+  color: rgba(190, 215, 230, 0.85) !important;
+  font-size: 12px;
+}
+
+/* 대사가 없는 컷에만 보인다. 표를 어지럽히지 않게 평소엔 흐리게 두고,
+   그 줄에 다가가야 드러난다. */
+.cut-plan-dialogue-add {
+  margin-top: 2px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: rgba(255, 255, 255, 0.24);
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.cut-plan-table tr:hover .cut-plan-dialogue-add {
+  color: rgba(190, 215, 230, 0.7);
+}
+
 /* 긴 텍스트가 표를 밀어내지 않게 한다. */
 .cut-plan-table th,
 .cut-plan-table td {

@@ -1387,6 +1387,9 @@ export default function StoryboardView({ onEnterReview = null }) {
   // 가야만 이음새를 만들 수 있으면, 패널을 배열하는 단계에서 관계를
   // 결정할 수 없다.
   const [openPanelSeamId, setOpenPanelSeamId] = useState(null)
+  // 대사 칸을 연 컷. 대사가 없는 컷은 `+ 대사`만 보이고, 누르면 그 줄에만
+  // 입력칸이 열린다 — 모든 줄에 빈 칸을 달면 표가 두 배로 길어진다.
+  const [dialogueOpenCutId, setDialogueOpenCutId] = useState(null)
   const [pendingPanelEdit, setPendingPanelEdit] = useState(null)
   // Panels에서 구조를 바꾼 직후에는 되돌릴 길을 남긴다. 합치기·삭제는
   // 여러 컷과 이음새를 함께 바꾸므로 단순히 화면만 되돌려서는 안 된다.
@@ -3679,6 +3682,37 @@ export default function StoryboardView({ onEnterReview = null }) {
                                             placeholder="이 컷에서 무엇이 일어나는가"
                                             aria-label={`Cut ${item.order} content`}
                                           />
+                                          {/* 대사는 같은 칸 아래에 둔다. 열을 하나
+                                              더 만들면 `내용`이 그만큼 좁아지는데,
+                                              고정 열을 줄여 가며 확보한 폭이다.
+                                              값이 있을 때만 나타난다 — 대사 없는
+                                              컷까지 빈 줄을 달면 표가 두 배로
+                                              길어진다.
+                                              그림에는 안 들어간다: 프롬프트는
+                                              `content`만 읽는다. */}
+                                          {(item.dialogue || dialogueOpenCutId === item.id) && (
+                                            <input
+                                              type="text"
+                                              className="cut-plan-dialogue-input"
+                                              value={item.dialogue || ''}
+                                              onChange={(event) => updateCutPlanItem(item.id, { dialogue: event.target.value })}
+                                              onBlur={(event) => {
+                                                if (!event.target.value.trim()) return
+                                                logEdit({ level: 'element', target: item.id, action: 'dialogue' })
+                                              }}
+                                              placeholder="대사 (그림에는 안 들어감)"
+                                              aria-label={`Cut ${item.order} dialogue`}
+                                            />
+                                          )}
+                                          {!item.dialogue && dialogueOpenCutId !== item.id && (
+                                            <button
+                                              type="button"
+                                              className="cut-plan-dialogue-add"
+                                              onClick={() => setDialogueOpenCutId(item.id)}
+                                            >
+                                              + 대사
+                                            </button>
+                                          )}
                                         </div>
                                       </td>
                                       <td className="col-purpose">
