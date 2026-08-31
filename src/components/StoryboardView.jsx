@@ -107,11 +107,11 @@ const EMPTY_CAST = []
 // 첫 화면의 예시는 완성된 대본이 아니라, 사용자가 그대로 다듬어 씬·구간
 // 구조화에 넘길 수 있는 짧은 시놉시스다. 구조화 결과는 별도 확인 단계를
 // 거치므로, 예시를 눌렀다고 AI가 쓴 줄콘티가 곧바로 작업물로 들어가지 않는다.
-const EXAMPLE_SYNOPSIS = `유나와 도현은 학교 과제를 위해 건물 곳곳을 돌아다니며 짧은 영상을 촬영한 뒤, 촬영실로 돌아와 장비와 촬영본을 정리한다.
+const EXAMPLE_SYNOPSIS = `밤늦은 대학 물리학과 실험실에서 하린은 며칠째 어긋나는 측정 그래프를 반복해 살핀다.
 
-나가려던 두 사람은 촬영실 문이 밖에서 잠겨 있다는 사실을 발견한다.
+계산과 지우기를 거듭하던 하린은 오차로 보였던 간격이 일정한 규칙임을 발견하고, 새 식을 적어 확신한다.
 
-도움을 기다리며 촬영본을 확인하던 중, 두 사람은 촬영할 당시에는 알아차리지 못했던 뜻밖의 장면이 영상에 담겨 있다는 것을 발견한다.`
+하린은 노트를 들고 연구동 복도로 나가 불이 켜진 연구실 문 앞에서 잠시 망설이다 노크한다.`
 
 // 이름 뒤에 붙는 조사. `@하린이`, `@민준과`처럼 문장으로 쓴 것을 이름으로
 // 되돌리는 데 쓴다.
@@ -1578,6 +1578,7 @@ export default function StoryboardView({ onEnterReview = null }) {
   const panelToolRequest = useStore((s) => s.panelToolRequest)
   const clearPanelToolRequest = useStore((s) => s.clearPanelToolRequest)
   const addBeatAfter = useStore((s) => s.addBeatAfter)
+  const loadExampleScreenplay = useStore((s) => s.loadExampleScreenplay)
   const structureDraft = useStore((s) => s.structureDraft)
   const requestStoryStructure = useStore((s) => s.requestStoryStructure)
   const structurePending = useStore((s) => s.structurePending)
@@ -1642,6 +1643,9 @@ export default function StoryboardView({ onEnterReview = null }) {
   // 기본은 접힘. 컷 플랜은 컷 수와 순서를 정하는 화면인데 입력칸이 표 위에
   // 서 있으면 그것부터 채우게 된다. 필요할 때 열어서 쓴다.
   const [sceneNoteOpen, setSceneNoteOpen] = useState(false)
+  // 예시 시놉시스는 이미 준비한 mock 씬·구간과 패널을 그대로 보여 준다.
+  // 사용자가 한 글자라도 고치면 일반 시놉시스로 바뀌어 구조화 모델에 넘긴다.
+  const [usingExampleSynopsis, setUsingExampleSynopsis] = useState(false)
   const [narrativeRequest, setNarrativeRequest] = useState('')
   const narrativeRequestRecall = useRequestHistory({
     historyKey: 'narrative',
@@ -1729,7 +1733,8 @@ export default function StoryboardView({ onEnterReview = null }) {
   // 막아 분할 화면의 Story 단계에서 협업 기능이 사라졌다.
   const narrativeRailAvailable = !drawingWorkspaceOpen
     && cutStage !== 'panels'
-    && (isExpanded || (cutStage === 'script' && !showWriteScene))
+    && !showWriteScene
+    && (isExpanded || cutStage === 'script')
   const isCutPlanStage = cutStage === 'cutplan' && isExpanded && !drawingWorkspaceOpen && !showWriteScene
   const isPanelPreparationStage = cutStage === 'preparation' && isExpanded && !drawingWorkspaceOpen && !showWriteScene
   // Script 단계에서는 대본을 읽기 전용으로 두지 않고 그 자리에서 고친다.
@@ -2852,13 +2857,23 @@ export default function StoryboardView({ onEnterReview = null }) {
       )))
     }
     // 이 제안이 점검 지적에서 왔다면 그 지적도 해결로 옮겨 카드를 숨긴다.
-    if (pendingSuggestionFindingId) resolveNarrativeFinding(pendingSuggestionFindingId)
+    if (pendingSuggestionFindingId) {
+      resolveNarrativeFinding(pendingSuggestionFindingId)
+      // 점검에서 이 제안을 열었을 때 붙인 줄 강조도 함께 닫는다. 제안 카드만
+      // 사라지고 원래 줄이 계속 빨갛게 남으면 아직 고쳐야 하는 것으로 읽힌다.
+      setOpenFindingId(null)
+    }
     // 적용한 카드만 없앤다. 나머지는 문장으로 자리를 다시 찾으므로 계속
     // 판정할 수 있다 (S4).
     dismissNarrativeSuggestion(suggestion.id)
   }
 
   const handleUploadScript = () => {
+    if (usingExampleSynopsis) {
+      loadExampleScreenplay()
+      setIsEditingRaw(false)
+      return
+    }
     // 형식 규칙은 둘뿐이다. 씬 헤딩이 씬을 나누고, 빈 줄이 Beat를 나눈다.
     // 참가자가 별도 형식을 배울 필요가 없어야 한다 — 대사도 지문 구분도
     // 없이 일어나는 일을 그대로 적으면 된다.
@@ -2918,7 +2933,7 @@ export default function StoryboardView({ onEnterReview = null }) {
   // 문제인지만 말하고, 무엇으로 고칠지는 제안이 낸다.
   // 대본 점검과 컷 구성 점검은 같은 규칙을 쓰고 같은 모양으로 보인다.
   // 다른 것은 무엇을 보느냐뿐이다 — 대본의 줄이냐, 컷 플랜의 컷이냐.
-  const _renderNarrativeCheck = (stage) => {
+  const renderNarrativeCheck = (stage) => {
     const isScript = stage === 'script'
     // 다른 단계에서 받은 결과가 남아 있으면 지금 화면의 것이 아니다.
     const rawResult = narrativeCheck?.stage === stage ? narrativeCheck : null
@@ -3063,7 +3078,10 @@ export default function StoryboardView({ onEnterReview = null }) {
     // 고른 지적의 줄만 칠한다. 전부 칠하면 어느 표시가 어느 지적인지
     // 알 수 없어 표시가 있으나 마나다.
     const finding = narrativeCheck.findings
-      .find((item) => item.ruleId === openFindingId)
+      .find((item) => (
+        item.ruleId === openFindingId
+        && !resolvedNarrativeFindingIds.includes(narrativeFindingId(item))
+      ))
     if (!finding) return new Set()
     const map = []
     screenplay.forEach((element, index) => {
@@ -3356,7 +3374,10 @@ export default function StoryboardView({ onEnterReview = null }) {
                   className="screenplay-input"
                   placeholder={EXAMPLE_SYNOPSIS}
                   value={rawText}
-                  onChange={(e) => setRawText(e.target.value)}
+                  onChange={(e) => {
+                    setRawText(e.target.value)
+                    setUsingExampleSynopsis(false)
+                  }}
                 />
                 <div className="editor-actions">
                   {!hasScreenplay && (
@@ -3365,6 +3386,7 @@ export default function StoryboardView({ onEnterReview = null }) {
                       className="example-btn"
                       onClick={() => {
                         setRawText(EXAMPLE_SYNOPSIS)
+                        setUsingExampleSynopsis(true)
                       }}
                     >
                       예시 시놉시스 불러오기
@@ -3378,7 +3400,9 @@ export default function StoryboardView({ onEnterReview = null }) {
                     onClick={handleUploadScript}
                     disabled={!rawText.trim() || structurePending}
                   >
-                      {structurePending ? '나누는 중…' : '씬·구간으로 나누기'}
+                      {structurePending
+                        ? '나누는 중…'
+                        : usingExampleSynopsis ? '예시 씬·구간 불러오기' : '씬·구간으로 나누기'}
                   </button>
                 </div>
               </div>
@@ -3445,6 +3469,12 @@ export default function StoryboardView({ onEnterReview = null }) {
                               {element.filled && <span className="structure-filled-badge">AI 보강</span>}
                               {element.text}
                             </p>
+                            {/* 대사는 여기서 처음 확인된다. 나눈 결과를 보는
+                                자리에 없으면, 자기가 쓴 말이 사라진 줄 알고
+                                패널까지 가서야 알게 된다. */}
+                            {element.dialogue && (
+                              <q className="structure-draft-dialogue">{element.dialogue}</q>
+                            )}
                           </>
                         )}
                       </div>
@@ -5390,6 +5420,8 @@ export default function StoryboardView({ onEnterReview = null }) {
                           </button>
                         </div>
                       </div>
+
+                      {scriptLines.length > 0 && renderNarrativeCheck('script')}
 
                       {/* 요청을 넘긴 뒤 칸이 비므로, 무엇이 진행 중인지 여기서
                   보인다. 아니면 아무 일도 없는 것처럼 보인다. */}

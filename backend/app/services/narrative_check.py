@@ -8,8 +8,8 @@
 편집은 그려진 화면을 보고 판단하지만, 서사는 무엇을 그릴지가 정해지기
 전에 판단한다. 그래서 Decision Board가 아니라 컷 플랜에 붙는다.
 
-규칙은 directing_rules.py의 narrative 4개를 그대로 쓴다. 진단에서 쓰는
-기준과 여기서 쓰는 기준이 다르면 같은 문제에 다른 잣대가 적용된다.
+시놉시스 점검은 이야기의 진행·정보 공개·인과만 본다. 문장이 바로 그림으로
+옮겨지는지는 이 단계의 기준이 아니다.
 
 이야기를 만들지 않는다. 새 인물·새 장소·새 사건을 제안하지 않는다.
 무엇을 쓸지는 감독이 정하고, 서사가 보는 것은 쓰인 것이 단계로 읽히는가다.
@@ -111,7 +111,7 @@ camera-information-selection의 후보·제외 조건은 그림이 있을 때를
 cut_ids에는 지적이 걸린 컷의 id를 씁니다. line_indexes는 비워 두세요."""
 
 
-SCRIPT_INTRO = """당신은 SceneLens의 서사 담당입니다. 대본이 사건의 단계로 서 있는지
+SCRIPT_INTRO = """당신은 SceneLens의 서사 담당입니다. 시놉시스가 사건의 단계로 서 있는지
 검토하세요.
 
 아직 컷으로 나누기 전입니다. 대본의 줄만 보고 판단합니다. 컷 이야기를
@@ -150,9 +150,6 @@ insert, delete 같은 해결책이나 조작을 제시하지 마세요. 감독�
 쉬운 말로 쓰세요. 감독이 읽는 것이지 이론서가 아닙니다.
   ✓ "2번과 3번 컷이 같은 상태를 반복해요"
   ✗ "연속된 컷에서 서사적 국면 전환이 부재하여 정체가 발생합니다"
-  ✓ "'불안해한다'는 그릴 수가 없어요"
-  ✗ "인물의 내면 상태가 시각적 근거 없이 서술되어 있습니다"
-
 **문장 안에 번호를 쓰지 마세요.** 어느 줄인지는 화면이 표시합니다.
 번호를 쓰면 화면의 표시와 어긋나 오히려 헷갈립니다.
   ✗ "4번과 5번의 움직임이 앞선 반응과 이어지지 않아요"
@@ -217,7 +214,13 @@ async def check_narrative(request: NarrativeCheckRequest) -> NarrativeCheckRespo
             )
         ]
     else:
-        rules = list(LENS_RULES["narrative"])
+        # 시놉시스는 사건과 정보의 뼈대를 잡는 단계다. 행동을 곧바로
+        # 그림으로 옮길 수 있는지는 컷을 정한 뒤 다뤄야 하므로 여기서는
+        # `narrative-action-visibility`를 점검 대상으로 삼지 않는다.
+        rules = [
+            rule for rule in LENS_RULES["narrative"]
+            if rule.id != "narrative-action-visibility"
+        ]
 
     client = AsyncOpenAI(api_key=api_key)
     response = await client.chat.completions.create(
