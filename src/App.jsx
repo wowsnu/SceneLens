@@ -11,6 +11,11 @@ import {
   participantId, setParticipantId,
 } from './store/studyLog'
 import { runStudyExportWithAlert } from './store/studyExport'
+import {
+  clearCheckpoints,
+  pauseCheckpointing,
+  SCENELENS_CHECKPOINT_KEY,
+} from './store/recoveryCheckpoint'
 import './App.css'
 
 function App() {
@@ -112,7 +117,11 @@ function App() {
             : '⚠️ 이 세션은 한 번도 내보내지 않았습니다.\n지우면 기록이 사라집니다.\n\n')
           + `수정 ${edits.total}건, 생성 ${regeneration.total}건의 기록을 지웁니다. 계속할까요?`,
         )
-        if (ok) { resetLog(); setStudyPhase(phase()); setUploaded(false) }
+        if (ok) {
+          resetLog()
+          pauseCheckpointing()
+          void clearCheckpoints(SCENELENS_CHECKPOINT_KEY).finally(() => window.location.reload())
+        }
       }
     }
     window.addEventListener('keydown', onKey)
@@ -333,8 +342,8 @@ function App() {
               + '서버 저장은 확인됐습니다. 계속할까요?',
             )) return
             resetLog()
-            setStudyPhase(phase())
-            setUploaded(false)
+            pauseCheckpointing()
+            void clearCheckpoints(SCENELENS_CHECKPOINT_KEY).finally(() => window.location.reload())
           }}>
             다음 참가자 · 조건 준비
           </button>
