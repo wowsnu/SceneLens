@@ -3784,8 +3784,15 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
   }
 
   const snapshotShots = viewerSnapshot?.shots || []
-  const viewerScopeFrom = scopeMode === 'range' ? scopeFrom + 1 : scopedShotIndex + 1
-  const viewerScopeTo = scopeMode === 'range' ? scopeTo + 1 : scopedShotIndex + 1
+  // 관객은 이야기의 중간에서 시작하지 않는다. 첫 패널부터, 현재 연속으로
+  // 생성되어 있는 마지막 패널까지 읽어야 앞에서 준 정보·관계·긴장을
+  // 가지고 다음 컷을 해석할 수 있다. 이 범위는 연출 검토의 선택 범위와
+  // 공유하지 않는다.
+  const viewerScopeFrom = 1
+  const firstMissingViewerShot = snapshotShots.findIndex((shot) => !shot.image)
+  const viewerScopeTo = firstMissingViewerShot === -1
+    ? snapshotShots.length
+    : firstMissingViewerShot
   const selectedSnapshotShots = snapshotShots.filter((shot) => (
     shot.order >= viewerScopeFrom && shot.order <= viewerScopeTo
   ))
@@ -3803,7 +3810,15 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
       // 이 컷에서 각 관객이 읽은 문장. 조건이 여럿이면 모두 모은다.
       const lines = readings.flatMap((entry) => {
         const step = (entry.reading?.steps || []).find((item) => item.panel_order === order)
-        return step?.immediate_reading ? [step.immediate_reading] : []
+        if (!step) return []
+        // 즉시 보이는 사실만 보내면 “문을 본다”처럼 표면적인 읽힘만
+        // 견주게 된다. 관객이 이 컷까지 세운 가설과 남긴 질문도 함께 보내야
+        // 의도와 다른 긴장·관계·정보의 방향이 대조 대상이 된다.
+        return [
+          step.immediate_reading && `즉시 읽힘: ${step.immediate_reading}`,
+          step.current_hypothesis && `여기까지의 생각: ${step.current_hypothesis}`,
+          step.open_question && `남은 질문: ${step.open_question}`,
+        ].filter(Boolean)
       })
       return {
         panelOrder: order,
@@ -4803,7 +4818,10 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
       <section className="reading-review-sequence" aria-label="스토리보드와 읽기 트랙">
         <div className="reading-review-sequence-controls" aria-label="스토리보드 이동">
           <span>스토리보드</span>
-          {scopeSummary}
+          <div className="review-bar-scope viewer-fixed-scope">
+            <span>관객 검토</span>
+            <strong>처음부터 S{viewerScopeTo}까지 · {selectedSnapshotShots.length}컷</strong>
+          </div>
           {/* 조건은 실행 버튼과 같은 흐름에 두되, 평소에는 한 단계 접어
               두어 실행 바가 버튼 목록으로 늘어나지 않게 한다. */}
           <details
@@ -4863,11 +4881,7 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
             shots={shots}
             selectedShotIndex={(viewerPanelOrder ?? viewerScopeFrom) - 1}
             highlightRange={{ from: viewerScopeFrom - 1, to: viewerScopeTo - 1 }}
-            onSelectShot={(index, event) => {
-              if (scopeSelection || event?.shiftKey) {
-                selectScopeShot(index, event)
-                return
-              }
+            onSelectShot={(index) => {
               // 컷을 누른 것은 "이 자리의 반응을 보겠다"이다. 고른 자리는
               // 놓는다 — 다른 자리를 보면서 옛것이 아래에 남아 있으면
               // 무엇을 보고 있는지 어긋난다.
