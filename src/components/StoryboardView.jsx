@@ -3364,10 +3364,10 @@ export default function StoryboardView({ onEnterReview = null }) {
                     말해 둔다. */}
                 </div>
                 <label className="scene-intention-field">
-                  <span>Scene intention <em>optional</em></span>
+                  <span>관객에게 남기고 싶은 변화 <em>선택</em></span>
                   <textarea
                     className="scene-intention-input"
-                    placeholder="예: 발견의 순간은 조용하지만 되돌릴 수 없게 느껴진다."
+                    placeholder="예: 처음에는 평범한 과제 촬영처럼 보이지만, 촬영본을 확인한 뒤에는 두 사람이 낯선 일을 마주했다는 불안을 남긴다."
                     value={rawSceneIntention}
                     onChange={(event) => setRawSceneIntention(event.target.value)}
                     rows={3}
@@ -5401,7 +5401,7 @@ export default function StoryboardView({ onEnterReview = null }) {
                   Beat 라벨과 상단 단계 표시에 이미 드러나 있다. */}
                       {sceneIntention && (
                         <section className="narrative-rail-context">
-                          <span>Scene intention</span>
+                          <span>관객에게 남길 변화</span>
                           <p>{sceneIntention}</p>
                         </section>
                       )}
