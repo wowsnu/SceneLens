@@ -3509,7 +3509,7 @@ export default function StoryboardView({ onEnterReview = null }) {
               </section>
             )}
 
-            {cutPlan.length > 0 && cutStage === 'cutplan' && isExpanded && !drawingWorkspaceOpen && (
+            {cutPlan.length > 0 && cutStage === 'cutplan' && isExpanded && !drawingWorkspaceOpen && !showWriteScene && (
               <section className="cut-plan-review" aria-label="Cut plan">
                 {/* 제목 블록을 없앴다. 상단 단계 nav가 이미 `컷 플랜`을
                   가리키고 있어 같은 말이 두 번 나왔다. 표만 남긴다.

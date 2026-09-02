@@ -4141,6 +4141,15 @@ const useStore = create((set, get) => ({
       narrativeCheck: null,
       narrativeCheckStale: false,
       activeBeat: 0,
+      // 대본이 새로 나뉘었으면 옛 컷 플랜은 무효다 — 컷은 대본에서
+      // 파생된다. 비우고 대본 단계로 되돌린다. 이걸 두면 새 대본 위에
+      // 어긋난 옛 표가 남고, cutStage가 'cutplan'에 머물러 시놉시스
+      // 편집칸과 컷 표가 겹쳐 보인다.
+      cutPlan: [],
+      cutPlanAccepted: false,
+      cutPlanSkipped: false,
+      panelPreparationComplete: false,
+      cutPlanStageOverride: null,
     }
   }),
   dismissNarrativeSuggestion: (suggestionId) => set((state) => {
