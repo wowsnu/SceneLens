@@ -85,6 +85,43 @@ export default function ReadingTracks({
     return map
   }, [readings])
 
+  // 칸 위에 얹는 이벤트 배지. 트랙을 한 칸씩 읽지 않아도 "어디서 손봐야
+  // 하나"가 스캔만으로 보이게 한다. 우선순위 순으로 한 칸에 하나만 —
+  // 배지가 겹치면 스캔이 어려워진다.
+  //   ⚡ 노린 것과 다르게 읽힘 (intentCheck verdict → findings.kind='intent')
+  //   🔀 이해가 뒤집힌 곳 (turning_point_panel_order)
+  //   🌗 해석이 갈린 곳 (interpretive_branches.starts_at_panel)
+  // open_question은 배지로 올리지 않는다 — 관객이 매 컷 무언가 궁금해하는
+  // 건 자연스러워, 전 칸이 표시되면 신호 가치가 사라진다. (질문은 칸을
+  // 눌러 Workbench에서 본다.)
+  const eventByCondition = useMemo(() => {
+    const map = new Map()
+    readings.forEach((entry) => {
+      const reading = entry.reading || {}
+      const events = new Map()
+      const put = (order, emoji, label, tone = 'neutral') => {
+        if (!Number.isInteger(order) || events.has(order)) return
+        events.set(order, { emoji, label, tone })
+      }
+      // 의도 어긋남이 가장 무겁다. 먼저 얹는다.
+      findings
+        .filter((finding) => finding.kind === 'intent' && finding.conditions?.includes(entry.id))
+        .forEach((finding) => {
+          const order = finding.panelOrders?.[0]
+          const verdict = finding.intent || {}
+          put(order, '⚡', `노린 것과 다르게 읽혔습니다 — "${verdict.intended}" → "${verdict.read_as}"`, 'alert')
+        })
+      if (Number.isInteger(reading.turning_point_panel_order)) {
+        put(reading.turning_point_panel_order, '🔀', '여기서 관객의 이해가 뒤집혔습니다')
+      }
+      ;(reading.interpretive_branches || []).forEach((branch) => {
+        put(branch.starts_at_panel, '🌗', '여기서 관객의 해석이 갈립니다')
+      })
+      map.set(entry.id, events)
+    })
+    return map
+  }, [readings, findings])
+
   // 이 칸에 걸린 것이 있는가. 별도 점이 아니라 그 칸을 강조하는 것으로
   // 표시하므로, 컷+조건으로 바로 찾을 수 있어야 한다.
   const findingIndex = useMemo(() => {
@@ -171,6 +208,7 @@ export default function ReadingTracks({
       {conditions.map((condition, order) => {
         const on = activeConditions.has(condition.id)
         const steps = stepsByCondition.get(condition.id) || new Map()
+        const events = eventByCondition.get(condition.id) || new Map()
         return (
           <div
             key={condition.id}
@@ -218,6 +256,7 @@ export default function ReadingTracks({
                 // 있어야 "여기서 갈렸다"가 문장과 함께 읽힌다.
                 const finding = findingAt(order, condition.id)
                 const selected = finding && finding.id === selectedFindingId
+                const event = events.get(order)
                 if (!step) {
                   return <span key={order} className="reading-cell empty" style={{ '--pos': index }} />
                 }
@@ -266,6 +305,12 @@ export default function ReadingTracks({
                         className="reading-cell-mark"
                         aria-hidden="true"
                       />
+                    )}
+                    {event && (
+                      <span className={`reading-cell-event tone-${event.tone}`} title={event.label}>
+                        <span aria-hidden="true">{event.emoji}</span>
+                        <span className="reading-cell-event-sr">{event.label}</span>
+                      </span>
                     )}
                   </button>
                 )

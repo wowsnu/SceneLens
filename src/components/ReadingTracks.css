@@ -267,6 +267,43 @@
   color: rgba(248, 250, 252, 0.95);
 }
 
+/* 칸 위에 얹는 이벤트 배지. 읽지 않고 스캔만 해도 "여기서 뭔가
+   있었다"가 보이게 — 텍스트 위 오른쪽 모서리에 작은 이모지 하나. */
+.reading-cell-event {
+  position: absolute;
+  top: -8px;
+  right: -6px;
+  width: 18px;
+  height: 18px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: #1a1d24;
+  border: 1px solid color-mix(in srgb, var(--reader), transparent 55%);
+  font-size: 10px;
+  line-height: 1;
+  pointer-events: none;
+}
+/* 의도 어긋남은 손봐야 할 자리다. 더 크고 눈에 걸리게. */
+.reading-cell-event.tone-alert {
+  top: -9px;
+  right: -8px;
+  width: 21px;
+  height: 21px;
+  background: #3a2a12;
+  border-color: rgba(251, 191, 36, 0.75);
+  box-shadow: 0 0 0 3px rgba(251, 191, 36, 0.14);
+  font-size: 11px;
+}
+.reading-cell-event-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
 .reading-cell:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 1px;
