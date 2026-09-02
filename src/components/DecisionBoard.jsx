@@ -5053,11 +5053,6 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
         <strong>{activeStage?.label || 'S1'} · {activeStage?.time || '시간 미정'}</strong> 시간 상태를 보고 있습니다.
         인물과 공간의 값은 이 상태부터 적용됩니다.
       </p>
-      {panelStylePreset === 'rough' && (
-        <p className="scene-basis-stage-context">
-          러프 컷은 공간 기준 없이 진행합니다. 두 인물이 함께 나오는 컷에는 인물 키를 사용할 수 있습니다.
-        </p>
-      )}
       {stageChanges.length > 0 && (
         <ul className="scene-basis-stage-changes" aria-label="이 시간 상태에서 달라진 기준">
           {stageChanges.map((change) => (
