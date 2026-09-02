@@ -289,6 +289,7 @@ export default function ReadingTracks({
                   <button
                     key={order}
                     type="button"
+                    id={finding ? `viewer-finding-${finding.id}` : undefined}
                     data-finding-id={finding?.id}
                     data-cell-order={order}
                     className={`reading-cell ${isMoment ? 'moment' : 'quiet'} ${finding ? `flagged ${finding.kind}` : ''} ${selected ? 'selected' : ''}`}

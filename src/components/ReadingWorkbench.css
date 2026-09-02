@@ -215,7 +215,7 @@
 
 .reading-intent-gap dl > div {
   display: grid;
-  grid-template-columns: 46px minmax(0, 1fr);
+  grid-template-columns: max-content minmax(0, 1fr);
   gap: 8px;
   align-items: baseline;
 }
@@ -225,6 +225,7 @@
   font-size: 9px;
   font-weight: 800;
   letter-spacing: 0.05em;
+  white-space: nowrap;
 }
 
 .reading-intent-gap dd {
@@ -247,6 +248,34 @@
   color: rgba(226, 232, 240, 0.56);
   font-size: 10.5px;
   line-height: 1.5;
+}
+
+/* 의도와 다른 읽힘은 고쳐야 할 오류가 아니라 감독의 선택지다. 두 행동만
+   둔다: 이 여지를 채택하거나, 트랙의 근거 자리로 돌아가 다시 확인한다. */
+.reading-intent-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.reading-intent-actions button {
+  padding: 5px 8px;
+  border: 1px solid rgba(251, 191, 36, 0.28);
+  border-radius: 5px;
+  background: rgba(245, 158, 11, 0.06);
+  color: rgba(254, 243, 199, 0.82);
+  font: inherit;
+  font-size: 10px;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.reading-intent-actions button:hover,
+.reading-intent-actions button.active {
+  border-color: rgba(251, 191, 36, 0.62);
+  background: rgba(245, 158, 11, 0.16);
+  color: #fef3c7;
 }
 
 /* --- 수정 작업면 ------------------------------------------------------ */

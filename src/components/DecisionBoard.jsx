@@ -1938,6 +1938,8 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
   const viewerFindingHandoff = useStore((s) => s.viewerFindingHandoff)
   const setViewerFindingHandoff = useStore((s) => s.setViewerFindingHandoff)
   const clearViewerFindingHandoff = useStore((s) => s.clearViewerFindingHandoff)
+  const viewerDecisions = useStore((s) => s.viewerDecisions)
+  const saveViewerDecision = useStore((s) => s.saveViewerDecision)
   const panelDraftImages = useStore((s) => s.panelDraftImages)
   const panelDraftVersions = useStore((s) => s.panelDraftVersions)
   const panelStylePreset = useStore((s) => s.panelStylePreset)
@@ -3544,7 +3546,7 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
   // 트랙에서 관객 쪽 마커를 눌렀을 때. **검토를 돌리지 않는다** —
   // 고르기만 하고, 어느 렌즈로 볼지는 감독이 Inspector에서 정한다.
   // 연출 쪽의 `+ 렌즈 더하기`와 같은 방식이다 (문서 4장).
-  const selectReadingFinding = (findingId) => {
+  const selectReadingFinding = (findingId, { force = false } = {}) => {
     const finding = readingFindings.find((entry) => entry.id === findingId)
     if (!finding) return
     const orders = finding.panelOrders || []
@@ -3575,9 +3577,24 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
     // 이걸 보는 중에는 렌즈 Issue 선택을 놓는다 — 아래 Inspector가
     // 무엇을 가리키는지 하나여야 한다.
     setSelectedIssueId(null)
-    setSelectedReadingFindingId(
-      findingId === selectedReadingFindingId ? null : findingId,
-    )
+    setSelectedReadingFindingId(force || findingId !== selectedReadingFindingId ? findingId : null)
+  }
+
+  const keepIntentReading = (findingId) => {
+    if (!findingId) return
+    saveViewerDecision(findingId, { outcome: 'keep' })
+    logScaffold({ feature: 'viewer', action: 'keep-intent-reading', finding: findingId })
+  }
+
+  const reviewIntentReading = (findingId) => {
+    const finding = readingFindings.find((entry) => entry.id === findingId)
+    if (!finding) return
+    // 관객 화면에서 다시 읽는 버튼이 아니다. 같은 issue를 연출 검토의
+    // 관객 마커로 넘겨, 이 자리를 세 렌즈가 보게 하는 진입이다.
+    selectReadingFinding(findingId, { force: true })
+    setReviewOpen(false)
+    setReviewMode('multi')
+    logScaffold({ feature: 'viewer', action: 'route-intent-reading-to-directing', finding: findingId })
   }
 
   const checkSelectedIssueLens = async (lens) => {
@@ -4997,6 +5014,9 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
           range={{ from: viewerScopeFrom - 1, to: viewerScopeTo - 1 }}
           intentStatus={intentCheckStatus}
           intentVerdict={selectedIntentVerdict}
+          intentDecision={selectedReadingFinding ? viewerDecisions[selectedReadingFinding.id] : null}
+          onKeepIntentReading={keepIntentReading}
+          onReviewIntentReading={reviewIntentReading}
           /* 앞뒤 컷으로 걸어간다 — 그림을 눌러서도, 화살표로도.
              수정 작업면을 걷어내면서 이 배선이 함께 빠져 있었다. */
           onWalkTo={({ condition, order }) => selectReadingStep({

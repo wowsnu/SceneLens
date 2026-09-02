@@ -49,6 +49,11 @@ export default function ReadingWorkbench({
   // "의도대로"라고 단정하면, 아직 판정하지 않은 컷까지 통과처럼 보인다.
   intentStatus = 'idle',
   intentVerdict = null,
+  // 의도와 다른 읽힘은 오류로 자동 처리하지 않는다. 감독이 남기거나,
+  // 트랙의 같은 issue를 다시 열어 근거를 살필 수 있다.
+  intentDecision = null,
+  onKeepIntentReading,
+  onReviewIntentReading,
 }) {
   // 칸을 고르면 이 자리가 포커스를 받는다. 그래야 곧바로 화살표로 걸을
   // 수 있다 — 한 번 더 눌러 포커스를 주게 하면 키가 있는 줄도 모른다.
@@ -247,6 +252,22 @@ export default function ReadingWorkbench({
                   {finding.why_it_matters && (
                     <p className="reading-intent-cause">{finding.why_it_matters}</p>
                   )}
+                  <div className="reading-intent-actions">
+                    <button
+                      type="button"
+                      className={intentDecision?.outcome === 'keep' ? 'active' : ''}
+                      onClick={() => onKeepIntentReading?.(finding.id)}
+                      aria-pressed={intentDecision?.outcome === 'keep'}
+                    >
+                      {intentDecision?.outcome === 'keep' ? '의도대로 유지함' : '남기기'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => onReviewIntentReading?.(finding.id)}
+                    >
+                      다시 보기
+                    </button>
+                  </div>
                 </section>
               )}
 
