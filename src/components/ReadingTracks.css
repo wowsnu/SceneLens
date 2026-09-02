@@ -124,6 +124,7 @@
 }
 
 .reading-track-label:hover { opacity: 1; }
+.reading-track-label.is-fixed { cursor: default; }
 
 .reading-track-label:focus-visible {
   outline: 2px solid var(--accent);

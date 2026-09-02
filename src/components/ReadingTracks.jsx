@@ -175,15 +175,21 @@ export default function ReadingTracks({
             className={`reading-track ${on ? '' : 'muted'}`}
             style={{ '--reader': `var(--reader-${order % 4})` }}
           >
-            <button
-              type="button"
-              className="reading-track-label"
-              onClick={() => onToggleCondition?.(condition.id)}
-              aria-pressed={on}
-              title={on ? `${condition.label} 끄기` : `${condition.label} 켜기`}
-            >
-              {condition.label}
-            </button>
+            {onToggleCondition ? (
+              <button
+                type="button"
+                className="reading-track-label"
+                onClick={() => onToggleCondition(condition.id)}
+                aria-pressed={on}
+                title={on ? `${condition.label} 끄기` : `${condition.label} 켜기`}
+              >
+                {condition.label}
+              </button>
+            ) : (
+              <div className="reading-track-label is-fixed">
+                <span aria-hidden="true">🧑</span> {condition.label}
+              </div>
+            )}
 
             {/* 이 줄이 곧 이 관객의 **순차 읽기**다. 컷마다 칸이 하나이고,
                 가로로 읽으면 생각이 어떻게 바뀌었는지가 보인다. 세로로

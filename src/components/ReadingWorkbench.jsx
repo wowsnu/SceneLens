@@ -142,7 +142,7 @@ export default function ReadingWorkbench({
       <>
           <header className="reading-workbench-bar">
             <strong>S{step.order}</strong>
-            <span>{labelOf(step.condition)}의 읽기</span>
+            <span>🧑 {labelOf(step.condition)}의 생각</span>
             {/* 어긋난 자리인지 아닌지를 여기서 먼저 말한다. 침묵을 "문제
                 없음"으로 읽지 않게 한다 (`design_goal.md` DG1 P2). */}
             {finding ? (

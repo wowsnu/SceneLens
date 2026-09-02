@@ -26,8 +26,8 @@ export default function AudienceAfterReading({ readings = [], conditions = [] })
     <section className="audience-after-reading" aria-label="종료 후 회상">
       <header className="audience-after-reading-head">
         <div>
-          <span>관람 후 남은 것</span>
-          <strong>다 보고 난 뒤 무엇이 남았는가</strong>
+          <span>🧑 시청 후 남은 것</span>
+          <strong>처음 본 사람에게 마지막까지 남은 것</strong>
         </div>
         <p>순차 읽기가 끝난 뒤에도 남은 사건, 단서와 질문입니다.</p>
       </header>
@@ -44,7 +44,7 @@ export default function AudienceAfterReading({ readings = [], conditions = [] })
               style={{ '--reader': `var(--reader-${readerIndex % 4})` }}
             >
               <header>
-                <span aria-hidden="true">{readerIndex + 1}</span>
+                <span aria-hidden="true">🧑</span>
                 <strong>{conditionLabel(entry?.condition_id)}</strong>
               </header>
 

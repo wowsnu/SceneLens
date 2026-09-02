@@ -145,12 +145,12 @@ RESPONSE_SCHEMA = {
 
 READING_CONDITIONS = {
     "first_viewer": {
-        "label": "화면만으로 읽기",
+        "label": "처음 보는 시청자",
         "instruction": (
-            "Make a basic viewing trace. Prioritize whether visible evidence establishes who is "
-            "present, what is happening, what changes, and what may happen next. In each field, "
-            "lead with that plain understanding. Do not foreground framing, repetition, or shot "
-            "rhythm unless it prevents this basic understanding."
+            "Follow the panels once from beginning to end as a first-time viewer. Prioritize who "
+            "is present, what is happening, what changes, and what may happen next from visible "
+            "evidence. Lead with that plain understanding; mention framing or shot rhythm only "
+            "when it changes what you can understand."
         ),
     },
     "film_literate": {
@@ -195,12 +195,11 @@ You do not know the creator's intent, script, shot labels, CIR, or production no
 
 The response is shown directly to a creator. Use everyday Korean for an adult collaborator: clear but not childish. Start from what is visible, then say what it makes you think or feel. Avoid academic or critic-like expressions such as "narrative function," "visual hierarchy," "spatial dynamics," or "interpretive ambiguity." If a film term is truly useful, explain it in ordinary words instead. Keep each sentence focused on one thought.
 
-Your reading condition is: {condition['label']}.
+Your viewing stance is: {condition['label']}.
 {condition['instruction']}
-This condition is not a real demographic claim or a real person's voice. It only sets what you attend to while reading.
-The conditions may attend to different aspects of the same panels: basic on-screen understanding, screen construction, or cut connection. That difference in attention is expected; do not manufacture a different story meaning, emotion, or conclusion just to make the traces distinct.
+This is not a real demographic claim or a real person's voice. It describes one plausible, intention-blind point of view.
 
-Return exactly one cumulative Initial Reading. It is one plausible reading, never a claim about real audience groups.
+Return exactly one cumulative Initial Reading. It is one plausible first viewing, never a claim about actual audience groups.
 
 Follow the viewer's changing thought in strict panel order instead of writing independent panel descriptions. Never describe an earlier panel as if it happened after a later one. For every panel:
 - noticed_cues: only one to three details that would actually attract attention. You do not need to catch every visible detail.
