@@ -2001,6 +2001,25 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
       setSingleScopeShotId(shots[scopedShotIndex]?.id || null)
     }
   }, [shots, scopedShotIndex, singleScopeShotId])
+
+  // 연출 검토의 기본 범위는 '그림이 그려진 컷 전체'다. 컷 사이의 연결을
+  // 보는 것이 연출 검토의 일이므로, 한 컷만 놓고 시작하면 흐름을 볼 수
+  // 없다. 이미지가 있는 컷이 둘 이상일 때만 range로 연다 — 하나뿐이면
+  // 범위가 곧 그 한 컷이라 single과 다를 것이 없다.
+  const appliedDefaultRangeScopeFor = useRef(null)
+  useEffect(() => {
+    if (reviewMode !== 'multi') return
+    if (appliedDefaultRangeScopeFor.current === scene?.id) return
+    const firstMissing = shots.findIndex((shot) => (
+      !(panelDraftImages[shot.id] || shot.image)
+    ))
+    const generatedEnd = firstMissing === -1 ? shots.length - 1 : firstMissing - 1
+    if (generatedEnd < 1) return
+    appliedDefaultRangeScopeFor.current = scene?.id
+    setScopeMode('range')
+    setRangeStart(0)
+    setRangeEnd(generatedEnd)
+  }, [shots, panelDraftImages, reviewMode, scene?.id])
   // 구간은 **이 씬 안에서만** 나뉜다. shots는 브랜치 전체(여러 씬)라, 그대로
   // 넘기면 `S1–S19`처럼 씬을 넘어가는 구간이 나온다 — sceneState는 한 씬의
   // 기준이므로 범위가 어긋난다.
