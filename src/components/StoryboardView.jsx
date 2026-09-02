@@ -104,6 +104,10 @@ const layerOfCheckFinding = (finding) => {
 const EMPTY_SHOTS = []
 const EMPTY_CAST = []
 
+// 콘티 컷 카드의 '이미지가 정할 것'(책임 범위 선언, DG1 P3) 섹션을 화면에서
+// 뺐다. 상태·핸들러는 그대로 살아 있고 이 플래그만 true로 되돌리면 다시 보인다.
+const SHOW_IMAGE_RESPONSIBILITY = false
+
 // 첫 화면의 예시는 완성된 대본이 아니라, 사용자가 그대로 다듬어 씬·구간
 // 구조화에 넘길 수 있는 짧은 시놉시스다. 구조화 결과는 별도 확인 단계를
 // 거치므로, 예시를 눌렀다고 AI가 쓴 줄콘티가 곧바로 작업물로 들어가지 않는다.
@@ -4676,7 +4680,7 @@ export default function StoryboardView({ onEnterReview = null }) {
                             판정하지 않은 것이 남아 있으면 그 수를 밖에
                             보여 준다 — 접힌 채로 잊히면 AI 가정이 그대로
                             굳는다 (DG1 P2). */}
-                          {shotCut && (() => {
+                          {SHOW_IMAGE_RESPONSIBILITY && shotCut && (() => {
                             const scoped = (decl) => (
                               decl.scope === 'scene' || decl.cutId === shotCut.id
                             )
