@@ -148,6 +148,20 @@ const VIEWER_FOCUS_PRESETS = [
   },
 ]
 
+// 감독이 대본 단계에서 적은 "관객에게 남기고 싶은 변화"가 있으면, 그것을
+// 초점 프리셋으로 만들어 맨 앞에 둔다. 초점은 화면을 보는 기준일 뿐이므로
+// 의도 자체를 관객에게 알려 주지는 않고, "이런 인상이 화면만으로 전해지는지"
+// 확인하는 관찰 방향으로만 쓴다.
+const intentFocusPreset = (sceneIntention = '') => {
+  const trimmed = sceneIntention.trim()
+  if (!trimmed) return null
+  return {
+    id: 'focus_intent',
+    label: '남기려던 인상이 닿는지',
+    instruction: `이 장면이 관객에게 "${trimmed}"는 인상을 남기려 합니다. 감독의 설명 없이 화면만 보고도 그 인상이 만들어지는지, 어느 컷에서 흐려지거나 다른 방향으로 읽히는지 따라가세요.`,
+  }
+}
+
 // 스토어에는 드로잉 data URL뿐 아니라 public 경로의 테스트 이미지도 들어갈 수
 // 있다. 관객 읽기 API에는 화면 픽셀만 보낼 수 있으므로, 경로는 호출 직전에
 // data URL로 읽어 바꾼다. 이 과정에서 컷 라벨·CIR·의도는 전혀 보내지 않는다.
@@ -1943,6 +1957,11 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
   const panelStylePreset = useStore((s) => s.panelStylePreset)
   // 컷 목적이 비어 있어도 장면 의도와는 견줄 수 있다.
   const sceneIntention = useStore((s) => s.sceneIntention)
+  // 초점 프리셋. 감독이 남기려던 인상을 적어 뒀으면 그것을 첫 프리셋으로.
+  const viewerFocusPresets = useMemo(() => {
+    const intentPreset = intentFocusPreset(sceneIntention)
+    return intentPreset ? [intentPreset, ...VIEWER_FOCUS_PRESETS] : VIEWER_FOCUS_PRESETS
+  }, [sceneIntention])
   // 러프에서는 같은 러프 밀도로 만든 인물 키만 보인다. 디테일·실사 기준을
   // 섞으면 러프가 완성본처럼 보이고, 스타일이 없는 예시 이미지는 어느
   // 밀도인지 알 수 없으므로 숨긴다.
@@ -3971,7 +3990,7 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
   }
 
   const runViewerFocus = () => {
-    const preset = VIEWER_FOCUS_PRESETS.find((entry) => entry.id === selectedViewerFocusId)
+    const preset = viewerFocusPresets.find((entry) => entry.id === selectedViewerFocusId)
     const customInstruction = viewerCustomFocusDraft.trim()
     if (!preset && !customInstruction) return
 
@@ -3981,6 +4000,26 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
       instruction: customInstruction,
     }
     void runViewerReflection(focusCondition)
+  }
+
+  // 추가한 초점 하나를 지운다. 트랙 행과 그 읽기 결과, 대조까지 함께
+  // 내린다 — 행만 지우고 결과가 남으면 지운 것으로 안 읽힌다.
+  // 기본 읽기(first_viewer)는 지울 수 없다.
+  const removeFocusCondition = (conditionId) => {
+    if (conditionId === 'first_viewer') return
+    setViewerFocusConditions((current) => current.filter((entry) => entry.id !== conditionId))
+    setViewerReport((current) => {
+      if (!current) return current
+      const nextReadings = (current.readings || []).filter((entry) => entry.condition_id !== conditionId)
+      return { ...current, readings: nextReadings }
+    })
+    setActiveReadingTracks((current) => {
+      const next = new Set(current)
+      next.delete(conditionId)
+      next.delete(`off:${conditionId}`)
+      return next
+    })
+    if (selectedViewerFocusId === conditionId) setSelectedViewerFocusId('')
   }
 
   const _routeViewerFinding = (route, panelOrderOrOrders, finding = {}) => {
@@ -4806,6 +4845,7 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
             hasRead={Boolean(viewerReport)}
             scrollRef={readingSequenceScrollRef}
             onSelectStep={selectReadingStep}
+            onRemoveCondition={removeFocusCondition}
           />
         </div>
       </section>
@@ -4838,7 +4878,7 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
                 <small>다른 사람을 만드는 것이 아니라, 같은 첫 시청자의 관찰 초점을 바꿉니다.</small>
               </header>
               <div className="viewer-focus-presets">
-                {VIEWER_FOCUS_PRESETS.map((preset) => (
+                {viewerFocusPresets.map((preset) => (
                   <button
                     key={preset.id}
                     type="button"

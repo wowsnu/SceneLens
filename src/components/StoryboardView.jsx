@@ -2895,6 +2895,9 @@ export default function StoryboardView({ onEnterReview = null }) {
 
   const handleUploadScript = () => {
     if (usingExampleSynopsis) {
+      // 예시 대본을 불러도 감독이 적은 '관객에게 남기고 싶은 변화'는
+      // 살린다 — 관객 검토의 의도 대조·초점이 이것을 쓴다.
+      if (rawSceneIntention.trim()) setSceneIntention(rawSceneIntention.trim())
       loadExampleScreenplay()
       setIsEditingRaw(false)
       return

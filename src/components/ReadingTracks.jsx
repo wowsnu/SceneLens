@@ -53,6 +53,8 @@ export default function ReadingTracks({
   walkedTo = null,
   onSelectStep,
   onToggleCondition,
+  // 지울 수 있는 조건. 추가한 초점만 — 기본 읽기(first_viewer)는 없다.
+  onRemoveCondition,
   scrollRef = null,
   onScroll,
   embedded = false,
@@ -175,21 +177,34 @@ export default function ReadingTracks({
             className={`reading-track ${on ? '' : 'muted'}`}
             style={{ '--reader': `var(--reader-${order % 4})` }}
           >
-            {onToggleCondition ? (
-              <button
-                type="button"
-                className="reading-track-label"
-                onClick={() => onToggleCondition(condition.id)}
-                aria-pressed={on}
-                title={on ? `${condition.label} 끄기` : `${condition.label} 켜기`}
-              >
-                {condition.label}
-              </button>
-            ) : (
-              <div className="reading-track-label is-fixed">
-                <span aria-hidden="true">🧑</span> {condition.label}
-              </div>
-            )}
+            <div className="reading-track-label-wrap">
+              {onToggleCondition ? (
+                <button
+                  type="button"
+                  className="reading-track-label"
+                  onClick={() => onToggleCondition(condition.id)}
+                  aria-pressed={on}
+                  title={on ? `${condition.label} 끄기` : `${condition.label} 켜기`}
+                >
+                  {condition.label}
+                </button>
+              ) : (
+                <div className="reading-track-label is-fixed">
+                  <span aria-hidden="true">🧑</span> {condition.label}
+                </div>
+              )}
+              {onRemoveCondition && condition.id !== 'first_viewer' && (
+                <button
+                  type="button"
+                  className="reading-track-remove"
+                  onClick={() => onRemoveCondition(condition.id)}
+                  aria-label={`${condition.label} 초점 지우기`}
+                  title="이 초점 지우기"
+                >
+                  ×
+                </button>
+              )}
+            </div>
 
             {/* 이 줄이 곧 이 관객의 **순차 읽기**다. 컷마다 칸이 하나이고,
                 가로로 읽으면 생각이 어떻게 바뀌었는지가 보인다. 세로로
