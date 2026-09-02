@@ -1,54 +1,17 @@
 import { create } from 'zustand'
 import { logEdit, logScaffold } from './studyLog'
+import {
+  EXAMPLE_SCREENPLAY,
+  EXAMPLE_CAST,
+  EXAMPLE_SCENE_STATES,
+  EXAMPLE_SCENE_STATE_STORY_KEY,
+  EXAMPLE_CUT_PLAN,
+  EXAMPLE_PANEL_IMAGES,
+  EXAMPLE_NARRATIVE_CHECK,
+} from './exampleSeed'
 
-// 씬 서술. 대사는 두지 않는다 — 정지 이미지가 담을 수 없고, 스토리보드가
-// 평가하려는 것도 아니다. 말하는 장면은 말하는 모습으로 적는다.
-// Beat는 빈 줄(문단)로 나뉜다. 별도 형식을 배울 것이 없어야 한다.
-const SCREENPLAY = [
-  { type: 'scene-heading', text: '물리학과 실험실, 밤', beat: 0 },
-  { type: 'action', text: '좁고 낡은 대학 실험실. 천장 형광등 하나만 살아 있어 긴 실험대 한쪽에만 빛이 떨어지고, 나머지 공간은 어둠에 잠겨 있다. 오실로스코프와 뒤엉킨 케이블, 비커, 쌓아 올린 출력물이 실험대를 가득 메우고 있다. 창밖에는 비가 내린다.', beat: 0 },
-  { type: 'action', text: '하린, 20대 중반의 대학원생. 후드를 입고 머리를 묶은 채 불빛이 닿는 자리에 혼자 앉아 있다. 어두운 장비들 사이에서 그녀는 작아 보인다.', beat: 0 },
-
-  { type: 'action', text: '하린이 노트북 화면을 들여다본다. 화면에는 며칠째 같은 자리에서 어긋나는 측정 그래프가 떠 있다.', beat: 1 },
-  { type: 'action', text: '그녀가 연필로 노트에 식을 적어 내려간다. 몇 줄 쓰다 말고 선을 그어 지운다. 같은 동작이 반복된다.', beat: 1 },
-
-  { type: 'action', text: '하린이 연필을 내려놓고 의자에 등을 기댄다. 지친 얼굴로 천장을 본다.', beat: 2 },
-  { type: 'action', text: '시선이 다시 화면으로 내려온다. 어긋난 봉우리들의 간격을 눈으로 짚어 나간다. 손가락이 화면 위를 따라 움직인다.', beat: 2 },
-
-  { type: 'action', text: '그녀의 손이 멈춘다. 간격이 일정하다. 오차가 아니라 규칙이다.', beat: 3 },
-  { type: 'action', text: '하린이 노트를 끌어당겨 새 줄에 짧은 식 하나를 적는다. 연필 끝이 종이를 누른다.', beat: 3 },
-
-  { type: 'action', text: '그녀가 그 식을 동그라미로 감싼다. 한 번, 두 번, 세 번. 흑연이 종이를 눌러 자국이 팬다.', beat: 4 },
-  { type: 'action', text: '주변에는 지우개 자국과 그어 지운 시도들이 어지럽게 흩어져 있다. 그 한가운데에 방금 적은 식만 또렷하다.', beat: 4 },
-
-  { type: 'action', text: '하린이 고개를 든다. 화면 불빛이 아래에서 얼굴을 비춘다. 눈이 화면을 지나 먼 곳에 머문다. 입술이 살짝 벌어진다.', beat: 5 },
-  { type: 'action', text: '그녀는 움직이지 않는다. 형광등이 한 번 깜빡인다.', beat: 5 },
-
-  { type: 'action', text: '하린이 천천히 일어선다. 의자가 뒤로 밀린다. 노트를 손에 쥔 채 그대로 창가로 걸어간다.', beat: 6 },
-  { type: 'action', text: '그녀가 비에 젖은 창 앞에 선다. 유리 너머로 도시의 불빛들이 흩어져 있다. 노트를 든 손이 옆으로 내려간다.', beat: 6 },
-  { type: 'action', text: '하린이 창밖을 본다. 어제까지 보던 것과 같은 풍경이다. 그러나 그녀는 처음 보는 것처럼 서 있다.', beat: 6 },
-
-  // 장소가 바뀌므로 새 씬이다. 씬은 시공간이 연속된 범위다.
-  { type: 'scene-heading', text: '연구동 복도, 밤', beat: 7 },
-  { type: 'action', text: '불이 반쯤 꺼진 복도. 하린이 노트를 든 채 걸어와 한 연구실 문 앞에 선다.', beat: 7 },
-  { type: 'action', text: '문틈으로 불빛이 새어 나온다. 하린이 손을 들었다가 멈춘다.', beat: 7 },
-
-  { type: 'action', text: '하린이 노트를 내려다본다. 그리고 문을 두드린다.', beat: 8 },
-]
-
-// 예시 대본에 딸린 패널 그림. 컷 번호(beat-beatOrder)로 붙인다 — 배열
-// 순서로 붙이면 대본을 조금만 고쳐도 그림이 엉뚱한 컷으로 밀린다.
-// 앞부분(S1–S4)은 끊기지 않게 이어 둔다. 분석은 컷 사이의 연결을 보는데
-// 중간이 비어 있으면 볼 것이 끊긴다. 뒤쪽은 비워 그릴 자리를 남긴다.
-const DEMO_PANEL_IMAGES = {
-  '0-1': '/img/lab_wide_establishing.png',  // 실험실 전경
-  '0-2': '/img/lab_student_at_bench.png',   // 불빛 아래 혼자 앉은 하린
-  '1-1': '/img/lab_student_ots.png',        // 화면과 노트를 보는 어깨 너머
-  '1-2': '/img/lab_writing_erasing.png',    // 적고 그어 지우는 손
-  '4-1': '/img/lab_pattern_ecu.png',        // 동그라미 친 식
-  '5-1': '/img/lab_discovery_cu.png',       // 깨닫는 얼굴
-  '6-2': '/img/lab_window_reveal.png',      // 창가
-}
+// 예시 대본·컷 플랜·패널·인물 기준은 exampleSeed.js에 한 벌로 굳혀 두었다.
+// loadExampleScreenplay가 그것을 그대로 불러 화면을 채운다.
 
 const STRATEGY_COLORS = [
   { color: '#10b981', bg: 'rgba(16, 185, 129, 0.1)', raw: '#10b981' },
@@ -1063,35 +1026,6 @@ export const diagnoseSeams = (cutPlan = [], {
   return findings
 }
 
-// 예제 대본의 두 번째 씬. 씬마다 인물과 공간이 다르다는 것을 보이기 위해
-// 첫 씬과 겹치는 인물이 없다.
-const CORRIDOR_SCENE_STATE = {
-  title: '연구동 복도, 밤',
-  description: '실험실에서 이어지는 씬입니다. 공간이 다릅니다.',
-  // 하린은 실험실 씬과 같은 사람이다. 기준은 cast에 한 벌 있고, 여기서는
-  // 이 씬에서 달라진 것만 적는다 — 복도에서는 노트를 손에 들고 있다.
-  characterIds: ['cast-하린'],
-  characterOverrides: {
-    'cast-하린': { '상태': '구부정한 자세, 노트를 든 채' },
-  },
-  location: {
-    name: '연구동 복도',
-    image: '/img/lab_corridor.png',
-    facts: [
-      { label: '장소 정체', value: '불이 반쯤 꺼진 연구동 복도' },
-      { label: '고정 소품', value: '교수 연구실 문 · 게시판 · 소화전' },
-    ],
-  },
-  environment: {
-    name: '시간',
-    facts: [
-      // 서버의 ENVIRONMENT_LABELS와 같은 이름을 쓴다.
-      // 화풍은 여기 두지 않는다 — `표현 스타일`이 그림으로 정한다.
-      { label: '시간', value: '밤' },
-    ],
-  },
-}
-
 // --- Scene: 시공간이 연속된 범위 -----------------------------------------
 // 씬은 대본에서 파생된다. 별도 목록을 두면 대본의 씬 헤딩과 어긋날 수 있고,
 // 그때 무엇이 진짜인지 알 수 없게 된다.
@@ -1277,46 +1211,6 @@ const EMPTY_SCENE_STATE = {
   characters: [],
   location: { name: '', facts: [] },
   environment: { name: '시간', facts: [] },
-}
-
-// 작품 전체의 인물 기준. 씬이 아니라 여기 산다 — 하린은 실험실에서도
-// 복도에서도 하린이다.
-const DEMO_CAST = [
-  {
-    id: 'cast-하린',
-    name: '하린',
-    summary: '대학원생',
-    image: '/img/lab_discovery_cu.png',
-    facts: [
-      // 생김새는 고정, `상태`만 씬 안에서 변한다 (scene_state.py의 두 갈래).
-      { label: '성별·나이', value: '여성, 20대 중반' },
-      { label: '외형 기준', value: '묶은 머리, 후드, 마른 체형' },
-      { label: '상태', value: '구부정한 자세' },
-    ],
-  },
-]
-
-const SCENE_STATE = {
-  title: '물리학과 실험실 · 밤',
-  description: '대본에서 추출한 장면 기준입니다. Shot별 배치는 이 상태를 상속하고, 달라진 부분만 별도로 기록합니다.',
-  characterIds: ['cast-하린'],
-  characterOverrides: {},
-  location: {
-    name: '물리학과 실험실',
-    image: '/img/lab_wide_establishing.png',
-    facts: [
-      { label: '장소 정체', value: '좁고 낡은 대학 실험실' },
-      { label: '고정 소품', value: '실험대 · 오실로스코프 · 노트북 · 비 내리는 창' },
-    ],
-  },
-  environment: {
-    name: '시간',
-    facts: [
-      // 항목 이름은 서버(scene_state.py의 ENVIRONMENT_LABELS)와 같아야 한다.
-      // 화풍은 여기 두지 않는다 — `표현 스타일`이 그림으로 정한다.
-      { label: '시간', value: '밤' },
-    ],
-  },
 }
 
 // 인물과 공간은 씬 안에서 변한다. 젖은 채로 들어와 굳어가고, 형광등은
@@ -3769,18 +3663,21 @@ const useStore = create((set, get) => ({
   // variant: 'rough'는 Beat가 나뉘지 않은 투박한 초안,
   // 'formatted'는 이미 Beat까지 정리된 대본이다.
   loadExampleScreenplay: () => set((state) => {
-    const script = SCREENPLAY
+    // 예전 세션에서 완성한 상태를 그대로 굳힌 seed(exampleSeed.js). 대본 9줄,
+    // 컷 플랜 8컷, 패널 8장이 이미 정해져 있다. 규칙 기반 생성기를 쓰지
+    // 않는 이유: 대본을 조금만 손봐도 컷과 그림이 어긋난다.
+    const script = EXAMPLE_SCREENPLAY.map((line) => ({ ...line }))
     const maxBeat = Math.max(0, ...script.map((line) => line.beat ?? 0))
-    const sceneStates = { 'scene-0': SCENE_STATE, 'scene-7': CORRIDOR_SCENE_STATE }
+    const sceneStates = structuredClone(EXAMPLE_SCENE_STATES)
 
-    // 줄콘티까지 채워 둔다. 각 단계에서 모델을 기다리지 않고 바로 다음으로
-    // 넘어갈 수 있게 하려는 것이지, 단계를 건너뛰려는 것이 아니다.
-    // 아래에서 cutPlanAccepted를 false로 두는 이유가 그것이다.
-    // 규칙 기반 생성기를 그대로 쓴다 — 손으로 적으면 대본을 고칠 때 어긋난다.
-    const cutPlan = createMockCutPlan({ ...state, screenplay: script, sceneStates })
+    // 컷 플랜은 만들어 둔 값을 그대로 쓰되, requirements는 표준 형태로
+    // 채운다(createCutPlanItem이 하는 일).
+    const cutPlan = EXAMPLE_CUT_PLAN.map((cut) => ({
+      ...cut,
+      requirements: createCutRequirements(cut.id, cut.requirements || {}, cut.provenance || 'AI'),
+    }))
 
-    // 컷에서 패널을 만들고, 그림이 준비된 컷에만 예시 이미지를 붙인다.
-    // 나머지는 비워 둔다 — 데모에서도 그릴 자리가 남아 있어야 한다.
+    // 컷마다 패널을 만들고, order 순서로 예시 그림을 붙인다 — 8컷 전부.
     const cutById = new Map(cutPlan.map((cut) => [cut.id, cut]))
     const next = updateActiveBranchShots(state, () => (
       applyCutPlanToShots(cutPlan, []).shots.map((shot) => {
@@ -3788,7 +3685,9 @@ const useStore = create((set, get) => ({
         return {
           ...shot,
           scriptBeat: Math.max(0, Math.min(shot.scriptBeat ?? 0, maxBeat)),
-          image: DEMO_PANEL_IMAGES[`${cut?.beat}-${cut?.beatOrder}`] ?? null,
+          image: EXAMPLE_PANEL_IMAGES[cut?.order] ?? null,
+          isAIGenerated: true,
+          source: 'ai',
         }
       })
     ))
@@ -3797,12 +3696,12 @@ const useStore = create((set, get) => ({
       ...next,
       screenplay: script,
       narrativeSuggestions: [],
-      narrativeCheck: null,
+      narrativeCheck: EXAMPLE_NARRATIVE_CHECK,
       narrativeCheckStale: false,
       activeBeat: 0,
-      cast: DEMO_CAST,
+      cast: structuredClone(EXAMPLE_CAST),
       sceneStates,
-      sceneStateStoryKey: screenplayFingerprint(script),
+      sceneStateStoryKey: EXAMPLE_SCENE_STATE_STORY_KEY,
       cutPlan,
       // 확정은 감독이 한다. true로 두면 selectCutStage가 곧바로 'panels'로
       // 보내 컷 플랜 단계 자체가 화면에서 사라진다. 표는 이미 차 있으므로
