@@ -2112,8 +2112,8 @@ export default function StoryboardView({ onEnterReview = null }) {
       pendingReferenceRequirements.push(requirement)
     }
   }
-  // 러프 콘티는 기준 그림을 물리지 않는다(referencesForCut). 쓰지도 않을
-  // 그림을 요구하면 컷 플랜 확정이 막히므로, 이 검사 자체를 건너뛴다.
+  // 러프는 정식 인물·공간 기준을 요구하지 않는다. 다인물 컷의 인물 키는
+  // 선택 사항이라, 아직 만들지 않았다고 패널 시작을 막지는 않는다.
   const needsReferences = panelStylePreset !== 'rough'
   const cutsNeedingReferences = needsReferences ? cutPlan : []
   cutsNeedingReferences.forEach((cut) => {
@@ -2168,6 +2168,10 @@ export default function StoryboardView({ onEnterReview = null }) {
     missingReferenceRequirements.length === 0
     && pendingReferenceRequirements.length === 0
   )
+  const activeSceneHasMultiCharacterCuts = cutPlan.some((cut) => (
+    sceneOfBeat(scriptScenes, cut.beat)?.id === activeSceneId
+    && characterNamesOfCut(cut).length >= 2
+  ))
   // 아직 없는 기준 중 첫 번째로 화면을 옮긴다. 표현 방식을 고른 직후
   // 감독이 다음에 할 일이 이것이므로, 그 자리까지 데려다 준다.
   //
@@ -2182,7 +2186,7 @@ export default function StoryboardView({ onEnterReview = null }) {
   // 있어 셀 수가 없는데, 그때는 숫자 대신 무엇이 필요한지만 말한다 —
   // 없는 숫자를 0으로 적으면 준비할 것이 없다는 뜻이 된다.
   const stylePresetNote = (preset) => {
-    if (preset.id === 'rough') return '기준 이미지 없이 바로'
+    if (preset.id === 'rough') return activeSceneHasMultiCharacterCuts ? '인물 키 선택 · 바로' : '기준 이미지 없이 바로'
     if (!needsReferences) return '인물·공간 기준 이미지 필요'
     return referencesReadyForPanels
       ? '기준 이미지 준비됨'
@@ -2356,10 +2360,14 @@ export default function StoryboardView({ onEnterReview = null }) {
     // 명을 빼면 그 인물만 기준 없이 그려져, 같은 화면 안에서 어떤 얼굴은
     // 이어지고 어떤 얼굴은 매번 달라진다.
     //
-    // 러프는 인물·공간 기준을 물리지 않는다. 얼굴이 빈 타원이고 공간이 선
-    // 몇 개인 그림에 "같은 얼굴로 이어지게" 할 것이 없고, 오히려 그려진
-    // 기준을 물리면 그쪽으로 완성도가 끌려 올라간다. 앵커만 물려 구도만 잡는다.
-    const picked = stylePreset === 'rough' ? [] : [...refs]
+    // 러프는 공간 기준을 물리지 않는다. 다만 두 사람 이상이 한 컷에 있으면
+    // 누가 누구인지와 서로의 위치는 콘티에서 읽혀야 한다. 이때만 거친 인물
+    // 키를 물린다 — 얼굴·의상 묘사가 아니라 실루엣과 역할을 구분하는 용도다.
+    // 한 명인 러프는 기존처럼 기준 그림 없이 구도만 잡는다.
+    const roughCharacterKey = cast.length >= 2
+      ? refs.filter((reference) => reference.kind === 'character')
+      : []
+    const picked = stylePreset === 'rough' ? roughCharacterKey : [...refs]
     const styleAnchor = PANEL_STYLE_PRESETS.find((preset) => preset.id === stylePreset)
     if (styleAnchor) {
       picked.unshift({ name: styleAnchor.label, kind: 'style', image: styleAnchor.image })
@@ -3807,10 +3815,12 @@ export default function StoryboardView({ onEnterReview = null }) {
                 </div>
                 <footer>
                   <div>
-                    <strong>{needsReferences ? '장면 기준 이미지' : '러프 콘티'}</strong>
+                    <strong>{needsReferences ? '장면 기준 이미지' : activeSceneHasMultiCharacterCuts ? '러프 인물 키' : '러프 콘티'}</strong>
                     <p>
                       {!needsReferences
-                        ? '러프 콘티는 기준 이미지 없이 구도와 흐름부터 잡습니다.'
+                        ? activeSceneHasMultiCharacterCuts
+                          ? '러프 콘티는 공간 기준 없이 시작합니다. 두 인물이 함께 나오는 컷에는 인물 키를 선택해 쓸 수 있습니다.'
+                          : '러프 콘티는 기준 이미지 없이 구도와 흐름부터 잡습니다.'
                         : referencesReadyForPanels
                           ? '필요한 인물·공간 기준 이미지가 준비되었습니다.'
                           : pendingReferenceRequirements.length > 0
@@ -5634,19 +5644,20 @@ export default function StoryboardView({ onEnterReview = null }) {
                               </ol>
                             </div>
                           )}
-                          {/* Panel setup에서만 기준 그림을 준비한다. 컷 플랜에서는
-                      장면 배치와 연속성을 먼저 정하므로 표현 스타일과 무관하게
-                      인물·공간 값을 편집할 수 있어야 한다. 러프 콘티는 기준 그림이 필요 없다. 얼굴이 빈 타원이고
-                      공간이 선 몇 개인 그림에 "같은 인물로 이어지게" 할 것이
-                      없다 — 화풍은 앵커가 잡는다.
-                      디테일·실사에서만 레퍼런스를 세운다. */}
-                          {isPanelPreparationStage && panelStylePreset === 'rough' ? (
+                          {/* 한 명인 러프는 기준 없이 구도만 잡는다. 두 명 이상이면
+                      최소 인물 키가 있어야 역할과 위치가 뒤바뀌지 않는다. */}
+                          {isPanelPreparationStage && panelStylePreset === 'rough' && newReferenceCharacters.length < 2 ? (
                             <p className="rail-scene-rough-note">
-                              러프 콘티는 기준 그림 없이 구도만 잡습니다.
+                              이 씬에는 한 명만 등장하므로 기준 그림 없이 구도만 잡습니다.
                               인물·공간 기준은 디테일 스케치부터 필요합니다.
                             </p>
                           ) : isPanelPreparationStage ? (
                             <ul className="rail-scene-state">
+                              {panelStylePreset === 'rough' && (
+                                <li className="rail-scene-rough-note">
+                                  두 인물을 구분할 거친 키만 만듭니다. 공간 레퍼런스는 만들지 않고, 패널에는 함께 나오는 컷에만 키를 씁니다.
+                                </li>
+                              )}
                               {newReferenceCharacters.map((character) => {
                                 const referenceOpen = openReferenceCards[character.id] && character.image
                                 const editKey = `${activeSceneId}:${character.id}`
@@ -5690,7 +5701,7 @@ export default function StoryboardView({ onEnterReview = null }) {
                                               onClick={() => generateReferenceFromCutPlan('character', character.id)}
                                               disabled={isReferenceImagePending('character', character.id)}
                                             >
-                                              {isReferenceImagePending('character', character.id) ? '그리는 중…' : '레퍼런스 생성'}
+                                              {isReferenceImagePending('character', character.id) ? '그리는 중…' : panelStylePreset === 'rough' ? '키 생성' : '레퍼런스 생성'}
                                             </button>
                                           )}
                                           {isPanelPreparationStage && character.image && (
@@ -5703,7 +5714,7 @@ export default function StoryboardView({ onEnterReview = null }) {
                                               }}
                                               disabled={isReferenceImagePending('character', character.id)}
                                             >
-                                              {isReferenceImagePending('character', character.id) ? '다시 그리는 중…' : '다시 생성'}
+                                              {isReferenceImagePending('character', character.id) ? '다시 그리는 중…' : panelStylePreset === 'rough' ? '키 다시 생성' : '다시 생성'}
                                             </button>
                                           )}
                                           {isPanelPreparationStage && staleStyleLabel(character) && (
@@ -5757,7 +5768,7 @@ export default function StoryboardView({ onEnterReview = null }) {
                                           tabIndex={0}
                                           aria-label={`${character.name} 정보 카드 보기`}
                                         >
-                                          <img src={character.image} alt={`${character.name} 레퍼런스`} />
+                                          <img src={character.image} alt={`${character.name}${panelStylePreset === 'rough' ? ' 인물 키' : ' 레퍼런스'}`} />
                                           <button
                                             type="button"
                                             className="rail-reference-lightbox-trigger"
@@ -5775,7 +5786,7 @@ export default function StoryboardView({ onEnterReview = null }) {
                                 )
                               })}
 
-                              {newReferenceLocation && (() => {
+                              {panelStylePreset !== 'rough' && newReferenceLocation && (() => {
                                 const location = newReferenceLocation
                                 const referenceOpen = openReferenceCards.location && location.image
                                 const editKey = `${activeSceneId}:location`
@@ -5891,7 +5902,7 @@ export default function StoryboardView({ onEnterReview = null }) {
                                 )
                               })()}
 
-                              {visibleSceneState.environment?.facts?.length > 0 && (
+                              {panelStylePreset !== 'rough' && visibleSceneState.environment?.facts?.length > 0 && (
                                 <li>
                                   <div className="rail-scene-head">
                                     <strong>환경</strong>
@@ -6150,7 +6161,9 @@ export default function StoryboardView({ onEnterReview = null }) {
                         ? referencesReadyForPanels
                           ? '표현 방식과 필요한 장면 기준이 준비되었습니다. 가운데에서 Panels를 시작하세요.'
                           : `선택한 표현 방식에는 기준 이미지가 필요합니다. Mise-en-scène에서 ${missingReferenceRequirements.length}개를 준비하세요.`
-                        : '러프 콘티는 기준 이미지 없이 바로 시작할 수 있습니다.'}
+                        : activeSceneHasMultiCharacterCuts
+                          ? '러프 콘티는 바로 시작할 수 있습니다. 두 인물이 함께 나오는 컷에는 Mise-en-scène에서 인물 키를 만들어 쓸 수 있습니다.'
+                          : '러프 콘티는 기준 이미지 없이 바로 시작할 수 있습니다.'}
                     </p>
                   </>
                 ) : (

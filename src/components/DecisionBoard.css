@@ -8498,6 +8498,125 @@ button.active .lens-glass::after {
   white-space: nowrap;
 }
 
+.first-viewer-identity {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+}
+
+.first-viewer-identity > span { font-size: 19px; line-height: 1; }
+.first-viewer-identity > div { display: grid; gap: 1px; }
+.first-viewer-identity strong { color: rgba(248, 250, 252, 0.95); font-size: 10px; }
+.first-viewer-identity small { color: rgba(196, 181, 253, 0.64); font-size: 8.5px; white-space: nowrap; }
+
+.first-viewer-method-note {
+  margin: 7px 12px 0;
+  color: rgba(226, 232, 240, 0.5);
+  font-size: 9px;
+  line-height: 1.45;
+}
+
+.viewer-focus-control {
+  margin: 7px 12px 0;
+}
+
+.viewer-focus-toggle {
+  min-height: 27px;
+  padding: 0 9px;
+  border: 1px solid rgba(167, 139, 250, 0.28);
+  border-radius: 7px;
+  background: rgba(109, 40, 217, 0.07);
+  color: rgba(221, 214, 254, 0.82);
+  font-size: 9.5px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.viewer-focus-toggle:hover,
+.viewer-focus-control.open .viewer-focus-toggle {
+  border-color: rgba(167, 139, 250, 0.52);
+  background: rgba(109, 40, 217, 0.14);
+  color: #ede9fe;
+}
+
+.viewer-focus-panel {
+  display: grid;
+  gap: 10px;
+  margin-top: 7px;
+  padding: 11px;
+  border: 1px solid rgba(167, 139, 250, 0.2);
+  border-radius: 9px;
+  background: rgba(76, 29, 149, 0.055);
+}
+
+.viewer-focus-panel > header { display: grid; gap: 2px; }
+.viewer-focus-panel > header strong { color: rgba(248, 250, 252, 0.92); font-size: 11px; }
+.viewer-focus-panel > header small { color: rgba(203, 213, 225, 0.58); font-size: 9px; }
+
+.viewer-focus-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.viewer-focus-presets button {
+  min-height: 28px;
+  padding: 0 9px;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.34);
+  color: rgba(226, 232, 240, 0.72);
+  font-size: 9.5px;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.viewer-focus-presets button:hover,
+.viewer-focus-presets button.selected {
+  border-color: rgba(167, 139, 250, 0.58);
+  background: rgba(109, 40, 217, 0.16);
+  color: #ede9fe;
+}
+
+.viewer-custom-focus { display: grid; gap: 4px; }
+.viewer-custom-focus > span { color: rgba(196, 181, 253, 0.78); font-size: 9px; font-weight: 800; }
+.viewer-custom-focus input {
+  width: 100%;
+  min-height: 32px;
+  box-sizing: border-box;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  border-radius: 7px;
+  padding: 0 9px;
+  background: rgba(2, 6, 23, 0.4);
+  color: rgba(241, 245, 249, 0.9);
+  font: inherit;
+  font-size: 10px;
+}
+.viewer-custom-focus input:focus { outline: 1px solid rgba(167, 139, 250, 0.58); }
+
+.viewer-focus-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.viewer-focus-actions small { color: rgba(148, 163, 184, 0.58); font-size: 8.5px; line-height: 1.4; }
+.viewer-focus-actions button {
+  flex: none;
+  min-height: 30px;
+  padding: 0 10px;
+  border: 1px solid rgba(167, 139, 250, 0.46);
+  border-radius: 7px;
+  background: rgba(109, 40, 217, 0.18);
+  color: #ede9fe;
+  font-size: 9.5px;
+  font-weight: 850;
+  cursor: pointer;
+}
+.viewer-focus-actions button:disabled { cursor: default; opacity: 0.42; }
+.viewer-focus-limit { margin: -3px 0 0; color: rgba(253, 230, 138, 0.72); font-size: 8.5px; }
+
 .reading-review-sequence-controls > strong {
   flex: none;
   color: #c9b6f5;

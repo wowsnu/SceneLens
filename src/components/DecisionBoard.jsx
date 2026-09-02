@@ -125,19 +125,26 @@ const fallbackIssuesFromLensResults = (lensResults = {}) => (
 const VIEWER_READING_CONDITIONS = [
   {
     id: 'first_viewer',
-    title: '화면만으로 읽기',
-    attention: '화면에 보이는 것만으로 누가 누구고 무슨 일이 벌어지는지 따라갑니다.',
+    title: '첫 시청자',
+    attention: '감독의 설명 없이, 화면에 보이는 단서만으로 처음부터 따라갑니다.',
+  },
+]
+
+const VIEWER_FOCUS_PRESETS = [
+  {
+    id: 'focus_relationship',
+    label: '인물 관계에 주목',
+    instruction: '인물 사이의 관계와 감정적 거리가 화면에서 어떻게 느껴지는지 따라가세요.',
   },
   {
-    id: 'film_literate',
-    title: '연출 방식에 주목',
-    attention: '프레이밍·반복·생략·컷의 관계가 만드는 영화적 기대와 강조를 따라갑니다.',
+    id: 'focus_space',
+    label: '공간·동선에 주목',
+    instruction: '인물이 어디에 있고 어디로 움직이는지, 공간의 연결이 어떻게 이해되는지 따라가세요.',
   },
   {
-    // 저장된 관객 읽기와의 호환성을 위해 기존 id는 유지한다.
-    id: 'context_close',
-    title: '컷 연결에 주목',
-    attention: '컷 사이에서 사건과 정보가 어떻게 이어지는지 살핍니다.',
+    id: 'focus_connection',
+    label: '컷 연결에 주목',
+    instruction: '앞 컷의 행동과 정보가 다음 컷으로 어떻게 이어지는지 따라가세요.',
   },
 ]
 
@@ -1691,6 +1698,12 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
   const [selectedReadingFindingId, setSelectedReadingFindingId] = useState(null)
   // 지금 펼쳐 읽고 있는 칸 — 어느 관객의 어느 컷인가.
   const [selectedReadingStep, setSelectedReadingStep] = useState(null)
+  // 기본 첫 관람 뒤에만 여는 선택적 초점. 사람을 더 만드는 것이 아니라,
+  // 같은 첫 시청자가 이번에는 무엇을 먼저 볼지 정한다.
+  const [viewerFocusOpen, setViewerFocusOpen] = useState(false)
+  const [selectedViewerFocusId, setSelectedViewerFocusId] = useState('')
+  const [viewerCustomFocusDraft, setViewerCustomFocusDraft] = useState('')
+  const [viewerFocusConditions, setViewerFocusConditions] = useState([])
   // 관객 읽기가 남긴 질문에 감독이 답한 것. 여기서 바로 분석을 돌리지
   // 않는다 — 관객은 의도를 모르는 것이 원칙이라, 감독의 답을 관객에게
   // 먹이면 그 전제가 깨진다. 답은 **연출 검토의 전제**로만 쌓이고,
@@ -1895,9 +1908,6 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
   // 범위는 드롭다운으로 시작·끝 번호를 입력하지 않고 왼쪽 패널에서 직접
   // 고른다. 확정 전에는 실제 분석 범위를 건드리지 않아 자동 재분석도 막는다.
   const [scopeSelection, setScopeSelection] = useState(null)
-  const [selectedReadingConditionIds, setSelectedReadingConditionIds] = useState(['first_viewer'])
-  const [customReadingConditions, setCustomReadingConditions] = useState([])
-  const [customReadingConditionDraft, setCustomReadingConditionDraft] = useState({ label: '', instruction: '' })
   const [lensIntents, setLensIntents] = useState(() => (
     CREATIVE_LENSES.reduce((acc, lens) => ({ ...acc, [lens.id]: '' }), {})
   ))
@@ -1933,14 +1943,12 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
   const panelStylePreset = useStore((s) => s.panelStylePreset)
   // 컷 목적이 비어 있어도 장면 의도와는 견줄 수 있다.
   const sceneIntention = useStore((s) => s.sceneIntention)
-  // 러프 컷은 레퍼런스를 생성에 물리지 않으므로 기준 그림을 두지 않는다 —
-  // 실사로 한 번 만들었다가 러프로 바꿨으면 그 그림은 이 흐름의 기준이
-  // 아니다. 러프가 아닐 때는, 어느 밀도로 만든 것인지 모르는 그림(예시
-  // 데이터처럼 stylePreset이 없는 것)까지 숨기지는 않는다 — 다른 밀도로
-  // 만든 것이 분명할 때만 뺀다.
+  // 러프에서는 같은 러프 밀도로 만든 인물 키만 보인다. 디테일·실사 기준을
+  // 섞으면 러프가 완성본처럼 보이고, 스타일이 없는 예시 이미지는 어느
+  // 밀도인지 알 수 없으므로 숨긴다.
   const refImageFor = (subject) => {
     if (!subject?.image) return null
-    if (panelStylePreset === 'rough') return null
+    if (panelStylePreset === 'rough') return subject.stylePreset === 'rough' ? subject.image : null
     if (subject.stylePreset && subject.stylePreset !== panelStylePreset) return null
     return subject.image
   }
@@ -3282,11 +3290,6 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
     setRangeStart(0)
     setRangeEnd(generatedEnd)
     setScopeMode('range')
-    // 관객 하나로 시작한다. 이 화면이 보여 주는 것은 **감독이 노린 것이
-    // 닿았는가**이고, 그건 관객 하나로도 판정된다 — 둘로 시작하던 것은
-    // 견줄 상대가 있어야 갈림이 나오기 때문이었고, 갈림은 더 보지 않는다.
-    // 다른 관객은 첫 결과를 본 뒤 더한다.
-    setSelectedReadingConditionIds(['first_viewer'])
     setViewerSnapshot({
       sceneId: scene?.id,
       sceneLabel: scene?.label || 'Current scene',
@@ -3303,35 +3306,13 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
     })
     setViewerReport(null)
     setViewerPanelOrder(null)
+    setViewerFocusOpen(false)
+    setSelectedViewerFocusId('')
+    setViewerCustomFocusDraft('')
+    setViewerFocusConditions([])
     // 대조는 그 읽기에 붙는 것이다. 읽기를 버리면 함께 버린다.
     setIntentCheck(null)
     setIntentCheckStatus('idle')
-  }
-
-  const toggleReadingCondition = (conditionId) => {
-    setSelectedReadingConditionIds((current) => {
-      if (current.includes(conditionId)) {
-        return current.length === 1 ? current : current.filter((id) => id !== conditionId)
-      }
-      if (current.length >= 3) return current
-      return [...current, conditionId]
-    })
-  }
-
-  const addCustomReadingCondition = () => {
-    const label = customReadingConditionDraft.label.trim()
-    const instruction = customReadingConditionDraft.instruction.trim()
-    if (!label || !instruction || selectedReadingConditionIds.length >= 3) return
-    const id = `custom_${Date.now().toString(36)}`
-    setCustomReadingConditions((current) => [...current, { id, label, instruction }])
-    setSelectedReadingConditionIds((current) => [...current, id])
-    setCustomReadingConditionDraft({ label: '', instruction: '' })
-  }
-
-  const removeCustomReadingCondition = (conditionId) => {
-    if (selectedReadingConditionIds.length === 1 && selectedReadingConditionIds[0] === conditionId) return
-    setCustomReadingConditions((current) => current.filter((condition) => condition.id !== conditionId))
-    setSelectedReadingConditionIds((current) => current.filter((id) => id !== conditionId))
   }
 
   const selectReviewMode = (mode) => {
@@ -3862,7 +3843,7 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
     }
   }
 
-  const runViewerReflection = async () => {
+  const runViewerReflection = async (focusCondition = null) => {
     if (selectedSnapshotShots.length < 2) {
       setViewerStatus('error')
       setViewerError('관객 검토는 두 컷 이상을 선택해야 합니다.')
@@ -3892,12 +3873,10 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
       )
       const result = await requestViewerReflection({
         panels: panelImages.map((image) => ({ image })),
-        readingConditions: selectedReadingConditionIds.filter((id) => (
-          VIEWER_READING_CONDITIONS.some((condition) => condition.id === id)
-        )),
-        customConditions: customReadingConditions.filter((condition) => (
-          selectedReadingConditionIds.includes(condition.id)
-        )),
+        // 기본 읽기는 설명 없는 첫 관람이다. 추가 초점은 같은 사람의
+        // 두 번째 읽기만 새로 받아, 앞서 만든 기본 결과를 그대로 둔다.
+        readingConditions: focusCondition ? [] : ['first_viewer'],
+        customConditions: focusCondition ? [focusCondition] : [],
       })
       const mapPanelOrder = (panelOrder) => panelOrders[panelOrder - 1] || panelOrder
       const remapReading = (reading) => ({
@@ -3922,8 +3901,18 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
       })
       const readings = (result.readings?.length
         ? result.readings
-        : [{ condition_id: selectedReadingConditionIds[0], reading: result.initial_reading }]
-      ).map((entry) => ({ ...entry, reading: remapReading(entry.reading) }))
+        : [{ condition_id: focusCondition?.id || 'first_viewer', reading: result.initial_reading }]
+      )
+        .map((entry) => ({ ...entry, reading: remapReading(entry.reading) }))
+      if (!readings.length) {
+        throw new Error('첫 시청자의 읽기 결과를 받지 못했어요. 다시 시도해 주세요.')
+      }
+      const nextReadings = focusCondition
+        ? [
+            ...(viewerReport?.readings || []).filter((entry) => entry.condition_id !== focusCondition.id),
+            ...readings,
+          ]
+        : readings
       // 무엇을 보고 말한 것인지 남긴다. 이후 수정이 이 읽기에 대한
       // 반응인지 판단하려면 읽은 스토리보드가 특정돼야 한다. 패널의
       // 이미지가 바뀌면 다른 버전이므로, 읽은 패널의 이미지로 버전을
@@ -3932,19 +3921,47 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
         storyboard_version: storyboardVersion(renderedShots),
       })
       setViewerReport({
-        initial_reading: readings[0].reading,
-        readings,
+        initial_reading: nextReadings.find((entry) => entry.condition_id === 'first_viewer')?.reading
+          || nextReadings[0].reading,
+        readings: nextReadings,
       })
+      if (focusCondition) {
+        setViewerFocusConditions((current) => [
+          ...current.filter((entry) => entry.id !== focusCondition.id),
+          focusCondition,
+        ])
+        setViewerFocusOpen(false)
+        setSelectedViewerFocusId('')
+        setViewerCustomFocusDraft('')
+      } else {
+        setViewerFocusConditions([])
+        setViewerFocusOpen(false)
+        setSelectedViewerFocusId('')
+        setViewerCustomFocusDraft('')
+      }
       setViewerPanelOrder(panelOrders[0])
       setFlowActiveShot(panelOrders[0] - 1)
       setViewerStatus('ready')
       // 읽은 직후에 이어서 대조한다. 감독이 버튼을 한 번 더 누르게 하면
       // 대부분 누르지 않고, 화면은 읽을거리로 남는다.
-      void runIntentCheck({ readings, panelOrders })
+      void runIntentCheck({ readings: nextReadings, panelOrders })
     } catch (error) {
       setViewerStatus('error')
       setViewerError(error.message || '관객 검토 결과를 불러오지 못했습니다.')
     }
+  }
+
+  const runViewerFocus = () => {
+    const preset = VIEWER_FOCUS_PRESETS.find((entry) => entry.id === selectedViewerFocusId)
+    const customInstruction = viewerCustomFocusDraft.trim()
+    if (!preset && !customInstruction) return
+
+    const focusCondition = preset || {
+      id: `focus_custom_${Date.now().toString(36)}`,
+      label: `${customInstruction.slice(0, 18)}${customInstruction.length > 18 ? '…' : ''}`,
+      instruction: customInstruction,
+    }
+    void runViewerReflection(focusCondition)
   }
 
   const _routeViewerFinding = (route, panelOrderOrOrders, finding = {}) => {
@@ -4484,8 +4501,8 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
   const viewerReadings = useMemo(() => viewerReport?.readings || [], [viewerReport])
   // 아래 memo의 입력이다. 매 렌더 새 배열이면 그 memo가 늘 다시 돈다.
   const allViewerReadingConditions = useMemo(
-    () => [...VIEWER_READING_CONDITIONS, ...customReadingConditions],
-    [customReadingConditions],
+    () => [...VIEWER_READING_CONDITIONS, ...viewerFocusConditions],
+    [viewerFocusConditions],
   )
   // 수정 항목은 더 이상 목록으로 미리 늘어놓지 않는다. 감독이 트랙에서
   // 자리를 고르고, Workbench에서 그 관객의 읽기를 확인한 뒤에만 수정
@@ -4509,7 +4526,7 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
   // 보여 주는 것과 같다. 무엇이 채워질 자리인지 먼저 보여야 한다.
   const readingTrackConditionIds = viewerReadings.length > 0
     ? viewerReadings.map((entry) => entry.condition_id)
-    : selectedReadingConditionIds
+    : ['first_viewer']
   const readingTrackConditions = readingTrackConditionIds.map((conditionId) => {
     const condition = allViewerReadingConditions.find((item) => item.id === conditionId)
     return {
@@ -4663,7 +4680,7 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
       // 그 줄이 꺼진 채(muted) 나오면 무엇이 채워질 자리인지 안 보인다.
       const ids = viewerReadings.length > 0
         ? viewerReadings.map((entry) => entry.condition_id)
-        : selectedReadingConditionIds
+        : ['first_viewer']
       ids.forEach((conditionId) => {
         if (!next.has(conditionId) && !current.has(`off:${conditionId}`)) {
           next.add(conditionId)
@@ -4672,7 +4689,7 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
       })
       return changed ? next : current
     })
-  }, [viewerReadings, selectedReadingConditionIds])
+  }, [viewerReadings])
 
   // 고른 자리가 사라지면 선택도 놓는다. 안 그러면 Workbench가 빈 채로
   // 남아 무엇을 보는 자리인지 알 수 없다.
@@ -4696,112 +4713,6 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
   // Workbench가 순차 읽기로 맡는다 — 같은 것을 두 자리에서 보여 주면
   // 어느 쪽이 지금 보는 자리인지 알 수 없다.
 
-  function renderViewerConditionPicker() {
-    return (
-    <section className="viewer-reading-conditions" aria-label="읽기 조건 선택">
-      <header>
-        <div>
-          {!viewerReport && <span>읽기 조건 선택</span>}
-          <strong>{viewerReport ? '같은 화면에서 무엇을 먼저 살필지 추가하세요.' : '기본 읽기에 더할 조건을 고르세요.'}</strong>
-        </div>
-        <small>각 시선은 실제 사람을 대표하지 않고, 화면에서 먼저 볼 것을 다르게 둡니다.</small>
-      </header>
-      <div className="viewer-reading-condition-grid">
-        {allViewerReadingConditions.map((condition) => {
-          const selected = selectedReadingConditionIds.includes(condition.id)
-          const custom = !VIEWER_READING_CONDITIONS.some((item) => item.id === condition.id)
-          return (
-            <div key={condition.id} className="viewer-reading-condition-card">
-              <button
-                type="button"
-                className={selected ? 'selected' : ''}
-                aria-pressed={selected}
-                onClick={() => toggleReadingCondition(condition.id)}
-              >
-                <span>{selected ? '✓' : '+'}</span>
-                <strong>{condition.title || condition.label}</strong>
-                <p>{condition.attention || condition.instruction}</p>
-              </button>
-              {custom && (
-                <button
-                  type="button"
-                  className="viewer-custom-condition-remove"
-                  aria-label={`${condition.label} 읽기 조건 삭제`}
-                  onClick={() => removeCustomReadingCondition(condition.id)}
-                >×</button>
-              )}
-            </div>
-          )
-        })}
-      </div>
-      <details className="viewer-custom-condition-form">
-        <summary>
-          <span>＋</span>
-          <div>
-            <strong>새 읽기 조건 만들기</strong>
-            <small>이 읽기에서 화면의 무엇을 먼저 살필지 정합니다.</small>
-          </div>
-          <em>직접 추가</em>
-        </summary>
-        <div className="viewer-custom-condition-fields">
-          <label>
-            <span>읽기 조건 이름</span>
-            <input
-              value={customReadingConditionDraft.label}
-              onChange={(event) => setCustomReadingConditionDraft((current) => ({ ...current, label: event.target.value }))}
-              placeholder="예: 공간 관계에 주목"
-              maxLength={60}
-            />
-          </label>
-          <label>
-            <span>먼저 보는 것</span>
-            <textarea
-              value={customReadingConditionDraft.instruction}
-              onChange={(event) => setCustomReadingConditionDraft((current) => ({ ...current, instruction: event.target.value }))}
-              placeholder="예: 인물·실험대·노트의 위치 관계가 이어지는지 살핀다."
-              maxLength={360}
-            />
-          </label>
-          <div className="viewer-custom-condition-actions">
-            {selectedReadingConditionIds.length >= 3 && <small>세 읽기 조건을 모두 선택했어요. 하나를 해제하면 추가할 수 있습니다.</small>}
-            <button
-              type="button"
-              onClick={addCustomReadingCondition}
-              disabled={
-                !customReadingConditionDraft.label.trim()
-                || !customReadingConditionDraft.instruction.trim()
-                || selectedReadingConditionIds.length >= 3
-              }
-            >이 시선으로 읽기</button>
-          </div>
-        </div>
-      </details>
-    </section>
-    )
-  }
-
-  function renderInitialReadingChoices() {
-    return (
-      <div className="viewer-initial-reading-choices" role="group" aria-label="추가 읽기 조건">
-        <span>기본 관객</span>
-        {VIEWER_READING_CONDITIONS.map((condition) => {
-          const selected = selectedReadingConditionIds.includes(condition.id)
-          return (
-            <button
-              key={condition.id}
-              type="button"
-              className={selected ? 'selected' : ''}
-              aria-pressed={selected}
-              onClick={() => toggleReadingCondition(condition.id)}
-            >
-              {selected ? '✓ ' : '+ '}{condition.title}
-            </button>
-          )
-        })}
-      </div>
-    )
-  }
-
   // 함수로 둔다. 이 안에서 `scopeSummary`를 쓰는데 그것은 아래에서
   // 정의되므로, 상수로 두면 여기서 평가되며 TDZ 오류가 난다.
   // 연출 검토(`.multi-review-preview`)와 **같은 형태**로 그린다.
@@ -4814,63 +4725,33 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
   // 함수로 둔다. 안에서 `scopeSummary`를 쓰는데 그것이 아래에서 정의되므로
   // 상수로 두면 여기서 평가되며 TDZ 오류가 난다.
   const renderViewerReflectionPane = () => viewerSnapshot ? (
-    <section className="multi-review-preview reading-review-surface" aria-label="관객 읽기 검토">
+    <section className="multi-review-preview reading-review-surface" aria-label="첫 시청자의 읽기">
       <section className="reading-review-sequence" aria-label="스토리보드와 읽기 트랙">
         <div className="reading-review-sequence-controls" aria-label="스토리보드 이동">
-          <span>스토리보드</span>
+          <div className="first-viewer-identity">
+            <span aria-hidden="true">🧑</span>
+            <div>
+              <strong>처음 본 사람은 어떻게 읽을까?</strong>
+              <small>감독의 설명 없이, 화면에 보이는 단서만 따라갑니다</small>
+            </div>
+          </div>
           <div className="review-bar-scope viewer-fixed-scope">
-            <span>관객 검토</span>
+            <span>첫 관람</span>
             <strong>처음부터 S{viewerScopeTo}까지 · {selectedSnapshotShots.length}컷</strong>
           </div>
-          {/* 조건은 실행 버튼과 같은 흐름에 두되, 평소에는 한 단계 접어
-              두어 실행 바가 버튼 목록으로 늘어나지 않게 한다. */}
-          <details
-            className="reading-condition-depth"
-            /* 메뉴 높이의 기준점을 잡아 둔다. 트리거가 화면 어디에
-               있느냐에 따라 아래 남는 공간이 달라지므로, CSS만으로는
-               "창 밖으로 넘지 마라"를 쓸 수 없다. 열 때 한 번 잰다. */
-            onToggle={(event) => {
-              if (!event.currentTarget.open) return
-              const box = event.currentTarget.getBoundingClientRect()
-              event.currentTarget.style.setProperty('--depth-menu-top', `${box.bottom}px`)
-            }}
-          >
-            <summary>
-              <span>관객 구성</span>
-              <strong>{selectedReadingConditionIds.length}명 선택</strong>
-              <em>변경</em>
-            </summary>
-            <div className="reading-condition-depth-menu">
-              {renderInitialReadingChoices()}
-              <details className="viewer-more-perspectives">
-                <summary>
-                  <div><strong>관객 직접 만들기</strong></div>
-                  <em>선택</em>
-                </summary>
-                {renderViewerConditionPicker()}
-              </details>
-            </div>
-          </details>
           {/* 실행 버튼은 바 안에 둔다. 연출 검토의 `분석하기`와 같은
               자리다 — 범위를 보면서 바로 돌린다. */}
           <button
             type="button"
             className="reading-run-button"
-            onClick={runViewerReflection}
-            disabled={viewerStatus === 'loading' || selectedReadingConditionIds.length === 0}
-            title={selectedReadingConditionIds.length === 0
-              ? '관객을 하나 이상 골라 주세요.'
-              : undefined}
+            onClick={() => runViewerReflection()}
+            disabled={viewerStatus === 'loading'}
           >
-            {/* 못 누르는 이유를 라벨이 직접 말한다. 툴팁에만 두면 마우스를
-                올려 보기 전까지는 왜 안 눌리는지 알 수 없다. */}
             {viewerStatus === 'loading'
               ? '읽는 중…'
-              : selectedReadingConditionIds.length === 0
-                ? '관객을 고르세요'
-                : viewerReport
-                  ? '다시 읽기'
-                  : `${selectedReadingConditionIds.length}명 관객으로 읽기`}
+              : viewerReport
+                ? '다시 보여주기'
+                : '🧑 처음 본 사람에게 보여주기'}
           </button>
 
         </div>
@@ -4906,19 +4787,6 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
             hasRead={Boolean(viewerReport)}
             scrollRef={readingSequenceScrollRef}
             onSelectStep={selectReadingStep}
-            onToggleCondition={(conditionId) => setActiveReadingTracks((current) => {
-              const next = new Set(current)
-              if (next.has(conditionId)) {
-                next.delete(conditionId)
-                // 감독이 끈 것을 기억한다. 안 그러면 다음 결과가 도착할 때
-                // 자동으로 다시 켜진다.
-                next.add(`off:${conditionId}`)
-              } else {
-                next.add(conditionId)
-                next.delete(`off:${conditionId}`)
-              }
-              return next
-            })}
           />
         </div>
       </section>
@@ -4926,6 +4794,80 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
       <div className="reading-condition-feedback" aria-live="polite">
         {viewerError && <p className="viewer-error">{viewerError}</p>}
       </div>
+
+      {viewerReport && (
+        <p className="first-viewer-method-note">
+          각 결과는 관객 전체의 평가가 아니라, 설명 없이 보았을 때 생길 수 있는 한 가지 이해의 흐름입니다.
+        </p>
+      )}
+
+      {viewerReport && (
+        <section className={`viewer-focus-control${viewerFocusOpen ? ' open' : ''}`}>
+          <button
+            type="button"
+            className="viewer-focus-toggle"
+            onClick={() => setViewerFocusOpen((open) => !open)}
+            aria-expanded={viewerFocusOpen}
+          >
+            {viewerFocusOpen ? '초점 선택 닫기' : '+ 다른 초점으로 다시 보기'}
+          </button>
+
+          {viewerFocusOpen && (
+            <div className="viewer-focus-panel">
+              <header>
+                <strong>이번에는 무엇에 주목할까요?</strong>
+                <small>다른 사람을 만드는 것이 아니라, 같은 첫 시청자의 관찰 초점을 바꿉니다.</small>
+              </header>
+              <div className="viewer-focus-presets">
+                {VIEWER_FOCUS_PRESETS.map((preset) => (
+                  <button
+                    key={preset.id}
+                    type="button"
+                    className={selectedViewerFocusId === preset.id ? 'selected' : ''}
+                    aria-pressed={selectedViewerFocusId === preset.id}
+                    onClick={() => {
+                      setSelectedViewerFocusId(preset.id)
+                      setViewerCustomFocusDraft('')
+                    }}
+                  >
+                    {preset.label}
+                  </button>
+                ))}
+              </div>
+              <label className="viewer-custom-focus">
+                <span>직접 정하기</span>
+                <input
+                  value={viewerCustomFocusDraft}
+                  maxLength={180}
+                  placeholder="예: 두 사람이 서로 아는 사이처럼 보이는지"
+                  onChange={(event) => {
+                    setViewerCustomFocusDraft(event.target.value)
+                    if (event.target.value) setSelectedViewerFocusId('')
+                  }}
+                />
+              </label>
+              <div className="viewer-focus-actions">
+                <small>초점은 화면을 보는 기준일 뿐, 이야기의 정답이나 감독의 의도는 전달하지 않습니다.</small>
+                <button
+                  type="button"
+                  onClick={runViewerFocus}
+                  disabled={
+                    viewerStatus === 'loading'
+                    || (!selectedViewerFocusId && !viewerCustomFocusDraft.trim())
+                    || (viewerFocusConditions.length >= 2
+                      && !viewerFocusConditions.some((entry) => entry.id === selectedViewerFocusId))
+                  }
+                >
+                  {viewerStatus === 'loading' ? '다시 보는 중…' : '이 초점으로 다시 보기'}
+                </button>
+              </div>
+              {viewerFocusConditions.length >= 2 && (
+                <p className="viewer-focus-limit">추가 초점은 두 개까지 둘 수 있습니다. 기존 초점은 다시 실행할 수 있어요.</p>
+              )}
+            </div>
+          )}
+        </section>
+      )}
 
       {/* ③ Workbench. 트랙과 같이 결과가 없어도 자리를 지킨다. */}
       {viewerReport && (
@@ -5094,7 +5036,7 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
       </p>
       {panelStylePreset === 'rough' && (
         <p className="scene-basis-stage-context">
-          러프 컷은 기준 이미지 없이 텍스트 기준만으로 진행합니다.
+          러프 컷은 공간 기준 없이 진행합니다. 두 인물이 함께 나오는 컷에는 인물 키를 사용할 수 있습니다.
         </p>
       )}
       {stageChanges.length > 0 && (
@@ -5170,8 +5112,8 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
                         .map((fact) => renderSceneBasisCharacterFact(character, fact))}
                     </dl>
                   </div>
-                  {/* 러프 컷은 레퍼런스를 생성에 물리지 않는다. 만들어도
-                      안 쓰이므로 버튼도 두지 않는다. */}
+                  {/* 러프 키는 Panel setup에서 다인물 컷에 맞춰 만든다. 여기서는
+                      이미 만든 키를 보여 주되, 한 명짜리 키를 따로 요구하지 않는다. */}
                   {sceneBasisEditing && panelStylePreset !== 'rough' && !character.image && (
                     <button
                       type="button"
