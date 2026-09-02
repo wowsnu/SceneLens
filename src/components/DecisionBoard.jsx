@@ -148,20 +148,6 @@ const VIEWER_FOCUS_PRESETS = [
   },
 ]
 
-// 감독이 대본 단계에서 적은 "관객에게 남기고 싶은 변화"가 있으면, 그것을
-// 초점 프리셋으로 만들어 맨 앞에 둔다. 초점은 화면을 보는 기준일 뿐이므로
-// 의도 자체를 관객에게 알려 주지는 않고, "이런 인상이 화면만으로 전해지는지"
-// 확인하는 관찰 방향으로만 쓴다.
-const intentFocusPreset = (sceneIntention = '') => {
-  const trimmed = sceneIntention.trim()
-  if (!trimmed) return null
-  return {
-    id: 'focus_intent',
-    label: '남기려던 인상이 닿는지',
-    instruction: `이 장면이 관객에게 "${trimmed}"는 인상을 남기려 합니다. 감독의 설명 없이 화면만 보고도 그 인상이 만들어지는지, 어느 컷에서 흐려지거나 다른 방향으로 읽히는지 따라가세요.`,
-  }
-}
-
 // 스토어에는 드로잉 data URL뿐 아니라 public 경로의 테스트 이미지도 들어갈 수
 // 있다. 관객 읽기 API에는 화면 픽셀만 보낼 수 있으므로, 경로는 호출 직전에
 // data URL로 읽어 바꾼다. 이 과정에서 컷 라벨·CIR·의도는 전혀 보내지 않는다.
@@ -1957,11 +1943,7 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
   const panelStylePreset = useStore((s) => s.panelStylePreset)
   // 컷 목적이 비어 있어도 장면 의도와는 견줄 수 있다.
   const sceneIntention = useStore((s) => s.sceneIntention)
-  // 초점 프리셋. 감독이 남기려던 인상을 적어 뒀으면 그것을 첫 프리셋으로.
-  const viewerFocusPresets = useMemo(() => {
-    const intentPreset = intentFocusPreset(sceneIntention)
-    return intentPreset ? [intentPreset, ...VIEWER_FOCUS_PRESETS] : VIEWER_FOCUS_PRESETS
-  }, [sceneIntention])
+  const viewerFocusPresets = VIEWER_FOCUS_PRESETS
   // 러프에서는 같은 러프 밀도로 만든 인물 키만 보인다. 디테일·실사 기준을
   // 섞으면 러프가 완성본처럼 보이고, 스타일이 없는 예시 이미지는 어느
   // 밀도인지 알 수 없으므로 숨긴다.
@@ -2385,14 +2367,6 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
   const issueLensCheckKey = useCallback((issueId, lens) => (
     `${issueId}:${lens}`
   ), [])
-  // 렌즈 이름 순으로 훑지만 순서는 `addedAt`이 정한다. 여기서 만든 객체의
-  // 키 순서에 기대면 안 된다 — 흐름을 그리는 쪽이 그 값으로 정렬한다.
-  const selectedIssueLensChecks = selectedTrackIssue
-    ? Object.fromEntries(['mise', 'camera', 'editing'].flatMap((lens) => {
-      const check = issueLensChecks[issueLensCheckKey(selectedTrackIssue.id, lens)]
-      return check ? [[lens, check]] : []
-    }))
-    : {}
   const selectedTrackShotIndex = useMemo(() => {
     const match = selectedTrackIssue?.anchor?.match(/S(\d+)/)
     return match ? Number(match[1]) - 1 : null
@@ -3310,7 +3284,27 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
     setScopeSelection(null)
     // 다른 렌즈를 잠깐 보고 돌아온 경우에는 같은 관객 읽기를 그대로
     // 보여 준다. 매번 새 분석처럼 초기화되면 결과를 비교할 수 없다.
+    const currentSnapshotShots = shots.map((shot, index) => ({
+      id: shot.id,
+      order: index + 1,
+      image: panelDraftImages[shot.id] || shot.image || null,
+    }))
+    const currentSnapshotVersion = storyboardVersion(currentSnapshotShots)
+    // 같은 그림이라도 컷 목적이나 장면 의도가 바뀌면 대조 결과는 낡는다.
+    // 관객 읽기는 그대로 쓸 수 있지만, 그 읽힘을 무엇과 견줄지는 다시
+    // 계산해야 한다.
+    const currentIntentVersion = JSON.stringify({
+      sceneIntention: sceneIntention || '',
+      cuts: shots.map((shot) => {
+        const cut = cutPlan.find((item) => item.id === shot.cutPlanItemId)
+        return [shot.id, cut?.purpose || '', cut?.content || '']
+      }),
+    })
     const snapshotShots = viewerSnapshot?.shots || []
+    // 이 변경 전 만들어 둔 스냅샷에는 `version` 필드가 없을 수 있다.
+    // 그 경우에도 당시 저장한 이미지 자체로 버전을 다시 계산하면, 같은
+    // 패널을 보고 있는데 단지 앱을 오갔다는 이유로 읽기를 버리지 않는다.
+    const snapshotVersion = viewerSnapshot?.version || storyboardVersion(snapshotShots)
     const snapshotFirstMissing = snapshotShots.findIndex((shot) => !shot.image)
     const snapshotGeneratedEnd = snapshotFirstMissing === -1
       ? snapshotShots.length - 1
@@ -3319,10 +3313,30 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
       viewerSnapshot?.sceneId === scene?.id
       && viewerReport
       && snapshotGeneratedEnd === generatedEnd
+      && snapshotVersion === currentSnapshotVersion
     ) {
+      // 연출 이슈를 보고 넘어온 경우, 이전 관객 읽기에서 남아 있던 다른
+      // 컷의 Workbench를 그대로 열면 그림과 문장이 어긋난다. 방금 고른
+      // 연출 이슈의 컷을 먼저 보여 주고, 관객 이슈 선택은 비운다.
+      const directingIssue = trackIssues.find((entry) => entry.id === selectedIssueId)
+      const issueOrder = Number(directingIssue?.anchor?.match(/S(\d+)/)?.[1])
+      if (Number.isInteger(issueOrder) && issueOrder > 0) {
+        setViewerPanelOrder(issueOrder)
+        setSelectedReadingStep(null)
+        setSelectedReadingFindingId(null)
+      }
       setScopeMode('range')
       setRangeStart(0)
       setRangeEnd(generatedEnd)
+      if (viewerSnapshot?.intentVersion !== currentIntentVersion) {
+        const panelOrders = snapshotShots
+          .filter((shot) => Boolean(shot.image))
+          .map((shot) => shot.order)
+        setViewerSnapshot((current) => (
+          current ? { ...current, intentVersion: currentIntentVersion } : current
+        ))
+        void runIntentCheck({ readings: viewerReport.readings || [], panelOrders })
+      }
       return
     }
     setRangeStart(0)
@@ -3331,6 +3345,8 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
     setViewerSnapshot({
       sceneId: scene?.id,
       sceneLabel: scene?.label || 'Current scene',
+      version: currentSnapshotVersion,
+      intentVersion: currentIntentVersion,
       shots: shots.map((shot, index) => ({
         id: shot.id,
         order: index + 1,
@@ -3565,9 +3581,12 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
   }
 
   const checkSelectedIssueLens = async (lens) => {
-    // 관객 쪽을 보는 중이면 그것이 대상이다. 렌즈가 짚은 진단이 아니지만,
-    // 렌즈를 부르는 흐름은 똑같다.
-    const issue = readingIssue || selectedTrackIssue
+    // Inspector가 지금 무엇을 대상으로 열려 있는지와 같은 순서로 고른다
+    // (아래 <IssueInspector issue={...}>와 동일). 이 셋 중 무엇이든
+    // 대상이 될 수 있는데 여기서 revisionWorkspace를 빼면, 관객 자리를
+    // 수정 작업면으로 연 상태에서 '다른 렌즈로 검토하기'가 조용히
+    // 아무것도 하지 않는다.
+    const issue = revisionWorkspace?.issue || readingIssue || selectedTrackIssue
     if (!issue || issue.lenses?.includes(lens)) return
     const key = issueLensCheckKey(issue.id, lens)
     if (issueLensChecks[key]?.status === 'loading') return
@@ -3609,7 +3628,7 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
     // 관객 쪽에서 온 자리에는 먼저 짚은 렌즈가 없다. 무엇이 어긋났는지를
     // 논점으로 준다 — 그것이 렌즈가 이어 읽을 출발점이다.
     const viewerReading = issue.intent
-      ? `감독이 노린 것은 "${issue.intent.intended}"인데 관객은 "${issue.intent.read_as}"로 읽었습니다.`
+      ? `감독이 의도한 것은 "${issue.intent.intended}"인데 관객은 "${issue.intent.read_as}"로 읽었습니다.`
         + (issue.intent.screen_cause ? ` ${issue.intent.screen_cause}` : '')
       : issue.from_viewer
         ? `관객이 짚었습니다 — ${(issue.viewer_readings || [])
@@ -4574,7 +4593,7 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
   //
   // 관객끼리 읽기가 갈렸는지는 더 이상 보지 않는다. 갈림은 그 자체로
   // 고칠 것이 아니었고, 감독에게 답을 물어야 비로소 쓸모가 생기는데 그
-  // 물음이 일을 늘리기만 했다. 감독이 노린 것이 닿았는지만 본다.
+  // 물음이 일을 늘리기만 했다. 감독이 의도한 것이 닿았는지만 본다.
 
   // 트랙의 행. 실제로 읽은 조건만 둔다 — 고르기만 하고 아직 읽지 않은
   // 조건까지 빈 행으로 그리면, 결과가 없는 것인지 갈리지 않은 것인지
@@ -4623,22 +4642,35 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
         && verdict.panel_order >= 1
         && verdict.panel_order <= shots.length
       ))
-      // 두 구가 다 있어야 "노린 것 → 읽힌 것"이 말이 된다. 하나가 비면
+      // 두 구가 다 있어야 "의도한 것 → 읽힌 것"이 말이 된다. 하나가 비면
       // 화면에 `undefined → …`가 그대로 찍힌다.
       .filter((verdict) => verdict.intended && verdict.read_as)
-      .map((verdict) => ({
-        id: `${scopeKey}:intent:${verdict.panel_order}`,
-        kind: 'intent',
-        anchor: `S${verdict.panel_order}`,
-        anchor_kind: 'shot',
-        panelOrders: [verdict.panel_order],
-        // 마커에 적히는 이름. 노린 것과 읽힌 것을 그대로 잇는다.
-        title: `${verdict.intended} → ${verdict.read_as}`,
-        why_it_matters: verdict.screen_cause || '',
-        conditions: [],
-        lines: {},
-        intent: verdict,
-      }))
+      .map((verdict) => {
+        // 의도 대조는 현재 모든 읽기를 묶어 판단한다. 어느 한 줄만
+        // 강조하면 다른 초점으로 본 같은 컷은 "의도대로 읽힘"처럼
+        // 보이므로, 대조에 들어간 읽기 줄 모두에 같은 이슈를 붙인다.
+        const lines = Object.fromEntries(viewerReadings
+          .map((entry) => {
+            const step = (entry.reading?.steps || []).find((item) => (
+              item.panel_order === verdict.panel_order
+            ))
+            return step?.immediate_reading ? [entry.condition_id, step.immediate_reading] : null
+          })
+          .filter(Boolean))
+        return {
+          id: `${scopeKey}:intent:${verdict.panel_order}`,
+          kind: 'intent',
+          anchor: `S${verdict.panel_order}`,
+          anchor_kind: 'shot',
+          panelOrders: [verdict.panel_order],
+          // 마커에 적히는 이름. 의도한 것과 읽힌 것을 그대로 잇는다.
+          title: `${verdict.intended} → ${verdict.read_as}`,
+          why_it_matters: verdict.screen_cause || '',
+          conditions: Object.keys(lines),
+          lines,
+          intent: verdict,
+        }
+      })
 
     // 관객이 컷을 보며 남긴 단독 지적. 의도가 안 닿았다고 판정된 자리는
     // 그쪽이 이미 말하므로 넣지 않는다 — 마커가 겹친다.
@@ -4693,6 +4725,9 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
   const selectedReadingFinding = readingFindings.find((entry) => (
     entry.id === selectedReadingFindingId
   )) || null
+  const selectedIntentVerdict = (intentCheck?.verdicts || []).find((verdict) => (
+    verdict.panel_order === selectedReadingStep?.order
+  )) || null
 
   // 관객 쪽 finding을 Inspector가 읽을 수 있는 모양으로 감싼다.
   //
@@ -4711,7 +4746,7 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
       // 이 자리를 판정하는 질문. 화면의 어느 부분이 그렇게 읽히게
       // 했는지가 곧 기준이다.
       detail: finding.why_it_matters || '',
-      // 의도가 안 닿은 자리. Inspector가 "노린 것"과 "읽힌 것"을 나란히
+      // 의도가 안 닿은 자리. Inspector가 "의도한 것"과 "읽힌 것"을 나란히
       // 보여줘야 감독이 무엇을 되찾아야 하는지 안다.
       intent: finding.intent || null,
       // 렌즈가 아직 아무도 짚지 않았다.
@@ -4727,6 +4762,19 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
       sourceScopeKey: multiReviewScopeKey,
     }
   }, [readingFindings, selectedReadingFindingId, allViewerReadingConditions, multiReviewScopeKey])
+
+  // Inspector가 실제로 대상으로 삼는 이슈와 같은 것에 대한 렌즈 검토
+  // 결과를 넘긴다 (아래 <IssueInspector issue={...}>와 같은 우선순위).
+  // selectedTrackIssue로만 계산하면, 관객 자리(readingIssue)를 인스펙터가
+  // 들고 있을 때 '다른 렌즈로 검토하기'를 눌러도 결과가 붙지 않아 —
+  // 렌즈가 목록에서 빠지지도, 진단이 뜨지도 않는다.
+  const inspectorIssue = revisionWorkspace?.issue || readingIssue || selectedTrackIssue
+  const selectedIssueLensChecks = inspectorIssue
+    ? Object.fromEntries(['mise', 'camera', 'editing'].flatMap((lens) => {
+      const check = issueLensChecks[issueLensCheckKey(inspectorIssue.id, lens)]
+      return check ? [[lens, check]] : []
+    }))
+    : {}
 
   // 트랙 행이 새로 생기면 켠다. 감독이 끈 것은 그대로 둔다 — 결과가
   // 도착할 때마다 선택이 되돌아가면 무엇을 보고 있었는지 잃는다.
@@ -4793,7 +4841,7 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
               <small>
                 {viewerReport
                   ? '감독의 설명 없이, 화면에 보이는 단서만 따라갑니다'
-                  : '이 스토리보드가 말 없이도 읽히는지 확인합니다 — 컷마다 무엇으로 이해되는지, 노린 것과 어긋난 자리가 어디인지 짚어 줍니다'}
+                  : '이 스토리보드가 말 없이도 읽히는지 확인합니다 — 컷마다 무엇으로 이해되는지, 의도한 것과 어긋난 자리가 어디인지 짚어 줍니다'}
               </small>
             </div>
           </div>
@@ -4947,6 +4995,8 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
           conditions={readingTrackConditions}
           shots={shots}
           range={{ from: viewerScopeFrom - 1, to: viewerScopeTo - 1 }}
+          intentStatus={intentCheckStatus}
+          intentVerdict={selectedIntentVerdict}
           /* 앞뒤 컷으로 걸어간다 — 그림을 눌러서도, 화살표로도.
              수정 작업면을 걷어내면서 이 배선이 함께 빠져 있었다. */
           onWalkTo={({ condition, order }) => selectReadingStep({

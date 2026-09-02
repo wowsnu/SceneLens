@@ -45,6 +45,10 @@ export default function ReadingWorkbench({
   // 앞뒤 컷으로 걸어간다. 트랙까지 올라가지 않고도 순차 읽기를 따라갈
   // 수 있어야 한다 — 읽기는 앞뒤로 움직이며 확인하는 것이다.
   onWalkTo,
+  // 의도 대조는 관객 읽기 뒤에 따로 도착한다. 이 상태가 없는데
+  // "의도대로"라고 단정하면, 아직 판정하지 않은 컷까지 통과처럼 보인다.
+  intentStatus = 'idle',
+  intentVerdict = null,
 }) {
   // 칸을 고르면 이 자리가 포커스를 받는다. 그래야 곧바로 화살표로 걸을
   // 수 있다 — 한 번 더 눌러 포커스를 주게 하면 키가 있는 줄도 모른다.
@@ -145,12 +149,18 @@ export default function ReadingWorkbench({
             <span>🧑 {labelOf(step.condition)}의 생각</span>
             {/* 어긋난 자리인지 아닌지를 여기서 먼저 말한다. 침묵을 "문제
                 없음"으로 읽지 않게 한다 (`design_goal.md` DG1 P2). */}
-            {finding ? (
+            {finding || intentVerdict?.status === 'missed' || intentVerdict?.status === 'partial' ? (
               <em className="flagged">
-                {finding.kind === 'intent' ? '의도가 다르게 읽혔습니다' : '관객이 짚은 자리입니다'}
+                {finding?.kind === 'intent' || intentVerdict?.status === 'missed' || intentVerdict?.status === 'partial'
+                  ? '의도가 다르게 읽혔습니다'
+                  : '관객이 짚은 자리입니다'}
               </em>
-            ) : (
+            ) : intentStatus === 'ready' && intentVerdict?.status === 'reached' ? (
               <em>의도대로 읽혔습니다</em>
+            ) : intentStatus === 'ready' && intentVerdict?.status === 'unknown' ? (
+              <em>대조할 의도가 없습니다</em>
+            ) : (
+              <em>이 컷의 읽기입니다</em>
             )}
             {/* 키가 있다는 것을 알린다. 그림을 눌러도 되고 화살표로도
                 걸을 수 있다. */}
@@ -226,7 +236,7 @@ export default function ReadingWorkbench({
                   <h4>의도와 다르게 읽힘</h4>
                   <dl>
                     <div>
-                      <dt>노린 것</dt>
+                      <dt>의도한 것</dt>
                       <dd>{finding.intent.intended}</dd>
                     </div>
                     <div>

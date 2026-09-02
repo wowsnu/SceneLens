@@ -88,7 +88,7 @@ export default function ReadingTracks({
   // 칸 위에 얹는 이벤트 배지. 트랙을 한 칸씩 읽지 않아도 "어디서 손봐야
   // 하나"가 스캔만으로 보이게 한다. 우선순위 순으로 한 칸에 하나만 —
   // 배지가 겹치면 스캔이 어려워진다.
-  //   ⚡ 노린 것과 다르게 읽힘 (intentCheck verdict → findings.kind='intent')
+  //   ⚡ 의도한 것과 다르게 읽힘 (intentCheck verdict → findings.kind='intent')
   //   🔀 이해가 뒤집힌 곳 (turning_point_panel_order)
   //   🌗 해석이 갈린 곳 (interpretive_branches.starts_at_panel)
   // open_question은 배지로 올리지 않는다 — 관객이 매 컷 무언가 궁금해하는
@@ -99,9 +99,9 @@ export default function ReadingTracks({
     readings.forEach((entry) => {
       const reading = entry.reading || {}
       const events = new Map()
-      const put = (order, emoji, label, tone = 'neutral') => {
+      const put = (order, emoji, label, tone = 'neutral', kind = 'change') => {
         if (!Number.isInteger(order) || events.has(order)) return
-        events.set(order, { emoji, label, tone })
+        events.set(order, { emoji, label, tone, kind })
       }
       // 의도 어긋남이 가장 무겁다. 먼저 얹는다.
       findings
@@ -109,13 +109,19 @@ export default function ReadingTracks({
         .forEach((finding) => {
           const order = finding.panelOrders?.[0]
           const verdict = finding.intent || {}
-          put(order, '⚡', `노린 것과 다르게 읽혔습니다 — "${verdict.intended}" → "${verdict.read_as}"`, 'alert')
+          put(order, '⚡', `의도한 것과 다르게 읽혔습니다 — "${verdict.intended}" → "${verdict.read_as}"`, 'alert', 'intent')
         })
       if (Number.isInteger(reading.turning_point_panel_order)) {
-        put(reading.turning_point_panel_order, '🔀', '여기서 관객의 이해가 뒤집혔습니다')
+        put(reading.turning_point_panel_order, '🔀', '여기서 관객의 이해가 뒤집혔습니다', 'neutral', 'turn')
       }
       ;(reading.interpretive_branches || []).forEach((branch) => {
-        put(branch.starts_at_panel, '🌗', '여기서 관객의 해석이 갈립니다')
+        put(branch.starts_at_panel, '🌗', '여기서 관객의 해석이 갈립니다', 'neutral', 'branch')
+      })
+      ;(reading.engagement_signals || []).forEach((signal) => {
+        if (!['pause', 'recheck', 'exit_risk'].includes(signal.action)) return
+        const order = signal.panel_orders?.at(-1)
+        const mark = { pause: 'Ⅱ', recheck: '↩', exit_risk: '⚠' }[signal.action]
+        put(order, mark, signal.reason || '관객의 흐름이 잠시 멈춥니다', signal.action === 'exit_risk' ? 'alert' : 'neutral', 'attention')
       })
       map.set(entry.id, events)
     })
@@ -265,22 +271,33 @@ export default function ReadingTracks({
                   order,
                 )
                 const action = signal ? audienceAction(signal.action) : null
+                // 매 컷의 표면적 이해를 되풀이하지 않는다. 첫 이해와
+                // 생각이 꺾인 자리만 카드로 두고, 나머지는 흐름선으로
+                // 남긴다. 조용한 칸도 눌러 Workbench에서 확인할 수 있다.
+                const isMoment = order === 1 || Boolean(finding) || Boolean(event)
+                const thought = step.current_hypothesis || step.immediate_reading
+                const momentText = finding?.kind === 'intent'
+                  ? `의도한 ${finding.intent?.intended || '내용'}보다 ${finding.intent?.read_as || '다른 해석'}이 먼저 읽힌다.`
+                  : order === 1
+                    ? `처음에는 ${thought}`
+                    : event?.kind === 'branch'
+                      ? `여기서 ${thought}로도 읽힐 수 있다.`
+                      : event?.kind === 'attention' && (signal?.story_pull || signal?.reason)
+                        ? signal.story_pull || signal.reason
+                        : `이제 ${thought}`
                 return (
                   <button
                     key={order}
                     type="button"
                     data-finding-id={finding?.id}
                     data-cell-order={order}
-                    className={`reading-cell ${finding ? `flagged ${finding.kind}` : ''} ${selected ? 'selected' : ''}`}
+                    className={`reading-cell ${isMoment ? 'moment' : 'quiet'} ${finding ? `flagged ${finding.kind}` : ''} ${selected ? 'selected' : ''}`}
                     style={{ '--pos': index }}
                     onClick={() => onSelectStep?.({ condition: condition.id, order, finding })}
                     aria-pressed={Boolean(selected)}
                     title={`S${order} · ${step.immediate_reading}`}
                   >
-                    {/* 변화 상태를 두 문법으로 말하지 않는다. 모델 내부의
-                        relation_to_previous는 유지하되 화면에는 실제 관람
-                        행동만 표시한다. */}
-                    {action && (
+                    {isMoment && action && (
                       <span className="reading-cell-meta">
                         <span
                           className={`reading-cell-action action-${signal.action}`}
@@ -290,27 +307,24 @@ export default function ReadingTracks({
                         </span>
                       </span>
                     )}
-                    {/* 순차 읽기는 이 칸이 다 맡는다. 읽은 것과 그때 든
-                        느낌을 **한 덩어리로** 둔다 — 구분선으로 갈라 두면
-                        칸 하나에 내용이 둘 있는 것처럼 보여 산만하다.
-                        느낌은 짧으므로 문장 뒤에 이어 붙인다. */}
-                    <span className="reading-cell-text">
-                      {step.immediate_reading}
-                      {step.feeling && (
-                        <span className="reading-cell-feeling"> {step.feeling}</span>
-                      )}
-                    </span>
+                    {isMoment ? (
+                      <>
+                        {event && (
+                          <span className={`reading-cell-event tone-${event.tone}`} title={event.label}>
+                            <span aria-hidden="true">{event.emoji}</span>
+                            <span className="reading-cell-event-sr">{event.label}</span>
+                          </span>
+                        )}
+                        <span className="reading-cell-text">{momentText}</span>
+                      </>
+                    ) : (
+                      <span className="reading-cell-quiet-dot" aria-label={`S${order}의 읽기 자세히 보기`} />
+                    )}
                     {finding && (
                       <span
                         className="reading-cell-mark"
                         aria-hidden="true"
                       />
-                    )}
-                    {event && (
-                      <span className={`reading-cell-event tone-${event.tone}`} title={event.label}>
-                        <span aria-hidden="true">{event.emoji}</span>
-                        <span className="reading-cell-event-sr">{event.label}</span>
-                      </span>
                     )}
                   </button>
                 )

@@ -208,6 +208,41 @@
   transition: background 0.12s, border-color 0.12s, color 0.12s;
 }
 
+/* 모든 컷을 캡션 카드로 만들지 않는다. 변화가 없는 구간은 얇은 흐름선과
+   작은 점만 남겨, 카드가 있는 자리가 실제로 읽힘이 꺾인 순간이 되게 한다. */
+.reading-cell.quiet {
+  top: calc(50% - 8px);
+  bottom: auto;
+  height: 16px;
+  min-height: 16px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+.reading-cell-quiet-dot {
+  display: block;
+  width: 5px;
+  height: 5px;
+  margin: 5px auto;
+  border: 1px solid color-mix(in srgb, var(--reader), transparent 45%);
+  border-radius: 50%;
+  background: var(--bg-panel);
+}
+
+.reading-cell.quiet:hover { background: transparent; }
+.reading-cell.quiet:hover .reading-cell-quiet-dot {
+  border-color: var(--reader);
+  background: var(--reader);
+}
+.reading-cell.quiet.selected {
+  outline: 1px solid var(--reader);
+  outline-offset: 2px;
+  box-shadow: none;
+}
+
 /* 이 컷에서 든 생각. 칸의 본문이고, 판정은 이 문장으로 먼저 된다. */
 .reading-cell-text {
   display: -webkit-box;
