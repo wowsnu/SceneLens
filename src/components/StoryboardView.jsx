@@ -2102,6 +2102,18 @@ export default function StoryboardView({ onEnterReview = null }) {
   const newReferenceLocation = !activeLocationIdentity || !priorLocationNames.has(activeLocationIdentity)
     ? visibleSceneState.location
     : null
+
+  // 지금 표현 스타일에서 쓸 수 있는 기준 그림. 다른 밀도로 만든 것은
+  // 없는 것으로 친다 — 러프로 잡아 둔 키를 디테일·실사 콘티에 그대로
+  // 두면 완성본처럼 읽히고, 어느 밀도인지 모르는 예시 이미지도 섞이면
+  // 안 된다. 밀도가 갈리면 이 스타일에 맞게 새로 생성하게 둔다.
+  // (밀도 기록이 없는 옛 레퍼런스는 그대로 인정한다.)
+  const usableReferenceImage = (subject) => {
+    if (!subject?.image) return null
+    const made = subject.stylePreset
+    if (made && made !== panelStylePreset) return null
+    return subject.image
+  }
   // 배지 역시 지금 화면에서 확인할 새 레퍼런스만 센다. 앞 씬에서 남겨 둔
   // 미정값이 씬마다 다시 할 일처럼 쌓이지 않게 한다.
   const undecidedSceneFacts = newReferenceCharacters
@@ -2153,7 +2165,7 @@ export default function StoryboardView({ onEnterReview = null }) {
       sceneLabel: `Scene ${scriptScene.number}`,
       startBeat: scriptScene.startBeat,
     }
-    addMissingReference(locationRequirement, !sceneWithSharedReferences.location?.image)
+    addMissingReference(locationRequirement, !usableReferenceImage(sceneWithSharedReferences.location))
     addPendingReference(
       locationRequirement,
       Boolean(referenceImagePending?.[referencePendingKey(scriptScene.id, 'location')]),
@@ -2171,7 +2183,7 @@ export default function StoryboardView({ onEnterReview = null }) {
           sceneLabel: `Scene ${scriptScene.number}`,
           startBeat: scriptScene.startBeat,
         }
-        addMissingReference(characterRequirement, !character.image)
+        addMissingReference(characterRequirement, !usableReferenceImage(character))
         addPendingReference(
           characterRequirement,
           Boolean(referenceImagePending?.[referencePendingKey(scriptScene.id, 'character', character.id)]),
@@ -2400,19 +2412,6 @@ export default function StoryboardView({ onEnterReview = null }) {
       })
     }
     return picked
-  }
-
-  // 이 레퍼런스가 지금 표현 스타일과 다른 밀도로 만들어졌는가.
-  //
-  // 조용히 다시 그리지 않는다 — 감독이 마음에 들어 하던 기준 그림이 예고
-  // 없이 사라지면 안 된다. 갈렸다는 사실만 알리고 현재 생성 참조에서 뺀다.
-  const staleStyleLabel = (subject) => {
-    const made = subject?.stylePreset
-    // 이 기능 이전에 만든 레퍼런스는 밀도 기록이 없다. 모르는 것을
-    // 갈렸다고 말하면 멀쩡한 기준까지 다시 그리게 된다.
-    if (!subject?.image || !made || made === panelStylePreset) return ''
-    const label = PANEL_STYLE_PRESETS.find((preset) => preset.id === made)?.label || made
-    return `${label}로 만든 기준`
   }
 
   const sceneStateForCut = (cut) => {
@@ -5690,7 +5689,8 @@ export default function StoryboardView({ onEnterReview = null }) {
                                 </li>
                               )}
                               {newReferenceCharacters.map((character) => {
-                                const referenceOpen = openReferenceCards[character.id] && character.image
+                                const characterImage = usableReferenceImage(character)
+                                const referenceOpen = openReferenceCards[character.id] && characterImage
                                 const editKey = `${activeSceneId}:${character.id}`
                                 const referenceEditing = Boolean(editingReferenceCards[editKey])
                                 const settledSummary = character.facts
@@ -5702,30 +5702,30 @@ export default function StoryboardView({ onEnterReview = null }) {
                                   <li key={character.id} className={`rail-scene-reference-card${isPanelPreparationStage && referenceOpen ? ' is-reference-open' : ' is-info-open'}`}>
                                     <div className="rail-reference-card-inner">
                                       <div
-                                        className={`rail-reference-face rail-reference-info${isPanelPreparationStage && character.image ? ' is-flippable' : ''}`}
+                                        className={`rail-reference-face rail-reference-info${isPanelPreparationStage && characterImage ? ' is-flippable' : ''}`}
                                         onClick={(event) => {
                                           // 카드 면의 빈 곳만 뒤집는다. 수정·재생성처럼
                                           // 카드 안의 조작을 누를 때는 편집 상태를 열고
                                           // 같은 클릭으로 레퍼런스 면까지 넘기지 않는다.
                                           if (event.target.closest('button, input, select, textarea')) return
-                                          if (isPanelPreparationStage && character.image) {
+                                          if (isPanelPreparationStage && characterImage) {
                                             setOpenReferenceCards((current) => ({ ...current, [character.id]: true }))
                                           }
                                         }}
                                         onKeyDown={(event) => {
-                                          if (isPanelPreparationStage && character.image && (event.key === 'Enter' || event.key === ' ')) {
+                                          if (isPanelPreparationStage && characterImage && (event.key === 'Enter' || event.key === ' ')) {
                                             event.preventDefault()
                                             setOpenReferenceCards((current) => ({ ...current, [character.id]: true }))
                                           }
                                         }}
-                                        role={isPanelPreparationStage && character.image ? 'button' : undefined}
-                                        tabIndex={isPanelPreparationStage && character.image ? 0 : undefined}
-                                        aria-label={isPanelPreparationStage && character.image ? `${character.name} 레퍼런스 보기` : undefined}
+                                        role={isPanelPreparationStage && characterImage ? 'button' : undefined}
+                                        tabIndex={isPanelPreparationStage && characterImage ? 0 : undefined}
+                                        aria-label={isPanelPreparationStage && characterImage ? `${character.name} 레퍼런스 보기` : undefined}
                                       >
                                         <div className="rail-scene-head">
                                           <strong>{character.name}</strong>
                                           <em>{character.summary}</em>
-                                          {isPanelPreparationStage && !character.image && (
+                                          {isPanelPreparationStage && !characterImage && (
                                             <button
                                               type="button"
                                               className="rail-reference-trigger"
@@ -5735,7 +5735,7 @@ export default function StoryboardView({ onEnterReview = null }) {
                                               {isReferenceImagePending('character', character.id) ? '그리는 중…' : panelStylePreset === 'rough' ? '키 생성' : '레퍼런스 생성'}
                                             </button>
                                           )}
-                                          {isPanelPreparationStage && character.image && (
+                                          {isPanelPreparationStage && characterImage && (
                                             <button
                                               type="button"
                                               className="rail-reference-regenerate"
@@ -5747,11 +5747,6 @@ export default function StoryboardView({ onEnterReview = null }) {
                                             >
                                               {isReferenceImagePending('character', character.id) ? '다시 그리는 중…' : panelStylePreset === 'rough' ? '키 다시 생성' : '다시 생성'}
                                             </button>
-                                          )}
-                                          {isPanelPreparationStage && staleStyleLabel(character) && (
-                                            <span className="rail-reference-stale-style">
-                                              {staleStyleLabel(character)}
-                                            </span>
                                           )}
                                           <button
                                             type="button"
@@ -5785,7 +5780,7 @@ export default function StoryboardView({ onEnterReview = null }) {
                                           />
                                         ))}
                                       </div>
-                                      {isPanelPreparationStage && character.image && (
+                                      {isPanelPreparationStage && characterImage && (
                                         <div
                                           className="rail-reference-face rail-reference-preview"
                                           onClick={() => setOpenReferenceCards((current) => ({ ...current, [character.id]: false }))}
@@ -5799,13 +5794,13 @@ export default function StoryboardView({ onEnterReview = null }) {
                                           tabIndex={0}
                                           aria-label={`${character.name} 정보 카드 보기`}
                                         >
-                                          <img src={character.image} alt={`${character.name}${panelStylePreset === 'rough' ? ' 인물 키' : ' 레퍼런스'}`} />
+                                          <img src={characterImage} alt={`${character.name}${panelStylePreset === 'rough' ? ' 인물 키' : ' 레퍼런스'}`} />
                                           <button
                                             type="button"
                                             className="rail-reference-lightbox-trigger"
                                             onClick={(event) => {
                                               event.stopPropagation()
-                                              setReferenceLightbox({ src: character.image, alt: `${character.name} 레퍼런스`, cardKey: character.id })
+                                              setReferenceLightbox({ src: characterImage, alt: `${character.name} 레퍼런스`, cardKey: character.id })
                                             }}
                                           >
                                             크게 보기
@@ -5819,7 +5814,8 @@ export default function StoryboardView({ onEnterReview = null }) {
 
                               {panelStylePreset !== 'rough' && newReferenceLocation && (() => {
                                 const location = newReferenceLocation
-                                const referenceOpen = openReferenceCards.location && location.image
+                                const locationImage = usableReferenceImage(location)
+                                const referenceOpen = openReferenceCards.location && locationImage
                                 const editKey = `${activeSceneId}:location`
                                 const referenceEditing = Boolean(editingReferenceCards[editKey])
                                 const settledSummary = location.facts
@@ -5831,31 +5827,31 @@ export default function StoryboardView({ onEnterReview = null }) {
                                   <li className={`rail-scene-reference-card${isPanelPreparationStage && referenceOpen ? ' is-reference-open' : ' is-info-open'}`}>
                                     <div className="rail-reference-card-inner">
                                       <div
-                                        className={`rail-reference-face rail-reference-info${isPanelPreparationStage && location.image ? ' is-flippable' : ''}`}
+                                        className={`rail-reference-face rail-reference-info${isPanelPreparationStage && locationImage ? ' is-flippable' : ''}`}
                                         onClick={(event) => {
                                           if (event.target.closest('button, input, select, textarea')) return
-                                          if (isPanelPreparationStage && location.image) {
+                                          if (isPanelPreparationStage && locationImage) {
                                             setOpenReferenceCards((current) => ({ ...current, location: true }))
                                           }
                                         }}
                                         onKeyDown={(event) => {
-                                          if (isPanelPreparationStage && location.image && (event.key === 'Enter' || event.key === ' ')) {
+                                          if (isPanelPreparationStage && locationImage && (event.key === 'Enter' || event.key === ' ')) {
                                             event.preventDefault()
                                             setOpenReferenceCards((current) => ({ ...current, location: true }))
                                           }
                                         }}
-                                        role={isPanelPreparationStage && location.image ? 'button' : undefined}
-                                        tabIndex={isPanelPreparationStage && location.image ? 0 : undefined}
-                                        aria-label={isPanelPreparationStage && location.image ? `${location.name} 레퍼런스 보기` : undefined}
+                                        role={isPanelPreparationStage && locationImage ? 'button' : undefined}
+                                        tabIndex={isPanelPreparationStage && locationImage ? 0 : undefined}
+                                        aria-label={isPanelPreparationStage && locationImage ? `${location.name} 레퍼런스 보기` : undefined}
                                       >
                                         <div className="rail-scene-head">
                                           <strong>{location.name}</strong><em>공간</em>
-                                          {isPanelPreparationStage && !location.image && (
+                                          {isPanelPreparationStage && !locationImage && (
                                             <button type="button" className="rail-reference-trigger" onClick={() => generateReferenceFromCutPlan('location')} disabled={isReferenceImagePending('location')}>
                                               {isReferenceImagePending('location') ? '그리는 중…' : '레퍼런스 생성'}
                                             </button>
                                           )}
-                                          {isPanelPreparationStage && location.image && (
+                                          {isPanelPreparationStage && locationImage && (
                                             <button
                                               type="button"
                                               className="rail-reference-regenerate"
@@ -5867,11 +5863,6 @@ export default function StoryboardView({ onEnterReview = null }) {
                                             >
                                               {isReferenceImagePending('location') ? '다시 그리는 중…' : '다시 생성'}
                                             </button>
-                                          )}
-                                          {isPanelPreparationStage && staleStyleLabel(location) && (
-                                            <span className="rail-reference-stale-style">
-                                              {staleStyleLabel(location)}
-                                            </span>
                                           )}
                                           <button
                                             type="button"
@@ -5901,7 +5892,7 @@ export default function StoryboardView({ onEnterReview = null }) {
                                           />
                                         ))}
                                       </div>
-                                      {isPanelPreparationStage && location.image && (
+                                      {isPanelPreparationStage && locationImage && (
                                         <div
                                           className="rail-reference-face rail-reference-preview is-location"
                                           onClick={() => setOpenReferenceCards((current) => ({ ...current, location: false }))}
@@ -5915,13 +5906,13 @@ export default function StoryboardView({ onEnterReview = null }) {
                                           tabIndex={0}
                                           aria-label={`${location.name} 정보 카드 보기`}
                                         >
-                                          <img src={location.image} alt={`${location.name} 레퍼런스`} />
+                                          <img src={locationImage} alt={`${location.name} 레퍼런스`} />
                                           <button
                                             type="button"
                                             className="rail-reference-lightbox-trigger"
                                             onClick={(event) => {
                                               event.stopPropagation()
-                                              setReferenceLightbox({ src: location.image, alt: `${location.name} 레퍼런스`, cardKey: 'location' })
+                                              setReferenceLightbox({ src: locationImage, alt: `${location.name} 레퍼런스`, cardKey: 'location' })
                                             }}
                                           >
                                             크게 보기
