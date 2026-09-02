@@ -1370,6 +1370,7 @@ export default function StoryboardView({ onEnterReview = null }) {
   const panelGenPending = useStore((s) => s.panelGenerationPending)
   const setPanelGenPending = useStore((s) => s.setPanelGenerationPending)
   const scriptEditorRequestKey = useStore((s) => s.scriptEditorRequestKey)
+  const requestScriptEditor = useStore((s) => s.requestScriptEditor)
   const narrativeSuggestions = useStore((s) => s.narrativeSuggestions)
   const requestNarrativeSuggestions = useStore((s) => s.requestNarrativeSuggestions)
   const requestNarrativeCheck = useStore((s) => s.requestNarrativeCheck)
@@ -1820,9 +1821,22 @@ export default function StoryboardView({ onEnterReview = null }) {
     if (scriptEditorRequestKey > handledScriptEditorRequestKey.current) {
       handledScriptEditorRequestKey.current = scriptEditorRequestKey
       const timer = window.setTimeout(() => {
-        const currentText = screenplay.map((el) => el.text).join('\n')
+        // 지금 대본을 입력칸에 되돌려 놓는다. Beat(빈 줄로 나뉨)와 씬
+        // 헤딩 경계를 살려야, 다시 나눴을 때 원래 구조에 가깝게 복원된다.
+        const currentText = screenplay
+          .map((el, i) => {
+            const previous = screenplay[i - 1]
+            const gap = previous && (el.type === 'scene-heading' || (el.beat ?? 0) !== (previous.beat ?? 0))
+              ? '\n\n'
+              : (i > 0 ? '\n' : '')
+            return gap + el.text
+          })
+          .join('')
         setRawText(currentText)
         setRawSceneIntention(sceneIntention)
+        // 되돌아온 대본은 예시 그대로가 아니라 감독이 고쳐 쓸 대상이다.
+        // 예시 세션 표시를 풀어 버튼이 '씬·구간으로 나누기'로 돌아가게 한다.
+        setUsingExampleSynopsis(false)
         setIsEditingRaw(true)
       }, 0)
       return () => window.clearTimeout(timer)
@@ -4784,6 +4798,20 @@ export default function StoryboardView({ onEnterReview = null }) {
               헤더 카드 자체가 격자·콘티 표 아래에 빈 껍데기로 남는다.
               Panels의 씬 구분은 격자 자체(Scene 라벨)와 콘티 표 헤더가
               이미 맡고 있으므로 이 카드가 필요 없다. */}
+            {isScriptStage && hasScreenplay && (
+              // 씬·구간으로 나눈 뒤에도 원래 시놉시스로 되돌아가 다시 쓸 수
+              // 있어야 한다. 이 버튼이 없으면 한 번 나눈 대본은 줄 단위로만
+              // 고칠 수 있어, 이야기를 통째로 바꾸려는 사람이 갇힌다.
+              <div className="script-stage-toolbar">
+                <button
+                  type="button"
+                  className="rewrite-synopsis-btn"
+                  onClick={requestScriptEditor}
+                >
+                  ← 시놉시스 다시 쓰기
+                </button>
+              </div>
+            )}
             {(!isExpanded || isScriptStage) && scriptSceneGroups.map((sceneGroup, sceneIndex) => {
               const openingBeat = sceneGroup.beats[0]?.beatGroup?.beat
               const sceneCollapsed = isSceneCollapsed(openingBeat)

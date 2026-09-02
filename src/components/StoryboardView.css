@@ -799,6 +799,26 @@
   overflow: hidden;
 }
 .script-scene-card:first-of-type { margin-top: 0; }
+
+.script-stage-toolbar {
+  display: flex;
+  justify-content: flex-start;
+  margin-bottom: 4px;
+}
+.rewrite-synopsis-btn {
+  padding: 8px 14px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 6px;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.62);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.rewrite-synopsis-btn:hover {
+  border-color: rgba(255, 255, 255, 0.32);
+  color: #e4e4e7;
+}
 .script-scene-card-header {
   display: grid;
   grid-template-columns: auto auto minmax(0, 1fr) auto;
