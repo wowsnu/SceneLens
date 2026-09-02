@@ -294,7 +294,7 @@ export default function ReadingTracks({
           없음"으로 읽지 않게 구분해 말한다 (`design_goal.md` DG1 P2). */}
       {!loading && !hasRead && (
         <p className="reading-tracks-status">
-          아직 볼 것이 없습니다. 읽으면 여기에 표시됩니다.
+          위에서 읽기를 시작하면, 컷마다 처음 본 사람이 무엇으로 이해하는지 여기에 이어 놓입니다.
         </p>
       )}
       {!loading && hasRead && findings.length === 0 && (

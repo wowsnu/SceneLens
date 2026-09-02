@@ -4790,7 +4790,11 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
             <span aria-hidden="true">🧑</span>
             <div>
               <strong>처음 본 사람은 어떻게 읽을까?</strong>
-              <small>감독의 설명 없이, 화면에 보이는 단서만 따라갑니다</small>
+              <small>
+                {viewerReport
+                  ? '감독의 설명 없이, 화면에 보이는 단서만 따라갑니다'
+                  : '이 스토리보드가 말 없이도 읽히는지 확인합니다 — 컷마다 무엇으로 이해되는지, 노린 것과 어긋난 자리가 어디인지 짚어 줍니다'}
+              </small>
             </div>
           </div>
           <div className="review-bar-scope viewer-fixed-scope">
