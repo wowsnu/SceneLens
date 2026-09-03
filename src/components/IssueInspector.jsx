@@ -34,6 +34,7 @@ export default function IssueInspector({
   relating = false,
   onCheckLens,
   onRevise,
+  onDismiss,
   onCompare,
   mainLensQuestion = null,
   onAnswerMainLensQuestion,
@@ -554,7 +555,18 @@ export default function IssueInspector({
               감독이 이것을 진단으로 읽는다. */}
           {issue.from_viewer && (issue.intent ? ' · 의도와 다르게 읽힌 자리' : ' · 관객이 짚은 자리')}
         </span>
-        <h3>{issue.title}</h3>
+        <div className="issue-inspector-title-row">
+          <h3>{issue.title}</h3>
+          {onDismiss && (
+            <button
+              type="button"
+              className="issue-inspector-dismiss"
+              onClick={() => onDismiss(issue)}
+            >
+              이 문제는 아니에요
+            </button>
+          )}
+        </div>
         {issue.from_viewer && (
           <>
             {issue.detail && <p>{issue.detail}</p>}

@@ -56,7 +56,7 @@ export const EXAMPLE_CAST = [
 export const EXAMPLE_SCENE_STATES = {
   'scene-0': {
     title: '대학 물리학과 실험실, 밤늦게',
-    description: '대본에서 추출한 장면 기준입니다. Shot별 배치는 이 상태를 상속하고, 달라진 부분만 별도로 기록합니다.',
+    description: '대본에서 추출한 장면 준비입니다. Shot별 배치는 이 상태를 상속하고, 달라진 부분만 별도로 기록합니다.',
     location: {
       name: '대학 물리실험실',
       facts: [

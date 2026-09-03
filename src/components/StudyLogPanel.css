@@ -362,6 +362,18 @@
 
 .study-bar-start:hover { background: rgba(74, 222, 128, 0.26); }
 
+/* 과제 시작 전, 튜토리얼 흔적을 지우는 자리. 주 버튼(과제 시작)보다
+   눈에 덜 걸리게 둔다. */
+.study-bar-clear-tutorial {
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.04);
+  color: rgba(255, 255, 255, 0.62);
+}
+.study-bar-clear-tutorial:hover {
+  border-color: rgba(255, 255, 255, 0.3);
+  color: #fff;
+}
+
 /* 진행 중에는 조용히 둔다. 작업 중이므로 눈에 걸리면 안 된다. */
 .study-bar-state {
   display: inline-flex;

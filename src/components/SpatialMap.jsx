@@ -41,9 +41,6 @@ export default function SpatialMap({
   initialEntityPresets = INITIAL_PRESETS,
   onElementsChange,
   showShotNodes = true,
-  onProposeLayout,
-  proposePending = false,
-  proposeNote = '',
 }) {
   const setViewMode = useStore((s) => s.setViewMode)
   const strategies = useStore((s) => s.strategies)
@@ -340,18 +337,6 @@ export default function SpatialMap({
               </div>
             )}
           </div>
-          <div className="tool-divider" />
-          {/* 빈 캔버스에서 시작하는 대신 대본에서 초안을 받는다. */}
-          {onProposeLayout && (
-            <button
-              className="tool-btn propose"
-              onClick={onProposeLayout}
-              disabled={proposePending}
-              title={proposeNote || '대본에서 배치 제안받기'}
-            >
-              {proposePending ? '…' : '✦'}
-            </button>
-          )}
           <button className={`tool-btn ${activeTool === 'select' ? 'active' : ''}`} onClick={() => setActiveTool('select')} title="Select Mode"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 3l7.07 16.97 2.51-7.39 7.39-2.51L3 3z" /></svg></button>
         </div>
       )}

@@ -1386,6 +1386,77 @@
   min-width: 0;
 }
 
+.scene-basis-location-layout {
+  display: grid;
+  gap: 7px;
+  margin-top: 9px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.scene-basis-location-layout-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.scene-basis-location-layout-heading > div > span,
+.scene-basis-location-layout-heading > div > small {
+  display: block;
+}
+
+.scene-basis-location-layout-heading > div > span {
+  color: rgba(187, 247, 208, 0.82);
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.scene-basis-location-layout-heading > div > small {
+  margin-top: 2px;
+  color: rgba(226, 232, 240, 0.48);
+  font-size: 9px;
+}
+
+.scene-basis-location-layout > img,
+.scene-basis-location-layout-empty {
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  height: 210px;
+  border: 1px solid rgba(110, 231, 183, 0.13);
+  border-radius: 5px;
+  background: rgba(5, 12, 10, 0.62);
+}
+
+.scene-basis-location-layout > img { object-fit: contain; }
+
+.scene-basis-location-layout-empty {
+  display: grid;
+  place-items: center;
+  color: rgba(148, 163, 184, 0.68);
+  font-size: 8.5px;
+  text-align: center;
+}
+
+.scene-basis-location-layout-heading > button {
+  min-height: 25px;
+  padding: 0 7px;
+  border: 1px solid rgba(110, 231, 183, 0.3);
+  border-radius: 5px;
+  background: rgba(16, 185, 129, 0.08);
+  color: #b7f7d9;
+  font: inherit;
+  font-size: 9.5px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.scene-basis-location-layout-heading > button:hover {
+  border-color: rgba(110, 231, 183, 0.62);
+  background: rgba(16, 185, 129, 0.17);
+}
+
 .scene-basis-character strong,
 .scene-basis-location strong {
   display: block;
@@ -4592,6 +4663,26 @@ button.active .lens-glass::after {
   background:
     radial-gradient(circle at 1px 1px, rgba(255, 255, 255, 0.09) 1px, transparent 0) 0 0 / 12px 12px,
     color-mix(in srgb, var(--lens-color), transparent 94%);
+}
+
+.mise-location-layout-preview,
+.mise-location-layout-empty {
+  display: block;
+  width: 100%;
+  min-height: 210px;
+  border: 1px solid rgba(226, 232, 240, 0.22);
+  background: rgba(5, 12, 10, 0.68);
+}
+
+.mise-location-layout-preview {
+  object-fit: contain;
+}
+
+.mise-location-layout-empty {
+  display: grid;
+  place-items: center;
+  color: rgba(148, 163, 184, 0.68);
+  font-size: 11px;
 }
 
 .mise-mini-room {

@@ -1189,8 +1189,8 @@ export const selectSceneStates = (state) => {
 // 레퍼런스 "그리는 중" 표시의 key. 씬이 빠지면 다른 씬의 같은 이름
 // ('location', 또는 씬을 넘어 같은 인물 id)이 한 칸을 공유해, 한 씬을
 // 그리는 동안 다른 씬까지 그리는 중으로 보인다.
-export const referencePendingKey = (sceneId, kind, subjectId = null) => (
-  `${sceneId}:${kind === 'character' ? `character:${subjectId}` : kind}`
+export const referencePendingKey = (sceneId, kind, subjectId = null, stylePreset = '') => (
+  `${sceneId}:${kind === 'character' ? `character:${subjectId}` : kind}:style:${stylePreset || 'default'}`
 )
 
 // --- Scene state: 컷을 가로지르는 기준 ----------------------------------
@@ -1397,7 +1397,7 @@ const MARKER_COLORS = ['#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#06b6d4', '#
 //
 // 편집기 화면을 그대로 캡처하지 않는 이유: 도구 막대, 선택 표시, 격자 같은
 // 것이 함께 들어가면 모델이 그것까지 그림의 일부로 읽는다.
-export const layoutToImage = (elements = [], size = 768) => {
+export const layoutToImage = (elements = [], size = 768, { showLabels = true } = {}) => {
   const boxes = elements.filter((entry) => entry.type === 'rect')
   const markers = elements.filter((entry) => entry.type === 'marker')
   if (boxes.length === 0 && markers.length === 0) return null
@@ -1414,7 +1414,9 @@ export const layoutToImage = (elements = [], size = 768) => {
   const maxX = Math.max(...points.map((point) => point.x))
   const minY = Math.min(...points.map((point) => point.y))
   const maxY = Math.max(...points.map((point) => point.y))
-  const pad = 60
+  // 생성용 참조에는 이름도 남기지만, 작은 화면용 미리보기는 글씨가
+  // 도면을 덮지 않도록 여백과 라벨을 뺀다.
+  const pad = showLabels ? 60 : 24
   const scale = Math.min(
     (size - pad * 2) / Math.max(maxX - minX, 1),
     (size - pad * 2) / Math.max(maxY - minY, 1),
@@ -1431,7 +1433,7 @@ export const layoutToImage = (elements = [], size = 768) => {
     return `<rect x="${tx(box.x)}" y="${ty(box.y)}" width="${w}" height="${h}" `
       + 'fill="none" stroke="#000" stroke-width="3"/>'
       // 이름이 상자보다 길면 넘쳐 옆 상자를 덮는다. 상자 폭에 맞춰 줄인다.
-      + (box.label
+      + (showLabels && box.label
         ? `<text x="${tx(box.x) + w / 2}" y="${ty(box.y) + h / 2 + 6}" `
           + 'text-anchor="middle" font-family="sans-serif" '
           + `font-size="${Math.max(10, Math.min(18, (w * 1.7) / Math.max(box.label.length, 1)))}" `
@@ -1442,7 +1444,7 @@ export const layoutToImage = (elements = [], size = 768) => {
   // 인물은 채운 원으로. 사물(빈 사각형)과 한눈에 갈려야 한다.
   const people = markers.map((marker) => (
     `<circle cx="${tx(marker.x)}" cy="${ty(marker.y)}" r="16" fill="#000"/>`
-    + (marker.label
+    + (showLabels && marker.label
       ? `<text x="${tx(marker.x)}" y="${ty(marker.y) - 26}" text-anchor="middle" `
         + `font-family="sans-serif" font-size="20" font-weight="bold" fill="#000">${esc(marker.label)}</text>`
       : '')
@@ -2255,7 +2257,10 @@ const useStore = create((set, get) => ({
       return
     }
 
-    const key = referencePendingKey(sceneId, kind, subjectId)
+    // 생성 중에 그림체를 바꾸면 새 그림체의 카드는 기다릴 이유가 없다.
+    // 요청을 시작한 순간의 preset을 key와 결과에 함께 붙잡아 둔다.
+    const preset = state.panelStylePreset
+    const key = referencePendingKey(sceneId, kind, subjectId, preset)
     set((current) => ({
       referenceImagePending: { ...current.referenceImagePending, [key]: true },
       referenceImageError: null,
@@ -2265,7 +2270,6 @@ const useStore = create((set, get) => ({
       const { generateReferenceImage } = await import('../services/api.js')
       // 레퍼런스부터 패널과 같은 화풍으로 만든다. 기준 그림이 다른 화풍이면
       // 패널 생성 때 참조로 물려 두 화풍이 서로 경쟁하게 된다.
-      const preset = get().panelStylePreset
       // 모델도 패널과 같은 것을 쓴다. 기준 그림만 다른 모델로 그리면
       // 프롬프트를 받아들이는 정도가 달라 화풍이 그 지점에서 갈린다.
       // FLUX는 레퍼런스 경로가 없으므로(OpenAI images.generate만 쓴다)
@@ -2516,9 +2520,18 @@ const useStore = create((set, get) => ({
       for (const scene of scenes) {
         const beats = []
         for (let beat = scene.startBeat; beat <= scene.endBeat; beat += 1) {
-          const lines = current.screenplay
-            .filter((element) => element.beat === beat && element.type === 'action')
-            .map((element) => element.text)
+          const beatElements = current.screenplay
+            .filter((element) => element.beat === beat && (element.type === 'action' || element.type === 'dialogue'))
+          const lines = beatElements.map((element) => {
+            // 대본 줄에 이미 매겨진 인물을 힌트로 붙인다. 컷 플랜의 인물
+            // 보정 패스가 "이 줄에 원래 누가 있었는지"를 볼 수 있게.
+            const who = (element.characters || []).join(', ')
+            if (element.type === 'dialogue') {
+              const said = element.dialogue || element.text
+              return who ? `${who}: "${said}"` : `대사: "${said}"`
+            }
+            return who ? `${element.text} (${who})` : element.text
+          })
           if (lines.length > 0) beats.push({ beat, lines })
         }
         if (beats.length === 0) continue
@@ -2552,12 +2565,9 @@ const useStore = create((set, get) => ({
       // 인물 명단을 위한 기본값이고, 여기서 한 번 더 읽어 시간 변화 초안을
       // 자동으로 채운다 — 사용자가 별도 버튼을 누를 일이 아니다.
       await get().requestSceneStates()
-      // 공간 도면도 여기서 미리 만든다. 감독이 상자를 직접 놓아야 한다면
-      // 대개 비어 있는 채로 남고, 그러면 첫 생성에 배치 기준이 없어 컷마다
-      // 콘솔과 책상이 좌우로 옮겨 다닌다.
-      //
-      // AI가 대본과 공간 기준을 읽어 초안을 놓고, 감독은 2D 배치에서 끌어
-      // 고친다 — 만드는 부담 없이 판정만 남는다 (DG1 P2).
+      // 첫 패널을 만들기 전에는 공간 기준이 하나 필요하다. 여기서는 최초
+      // 초안만 자동으로 만들고, 편집기에서는 다시 제안하거나 덮어쓰지 않는다.
+      // 이후에는 감독이 직접 고친 배치가 계속 기준이 된다.
       await get().requestSpaceLayout({ auto: true })
       await get().requestShotDesign()
     } catch (error) {
@@ -2712,10 +2722,14 @@ const useStore = create((set, get) => ({
     })
     return set((state) => {
     const next = [...state.cutPlan]
-    const index = afterItemId
-      ? next.findIndex((item) => item.id === afterItemId)
-      : next.length - 1
-    const anchorBeat = index >= 0 ? next[index].beat : beat
+    // 'START'는 맨 앞에 넣으라는 신호다 — index -1이면 아래 splice(index+1)이
+    // 0번 자리가 된다. afterItemId가 없으면 맨 뒤.
+    const index = afterItemId === 'START'
+      ? -1
+      : afterItemId
+        ? next.findIndex((item) => item.id === afterItemId)
+        : next.length - 1
+    const anchorBeat = index >= 0 ? next[index].beat : (next[0]?.beat ?? beat)
     const inserted = createCutPlanItem({
       beat: anchorBeat,
       content: '',
@@ -2747,8 +2761,12 @@ const useStore = create((set, get) => ({
       ...((fields.content || '').trim() ? {} : { insertDraft: true }),
     }
     const withPanel = updateActiveBranchShots(state, (current) => {
-      const shotIndex = current.findIndex((shot) => shot.cutPlanItemId === afterItemId)
       const copy = [...current]
+      if (afterItemId === 'START') {
+        copy.splice(0, 0, insertedShot)
+        return copy
+      }
+      const shotIndex = current.findIndex((shot) => shot.cutPlanItemId === afterItemId)
       copy.splice(shotIndex < 0 ? copy.length : shotIndex + 1, 0, insertedShot)
       return copy
     })
@@ -2780,6 +2798,90 @@ const useStore = create((set, get) => ({
       } : {}),
     }
   })
+  },
+  // 컷을 통째로 복제해 바로 뒤에 놓는다. 새로 쓰는 것이 아니라 "여기서
+  // 조금만 바꾸면 되는 컷"을 만드는 길이다 — 앵글만 다른 리버스 샷,
+  // 같은 자리에서 반응만 다른 컷처럼. content·purpose·characters·샷·
+  // 프롬프트·그림까지 다 물려받고, provenance만 'User'로 둔다 (감독이
+  // 만든 것이고 바로 손볼 것이므로).
+  //
+  // 확정 후(패널이 컷에 붙어 있으면)에는 패널도 함께 복제한다. 그림과
+  // 프롬프트 오버라이드까지 복제해, 정말 "조금만 수정" 상태에서 시작하게
+  // 한다. 확정 전(컷 플랜 표)에는 컷만 복제하고 `Accept cut plan`이 패널을
+  // 만든다 — addCutPlanItem과 같은 규칙.
+  duplicateCutPlanItem: (itemId) => {
+    logEdit({ lens: 'editing', level: 'shot', target: itemId, action: 'insert', source: 'seam', proposed: false })
+    return set((state) => {
+      const index = state.cutPlan.findIndex((item) => item.id === itemId)
+      if (index < 0) return {}
+      const source = state.cutPlan[index]
+
+      const clone = {
+        ...createCutPlanItem({ ...source }),
+        // createCutPlanItem이 새 id·기본 order를 매긴다. reorderCutPlan이
+        // 아래에서 order/beatOrder를 다시 매기므로 여기서는 신경 쓰지 않는다.
+        provenance: 'User',
+      }
+
+      const next = [...state.cutPlan]
+      next.splice(index + 1, 0, clone)
+      const nextCutPlan = reorderCutPlan(next)
+
+      const scene = state.scenes?.[state.activeScene]
+      const shots = scene?.branches?.[scene.activeBranch ?? 0]?.shots || []
+      const sourceShot = shots.find((shot) => shot.cutPlanItemId === itemId)
+      if (!sourceShot) return { cutPlan: nextCutPlan }
+
+      // 패널(샷)도 복제한다. 그림·cir·프롬프트 오버라이드까지 물려받아
+      // 새 그림을 부르지 않는다 — 감독이 무엇을 바꿀지 정한 뒤 직접
+      // `그리기`를 누른다.
+      //
+      // `duplicateDraft`: 이 패널은 복제본이고, 아직 재생성하지 않았다.
+      // 카드가 이 표시를 보고 "앞 컷과 같은데 ___만 다름" 입력칸을 연다.
+      // 감독이 delta를 적고 그리면, 원본 그림을 current 참조로 물리고
+      // changes에 그 delta를 실어 "이것만 바꾸고 나머지는 그대로"를 지시한다
+      // (panel_image.py의 kind=='current' 갈래). insertDraft·splitDraft와
+      // 같은 자리의 표시다.
+      //
+      // `duplicatedFrom`: 원본 컷 id. 재생성 시 원본 그림을 찾는 데 쓴다 —
+      // 복제 직후엔 clonedShot.image에 그대로 있지만, 감독이 delta를 적는
+      // 동안 다른 편집이 끼어들 수 있어 컷 id로도 짚어 둔다.
+      const clonedShot = {
+        ...sourceShot,
+        id: createShotId(),
+        cutPlanItemId: clone.id,
+        duplicateDraft: true,
+        duplicatedFrom: itemId,
+      }
+      const withPanel = updateActiveBranchShots(state, (current) => {
+        const copy = [...current]
+        const shotIndex = current.findIndex((shot) => shot.cutPlanItemId === itemId)
+        copy.splice(shotIndex < 0 ? copy.length : shotIndex + 1, 0, clonedShot)
+        return copy
+      })
+
+      // 원본에 걸려 있던 이음새는 '원본 → 다음 컷' 사이의 것이었다. 복제본이
+      // 그 사이에 들어가므로 이음새를 복제본 뒤로 옮기고, 원본 → 복제본은
+      // 새 기본 이음새('컷 · 연속')로 둔다 — addCutPlanItem·splitCut과 같은 규칙.
+      const nextSeams = { ...state.seams }
+      if (nextSeams[seamKeyFor(sourceShot.id)]) {
+        nextSeams[seamKeyFor(clonedShot.id)] = nextSeams[seamKeyFor(sourceShot.id)]
+        delete nextSeams[seamKeyFor(sourceShot.id)]
+      }
+
+      // 원본 패널에 그림 초안이 있으면 복제본에도 그대로 이어준다.
+      const panelDraftImages = { ...(state.panelDraftImages || {}) }
+      if (panelDraftImages[sourceShot.id]) {
+        panelDraftImages[clonedShot.id] = panelDraftImages[sourceShot.id]
+      }
+
+      return {
+        ...withPanel,
+        cutPlan: nextCutPlan,
+        seams: nextSeams,
+        panelDraftImages,
+      }
+    })
   },
   // 진단을 받아 촬영에 수정본을 묻는다. 어느 크기로 바꿀지는 그 컷이
   // 무엇을 보여주려는지 봐야 정해진다 — 코드로 "한 칸 벌린다"고 두면
@@ -3014,6 +3116,48 @@ const useStore = create((set, get) => ({
     return set((state) => ({
       cutPlan: reorderCutPlan(state.cutPlan.filter((item) => item.id !== itemId)),
     }))
+  },
+
+  // 컷 하나를 다른 자리로 옮긴다. 정보 공개 순서를 바꾸는 것은 편집의
+  // 일이고(editing-information-order), 편집 렌즈가 그 처방을 낼 수 있는데
+  // 실행할 방법이 없으면 감독이 삭제하고 다시 그려야 한다.
+  //
+  // seams와 상태 변화(changes)는 컷·패널 id로 걸려 있어 순서만 바꾸면
+  // 자동으로 따라온다. 여기서는 cutPlan과 현재 브랜치의 패널 배열을
+  // 나란히 옮기고 order만 다시 매긴다.
+  moveCutPlanItem: (itemId, toIndex) => {
+    return set((state) => {
+      const fromIndex = state.cutPlan.findIndex((item) => item.id === itemId)
+      if (fromIndex < 0) return {}
+      const clamped = Math.max(0, Math.min(toIndex, state.cutPlan.length - 1))
+      if (clamped === fromIndex) return {}
+
+      logEdit({
+        lens: 'editing', level: 'shot', target: itemId,
+        action: 'reorder', source: 'panels',
+      })
+
+      const nextPlan = [...state.cutPlan]
+      const [moved] = nextPlan.splice(fromIndex, 1)
+      nextPlan.splice(clamped, 0, moved)
+
+      // 패널도 같은 순서로. 컷에 아직 패널이 안 붙었으면(확정 전) 컷만
+      // 옮긴다 — Accept가 이 순서대로 패널을 만든다.
+      const scene = state.scenes?.[state.activeScene]
+      const shots = scene?.branches?.[scene.activeBranch ?? 0]?.shots || []
+      const hasPanels = shots.some((shot) => shot.cutPlanItemId === itemId)
+      if (!hasPanels) return { cutPlan: reorderCutPlan(nextPlan) }
+
+      const planOrder = new Map(nextPlan.map((item, index) => [item.id, index]))
+      const next = updateActiveBranchShots(state, (current) => (
+        [...current].sort((a, b) => {
+          const ai = planOrder.has(a.cutPlanItemId) ? planOrder.get(a.cutPlanItemId) : Infinity
+          const bi = planOrder.has(b.cutPlanItemId) ? planOrder.get(b.cutPlanItemId) : Infinity
+          return ai - bi
+        })
+      ))
+      return { ...next, cutPlan: reorderCutPlan(nextPlan) }
+    })
   },
 
   // 이음새에서 `사이에 넣기`/`합치기`/`나누기`를 눌러 빈 패널만 만들고
@@ -3688,6 +3832,12 @@ const useStore = create((set, get) => ({
           image: EXAMPLE_PANEL_IMAGES[cut?.order] ?? null,
           isAIGenerated: true,
           source: 'ai',
+          // 이 예시 그림이 어떤 컷 값으로 그려졌는지. StoryboardView의
+          // cutRenderSignature와 같은 형식이어야 "바뀐 값으로 다시 그리기"가
+          // 예시 세션에서도 동작한다.
+          renderedSignature: cut
+            ? JSON.stringify({ c: (cut.content || '').trim(), s: cut.shotSize || '', a: cut.angle || '' })
+            : '',
         }
       })
     ))

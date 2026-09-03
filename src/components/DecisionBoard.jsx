@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import useStore, {
   buildReferencePrompt,
   describeLayout,
+  layoutToImage,
   referencePendingKey,
   sceneOfBeat,
   selectActiveSceneId,
@@ -26,6 +27,7 @@ import RevisionWorkspace from './RevisionWorkspace'
 import SeamEditor from './SeamEditor'
 import { editingActionFor } from './seamAction'
 import { requestDirectingReview, requestViewerReflection } from '../services/api'
+import { emptyMultiReviewQuestion } from '../services/directingReviewFallback'
 import './DecisionBoard.css'
 import { logEvent, logScaffold, normalizeLevel, storyboardVersion } from '../store/studyLog'
 import useRequestHistory from '../hooks/useRequestHistory'
@@ -1688,6 +1690,22 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
       return next
     })
   }, [])
+  // AI의 판단이 이 장면에는 맞지 않는다고 감독이 결정하면, 원본 분석을
+  // 지우지 않고 이번 검토의 트랙에서만 내린다. 다음 재검토에서는 새 결과를
+  // 다시 보게 되므로 판단을 되돌릴 수 있다.
+  const dismissTrackIssue = useCallback((issue) => {
+    if (!issue?.id) return
+    resolveTrackIssue(issue.id)
+    setSelectedIssueId((current) => (current === issue.id ? null : current))
+    setRevisionWorkspace((current) => (
+      current?.issue?.id === issue.id ? null : current
+    ))
+    logEvent('verdict', {
+      target: issue.id,
+      verdict: 'dismissed',
+      lens: issue.origin_lens || null,
+    })
+  }, [resolveTrackIssue])
   const [revisionWorkspace, setRevisionWorkspace] = useState(null)
   // 두 컷 사이에 펼친 편집. { operation, removingPanel, pendingEdit }
   const [seamEdit, setSeamEdit] = useState(null)
@@ -1777,10 +1795,6 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
   const spatialElements = useStore((s) => s.spatialElements)
   const spatialLayoutsByStage = useStore((s) => s.spatialLayoutsByStage)
   const setSpatialLayoutForStage = useStore((s) => s.setSpatialLayoutForStage)
-  const requestSpaceLayout = useStore((s) => s.requestSpaceLayout)
-  const spaceLayoutPending = useStore((s) => s.spaceLayoutPending)
-  const spaceLayoutError = useStore((s) => s.spaceLayoutError)
-  const spaceLayoutNote = useStore((s) => s.spaceLayoutNote)
   const requestReferenceImage = useStore((s) => s.requestReferenceImage)
   const setReferencePrompt = useStore((s) => s.setReferencePrompt)
   const referenceImagePending = useStore((s) => s.referenceImagePending)
@@ -1789,7 +1803,7 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
   // key를 씬으로 한정한다. 씬 이름이 빠지면 씬 1을 그리는 동안 씬 2의
   // 같은 버튼까지 "그리는 중"으로 바뀐다.
   const isReferenceImagePending = (kind, subjectId = null) => (
-    Boolean(referenceImagePending?.[referencePendingKey(activeSceneId, kind, subjectId)])
+    Boolean(referenceImagePending?.[referencePendingKey(activeSceneId, kind, subjectId, panelStylePreset)])
   )
   // 오류 문구는 이 씬에서 그리는 중인 것이 없을 때만 보인다. 다른 씬의
   // 작업까지 세면 남의 씬을 그리는 동안 이 씬의 오류가 가려진다.
@@ -2757,6 +2771,16 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
 
     try {
       const panels = await buildReviewPanels(entries)
+      // 세 렌즈가 모두 "현재 유지"만 낸 경우에도 검토가 빈 화면으로 끝나면
+      // 안 된다. 이때는 결함을 꾸며 내는 대신, 다음 판단을 갈라 줄 장면
+      // 단위의 기준을 감독에게 한 번 묻는다. 답은 아래처럼 세 렌즈에 함께
+      // 보내므로, 재검토에서는 막연한 안전 판정 대신 이 시퀀스의 전달 목표와
+      // 화면을 대조할 수 있다.
+      const fallbackReviewQuestion = emptyMultiReviewQuestion({
+        panels,
+        requestId,
+        lenses: requestedLenses,
+      })
       const outcomes = await Promise.all(MULTI_LENS_ORDER
         .filter(({ backendId }) => requestedLenses.includes(backendId))
         .map(async ({ backendId, lensId }) => {
@@ -2837,10 +2861,21 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
         if (previous?.requestId !== requestId) return current
         const failedLenses = outcomes.filter((outcome) => !outcome.ok).map((outcome) => outcome.backendId)
         const complete = outcomes.length - failedLenses.length
+        const hasDiagnosis = Object.values(previous?.lensResults || {}).some((result) => (
+          (result?.diagnoses || []).length > 0
+        ))
+        const hasQuestion = (previous?.questions || []).length > 0
+        // "걸리는 것이 없음"은 자동 진단의 결과일 뿐, 이 시퀀스를 더 볼
+        // 지점이 없다는 뜻이 아니다. 세 렌즈가 모두 빈 결과를 냈을 때만
+        // 하나의 공통 질문을 넣는다. 렌즈마다 질문을 강제하면 같은 답을
+        // 세 번 쓰게 되므로 여기서 한 번만 만든다.
+        const questions = !hasDiagnosis && !hasQuestion && complete > 0
+          ? [...(previous.questions || []), fallbackReviewQuestion]
+          : previous.questions || []
         return {
           ...current,
           [scopeKey]: complete > 0
-            ? { ...previous, status: 'ready', failedLenses }
+            ? { ...previous, status: 'ready', failedLenses, questions }
             : {
                 ...previous,
                 status: 'error',
@@ -3069,6 +3104,12 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
     return spatialElements.length > 0 ? spatialElements : miseSpatialElements
   }, [miseSpatialElements, spatialElements, spatialLayoutsByStage, spatialStages])
 
+  // 편집기 전체를 기본 화면에 펼치지 않는다. 이 축소 도면은 지금 선택한
+  // 공간 기준이 무엇인지 확인하고, 필요할 때만 고치러 들어가는 입구다.
+  const spatialLayoutPreview = useMemo(() => (
+    layoutToImage(spatialLayoutForStage(activeStage?.id), 360, { showLabels: false })
+  ), [activeStage?.id, spatialLayoutForStage])
+
   const selectSpatialStage = useCallback((stageId) => {
     const nextElements = cloneSpatialElements(spatialLayoutForStage(stageId))
     setActiveSpatialStageId(stageId)
@@ -3093,19 +3134,6 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
       .find((stage) => stage.start <= activeShot) || spatialStages[0]
     if (currentStage) selectSpatialStage(currentStage.id)
     setSpatialEditorOpen(true)
-  }
-
-  const proposeSpatialLayout = async () => {
-    await requestSpaceLayout()
-    // AI 제안은 스토어에 한 번 기록된 뒤, 여기서만 캔버스에 명시적으로 반영한다.
-    // 캔버스 자신의 변경을 제안으로 되받지 않아 렌더 루프가 생기지 않는다.
-    const proposed = useStore.getState().spatialElements
-    if (proposed.length === 0) return
-
-    const nextElements = cloneSpatialElements(proposed)
-    setMiseSpatialElements(nextElements)
-    if (activeSpatialStageId) setSpatialLayoutForStage(activeSpatialStageId, nextElements)
-    setSpatialEditorVersion((version) => version + 1)
   }
 
   const scopeSelectionLocked = () => reviewMode === 'staging' && miseWorkspace === 'shot'
@@ -5056,7 +5084,7 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
   // 문제를 찾는 레일이 아니라, 이 장면 안에서 공통 기준이 언제 바뀌는지
   // 직접 고르는 조작이다. 기존 sceneState의 fact.changes를 그대로 읽는다.
   const sceneBasisPane = (
-    <section className="multi-review-preview scene-basis-pane" aria-label="장면 기준">
+    <section className="multi-review-preview scene-basis-pane" aria-label="장면 준비">
       <section className="reading-review-sequence scene-basis-sequence" aria-label="장면 스토리보드와 상태 구간">
         <div className="reading-review-sequence-controls">
           <span>스토리보드</span>
@@ -5149,7 +5177,7 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
       <div className="scene-basis-content">
       <header className="scene-basis-heading">
         <div>
-          <span>장면 기준</span>
+          <span>장면 준비</span>
           <h2>{sceneState.title || '이 씬의 기준'}</h2>
           {sceneState.description && <p>{sceneState.description}</p>}
         </div>
@@ -5165,7 +5193,6 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
 
       <p className="scene-basis-stage-context">
         <strong>{activeStage?.label || 'S1'} · {activeStage?.time || '시간 미정'}</strong> 시간 상태를 보고 있습니다.
-        인물과 공간의 값은 이 상태부터 적용됩니다.
       </p>
       {stageChanges.length > 0 && (
         <ul className="scene-basis-stage-changes" aria-label="이 시간 상태에서 달라진 기준">
@@ -5326,6 +5353,23 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
               )}
             </div>
           </article>
+          <div className="scene-basis-location-layout">
+            <div className="scene-basis-location-layout-heading">
+              <div>
+                <span>배치</span>
+                <small>패널 생성에 참고됩니다</small>
+              </div>
+              <button type="button" onClick={openSpatialEditor}>배치 고치기</button>
+            </div>
+            {spatialLayoutPreview ? (
+              <img
+                src={spatialLayoutPreview}
+                alt={`${sceneState.location.name || '현재 장면'} 공간 배치도`}
+              />
+            ) : (
+              <span className="scene-basis-location-layout-empty">아직 배치가 없습니다</span>
+            )}
+          </div>
         </section>
 
         <section className="scene-basis-section scene-basis-environment" aria-label="시간 기준">
@@ -5656,7 +5700,7 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
                 onClick={() => selectReviewMode('scene')}
                 aria-pressed={reviewMode === 'scene'}
               >
-                장면 기준
+                장면 준비
               </button>
             </div>
             {onBackToStoryboard && (
@@ -6535,7 +6579,7 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
                           <div className="mise-character-front-copy">
                             <div>
                               <strong>{sceneState.location.name}</strong>
-                              <p>공간 기준 · 패널 생성에 함께 사용됩니다</p>
+                              <p>공간 기준 · 이후 패널 생성의 배치 참조로 사용됩니다</p>
                             </div>
                             <button
                               type="button"
@@ -6544,16 +6588,18 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
                               aria-label="2D 공간 편집기 열기"
                             >
                               <span className="mise-location-preview-caption">
-                                <strong>2D spatial layout</strong>
-                                <span>클릭해서 인물과 공간 배치를 조정</span>
+                                <strong>공간 기준</strong>
+                                <span>필요할 때만 배치 고치기</span>
                               </span>
-                              <span className="mise-mini-room">
-                                <span className="mise-mini-monitor">Window</span>
-                                <span className="mise-mini-console">Lit bench</span>
-                                <span className="mise-mini-cabinet">Shelf</span>
-                                <span className="mise-mini-door">Door</span>
-                                <span className="mise-mini-person harin">하</span>
-                              </span>
+                              {spatialLayoutPreview ? (
+                                <img
+                                  className="mise-location-layout-preview"
+                                  src={spatialLayoutPreview}
+                                  alt={`${sceneState.location.name} 공간 배치도`}
+                                />
+                              ) : (
+                                <span className="mise-location-layout-empty">아직 공간 배치가 없습니다</span>
+                              )}
                             </button>
                             <button type="button" onClick={() => setLocationReferenceOpen(true)}>
                               {sceneState.location.image ? '레퍼런스·정보 보기' : '공간 레퍼런스 만들기'}
@@ -6826,6 +6872,7 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
                   relating={Boolean(multiReviewRuns[(revisionWorkspace?.issue || selectedTrackIssue)?.sourceScopeKey]?.relating)}
                   onCheckLens={checkSelectedIssueLens}
                   onRevise={_reviseTrackIssue}
+                  onDismiss={selectedTrackIssue ? dismissTrackIssue : null}
                   onCompare={() => runRelateReview((revisionWorkspace?.issue || selectedTrackIssue)?.sourceScopeKey)}
                   mainLensQuestion={selectedIssueMainLensQuestion}
                   /* 답은 이 렌즈만의 것이 아니다. 감독이 확정한 창작 결정이므로
@@ -7303,7 +7350,7 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
               <strong>{sceneState.location.name} 2D 배치</strong>
             </div>
             <p>상태 단계를 고른 뒤, 그 단계에서 바뀌는 배치만 움직입니다.</p>
-            <button type="button" onClick={() => setSpatialEditorOpen(false)}>↙ Scene State로 돌아가기</button>
+            <button type="button" onClick={() => setSpatialEditorOpen(false)}>↙ 장면 준비로 돌아가기</button>
           </header>
           <div className="mise-spatial-stage-tabs" role="tablist" aria-label="2D 배치 상태 단계">
             <span>상태 단계</span>
@@ -7329,11 +7376,6 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
               initialElements={miseSpatialElements}
               initialEntityPresets={MOCK_MISE_ENTITY_PRESETS}
               onElementsChange={updateMiseSpatialElements}
-              onProposeLayout={proposeSpatialLayout}
-              proposePending={spaceLayoutPending}
-              proposeNote={spaceLayoutError
-                ? `AI 호출 실패 · ${spaceLayoutError}`
-                : spaceLayoutNote || '대본에서 배치 제안받기'}
               showShotNodes={false}
             />
           </div>

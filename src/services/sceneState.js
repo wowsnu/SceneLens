@@ -37,7 +37,7 @@ export function toSceneState(data, heading = '', cutIds = []) {
 
   return {
     title: heading,
-    description: '대본에서 추출한 장면 기준입니다. Shot별 배치는 이 상태를 상속하고, 달라진 부분만 별도로 기록합니다.',
+    description: '대본에서 추출한 장면 준비입니다. Shot별 배치는 이 상태를 상속하고, 달라진 부분만 별도로 기록합니다.',
     characters: data.characters.map((character, index) => ({
       // id는 화면이 카드를 구분하는 데 쓴다. 이름은 바뀔 수 있으므로 순번으로.
       id: `char-${index}`,

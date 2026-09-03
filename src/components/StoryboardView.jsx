@@ -23,6 +23,8 @@ import useStore, {
   cutFindingFingerprint,
   characterNamesOfCut,
   castNameMatches,
+  layoutToImage,
+  selectLayoutForCut,
 } from '../store/useStore'
 import FramingGlyph from './FramingGlyph'
 import './StoryboardView.css'
@@ -159,6 +161,18 @@ const resolveMentions = (text = '', cast = []) => {
     // 줄여 쓴 것으로 보이면 무엇을 적어야 하는지 알려 준다. 물리지는 않는다.
     const partial = names.filter((name) => name.startsWith(bare))
     return { token, name: null, matched: false, ambiguous: partial.length > 0, options: partial }
+  })
+}
+
+// 그림이 어떤 컷 값으로 그려졌는지의 서명. content·shotSize·angle이
+// 프롬프트를 바꾸는 값이다. 지금 컷의 서명이 그림에 찍힌 것과 다르면,
+// 그림은 옛 값으로 그려진 것이라 다시 그려야 반영된다.
+const cutRenderSignature = (cut) => {
+  if (!cut) return ''
+  return JSON.stringify({
+    c: (cut.content || '').trim(),
+    s: cut.shotSize || '',
+    a: cut.angle || '',
   })
 }
 
@@ -1396,6 +1410,8 @@ export default function StoryboardView({ onEnterReview = null }) {
   // 입력칸이 열린다 — 모든 줄에 빈 칸을 달면 표가 두 배로 길어진다.
   const [dialogueOpenCutId, setDialogueOpenCutId] = useState(null)
   const [pendingPanelEdit, setPendingPanelEdit] = useState(null)
+  // 복제한 패널마다 "앞 컷과 같은데 ___만 다름" 입력값. shot.id를 키로 둔다.
+  const [duplicateDeltaMap, setDuplicateDeltaMap] = useState({})
   // Panels에서 구조를 바꾼 직후에는 되돌릴 길을 남긴다. 합치기·삭제는
   // 여러 컷과 이음새를 함께 바꾸므로 단순히 화면만 되돌려서는 안 된다.
   const [lastPanelStructureChange, setLastPanelStructureChange] = useState(null)
@@ -1576,7 +1592,7 @@ export default function StoryboardView({ onEnterReview = null }) {
   const requestReferenceImage = useStore((s) => s.requestReferenceImage)
   const referenceImagePending = useStore((s) => s.referenceImagePending)
   const isReferenceImagePending = (kind, subjectId = null) => (
-    Boolean(referenceImagePending?.[referencePendingKey(activeSceneId, kind, subjectId)])
+    Boolean(referenceImagePending?.[referencePendingKey(activeSceneId, kind, subjectId, panelStylePreset)])
   )
   const setShotNote = useStore((s) => s.setShotNote)
   const deleteCut = useStore((s) => s.deleteCut)
@@ -1636,10 +1652,10 @@ export default function StoryboardView({ onEnterReview = null }) {
   const miseCheckPending = useStore((s) => s.miseCheckPending)
   const miseCheckError = useStore((s) => s.miseCheckError)
   const updateCutPlanItem = useStore((s) => s.updateCutPlanItem)
-  // Panels 단계의 이음새에서만 직접 새 컷을 넣을 수 있다. 컷 플랜 표는
-  // 내용 수정과 삭제만 제공한다.
   const addCutPlanItem = useStore((s) => s.addCutPlanItem)
+  const duplicateCutPlanItem = useStore((s) => s.duplicateCutPlanItem)
   const removeCutPlanItem = useStore((s) => s.removeCutPlanItem)
+  const moveCutPlanItem = useStore((s) => s.moveCutPlanItem)
   const acceptCutPlan = useStore((s) => s.acceptCutPlan)
 
   const [isEditingRaw, setIsEditingRaw] = useState(false)
@@ -1716,7 +1732,16 @@ export default function StoryboardView({ onEnterReview = null }) {
   // 열어 두면 사용자는 전부 확인해야 한다고 느낀다. 고칠 때만 편집을 연다.
   const [editingReferenceCards, setEditingReferenceCards] = useState({})
   const [referenceLightbox, setReferenceLightbox] = useState(null)
+  // 패널 하나를 크게 보기. { src, alt }
+  const [panelLightbox, setPanelLightbox] = useState(null)
   const [panelGenError, setPanelGenError] = useState(null)
+
+  useEffect(() => {
+    if (!panelLightbox) return undefined
+    const onKey = (event) => { if (event.key === 'Escape') setPanelLightbox(null) }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [panelLightbox])
 
   const generatingCount = Object.keys(panelGenPending).length
   const isGenerating = generatingCount > 0
@@ -1771,6 +1796,19 @@ export default function StoryboardView({ onEnterReview = null }) {
   const flowShots = branch?.shots || EMPTY_SHOTS
   // 컷 사이의 문제. 컷 하나만 보면 드러나지 않는다.
   // flowShots가 필요하므로 그 뒤에 둔다 — 이음새는 패널 사이에 붙는다.
+
+  // 열어 둔 이음새가 가리키는 패널이 사라지거나(합치기·삭제) 격자에서
+  // 줄 끝으로 밀려나면(순서 이동), 그 자리에서 이음새 편집기를 그리던
+  // 조건(`nextShot && !endsGridRow` 또는 줄끝 전용 경로)이 어긋나 `사이에
+  // 넣기`·`합치기` 버튼이 화면에서 사라진다 — "버튼이 안 눌린다"의 정체다.
+  // 패널 목록이 바뀌면 열린 이음새를 닫아, 다음에 열 때 현재 배치에 맞는
+  // 편집기가 열리게 한다.
+  useEffect(() => {
+    if (openPanelSeamId == null) return
+    const index = flowShots.findIndex((shot) => shot.id === openPanelSeamId)
+    // 없어졌거나, 마지막 패널이 되어(뒤 패널이 없어) 이음새가 성립하지 않으면 닫는다.
+    if (index < 0 || index >= flowShots.length - 1) setOpenPanelSeamId(null)
+  }, [flowShots, openPanelSeamId])
 
   // 이 컷 앞의 이음새. 패널 순서 기준이므로 컷이 아니라 패널에서 찾는다.
   const seamBefore = (cutId) => {
@@ -2172,7 +2210,7 @@ export default function StoryboardView({ onEnterReview = null }) {
     addMissingReference(locationRequirement, !usableReferenceImage(sceneWithSharedReferences.location))
     addPendingReference(
       locationRequirement,
-      Boolean(referenceImagePending?.[referencePendingKey(scriptScene.id, 'location')]),
+      Boolean(referenceImagePending?.[referencePendingKey(scriptScene.id, 'location', null, panelStylePreset)]),
     )
 
     const cast = characterNamesOfCut(cut)
@@ -2190,7 +2228,7 @@ export default function StoryboardView({ onEnterReview = null }) {
         addMissingReference(characterRequirement, !usableReferenceImage(character))
         addPendingReference(
           characterRequirement,
-          Boolean(referenceImagePending?.[referencePendingKey(scriptScene.id, 'character', character.id)]),
+          Boolean(referenceImagePending?.[referencePendingKey(scriptScene.id, 'character', character.id, panelStylePreset)]),
         )
       })
   })
@@ -2217,7 +2255,10 @@ export default function StoryboardView({ onEnterReview = null }) {
   // 없는 숫자를 0으로 적으면 준비할 것이 없다는 뜻이 된다.
   const stylePresetNote = (preset) => {
     if (preset.id === 'rough') return activeSceneHasMultiCharacterCuts ? '인물 키 선택 · 바로' : '기준 이미지 없이 바로'
-    if (!needsReferences) return '인물·공간 기준 이미지 필요'
+    // 진행/필요 개수는 `panelStylePreset` 기준으로만 계산된다. 지금 고른
+    // 방식이 아닌 카드에 그 숫자를 그대로 쓰면, 선택하지도 않은 방식이
+    // "기준 이미지 4개 생성 중"으로 보인다. 선택된 카드에서만 상태를 말한다.
+    if (preset.id !== panelStylePreset) return '인물·공간 기준 이미지 필요'
     return referencesReadyForPanels
       ? '기준 이미지 준비됨'
       : pendingReferenceRequirements.length > 0
@@ -2386,18 +2427,36 @@ export default function StoryboardView({ onEnterReview = null }) {
         image: scene.location.image,
       })
     }
+    // 2D 배치는 사용자가 확인·조정할 수 있는 공간 기준이다. 이를 참조로
+    // 물리면 문·가구·인물의 상대 위치를 컷마다 다시 추측하지 않는다.
+    // 서버는 이것을 탑뷰 그림으로 복사하지 말고 일반 카메라 시점의 배치만
+    // 따르도록 별도 지시한다(`panel_image.py`).
+    const layout = selectLayoutForCut(useStore.getState(), cut.id)
+    const layoutImage = layoutToImage(layout)
+    if (layoutImage) {
+      refs.push({
+        name: `${scene.location?.name || '공간'} 배치`,
+        kind: 'layout',
+        image: layoutImage,
+      })
+    }
     // 이 컷에 나오는 인물은 전부 물린다. 두세 명이 함께 잡히는 컷에서 한
     // 명을 빼면 그 인물만 기준 없이 그려져, 같은 화면 안에서 어떤 얼굴은
     // 이어지고 어떤 얼굴은 매번 달라진다.
     //
-    // 러프는 공간 기준을 물리지 않는다. 다만 두 사람 이상이 한 컷에 있으면
-    // 누가 누구인지와 서로의 위치는 콘티에서 읽혀야 한다. 이때만 거친 인물
-    // 키를 물린다 — 얼굴·의상 묘사가 아니라 실루엣과 역할을 구분하는 용도다.
-    // 한 명인 러프는 기존처럼 기준 그림 없이 구도만 잡는다.
-    const roughCharacterKey = cast.length >= 2
-      ? refs.filter((reference) => reference.kind === 'character')
-      : []
-    const picked = stylePreset === 'rough' ? roughCharacterKey : [...refs]
+    // 러프도 공간 이미지와 2D 배치 도면은 물린다 — 문·가구·인물의 상대
+    // 위치를 컷마다 다시 추측하지 않게 하려는 것이다. 러프하게 그리는 것은
+    // 화풍의 문제이고(styleAnchor가 정한다), 공간이 이어지는 것과는 별개다.
+    // 인물 키는 두 사람 이상이 한 컷에 있을 때만 — 누가 누구인지와 서로의
+    // 위치를 구분하는 용도다. 한 명인 러프는 인물 키 없이 공간만 물린다.
+    const roughRefs = stylePreset === 'rough'
+      ? refs.filter((reference) => (
+        reference.kind === 'location'
+        || reference.kind === 'layout'
+        || (reference.kind === 'character' && cast.length >= 2)
+      ))
+      : refs
+    const picked = [...roughRefs]
     const styleAnchor = PANEL_STYLE_PRESETS.find((preset) => preset.id === stylePreset)
     if (styleAnchor) {
       picked.unshift({ name: styleAnchor.label, kind: 'style', image: styleAnchor.image })
@@ -2529,6 +2588,101 @@ export default function StoryboardView({ onEnterReview = null }) {
     return shot.image || null
   }
 
+  // 스토리보드를 PDF로. 전역 print CSS를 두면 검토 화면에서 Ctrl+P를
+  // 눌렀을 때도 발동해 엉뚱한 것이 나온다. 그래서 이 버튼을 눌렀을 때만
+  // 숨긴 iframe에 `대본과 함께` 콘티 표와 같은 가로 행 형식으로 다시
+  // 그려 그 iframe만 인쇄한다 — 새 창을 띄우지 않고, 앱의 화면 스타일과도
+  // 완전히 분리된다.
+  const printStoryboard = () => {
+    const esc = (value) => String(value ?? '')
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    // `대본과 함께` 콘티 표와 같은 가로 행 형식: 컷 | 그림 | 설명 | 샷 | 앵글.
+    const rows = flowShots.map((shot, shotIdx) => {
+      const cut = cutPlan.find((item) => item.id === shot.cutPlanItemId)
+      const image = getShotVisual(shot)
+      return `
+        <tr>
+          <td class="c-no">${shotIdx + 1}</td>
+          <td class="c-pic">
+            ${image
+              ? `<img src="${esc(new URL(image, window.location.href).href)}" alt="">`
+              : '<span class="blank">비어 있음</span>'}
+          </td>
+          <td class="c-desc">
+            ${cut?.purpose ? `<strong>${esc(cut.purpose)}</strong>` : ''}
+            ${cut?.content ? `<p>${esc(cut.content)}</p>` : ''}
+          </td>
+          <td class="c-shot">${esc(cut?.shotSize || '')}</td>
+          <td class="c-angle">${esc(cut?.angle || '')}</td>
+        </tr>`
+    }).join('')
+
+    const doc = `<!doctype html><html lang="ko"><head><meta charset="utf-8">
+      <title>${esc(activeScriptSceneTitle)} · 스토리보드</title>
+      <style>
+        * { box-sizing: border-box; }
+        body { margin: 24px; font-family: -apple-system, "Segoe UI", Roboto, sans-serif; color: #111; font-size: 12px; }
+        h1 { font-size: 15px; margin: 0 0 14px; }
+        table { width: 100%; border-collapse: collapse; }
+        thead th {
+          text-align: left; font-size: 11px; font-weight: 700; color: #555;
+          padding: 6px 8px; border-bottom: 1.5px solid #333;
+        }
+        tbody td {
+          padding: 8px; border-bottom: 1px solid #ccc; vertical-align: top;
+        }
+        tbody tr { break-inside: avoid; page-break-inside: avoid; }
+        .c-no { width: 28px; font-weight: 700; color: #666; }
+        .c-pic { width: 240px; }
+        .c-pic img { display: block; width: 100%; aspect-ratio: 16/9; object-fit: cover; border-radius: 4px; background: #f3f3f3; }
+        .c-pic .blank {
+          display: flex; align-items: center; justify-content: center;
+          width: 100%; aspect-ratio: 16/9; border-radius: 4px;
+          background: #f3f3f3; color: #999; font-size: 11px;
+        }
+        .c-desc strong { display: block; margin-bottom: 3px; }
+        .c-desc p { margin: 0; line-height: 1.45; }
+        .c-shot, .c-angle { width: 78px; color: #444; }
+        @page { margin: 14mm; }
+      </style></head>
+      <body>
+        <h1>${esc(activeScriptSceneTitle)} · ${flowShots.length}컷</h1>
+        <table>
+          <thead><tr>
+            <th>컷</th><th>그림</th><th>설명</th><th>샷</th><th>앵글</th>
+          </tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </body></html>`
+
+    const frame = document.createElement('iframe')
+    frame.setAttribute('aria-hidden', 'true')
+    frame.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;visibility:hidden;'
+    document.body.appendChild(frame)
+
+    const cleanup = () => { frame.remove() }
+    const fdoc = frame.contentDocument
+    fdoc.open()
+    fdoc.write(doc)
+    fdoc.close()
+
+    // 그림이 다 로드된 뒤에 인쇄한다. 이미지가 아직이면 빈 칸으로 찍힌다.
+    const trigger = () => {
+      frame.contentWindow.focus()
+      frame.contentWindow.print()
+      // 인쇄 대화상자가 닫힌 뒤(또는 취소) iframe을 치운다.
+      setTimeout(cleanup, 1000)
+    }
+    const images = Array.from(fdoc.images)
+    if (images.length === 0) { setTimeout(trigger, 100); return }
+    let left = images.length
+    const done = () => { if (--left <= 0) setTimeout(trigger, 60) }
+    images.forEach((img) => {
+      if (img.complete) done()
+      else { img.addEventListener('load', done); img.addEventListener('error', done) }
+    })
+  }
+
   // 생성은 언제나 한 번에 전부다. 몇 장을 어떻게 뽑을지는 감독이 판단할
   // 것이 아니라 이 도구가 정해 두는 조건이다 — 검토와 수정에서 차이가
   // 나야지, 생성 방식에서 갈리면 무엇 때문의 차이인지 알 수 없다.
@@ -2605,11 +2759,9 @@ export default function StoryboardView({ onEnterReview = null }) {
     })
 
     const { generatePanelImage } = await import('../services/api')
-    // 2D 배치도는 생성에 넣지 않는다. 그 편집기를 여는 길이 화면에서
-    // 사라져 도면이 늘 기본값이고, 기본값 도면을 "이 공간의 고정 배치"로
-    // 보내면 그리지도 않은 배치를 지키라고 지시하는 셈이 된다.
-    // SpatialMap과 저장 구조는 그대로 남겨 두었다 — 편집기를 다시 열면
-    // 이 자리에 도면을 되돌려 붙이면 된다.
+    // 2D 배치도는 `referencesForCut`에서 layout reference로 함께 보낸다.
+    // 레이아웃 편집기는 장면 준비의 공간 기준 카드에서 열 수 있으므로,
+    // 기본 배치를 그대로 강요하는 숨은 입력이 아니다.
     const failures = []
 
     // 방금 커밋한 설명이 반영된 컷을 쓴다. 이 함수를 감싼 클로저의
@@ -2740,6 +2892,10 @@ export default function StoryboardView({ onEnterReview = null }) {
             insertDraft: false,
             mergedDraft: false,
             splitDraft: false,
+            duplicateDraft: false,
+            // 이 그림이 어떤 컷 값으로 그려졌는지. 이후 content·샷·앵글을
+            // 고치면 이 서명과 어긋나 "다시 그리기"가 켜진다.
+            renderedSignature: cutRenderSignature(cut),
           })
         } else {
           setPanelCandidates((current) => ({
@@ -2773,6 +2929,17 @@ export default function StoryboardView({ onEnterReview = null }) {
   generatePanelsRef.current = handleGeneratePanels
 
 
+  // 복제 초안 표시를 지운다. 감독이 delta를 적어 재생성을 시작했거나,
+  // "그대로 두기"를 골랐을 때. 입력값도 함께 비운다.
+  const clearDuplicateDraft = (shotId) => {
+    updateFlowShotById(shotId, { duplicateDraft: false })
+    setDuplicateDeltaMap((current) => {
+      const next = { ...current }
+      delete next[shotId]
+      return next
+    })
+  }
+
   const dismissPanelCandidate = (shotId) => {
     setPanelCandidates((current) => {
       const next = { ...current }
@@ -2785,6 +2952,8 @@ export default function StoryboardView({ onEnterReview = null }) {
   const acceptPanelCandidate = (shotId) => {
     const candidate = panelCandidates[shotId]
     if (!candidate) return
+    const shot = flowShots.find((entry) => entry.id === shotId)
+    const cut = shot ? cutPlan.find((item) => item.id === shot.cutPlanItemId) : null
     updateFlowShotById(shotId, {
       image: candidate.image,
       source: 'ai',
@@ -2793,6 +2962,8 @@ export default function StoryboardView({ onEnterReview = null }) {
       insertDraft: false,
       mergedDraft: false,
       splitDraft: false,
+      duplicateDraft: false,
+      renderedSignature: cutRenderSignature(cut),
     })
     dismissPanelCandidate(shotId)
   }
@@ -3074,14 +3245,6 @@ export default function StoryboardView({ onEnterReview = null }) {
   // 줄 번호와 맞추려면 같은 필터를 거쳐야 한다.
   const scriptLines = screenplay.filter((element) => element.type !== 'scene-heading')
 
-  // 컷으로 나누려면 나눌 것이 있어야 한다. 이야기를 막 넣은 상태에서
-  // 컷 플랜부터 권하면 뼈대인 채로 그림까지 가고, 그때는 고치는 비용이
-  // 가장 비싸다.
-  //
-  // 기준은 Beat가 둘 이상이고 줄이 어느 정도 있는 것 — 한 덩어리이거나
-  // 서너 줄뿐이면 아직 윤곽이 아니다.
-  const scriptBeatCount = new Set(scriptLines.map((element) => element.beat ?? 0)).size
-  const scriptHasShape = scriptBeatCount >= 2 && scriptLines.length >= 5
 
   // 점검이 짚은 줄을 대본에서 표시한다. 번호만 주면 감독이 세어 찾아야
   // 한다. lineIndexes는 헤딩을 뺀 순번이므로 전체 순번으로 옮긴다.
@@ -3782,6 +3945,33 @@ export default function StoryboardView({ onEnterReview = null }) {
                                       </td>
                                       <td className="col-tools">
                                         <div className="cut-plan-row-tools" onClick={(event) => event.stopPropagation()}>
+                                          {item.order === 1 && (
+                                            <button
+                                              type="button"
+                                              className="add-before"
+                                              onClick={() => addCutPlanItem('START', item.beat)}
+                                              aria-label="Add cut at start"
+                                              title="맨 앞에 컷 추가"
+                                            >
+                                              ↑
+                                            </button>
+                                          )}
+                                          <button
+                                            type="button"
+                                            onClick={() => addCutPlanItem(item.id, item.beat)}
+                                            aria-label="Add cut after"
+                                            title="이 컷 뒤에 추가"
+                                          >
+                                            +
+                                          </button>
+                                          <button
+                                            type="button"
+                                            onClick={() => duplicateCutPlanItem(item.id)}
+                                            aria-label="Duplicate cut"
+                                            title="이 컷 복제 (조금만 수정하면 되는 컷)"
+                                          >
+                                            ⧉
+                                          </button>
                                           <button
                                             type="button"
                                             onClick={() => removeCutPlanItem(item.id)}
@@ -3806,6 +3996,13 @@ export default function StoryboardView({ onEnterReview = null }) {
                 </div>
 
                 <footer className="cut-plan-footer">
+                  <button
+                    type="button"
+                    className="cut-plan-add-cut"
+                    onClick={() => addCutPlanItem(null, activeBeat)}
+                  >
+                    + 컷 추가
+                  </button>
                   {/* AI 출처 전체를 미확인으로 세면 사용자가 표 18행을 전부
                     검사해야 한다고 느낀다. 실제 예외만 센다. */}
                   <span>
@@ -3835,7 +4032,7 @@ export default function StoryboardView({ onEnterReview = null }) {
                 </div>
                 <footer>
                   <div>
-                    <strong>{needsReferences ? '장면 기준 이미지' : activeSceneHasMultiCharacterCuts ? '러프 인물 키' : '러프 콘티'}</strong>
+                    <strong>{needsReferences ? '장면 준비 이미지' : activeSceneHasMultiCharacterCuts ? '러프 인물 키' : '러프 콘티'}</strong>
                     <p>
                       {!needsReferences
                         ? activeSceneHasMultiCharacterCuts
@@ -3888,14 +4085,19 @@ export default function StoryboardView({ onEnterReview = null }) {
                   <strong>
                     {eligibleScopeShots.length === 0
                       ? '모든 컷에 그림이 있습니다'
-                      : `아직 그리지 않은 컷 ${eligibleScopeShots.length}개`}
+                      : eligibleScopeShots.length === flowShots.length
+                        ? `컷 ${flowShots.length}개를 그립니다`
+                        : `아직 그리지 않은 컷 ${eligibleScopeShots.length}개`}
                   </strong>
-                  {/* 확정 직후에는 앞 아홉 장만 그린다. 남은 것이 왜 비어 있는지
-                  말해 주지 않으면 생성이 실패한 것으로 읽힌다. */}
+                  {/* 한 장도 안 그렸으면 이것이 그림을 만드는 자리라고 바로
+                  말한다. 일부만 그렸으면 남은 것이 왜 비어 있는지 알려, 생성이
+                  실패한 것으로 읽지 않게 한다. */}
                   <p>
-                    {eligibleScopeShots.length > 0
-                      ? '먼저 앞부분을 그렸습니다. 나머지는 여기서 이어 그립니다.'
-                      : '직접 그린 그림과 불러온 이미지는 그대로 둡니다.'}
+                    {eligibleScopeShots.length === 0
+                      ? '직접 그린 그림과 불러온 이미지는 그대로 둡니다.'
+                      : eligibleScopeShots.length === flowShots.length
+                        ? '오른쪽 버튼을 누르면 컷 순서대로 스토리보드를 그립니다.'
+                        : '먼저 앞부분을 그렸습니다. 나머지는 여기서 이어 그립니다.'}
                   </p>
                 </div>
                 <div className="generation-settings">
@@ -3936,11 +4138,24 @@ export default function StoryboardView({ onEnterReview = null }) {
                   >
                     {isGenerating ? `그리는 중… · ${generatingCount}` : (
                       <>
-                        이어 그리기
+                        {eligibleScopeShots.length === flowShots.length ? '스토리보드 그리기' : '이어 그리기'}
                         {eligibleScopeShots.length > 0 ? ` · ${eligibleScopeShots.length}` : ''}
                       </>
                     )}
                   </button>
+                  {/* 스토리보드를 PDF로. 숨은 iframe에 패널·컷을 흰 배경 표로
+                  새로 그려 인쇄한다 — 그리기와 성격이 다른 '완성본 내보내기'라
+                  구분선 뒤 맨 오른쪽에 둔다. 그림이 하나도 없으면 감춘다. */}
+                  {flowShots.some((shot) => getShotVisual(shot)) && (
+                    <button
+                      type="button"
+                      className="generation-print"
+                      onClick={printStoryboard}
+                      title="스토리보드를 PDF로 저장"
+                    >
+                      PDF로 내보내기
+                    </button>
+                  )}
                 </div>
                 {/* 실패를 조용히 넘기면 왜 그림이 안 나왔는지 알 수 없다. */}
                 {panelGenError && (
@@ -4111,6 +4326,68 @@ export default function StoryboardView({ onEnterReview = null }) {
                           ? <img src={displayImage} alt={`패널 ${shotIdx + 1}`} />
                           : <span className="sb-panel-grid-blank">비어 있음</span>}
                         {candidate && <span className="sb-panel-grid-candidate">AI 초안</span>}
+                        {/* 복제한 패널. 그림은 원본 그대로 들고 있고, 감독이
+                            "무엇만 다른지"를 적으면 그 그림을 기준(current)으로
+                            물려 그 한 가지만 바꿔 다시 그린다. 나머지는 그대로
+                            — panel_image.py의 kind=='current' 갈래가 강제한다. */}
+                        {shot.duplicateDraft && !panelGenPending[shot.id] && (
+                          <div
+                            className="sb-panel-grid-duplicate-draft"
+                            onClick={(event) => event.stopPropagation()}
+                          >
+                            <span className="sb-panel-grid-duplicate-draft-head">복제 · 앞 컷과 같은데…</span>
+                            <textarea
+                              value={duplicateDeltaMap[shot.id] || ''}
+                              rows={2}
+                              placeholder="무엇만 다른가요? (예: 앵글만 리버스, B의 표정만 굳어짐)"
+                              aria-label={`S${shotIdx + 1} 복제 — 바뀌는 것`}
+                              onChange={(event) => setDuplicateDeltaMap((current) => ({
+                                ...current, [shot.id]: event.target.value,
+                              }))}
+                            />
+                            <div className="sb-panel-grid-duplicate-draft-actions">
+                              <button
+                                type="button"
+                                disabled={!(duplicateDeltaMap[shot.id] || '').trim()}
+                                onClick={() => {
+                                  const delta = (duplicateDeltaMap[shot.id] || '').trim()
+                                  if (!delta) return
+                                  // 복제본을 delta로 다듬어 다시 그린다.
+                                  // 감독이 초안을 판정·수정하는 자리라
+                                  // alternative/modify로 센다.
+                                  logScaffold({
+                                    feature: 'alternative',
+                                    action: 'modify',
+                                    target: cut?.id,
+                                    purpose: delta,
+                                    source: 'duplicate',
+                                  })
+                                  // 복제 표시를 지우고, 원본 그림을 current로
+                                  // 물려(includeExisting + changes) 재생성한다.
+                                  clearDuplicateDraft(shot.id)
+                                  handleGeneratePanels([{ shot, shotIdx }], {
+                                    includeExisting: true,
+                                    statusLabel: '바뀐 것만 다시 그리는 중…',
+                                    changes: [delta],
+                                  })
+                                }}
+                              >
+                                이것만 바꿔 그리기
+                              </button>
+                              <button
+                                type="button"
+                                className="is-quiet"
+                                onClick={() => {
+                                  // delta 없이 그대로 확정. 원본과 거의 같은
+                                  // 그림이지만 감독이 손으로 고칠 셈이면 그 길도 둔다.
+                                  clearDuplicateDraft(shot.id)
+                                }}
+                              >
+                                그대로 두기
+                              </button>
+                            </div>
+                          </div>
+                        )}
                         {/* 삭제는 그림 위 모서리의 ×다. 아래 줄에 두면 자주
                             쓰지도 않는 버튼이 카드마다 한 줄을 차지한다.
                             누르면 그 자리에서 한 번 더 묻는다 — 되돌릴 것이
@@ -4128,6 +4405,48 @@ export default function StoryboardView({ onEnterReview = null }) {
                           >
                             ×
                           </button>
+                        )}
+                        {/* 순서 옮기기 + 맨 앞에 컷 추가. 정보 공개 순서를 바꾸는
+                            것은 편집의 일이라(editing-information-order) 그 처방을
+                            실행할 자리가 있어야 한다 — 옮기면 컷에 붙은 패널이
+                            함께 움직인다. 첫 컷 앞은 이음새가 아니라 이야기의
+                            시작이라 `+`로 따로 둔다. 빈 삽입 칸은 아직 자리를
+                            못 잡은 상태라 뺀다. */}
+                        {flowShots.length > 1 && !isDeleting && !isInsertedBlankPanel && cut?.id && (
+                          <div className="sb-panel-grid-move" onClick={(event) => event.stopPropagation()}>
+                            {shotIdx === 0 && (
+                              <button
+                                type="button"
+                                className="is-prepend"
+                                aria-label="맨 앞에 컷 추가"
+                                title="맨 앞에 컷 추가"
+                                onClick={() => { addCutPlanItem('START', cut.beat); setFlowActiveShot(0) }}
+                              >+</button>
+                            )}
+                            <button
+                              type="button"
+                              aria-label={`S${shotIdx + 1}을 앞으로 옮기기`}
+                              title="앞으로 옮기기"
+                              disabled={shotIdx === 0}
+                              onClick={() => moveCutPlanItem(cut.id, shotIdx - 1)}
+                            >‹</button>
+                            <button
+                              type="button"
+                              aria-label={`S${shotIdx + 1}을 뒤로 옮기기`}
+                              title="뒤로 옮기기"
+                              disabled={shotIdx === flowShots.length - 1}
+                              onClick={() => moveCutPlanItem(cut.id, shotIdx + 1)}
+                            >›</button>
+                            {/* 이 컷을 그림·프롬프트까지 통째로 복제한다.
+                                앵글만 다른 리버스 샷처럼 "조금만 수정하면
+                                되는 컷"을 만드는 길. */}
+                            <button
+                              type="button"
+                              aria-label={`S${shotIdx + 1} 복제`}
+                              title="이 컷 복제 (조금만 수정하면 되는 컷)"
+                              onClick={() => { duplicateCutPlanItem(cut.id); setFlowActiveShot(shotIdx + 1) }}
+                            >⧉</button>
+                          </div>
                         )}
                         {!isInsertedBlankPanel && <em>{cut?.content || ''}</em>}
                         {/* 대사는 그림 밖 텍스트로 둔다 — 콘티의 대사 칸과
@@ -4478,6 +4797,20 @@ export default function StoryboardView({ onEnterReview = null }) {
                           ) : committedImage ? (
                             <div className="sb-img-wrapper">
                               <img src={displayImage} alt={cutLabel} />
+                              {/* 화살표·메모를 만지는 중이 아니면 그림을 눌러
+                                크게 본다. 그때는 오버레이가 클릭을 받아야 한다. */}
+                              {arrowDrawingShotId !== shot.id && noteEditingShotId !== shot.id && (
+                                <button
+                                  type="button"
+                                  className="sb-conte-zoom"
+                                  aria-label={`${cutLabel} 크게 보기`}
+                                  title="크게 보기"
+                                  onClick={(event) => {
+                                    event.stopPropagation()
+                                    setPanelLightbox({ src: displayImage, alt: cutLabel })
+                                  }}
+                                />
+                              )}
                               <PanelOverlay
                                 marks={panelMarks}
                                 arrows={shot.arrows || []}
@@ -4653,6 +4986,29 @@ export default function StoryboardView({ onEnterReview = null }) {
                                 && updateCutPlanItem(shotCut.id, { content: next })
                               )}
                             />
+                          )}
+                          {/* 샷·앵글·설명을 그림 그린 뒤에 고쳤으면, 그 그림은
+                            옛 값으로 그려진 것이라 다시 그려야 반영된다. 그때만
+                            이 줄이 켜진다 — 항상 떠 있으면 눌러야 할 것처럼
+                            보인다. 서명이 없는 그림(예시 seed·손그림)은 비교할
+                            근거가 없으므로 건드리지 않는다. */}
+                          {committedImage && !candidate && shot.renderedSignature
+                            && shot.renderedSignature !== cutRenderSignature(shotCut) && (
+                            <div className="sb-conte-redraw">
+                              <button
+                                type="button"
+                                className="sb-conte-redraw-btn"
+                                disabled={Boolean(panelGenPending[shot.id])}
+                                onClick={(event) => {
+                                  event.stopPropagation()
+                                  handleGeneratePanels([{ shot, shotIdx }], { includeExisting: true })
+                                }}
+                              >
+                                {panelGenPending[shot.id]
+                                  ? '다시 그리는 중…'
+                                  : '바뀐 값으로 다시 그리기'}
+                              </button>
+                            </div>
                           )}
                           {shot.note && <p className="sb-conte-note">{shot.note}</p>}
                           {/* 아직 그리지 않은 그림 밖 채널만 남긴다. 이미
@@ -5513,25 +5869,6 @@ export default function StoryboardView({ onEnterReview = null }) {
                         </div>
                       )}
 
-                      {/* 제안이 하나도 없으면 그 사실을 밝힌다. 요청을 보냈는데
-                  아무 반응이 없으면 고장 난 것으로 보인다. */}
-                      {!narrativePending && narrativeAnswered && narrativeSuggestions.length === 0 && (
-                        <div className="narrative-rail-proposal-status empty">
-                          <span>—</span>
-                          <div>
-                            <strong>여기서는 할 수 없는 요청입니다</strong>
-                            {/* 갈 곳을 실제로 가리킨다. "대본 단계"처럼 화면에
-                        없는 이름을 대면 사용자가 찾을 수 없다. */}
-                            {/* 문장 안에 strong을 쓰지 않는다 — 이 블록의
-                        strong은 display:block이라 줄이 끊긴다. */}
-                            <p>
-                              현재 Scene 전체를 보고 답합니다. 특정 구간을 언급하거나,
-                              “뒷부분이 급하다”처럼 Scene의 흐름을 두고 말해도 됩니다.
-                            </p>
-                          </div>
-                        </div>
-                      )}
-
                       {!narrativePending && narrativeSuggestions.length > 0 && (
                         <div className="narrative-rail-proposal-status">
                           <span>{narrativeSuggestions.length}</span>
@@ -6127,30 +6464,23 @@ export default function StoryboardView({ onEnterReview = null }) {
                 ) : cutStage === 'script' ? (
                   <>
                     <p>
-                      {scriptHasShape
-                        ? '시놉시스가 준비됐습니다. 그림 전에 이 장면을 몇 개의 컷으로 나눌지 정하고, 이어서 촬영이 각 컷의 샷을 정합니다.'
-                        : '아직 윤곽이 잡히기 전입니다. 위에서 시놉시스를 손보고 나면 컷으로 나눌 수 있습니다.'}
+                      시놉시스가 준비됐습니다. 그림 전에 이 장면을 몇 개의 컷으로 나눌지 정하고, 이어서 촬영이 각 컷의 샷을 정합니다.
                     </p>
 
-                    {/* 나눌 것이 생긴 뒤에 뜬다. 처음부터 두면 뼈대인 채로
-                      컷부터 만들게 되고, 그림까지 간 뒤에는 고치는 비용이
-                      가장 비싸다. */}
-                    {scriptHasShape && (
-                      <button
-                        type="button"
-                        className="narrative-rail-primary is-cutplan"
-                        onClick={cutPlan.length > 0 ? clearCutPlanStageOverride : requestCutPlan}
-                        disabled={cutPlanRunPending}
-                      >
-                        {sceneStatePending
-                          ? '인물·공간 읽는 중…'
-                          : cutPlanPending
-                            ? '컷 나누는 중…'
-                            : cutPlanRunPending
-                              ? '샷 정하는 중…'
-                              : cutPlan.length > 0 ? '컷 플랜 이어서' : '컷 플랜 만들기'}
-                      </button>
-                    )}
+                    <button
+                      type="button"
+                      className="narrative-rail-primary is-cutplan"
+                      onClick={cutPlan.length > 0 ? clearCutPlanStageOverride : requestCutPlan}
+                      disabled={cutPlanRunPending}
+                    >
+                      {sceneStatePending
+                        ? '인물·공간 읽는 중…'
+                        : cutPlanPending
+                          ? '컷 나누는 중…'
+                          : cutPlanRunPending
+                            ? '샷 정하는 중…'
+                            : cutPlan.length > 0 ? '컷 플랜 이어서' : '컷 플랜 만들기'}
+                    </button>
                   </>
                 ) : cutStage === 'cutplan' ? (
                   <>
@@ -6160,7 +6490,7 @@ export default function StoryboardView({ onEnterReview = null }) {
                       헤더에 남는다 — 나가는 길과 섞이면 안 된다. */}
                     <p>
                       컷 수와 순서를 확인했으면 확정합니다. 다음 단계에서 패널의
-                      표현 방식과 장면 기준을 준비합니다.
+                      표현 방식과 장면 준비를 합니다.
                     </p>
                     {/* 미정인 채로 확정하면 그 컷은 샷 없이 그림으로 간다.
                       막지는 않는다 — 일부러 비워 둘 수도 있다(DG1 P3의
@@ -6185,7 +6515,7 @@ export default function StoryboardView({ onEnterReview = null }) {
                     <p>
                       {needsReferences
                         ? referencesReadyForPanels
-                          ? '표현 방식과 필요한 장면 기준이 준비되었습니다. 가운데에서 Panels를 시작하세요.'
+                          ? '표현 방식과 필요한 장면 준비가 되었습니다. 가운데에서 Panels를 시작하세요.'
                           : `선택한 표현 방식에는 기준 이미지가 필요합니다. Mise-en-scène에서 ${missingReferenceRequirements.length}개를 준비하세요.`
                         : activeSceneHasMultiCharacterCuts
                           ? '러프 콘티는 바로 시작할 수 있습니다. 두 인물이 함께 나오는 컷에는 Mise-en-scène에서 인물 키를 만들어 쓸 수 있습니다.'
@@ -6232,6 +6562,16 @@ export default function StoryboardView({ onEnterReview = null }) {
                 setOpenReferenceCards((current) => ({ ...current, [referenceLightbox.cardKey]: false }))
                 setReferenceLightbox(null)
               }}>정보 카드 보기</button>
+            </div>
+          </div>
+        </div>
+      )}
+      {panelLightbox && (
+        <div className="reference-lightbox panel-lightbox" role="dialog" aria-modal="true" aria-label={`${panelLightbox.alt} 크게 보기`} onClick={() => setPanelLightbox(null)}>
+          <div className="reference-lightbox-content" onClick={(event) => event.stopPropagation()}>
+            <img src={panelLightbox.src} alt={panelLightbox.alt} />
+            <div className="reference-lightbox-actions">
+              <button type="button" onClick={() => setPanelLightbox(null)}>닫기</button>
             </div>
           </div>
         </div>

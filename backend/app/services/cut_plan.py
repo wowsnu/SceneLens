@@ -43,7 +43,9 @@ RESPONSE_SCHEMA = {
                         "content": {"type": "string"},
                         # 이 컷이 왜 있는가. 무엇이 읽혀야 하는가.
                         "purpose": {"type": "string"},
-                        # 이 컷 화면 안에 있는 인물. 쉼표로 구분. 없으면 빈 문자열.
+                        # 이 컷 화면 안에 있는 인물. 쉼표로 구분.
+                        # content에서 말하거나 행동하는 사람은 반드시 포함한다.
+                        # 정말 인물이 없는 화면(빈 공간, 사물만)일 때만 빈 문자열.
                         "characters": {"type": "string"},
                     },
                 },
@@ -88,8 +90,15 @@ Beat와 Cut은 다릅니다:
   ✓ "공간 설정" / "인물 소개" / "행동 강조" / "반응" / "관계" /
     "정보 노출" / "위협 노출" / "결단"
 
-- characters: 이 화면 안에 있는 인물. **화면에 보이는 사람만** 씁니다.
-  Beat에 나온다고 다 넣지 마세요 — 없는 사람을 그리게 됩니다.
+- characters: 이 화면 안에 있는 인물.
+  **content에서 말하거나 행동하는 사람은 빠짐없이 넣으세요.**
+  이 칸이 비면 그림에 사람이 안 그려집니다. content에 "B가 의자를
+  돌린다"라고 썼으면 characters에 B가 반드시 있어야 합니다.
+  또한 그 화면에 같이 있는 것이 분명한 사람(대화 상대, 같은 공간에
+  선 사람)도 넣으세요. 대사를 주고받는 장면이면 두 사람 다입니다.
+  빼는 것은 하나뿐입니다: 그 화면에 정말 없는 사람. 다른 방에 있거나
+  아직 등장하지 않은 사람. 애매하면 넣으세요 — 빠뜨리는 쪽이 더 나쁩니다.
+  정말 사람이 없는 화면(빈 공간, 사물 클로즈업)일 때만 빈 문자열입니다.
 
 하지 않는 것:
 - 샷 크기, 앵글, 카메라 움직임은 정하지 마세요. 촬영이 정합니다.
@@ -97,6 +106,101 @@ Beat와 Cut은 다릅니다:
 - 대사를 쓰지 마세요. 말하는 장면은 말하는 모습으로 적습니다.
 
 한국어로 답하세요."""
+
+
+CHARACTER_PASS_PROMPT = """당신은 줄콘티의 인물 칸을 점검합니다.
+
+컷마다 characters 칸이 있습니다. 이 칸이 비면 그림에 그 사람이 안
+그려집니다. 그래서 **그 화면에 있는 것이 분명한 사람은 빠짐없이** 들어가야
+합니다.
+
+대본과 컷 목록을 봅니다. 각 컷에 대해, 그 화면에 실제로 있을 사람을
+모두 적으세요. 판단 기준:
+
+- content에서 말하거나 행동하는 사람 → 반드시 포함.
+- 그 컷이 대화 장면의 일부이면, 대본에 이름이 없어도 대화에 참여하는
+  두 사람 다 포함. ("A가 손을 책상 아래로 내린다"만 적혀 있어도, 이
+  씬이 A와 B의 대면이면 B도 그 화면에 있다.)
+- 같은 공간에 계속 함께 있는 사람 → 포함. 한 사람이 방을 나가거나
+  아직 등장하지 않았다는 단서가 대본에 있을 때만 뺍니다.
+- 정말 사람이 없는 화면(빈 공간, 사물 클로즈업)이면 빈 문자열.
+
+컷 번호(index)와 그 컷의 characters만 돌려주세요. 순서와 개수는
+입력과 똑같이 유지합니다. 한국어 인물 이름을 씁니다."""
+
+
+_CHARACTER_PASS_SCHEMA = {
+    "name": "character_pass",
+    "strict": True,
+    "schema": {
+        "type": "object",
+        "additionalProperties": False,
+        "required": ["cuts"],
+        "properties": {
+            "cuts": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "additionalProperties": False,
+                    "required": ["index", "characters"],
+                    "properties": {
+                        "index": {"type": "integer"},
+                        "characters": {"type": "string"},
+                    },
+                },
+            },
+        },
+    },
+}
+
+
+async def _fill_characters(
+    response: CutPlanResponse, request: CutPlanRequest, client: AsyncOpenAI
+) -> CutPlanResponse:
+    """줄콘티 모델이 '화면에 보이는 사람만'을 과하게 지켜 당연히 있어야 할
+    인물을 빼는 일이 잦다. 대본을 다시 읽는 보정 패스로 인물 칸을 채운다.
+
+    실패하면 원래 응답을 그대로 둔다 — 그림 단계에서 사용자가 고칠 수 있다."""
+    if not response.cuts:
+        return response
+
+    body = "\n\n".join(
+        f"[Beat {beat.beat}]\n" + "\n".join(f"- {line}" for line in beat.lines)
+        for beat in request.beats
+    )
+    cut_lines = "\n".join(
+        f"[{i}] (Beat {cut.beat}) {cut.content}"
+        f"  — 현재 인물: {cut.characters or '(없음)'}"
+        for i, cut in enumerate(response.cuts)
+    )
+    user_content = f"[씬] {request.heading}\n\n{body}\n\n[컷 목록]\n{cut_lines}"
+    if request.cast:
+        user_content += f"\n\n[이 씬의 인물] {', '.join(request.cast)}"
+    if request.scene_intention:
+        user_content += f"\n\n[장면 의도] {request.scene_intention}"
+
+    try:
+        pass_response = await client.chat.completions.create(
+            # 인물 판단은 컷 나누기보다 추론이 필요해 한 단계 위 모델을 쓴다.
+            model="gpt-5.4-mini",
+            messages=[
+                {"role": "system", "content": CHARACTER_PASS_PROMPT},
+                {"role": "user", "content": user_content},
+            ],
+            response_format={"type": "json_schema", "json_schema": _CHARACTER_PASS_SCHEMA},
+            max_completion_tokens=2000,
+        )
+        parsed = json.loads(pass_response.choices[0].message.content.strip())
+    except Exception:
+        return response
+
+    for item in parsed.get("cuts", []):
+        idx = item.get("index")
+        if isinstance(idx, int) and 0 <= idx < len(response.cuts):
+            chars = (item.get("characters") or "").strip()
+            if chars:
+                response.cuts[idx].characters = chars
+    return response
 
 
 async def plan_cuts(request: CutPlanRequest) -> CutPlanResponse:
@@ -129,4 +233,5 @@ async def plan_cuts(request: CutPlanRequest) -> CutPlanResponse:
         # gpt-5 계열은 max_tokens를 받지 않는다.
         max_completion_tokens=4000,
     )
-    return CutPlanResponse(**json.loads(response.choices[0].message.content.strip()))
+    result = CutPlanResponse(**json.loads(response.choices[0].message.content.strip()))
+    return await _fill_characters(result, request, client)

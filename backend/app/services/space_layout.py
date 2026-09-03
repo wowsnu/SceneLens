@@ -196,7 +196,10 @@ async def build_space_layout(request: SpaceLayoutRequest) -> SpaceLayoutResponse
 
     client = AsyncOpenAI(api_key=api_key)
     response = await client.chat.completions.create(
-        model="gpt-5.4-nano",
+        # 첫 패널의 공간 기준은 사용자에게 바로 보이지 않는 내부값이다.
+        # 빠른 대량 작업보다 배치 판단의 일관성이 중요하므로 기본은 상위 모델로 둔다.
+        # 실험·비용 조정은 환경변수로만 낮출 수 있다.
+        model=os.getenv("SPACE_LAYOUT_MODEL", "gpt-5.4"),
         messages=[
             {"role": "system", "content": PROMPT},
             {"role": "user", "content": user_content},

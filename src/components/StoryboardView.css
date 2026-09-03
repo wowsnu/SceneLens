@@ -474,6 +474,28 @@
   border-color: rgba(255, 255, 255, 0.26);
 }
 
+/* 완성본 내보내기는 그리기와 성격이 달라 구분선 뒤 맨 오른쪽에 둔다. */
+.generation-print {
+  margin-left: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.04);
+  color: rgba(255, 255, 255, 0.7);
+  position: relative;
+}
+.generation-print::before {
+  content: '';
+  position: absolute;
+  left: -10px;
+  top: 4px;
+  bottom: 4px;
+  width: 1px;
+  background: rgba(255, 255, 255, 0.16);
+}
+.generation-print:hover {
+  border-color: rgba(255, 255, 255, 0.26);
+  color: #fff;
+}
+
 .generation-grid-toggle[aria-pressed="true"] {
   border-color: rgba(150, 190, 210, 0.5);
   background: rgba(150, 190, 210, 0.16);
@@ -4233,12 +4255,6 @@
   color: rgba(255, 255, 255, 0.5);
 }
 
-/* 할 수 없는 요청. 아무 반응이 없으면 고장 난 것으로 보인다. */
-.narrative-rail-proposal-status.empty > span {
-  background: rgba(255, 255, 255, 0.06);
-  color: rgba(255, 255, 255, 0.35);
-}
-
 /* AI가 채운 줄. 사용자가 쓴 것과 구분돼야 한다 (DG1 P2). */
 .structure-draft-body p.is-filled {
   padding-left: 9px;
@@ -5496,6 +5512,80 @@
 
 .sb-panel-grid-insert-draft textarea::placeholder { color: rgba(221, 214, 254, 0.55); }
 
+/* 복제 초안: 원본 그림 위에 얹는 delta 입력. 그림은 뒤에서 비쳐, 무엇을
+   두고 무엇만 바꾸는지 감독이 보면서 적는다. */
+.sb-panel-grid-duplicate-draft {
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  bottom: 8px;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  box-sizing: border-box;
+  padding: 9px 10px;
+  border: 1px solid rgba(120, 200, 255, 0.5);
+  border-radius: 7px;
+  background: rgba(10, 22, 34, 0.9);
+  backdrop-filter: blur(3px);
+}
+
+.sb-panel-grid-duplicate-draft-head {
+  color: rgba(190, 226, 255, 0.9);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: .03em;
+}
+
+.sb-panel-grid-duplicate-draft textarea {
+  width: 100%;
+  min-height: 42px;
+  padding: 5px 7px;
+  border: 1px solid rgba(120, 200, 255, 0.35);
+  border-radius: 5px;
+  outline: 0;
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.94);
+  font: inherit;
+  font-size: 12.5px;
+  line-height: 1.45;
+  resize: none;
+  box-sizing: border-box;
+}
+
+.sb-panel-grid-duplicate-draft textarea::placeholder { color: rgba(190, 226, 255, 0.5); }
+
+.sb-panel-grid-duplicate-draft-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.sb-panel-grid-duplicate-draft-actions button {
+  flex: 1;
+  padding: 5px 8px;
+  border: 0;
+  border-radius: 5px;
+  background: rgba(120, 200, 255, 0.9);
+  color: #06141f;
+  font-size: 12px;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.sb-panel-grid-duplicate-draft-actions button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.sb-panel-grid-duplicate-draft-actions button.is-quiet {
+  flex: 0 0 auto;
+  background: transparent;
+  border: 1px solid rgba(190, 226, 255, 0.35);
+  color: rgba(190, 226, 255, 0.85);
+  font-weight: 650;
+}
+
 .sb-panel-grid-order {
   position: absolute;
   top: 14px;
@@ -5551,6 +5641,46 @@
 
 /* AI 초안 배지와 같은 자리라 겹친다. 배지가 있으면 × 를 그 왼쪽으로 민다. */
 .sb-panel-grid-candidate ~ .sb-panel-grid-remove { right: 74px; }
+
+/* 순서 옮기기(+맨 앞에 컷 추가) — 삭제(우상단)·번호(좌상단)와 겹치지
+   않게 이미지 위쪽, 번호 배지 오른쪽에 한 줄로. */
+.sb-panel-grid-move {
+  position: absolute;
+  top: 12px;
+  left: 44px;
+  z-index: 2;
+  display: flex;
+  gap: 3px;
+  opacity: 0;
+  transition: opacity .12s ease;
+}
+.sb-panel-grid-card:hover .sb-panel-grid-move,
+.sb-panel-grid-move:focus-within { opacity: 1; }
+@media (hover: none) { .sb-panel-grid-move { opacity: 1; } }
+.sb-panel-grid-move button {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.55);
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+  transition: background .12s ease, color .12s ease;
+}
+.sb-panel-grid-move button:hover:not(:disabled) { background: rgba(59, 130, 246, 0.72); color: #fff; }
+.sb-panel-grid-move button:disabled { opacity: 0.32; cursor: default; }
+.sb-panel-grid-move button.is-prepend {
+  border: 1.5px solid rgba(167, 139, 250, 0.6);
+  background: rgba(15, 12, 24, 0.9);
+  color: #a78bfa;
+  font-size: 16px;
+}
+.sb-panel-grid-move button.is-prepend:hover { background: rgba(167, 139, 250, 0.28); color: #fff; }
 
 /* 아직 확정 전인 생성본도 대본과 함께 보기와 똑같이 보인다. */
 .sb-panel-grid-candidate {
@@ -5627,6 +5757,23 @@
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+/* 편집기를 펼친 이음새는 다른 이음새(특히 다음 줄의 row-seam 바)보다
+   위에 와야 한다. 부모의 z-index가 낮으면 편집기 자체의 z-index가
+   그 스택 안에 갇혀, 뒤에 오는 row-seam이 버튼 위를 덮어 클릭을
+   가로챈다 — "합치기·사이에 넣기가 안 눌린다"의 원인이었다. */
+.sb-panel-grid-seam.is-open {
+  z-index: 20;
+}
+.sb-panel-grid-row-seam.is-open {
+  z-index: 20;
+}
+/* 인라인 이음새는 카드 안에 있다. 카드가 스택 컨텍스트를 만들지 않으면
+   그 안의 z-index:20이 형제인 row-seam 바를 넘지 못한다. 열린 이음새를
+   품은 카드를 통째로 올린다. */
+.sb-panel-grid-card:has(.sb-panel-grid-seam.is-open) {
+  z-index: 20;
 }
 
 .sb-panel-grid-seam.is-horizontal {
@@ -6045,6 +6192,47 @@
 
 /* 도구는 그림 위 hover로 모은다. 표에 버튼 줄을 따로 두면 열두 행마다
    같은 버튼이 반복돼 그림이 안 보인다. */
+/* 그림 전체를 덮는 투명 버튼 — 눌러서 크게 본다. 툴바(z-index 2)와
+   오버레이보다 아래에 둬 화살표·메모·재생성 버튼 클릭을 막지 않는다. */
+.sb-conte-zoom {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  cursor: zoom-in;
+}
+
+/* 캡션 아래 전용 재생성 줄. */
+.sb-conte-redraw {
+  margin-top: 2px;
+}
+.sb-conte-redraw-btn {
+  width: 100%;
+  padding: 7px 10px;
+  border: 1px solid rgba(129, 140, 248, 0.5);
+  border-radius: 7px;
+  background: rgba(99, 102, 241, 0.16);
+  color: #e0e7ff;
+  font-family: inherit;
+  font-size: 11.5px;
+  font-weight: 750;
+  cursor: pointer;
+  transition: background 0.12s ease, border-color 0.12s ease;
+}
+.sb-conte-redraw-btn:hover:not(:disabled) {
+  background: rgba(99, 102, 241, 0.26);
+  border-color: rgba(129, 140, 248, 0.7);
+}
+.sb-conte-redraw-btn:disabled { opacity: 0.5; cursor: default; }
+
+.panel-lightbox .reference-lightbox-content img {
+  aspect-ratio: 16 / 9;
+  object-fit: contain;
+  background: #000;
+}
+
 .sb-conte-tools {
   position: absolute;
   right: 6px;
