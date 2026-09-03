@@ -58,14 +58,29 @@ function App() {
     // 참가자 번호. 두 도구가 다른 도메인이라 localStorage가 분리되므로,
     // 이 번호가 있어야 같은 사람의 두 조건을 Supabase에서 이을 수 있다.
     const participant = params.get('participant') || params.get('p')
-    if (participant) setParticipantId(participant)
     const fromUrl = params.get('condition')
+    const orderFromUrl = params.get('order')
+
+    // URL에 참가자 정보가 있으면 = 실험자가 새 참가자/조건을 여는 것.
+    // 저장된 세션과 참가자·조건·순서가 하나라도 다르면 이전 세션을
+    // 통째로 비운다. 그러지 않으면 이전 테스트의 세션 id·로그·phase가
+    // 그대로 남아, 이번 참가자의 이벤트에 이전 날짜 기록이 섞이고
+    // phase도 이어져 측정 구간이 어긋난다.
+    if (participant) {
+      const changed = participant !== participantId()
+        || (fromUrl && fromUrl !== condition())
+        || (orderFromUrl && orderFromUrl !== conditionOrder())
+      // 로그만 비운다. 스토리보드 상태(checkpoint)는 건드리지 않는다 —
+      // 그건 `?fresh=1`이나 `튜토리얼 비우기`가 따로 맡는다.
+      if (changed) resetLog()
+      setParticipantId(participant)
+    }
     if (fromUrl) setCondition(fromUrl)
     // within-subjects라 같은 사람이 두 조건을 다 한다. 두 번째 조건은
     // 이미 도구와 이야기에 익숙해진 상태이므로, 순서를 남기지 않으면
     // 조건 차이와 순서 효과가 섞인다.
-    const orderFromUrl = params.get('order')
     if (orderFromUrl) setConditionOrder(orderFromUrl)
+    setStudyPhase(phase())
   }, [])
 
   useEffect(() => {
@@ -286,12 +301,25 @@ function App() {
           오른쪽 아래는 캔버스 조작 버튼이 쓰는 자리라 왼쪽 아래에 둔다. */}
       <div className={`study-bar is-${studyPhase}`}>
         {studyPhase === 'tutorial' && (
-          <button type="button" className="study-bar-start" onClick={() => {
-            startTask()
-            setStudyPhase(phase())
-          }}>
-            과제 시작
-          </button>
+          <>
+            {/* 튜토리얼에서 만든 스토리보드는 checkpoint에 남아 새로고침해도
+                그대로 온다. 본 과제를 빈 화면에서 시작하려면 그 상태만
+                지운다 — 로그·세션·조건은 튜토리얼 이벤트라 분석에 안 쓰이므로
+                건드리지 않는다. */}
+            <button type="button" className="study-bar-clear-tutorial" onClick={() => {
+              if (!window.confirm('튜토리얼에서 만든 스토리보드를 지우고 빈 화면으로 시작합니다. 계속할까요?')) return
+              pauseCheckpointing()
+              void clearCheckpoints(SCENELENS_CHECKPOINT_KEY).finally(() => window.location.reload())
+            }}>
+              튜토리얼 비우기
+            </button>
+            <button type="button" className="study-bar-start" onClick={() => {
+              startTask()
+              setStudyPhase(phase())
+            }}>
+              과제 시작
+            </button>
+          </>
         )}
         {studyPhase === 'task' && (
           <>

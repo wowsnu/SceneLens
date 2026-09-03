@@ -267,11 +267,16 @@ export const summarize = (fullLog = readLog()) => {
   // **측정값은 본 과제 것만 센다.** 튜토리얼에서 누른 것이 섞이면
   // 수정 건수도 층위 분포도 부풀고, 그건 분석 때 알아채기 어렵다.
   // 튜토리얼 기록은 지우지 않고 `tutorial`에 따로 담아 둔다.
-  const tutorialEvents = fullLog.filter((e) => e.phase === 'tutorial')
+  // 이번 세션 것만 본다. 새 참가자를 열 때 로그를 비우므로 평소엔
+  // 전부 이번 세션이지만, 비우기가 빠졌던 파일에는 이전 날짜 이벤트가
+  // 섞여 있을 수 있다 — 그것이 측정값에 들어가면 안 된다.
+  const sid = sessionId()
+  const mine = fullLog.filter((e) => !e.session || e.session === sid)
+  const tutorialEvents = mine.filter((e) => e.phase === 'tutorial')
   // `task`만 센다. `done`을 빼지 않으면 과제를 끝낸 뒤 실험자가 화면을
   // 정리하며 누른 것까지 측정에 들어간다 — 그건 참가자의 작업이 아니다.
-  const log = fullLog.filter((e) => e.phase === 'task')
-  const afterEvents = fullLog.filter((e) => e.phase === 'done')
+  const log = mine.filter((e) => e.phase === 'task')
+  const afterEvents = mine.filter((e) => e.phase === 'done')
   const edits = log.filter((e) => e.type === 'edit')
   const generates = log.filter((e) => e.type === 'panel_generate')
   const count = (items, key) => items.reduce((acc, item) => {
