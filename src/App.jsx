@@ -7,7 +7,7 @@ import useStore, { selectCutStage } from './store/useStore'
 import {
   summarize, resetLog,
   setCondition, condition, setConditionOrder, conditionOrder,
-  phase, startTask, endTask, exportedAt, uploadedAt,
+  phase, startTask, endTask, exportedAt,
   participantId, setParticipantId,
 } from './store/studyLog'
 import { runStudyExportWithAlert } from './store/studyExport'
@@ -25,8 +25,10 @@ function App() {
   // 측정 중인지를 바깥 점에도 물려 둔다. 패널을 열지 않아도 보이게.
   const [studyPhase, setStudyPhase] = useState(() => phase())
   const [exporting, setExporting] = useState(false)
-  // 서버 저장이 확인됐는가. 이것이 있어야 `다음 참가자 준비`를 내놓는다.
-  const [uploaded, setUploaded] = useState(() => Boolean(uploadedAt()))
+  // 파일을 한 번이라도 내보냈는가. 이것이 있어야 `다음 참가자 준비`를
+  // 내놓는다 — 기록은 참가자 컴퓨터의 JSON 파일로 받는다. 서버 업로드는
+  // 부가 경로이고, 그것이 실패해도 파일이 손에 있으면 넘어갈 수 있다.
+  const [exportedOnce, setExportedOnce] = useState(() => Boolean(exportedAt()))
   const maximizedPanel = useStore((s) => s.maximizedPanel)
   const setMaximizedPanel = useStore((s) => s.setMaximizedPanel)
   const leftPanelVisible = useStore((s) => s.leftPanelVisible)
@@ -309,15 +311,15 @@ function App() {
                 await runStudyExportWithAlert()
               } finally {
                 setExporting(false)
-                setUploaded(Boolean(uploadedAt()))
+                setExportedOnce(Boolean(exportedAt()))
               }
             }}>
               {exporting ? '내보내는 중…' : '과제 종료 · 내보내기'}
             </button>
           </>
         )}
-        {/* 끝난 뒤 다시 받을 수 있게 남겨 둔다 — 업로드가 실패했거나
-            파일을 잃었을 때 이것이 유일한 경로다. */}
+        {/* 끝난 뒤 다시 받을 수 있게 남겨 둔다 — 파일을 잃었을 때
+            이것이 유일한 경로다. */}
         {studyPhase === 'done' && (
           <button type="button" className="study-bar-export" disabled={exporting} onClick={async () => {
             setExporting(true)
@@ -325,21 +327,21 @@ function App() {
               await runStudyExportWithAlert()
             } finally {
               setExporting(false)
-              setUploaded(Boolean(uploadedAt()))
+              setExportedOnce(Boolean(exportedAt()))
             }
           }}>
             {exporting ? '내보내는 중…' : '결과 다시 내보내기'}
           </button>
         )}
-        {/* 다음 사람으로 넘어가기. **서버에 올라간 것이 확인된 뒤에만**
-            내놓는다 — 파일은 실험자 컴퓨터에 있지만 그것이 제자리에
-            있는지 시스템은 알 수 없다. 업로드가 실패했으면 이 버튼이
-            아예 안 떠서, 지울 수 없는 상태가 눈에 보인다. */}
-        {studyPhase === 'done' && uploaded && (
+        {/* 다음 사람으로 넘어가기. **파일을 한 번이라도 받은 뒤에만**
+            내놓는다 — 참가자 기록은 그 JSON 파일이다. 내보낸 적이 없으면
+            이 버튼이 안 떠서, 지우면 안 되는 상태가 눈에 보인다.
+            (서버 업로드는 부가 경로이고 그것의 성공 여부는 묻지 않는다.) */}
+        {studyPhase === 'done' && exportedOnce && (
           <button type="button" className="study-bar-next" onClick={() => {
             if (!window.confirm(
               '이 세션을 지우고 다음 참가자(또는 다음 조건)를 준비합니다.\n'
-              + '서버 저장은 확인됐습니다. 계속할까요?',
+              + 'JSON 파일을 받아 두었는지 확인하세요. 계속할까요?',
             )) return
             resetLog()
             pauseCheckpointing()
