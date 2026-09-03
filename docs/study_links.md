@@ -20,218 +20,218 @@
 
 1번째 · baseline
 ```
-https://baseline-phi-opal.vercel.app/?participant=P01&condition=baseline&order=1
+https://snuhci-study-b.vercel.app/?participant=P01&condition=baseline&order=1
 ```
 2번째 · SceneLens
 ```
-https://scene-lens-6o21.vercel.app/?participant=P01&condition=scenelens&order=2
+https://snuhci-study-s.vercel.app/?participant=P01&condition=scenelens&order=2
 ```
 
 ## P02 — SceneLens 먼저
 
 1번째 · SceneLens
 ```
-https://scene-lens-6o21.vercel.app/?participant=P02&condition=scenelens&order=1
+https://snuhci-study-s.vercel.app/?participant=P02&condition=scenelens&order=1
 ```
 2번째 · baseline
 ```
-https://baseline-phi-opal.vercel.app/?participant=P02&condition=baseline&order=2
+https://snuhci-study-b.vercel.app/?participant=P02&condition=baseline&order=2
 ```
 
 ## P03 — baseline 먼저
 
 1번째 · baseline
 ```
-https://baseline-phi-opal.vercel.app/?participant=P03&condition=baseline&order=1
+https://snuhci-study-b.vercel.app/?participant=P03&condition=baseline&order=1
 ```
 2번째 · SceneLens
 ```
-https://scene-lens-6o21.vercel.app/?participant=P03&condition=scenelens&order=2
+https://snuhci-study-s.vercel.app/?participant=P03&condition=scenelens&order=2
 ```
 
 ## P04 — SceneLens 먼저
 
 1번째 · SceneLens
 ```
-https://scene-lens-6o21.vercel.app/?participant=P04&condition=scenelens&order=1
+https://snuhci-study-s.vercel.app/?participant=P04&condition=scenelens&order=1
 ```
 2번째 · baseline
 ```
-https://baseline-phi-opal.vercel.app/?participant=P04&condition=baseline&order=2
+https://snuhci-study-b.vercel.app/?participant=P04&condition=baseline&order=2
 ```
 
 ## P05 — baseline 먼저
 
 1번째 · baseline
 ```
-https://baseline-phi-opal.vercel.app/?participant=P05&condition=baseline&order=1
+https://snuhci-study-b.vercel.app/?participant=P05&condition=baseline&order=1
 ```
 2번째 · SceneLens
 ```
-https://scene-lens-6o21.vercel.app/?participant=P05&condition=scenelens&order=2
+https://snuhci-study-s.vercel.app/?participant=P05&condition=scenelens&order=2
 ```
 
 ## P06 — SceneLens 먼저
 
 1번째 · SceneLens
 ```
-https://scene-lens-6o21.vercel.app/?participant=P06&condition=scenelens&order=1
+https://snuhci-study-s.vercel.app/?participant=P06&condition=scenelens&order=1
 ```
 2번째 · baseline
 ```
-https://baseline-phi-opal.vercel.app/?participant=P06&condition=baseline&order=2
+https://snuhci-study-b.vercel.app/?participant=P06&condition=baseline&order=2
 ```
 
 ## P07 — baseline 먼저
 
 1번째 · baseline
 ```
-https://baseline-phi-opal.vercel.app/?participant=P07&condition=baseline&order=1
+https://snuhci-study-b.vercel.app/?participant=P07&condition=baseline&order=1
 ```
 2번째 · SceneLens
 ```
-https://scene-lens-6o21.vercel.app/?participant=P07&condition=scenelens&order=2
+https://snuhci-study-s.vercel.app/?participant=P07&condition=scenelens&order=2
 ```
 
 ## P08 — SceneLens 먼저
 
 1번째 · SceneLens
 ```
-https://scene-lens-6o21.vercel.app/?participant=P08&condition=scenelens&order=1
+https://snuhci-study-s.vercel.app/?participant=P08&condition=scenelens&order=1
 ```
 2번째 · baseline
 ```
-https://baseline-phi-opal.vercel.app/?participant=P08&condition=baseline&order=2
+https://snuhci-study-b.vercel.app/?participant=P08&condition=baseline&order=2
 ```
 
 ## P09 — baseline 먼저
 
 1번째 · baseline
 ```
-https://baseline-phi-opal.vercel.app/?participant=P09&condition=baseline&order=1
+https://snuhci-study-b.vercel.app/?participant=P09&condition=baseline&order=1
 ```
 2번째 · SceneLens
 ```
-https://scene-lens-6o21.vercel.app/?participant=P09&condition=scenelens&order=2
+https://snuhci-study-s.vercel.app/?participant=P09&condition=scenelens&order=2
 ```
 
 ## P10 — SceneLens 먼저
 
 1번째 · SceneLens
 ```
-https://scene-lens-6o21.vercel.app/?participant=P10&condition=scenelens&order=1
+https://snuhci-study-s.vercel.app/?participant=P10&condition=scenelens&order=1
 ```
 2번째 · baseline
 ```
-https://baseline-phi-opal.vercel.app/?participant=P10&condition=baseline&order=2
+https://snuhci-study-b.vercel.app/?participant=P10&condition=baseline&order=2
 ```
 
 ## P11 — baseline 먼저
 
 1번째 · baseline
 ```
-https://baseline-phi-opal.vercel.app/?participant=P11&condition=baseline&order=1
+https://snuhci-study-b.vercel.app/?participant=P11&condition=baseline&order=1
 ```
 2번째 · SceneLens
 ```
-https://scene-lens-6o21.vercel.app/?participant=P11&condition=scenelens&order=2
+https://snuhci-study-s.vercel.app/?participant=P11&condition=scenelens&order=2
 ```
 
 ## P12 — SceneLens 먼저
 
 1번째 · SceneLens
 ```
-https://scene-lens-6o21.vercel.app/?participant=P12&condition=scenelens&order=1
+https://snuhci-study-s.vercel.app/?participant=P12&condition=scenelens&order=1
 ```
 2번째 · baseline
 ```
-https://baseline-phi-opal.vercel.app/?participant=P12&condition=baseline&order=2
+https://snuhci-study-b.vercel.app/?participant=P12&condition=baseline&order=2
 ```
 
 ## P13 — baseline 먼저
 
 1번째 · baseline
 ```
-https://baseline-phi-opal.vercel.app/?participant=P13&condition=baseline&order=1
+https://snuhci-study-b.vercel.app/?participant=P13&condition=baseline&order=1
 ```
 2번째 · SceneLens
 ```
-https://scene-lens-6o21.vercel.app/?participant=P13&condition=scenelens&order=2
+https://snuhci-study-s.vercel.app/?participant=P13&condition=scenelens&order=2
 ```
 
 ## P14 — SceneLens 먼저
 
 1번째 · SceneLens
 ```
-https://scene-lens-6o21.vercel.app/?participant=P14&condition=scenelens&order=1
+https://snuhci-study-s.vercel.app/?participant=P14&condition=scenelens&order=1
 ```
 2번째 · baseline
 ```
-https://baseline-phi-opal.vercel.app/?participant=P14&condition=baseline&order=2
+https://snuhci-study-b.vercel.app/?participant=P14&condition=baseline&order=2
 ```
 
 ## P15 — baseline 먼저
 
 1번째 · baseline
 ```
-https://baseline-phi-opal.vercel.app/?participant=P15&condition=baseline&order=1
+https://snuhci-study-b.vercel.app/?participant=P15&condition=baseline&order=1
 ```
 2번째 · SceneLens
 ```
-https://scene-lens-6o21.vercel.app/?participant=P15&condition=scenelens&order=2
+https://snuhci-study-s.vercel.app/?participant=P15&condition=scenelens&order=2
 ```
 
 ## P16 — SceneLens 먼저
 
 1번째 · SceneLens
 ```
-https://scene-lens-6o21.vercel.app/?participant=P16&condition=scenelens&order=1
+https://snuhci-study-s.vercel.app/?participant=P16&condition=scenelens&order=1
 ```
 2번째 · baseline
 ```
-https://baseline-phi-opal.vercel.app/?participant=P16&condition=baseline&order=2
+https://snuhci-study-b.vercel.app/?participant=P16&condition=baseline&order=2
 ```
 
 ## P17 — baseline 먼저
 
 1번째 · baseline
 ```
-https://baseline-phi-opal.vercel.app/?participant=P17&condition=baseline&order=1
+https://snuhci-study-b.vercel.app/?participant=P17&condition=baseline&order=1
 ```
 2번째 · SceneLens
 ```
-https://scene-lens-6o21.vercel.app/?participant=P17&condition=scenelens&order=2
+https://snuhci-study-s.vercel.app/?participant=P17&condition=scenelens&order=2
 ```
 
 ## P18 — SceneLens 먼저
 
 1번째 · SceneLens
 ```
-https://scene-lens-6o21.vercel.app/?participant=P18&condition=scenelens&order=1
+https://snuhci-study-s.vercel.app/?participant=P18&condition=scenelens&order=1
 ```
 2번째 · baseline
 ```
-https://baseline-phi-opal.vercel.app/?participant=P18&condition=baseline&order=2
+https://snuhci-study-b.vercel.app/?participant=P18&condition=baseline&order=2
 ```
 
 ## P19 — baseline 먼저
 
 1번째 · baseline
 ```
-https://baseline-phi-opal.vercel.app/?participant=P19&condition=baseline&order=1
+https://snuhci-study-b.vercel.app/?participant=P19&condition=baseline&order=1
 ```
 2번째 · SceneLens
 ```
-https://scene-lens-6o21.vercel.app/?participant=P19&condition=scenelens&order=2
+https://snuhci-study-s.vercel.app/?participant=P19&condition=scenelens&order=2
 ```
 
 ## P20 — SceneLens 먼저
 
 1번째 · SceneLens
 ```
-https://scene-lens-6o21.vercel.app/?participant=P20&condition=scenelens&order=1
+https://snuhci-study-s.vercel.app/?participant=P20&condition=scenelens&order=1
 ```
 2번째 · baseline
 ```
-https://baseline-phi-opal.vercel.app/?participant=P20&condition=baseline&order=2
+https://snuhci-study-b.vercel.app/?participant=P20&condition=baseline&order=2
 ```

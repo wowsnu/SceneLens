@@ -21,44 +21,44 @@
 
 1번째 · baseline
 ```
-https://baseline-phi-opal.vercel.app/?participant=PILOT01&condition=baseline&order=1
+https://snuhci-study-b.vercel.app/?participant=PILOT01&condition=baseline&order=1
 ```
 2번째 · SceneLens
 ```
-https://scene-lens-6o21.vercel.app/?participant=PILOT01&condition=scenelens&order=2
+https://snuhci-study-s.vercel.app/?participant=PILOT01&condition=scenelens&order=2
 ```
 
 ## PILOT02 — SceneLens 먼저
 
 1번째 · SceneLens
 ```
-https://scene-lens-6o21.vercel.app/?participant=PILOT02&condition=scenelens&order=1
+https://snuhci-study-s.vercel.app/?participant=PILOT02&condition=scenelens&order=1
 ```
 2번째 · baseline
 ```
-https://baseline-phi-opal.vercel.app/?participant=PILOT02&condition=baseline&order=2
+https://snuhci-study-b.vercel.app/?participant=PILOT02&condition=baseline&order=2
 ```
 
 ## PILOT03 — baseline 먼저
 
 1번째 · baseline
 ```
-https://baseline-phi-opal.vercel.app/?participant=PILOT03&condition=baseline&order=1
+https://snuhci-study-b.vercel.app/?participant=PILOT03&condition=baseline&order=1
 ```
 2번째 · SceneLens
 ```
-https://scene-lens-6o21.vercel.app/?participant=PILOT03&condition=scenelens&order=2
+https://snuhci-study-s.vercel.app/?participant=PILOT03&condition=scenelens&order=2
 ```
 
 ## PILOT04 — SceneLens 먼저
 
 1번째 · SceneLens
 ```
-https://scene-lens-6o21.vercel.app/?participant=PILOT04&condition=scenelens&order=1
+https://snuhci-study-s.vercel.app/?participant=PILOT04&condition=scenelens&order=1
 ```
 2번째 · baseline
 ```
-https://baseline-phi-opal.vercel.app/?participant=PILOT04&condition=baseline&order=2
+https://snuhci-study-b.vercel.app/?participant=PILOT04&condition=baseline&order=2
 ```
 
 ---
@@ -69,11 +69,11 @@ https://baseline-phi-opal.vercel.app/?participant=PILOT04&condition=baseline&ord
 
 SceneLens
 ```
-https://scene-lens-6o21.vercel.app/?participant=PILOT00&condition=scenelens&order=1
+https://snuhci-study-s.vercel.app/?participant=PILOT00&condition=scenelens&order=1
 ```
 baseline
 ```
-https://baseline-phi-opal.vercel.app/?participant=PILOT00&condition=baseline&order=1
+https://snuhci-study-b.vercel.app/?participant=PILOT00&condition=baseline&order=1
 ```
 
 ## 파일럿을 마치고
