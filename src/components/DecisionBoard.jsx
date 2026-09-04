@@ -1242,7 +1242,7 @@ function DirectingReviewResult({
   onAnswerCheck, answering,
   // 다시 그린 그림을 받을지 버릴지. 판정은 감독이 선택지를 고른 자리에서
   // 한다 — 결과 카드 위에 두면 내려둔 스크롤 밖에 남는다.
-  revisionPending, onAcceptRevision, onRejectRevision,
+  revisionPending, revisionImage, onAcceptRevision, onRejectRevision,
 }) {
   const result = run.result
   const diagnoses = result?.diagnoses || []
@@ -1638,8 +1638,15 @@ function DirectingReviewResult({
         <section className="directing-revision-verdict" role="status">
           <div>
             <strong>이 그림으로 바꿀까요?</strong>
-            <small>왼쪽에 새로 그린 결과가 보입니다. 버리면 컷 값도 되돌립니다.</small>
+            <small>방금 생성한 수정본입니다. 버리면 컷 값도 되돌립니다.</small>
           </div>
+          {revisionImage && (
+            <img
+              className="directing-revision-preview"
+              src={revisionImage}
+              alt="프롬프트를 반영해 새로 생성한 패널"
+            />
+          )}
           <div className="directing-revision-actions">
             <button type="button" className="primary" onClick={onAcceptRevision}>
               이걸로 하기
@@ -4134,9 +4141,20 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
   // 진단이 짚은 컷. 없으면 지금 보고 있는 컷이다. 선택지가 바꿀 대상이자,
   // `기존 → 바뀜`에서 '기존'을 읽어 오는 곳이다.
   const cutForDiagnosis = (diagnosis) => {
-    const panelTarget = (diagnosis?.targets || [])
+    const targets = (diagnosis?.targets || [])
       .map((target) => target.split('.', 1)[0])
       .find((target) => /^S\d+$/.test(target))
+    // 관계 진단은 S7→S8처럼 대상이 둘 이상이다. 이때 수정 방향이 S8을
+    // 명시했는데도 첫 대상(S7)을 고르면, S7을 다시 그려 놓고 S8 자리에서
+    // 결과를 기다리게 된다. 지시가 가리킨 컷이 대상 안에 있을 때만 우선한다.
+    const named = `${diagnosis?.suggested_action || ''} ${diagnosis?.diagnosis || ''}`
+      .match(/\bS\s?(\d+)\b/i)?.[1]
+    const namedTarget = named && (diagnosis?.targets || [])
+      .map((target) => target.split('.', 1)[0])
+      .includes(`S${named}`)
+      ? `S${named}`
+      : null
+    const panelTarget = namedTarget || targets
     const targetShot = shots[panelTarget ? Number(panelTarget.slice(1)) - 1 : scopedShotIndex]
     return cutPlan.find((cut) => cut.id === targetShot?.cutPlanItemId) || null
   }
@@ -4503,7 +4521,7 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
       target: diagnosis.id || null,
       lens: diagnosis.lens || null,
     })
-    const panelTarget = diagnosis.targets
+    const targets = diagnosis.targets
       .map((target) => target.split('.', 1)[0])
       .find((target) => /^S\d+$/.test(target))
     // 편집 선택지는 "S3 삭제", "S2와 S3 사이에 삽입"처럼 어느 자리를
@@ -4511,10 +4529,19 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
     // 삭제 대상이 엇나갈 수 있으므로, 선택지에 적힌 패널을 우선한다.
     const alternativePanelTarget = `${alternative?.label || ''} ${alternative?.effect || ''}`
       .match(/\bS\s?(\d+)\b/i)?.[1]
+    const namedDiagnosisTarget = `${diagnosis?.suggested_action || ''} ${diagnosis?.diagnosis || ''}`
+      .match(/\bS\s?(\d+)\b/i)?.[1]
+    const diagnosisTarget = namedDiagnosisTarget && diagnosis.targets
+      .map((target) => target.split('.', 1)[0])
+      .includes(`S${namedDiagnosisTarget}`)
+      ? Number(namedDiagnosisTarget) - 1
+      : null
     const targetShotIndex = alternativePanelTarget
       ? Number(alternativePanelTarget) - 1
-      : panelTarget
-      ? Number(panelTarget.slice(1)) - 1
+      : diagnosisTarget != null
+        ? diagnosisTarget
+      : targets
+      ? Number(targets.slice(1)) - 1
       : scopedShotIndex
     const targetShot = shots[targetShotIndex]
     if (!targetShot) return
@@ -4524,9 +4551,13 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
     setZenMode(false)
 
     // 그림만 다시 그린다. 생성에 필요한 것(레퍼런스·구조도·그림체)은
-    // 스토리보드 쪽에 있지만, 그 화면은 접혀 있어도 마운트를 유지한다.
-    // 따라서 검토 도중 왼쪽 대본 패널을 강제로 열 필요가 없다.
+    // 스토리보드 쪽에 있다. 중앙을 최대화한 상태에서는 왼쪽이 접힌 것이
+    // 아니라 언마운트될 수 있어, 요청만 저장되고 패널 화면으로 갔을 때야
+    // 늦게 생성되는 문제가 있었다. 최대화만 풀되 왼쪽은 계속 접어 둔다.
+    // 그러면 화면을 옮기지 않고 생성 담당 컴포넌트만 다시 마운트된다.
     if (tool === 'regenerate') {
+      setMaximizedPanel(null)
+      setLeftPanelVisible(false)
       requestPanelTool(targetShot.id, 'regenerate', {
         diagnosisId: diagnosis.id,
         // 값 하나만 바꾼 재생성이면 무엇이 달라지는지 함께 보낸다. 지금
@@ -5878,6 +5909,9 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
                   revisionPending={panelRevisionPending && !applyingAlternative
                     && panelDraftImages[panelRevisionPending.shotId]
                     ? panelRevisionPending : null}
+                  revisionImage={panelRevisionPending && !applyingAlternative
+                    ? panelDraftImages[panelRevisionPending.shotId] || ''
+                    : ''}
                   onAcceptRevision={acceptPanelRevision}
                   onRejectRevision={rejectPanelRevision}
                   onFocusDiagnosis={focusDiagnosis}
@@ -6849,7 +6883,7 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
                     }}
                     disabled={multiReviewLoading}
                   >
-                    {multiReviewLoading ? '다시 보는 중…' : '바뀐 화면으로 다시 보기'}
+                  {multiReviewLoading ? '다시 분석 중…' : '바뀐 화면으로 다시 분석'}
                   </button>
                 </p>
               )}

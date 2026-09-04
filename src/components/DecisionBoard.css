@@ -8534,6 +8534,17 @@ button.active .lens-glass::after {
   line-height: 1.45;
 }
 
+.directing-revision-preview {
+  display: block;
+  width: min(100%, 520px);
+  max-height: 360px;
+  margin: 2px 0;
+  border: 1px solid color-mix(in srgb, var(--lens-color) 36%, transparent);
+  border-radius: 7px;
+  background: rgba(2, 6, 23, 0.62);
+  object-fit: contain;
+}
+
 .directing-revision-actions { display: flex; gap: 7px; }
 
 .directing-revision-actions button {
