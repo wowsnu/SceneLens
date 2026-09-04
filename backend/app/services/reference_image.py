@@ -98,11 +98,11 @@ CHARACTER_BODY = (
 
 LOCATION_BODY = (
     "Wide establishing view of an empty space. "
-    # 공간도 마찬가지다. 카페·실험실·복도가 서양식으로 나오면 인물만
-    # 한국인이고 배경은 아닌 그림이 된다.
-    # 글자는 위에서 금지했으므로 간판 문구가 아니라 건축·가구로만 말한다.
-    "A place in South Korea unless the description says otherwise: "
-    "Korean architecture, interior proportions and furniture. "
+    # 국적·문화 지시를 넣지 않는다. 넣으면 대본과 무관하게 특정 양식의
+    # 건축·간판·가구가 강제된다. 장소의 성격은 설명이 정하고, 없으면
+    # 모델의 기본값에 맡긴다.
+    "Do not impose any specific country, culture, or regional architectural "
+    "style unless the description states one. "
     # 사람이 들어가면 패널마다 그 사람이 따라 나온다.
     "No people, no figures, no characters in the frame."
 )

@@ -12,12 +12,30 @@
 import base64
 import asyncio
 import os
+import re
 
 import httpx
 from openai import AsyncOpenAI
 
 from app.models.schemas import PanelImageRequest, PanelImageResponse
 from app.services.panel_style import style_prelude
+
+
+# 대본이 따옴표로 명시한 짧은 문구는 그 장면의 정보다 — 버스 안내판,
+# 표지판, 쪽지의 내용처럼. 이런 것까지 지우면 컷이 담기로 한 것을 못
+# 그린다. 따옴표 안의 짧은 문자열만 골라내, "이 문구만 그대로 쓰고
+# 나머지 글자는 여전히 그리지 말라"고 지시한다.
+_QUOTE_RE = re.compile(r'["“”\'‘’「」『』]([^"“”\'‘’「」『』\n]{1,60})["“”\'‘’「」『』]')
+
+
+def _quoted_phrases(text: str) -> list[str]:
+    seen: list[str] = []
+    for match in _QUOTE_RE.finditer(text or ""):
+        phrase = match.group(1).strip()
+        # 한두 글자짜리 인용(예: 사람 이름의 애칭)은 안내판 문구가 아니다.
+        if len(phrase) >= 3 and phrase not in seen:
+            seen.append(phrase)
+    return seen[:4]
 
 
 # 그림체는 panel_style이 정한다. 스케치를 채워 완성하는 길(restyle)도 같은
@@ -174,12 +192,25 @@ async def generate_panel(request: PanelImageRequest) -> PanelImageResponse:
     parts.append(f"Draw this panel: {request.prompt}")
     # 금지를 맨 앞에만 두면 뒤따르는 지시에 묻힌다. 특히 간판·안내문이
     # 나오는 장면에서 모델이 글자를 써 넣는다 ("CLOSED"). 마지막에 한 번 더.
-    parts.append(
-        "Final rule: this drawing contains NO written characters of any kind. "
-        "Signs, notices, posters, book spines and labels must be blank or show "
-        "only meaningless scribbles — never real letters or words. "
-        "Do not draw a border around the image."
-    )
+    allowed_phrases = _quoted_phrases(request.prompt)
+    if allowed_phrases:
+        quoted = "; ".join(f'"{phrase}"' for phrase in allowed_phrases)
+        parts.append(
+            "Text rule: the ONLY readable text allowed in this drawing is the "
+            f"exact phrase(s) {quoted}, and only where the scene places them "
+            "(a sign, a notice, a note, a screen). Render those phrases legibly "
+            "and correctly. Every other surface — other signs, posters, book "
+            "spines, labels, background lettering — stays blank or shows "
+            "meaningless scribbles, never real words. Do not draw a border "
+            "around the image."
+        )
+    else:
+        parts.append(
+            "Final rule: this drawing contains NO written characters of any kind. "
+            "Signs, notices, posters, book spines and labels must be blank or show "
+            "only meaningless scribbles — never real letters or words. "
+            "Do not draw a border around the image."
+        )
 
     # 생성 바에서 고른 모델이 우선이다. FLUX는 BFL API로, GPT Image는
     # OpenAI Images API로 보내며, 프롬프트 조립 규칙은 세 모델이 공유한다.

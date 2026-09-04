@@ -10,8 +10,9 @@
 NO_TEXT = (
     "Storyboard panel. Single frame that fills the entire image edge to edge. "
     "Do not draw a frame, border, outline, or margin around the drawing. "
-    "No text, no lettering, no signage, no labels, no numbers, "
-    "no speech bubbles, no captions, no watermark."
+    "Do not add incidental lettering: no speech bubbles, no captions, no "
+    "watermark, and no invented signage or labels. Only text the scene "
+    "description explicitly quotes may appear, and only where it places it."
 )
 
 # 완성도는 **앵커 그림이 정한다.** 고른 밀도의 실제 예시가 참조로 물리므로
@@ -65,18 +66,11 @@ ROUGHNESS = (
     "than a 20-second scribble, it is too detailed. Err on the side of too crude."
 )
 
-# 대본은 한국어이고 인물 이름도 한국 이름인데, 모델은 그냥 두면 서양
-# 인물과 서양식 공간을 그린다. 감독이 매번 "한국인"이라고 적게 하는 대신
-# 기본값으로 둔다.
-#
-# 컷 내용·씬 기준은 이 문장보다 뒤에 오므로, 대본이 다른 국적이나 장소를
-# 말하면 그쪽이 이긴다 — 기본값이지 제약이 아니다.
-# 글자는 NO_TEXT가 금지하므로 간판 문구가 아니라 사람과 건축으로만 말한다.
-KOREAN_DEFAULT = (
-    "Unless the description says otherwise, the people are Korean and the "
-    "setting is in South Korea: Korean faces, hair and clothing, and Korean "
-    "architecture, interior proportions and furniture."
-)
+# 국적·문화 지시를 넣지 않는다. 인물의 생김새와 공간의 양식은 대본
+# 설명·인물 기준·공간 기준이 정하고, 없으면 모델 기본값에 맡긴다.
+# (이전에는 "한국인/한국식 공간"을 기본값으로 넣었으나, 대본과 무관하게
+# 특정 양식이 강제돼 제거했다.)
+KOREAN_DEFAULT = ""
 
 # 화풍을 따로 정하지 않았을 때의 기본.
 # `cinematic`과 `tonal indication`은 빼야 한다 — 완성도를 낮추라는 뒤 문장과
