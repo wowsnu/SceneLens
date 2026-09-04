@@ -6054,6 +6054,10 @@ export default function StoryboardView({ onEnterReview = null }) {
                                           }
                                         }}
                                         onKeyDown={(event) => {
+                                          // 카드 면 자체에 포커스가 있을 때만 뒤집는다. 안의
+                                          // 입력칸에서 스페이스를 치면 이 핸들러가 그것을
+                                          // 삼켜 띄어쓰기가 안 됐다.
+                                          if (event.target !== event.currentTarget) return
                                           if (isPanelPreparationStage && characterImage && (event.key === 'Enter' || event.key === ' ')) {
                                             event.preventDefault()
                                             setOpenReferenceCards((current) => ({ ...current, [character.id]: true }))
@@ -6126,6 +6130,7 @@ export default function StoryboardView({ onEnterReview = null }) {
                                           className="rail-reference-face rail-reference-preview"
                                           onClick={() => setOpenReferenceCards((current) => ({ ...current, [character.id]: false }))}
                                           onKeyDown={(event) => {
+                                            if (event.target !== event.currentTarget) return
                                             if (event.key === 'Enter' || event.key === ' ') {
                                               event.preventDefault()
                                               setOpenReferenceCards((current) => ({ ...current, [character.id]: false }))
@@ -6176,6 +6181,7 @@ export default function StoryboardView({ onEnterReview = null }) {
                                           }
                                         }}
                                         onKeyDown={(event) => {
+                                          if (event.target !== event.currentTarget) return
                                           if (isPanelPreparationStage && locationImage && (event.key === 'Enter' || event.key === ' ')) {
                                             event.preventDefault()
                                             setOpenReferenceCards((current) => ({ ...current, location: true }))
@@ -6238,6 +6244,7 @@ export default function StoryboardView({ onEnterReview = null }) {
                                           className="rail-reference-face rail-reference-preview is-location"
                                           onClick={() => setOpenReferenceCards((current) => ({ ...current, location: false }))}
                                           onKeyDown={(event) => {
+                                            if (event.target !== event.currentTarget) return
                                             if (event.key === 'Enter' || event.key === ' ') {
                                               event.preventDefault()
                                               setOpenReferenceCards((current) => ({ ...current, location: false }))
