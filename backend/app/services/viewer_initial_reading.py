@@ -7,6 +7,7 @@ import os
 from openai import AsyncOpenAI
 
 from app.models.schemas import ViewerInitialReadingRequest, ViewerInitialReadingResponse
+from app.services.image_ai_gate import run_image_ai
 
 
 RESPONSE_SCHEMA = {
@@ -239,7 +240,7 @@ LENGTH IS A HARD REQUIREMENT, NOT A PREFERENCE. The step fields are rendered sid
             {"type": "image_url", "image_url": {"url": image_url, "detail": "high"}},
         ])
 
-    response = await client.chat.completions.create(
+    response = await run_image_ai(lambda: client.chat.completions.create(
         # 관객 읽기는 그림에서 직접 읽어야 하는 일이다 — 대본도 샷 라벨도
         # 주지 않으므로 픽셀이 유일한 근거다. nano로는 자세·시선·소품을
         # 자주 놓쳐 "그림을 잘 못 본다"는 인상을 줬다.
@@ -250,7 +251,7 @@ LENGTH IS A HARD REQUIREMENT, NOT A PREFERENCE. The step fields are rendered sid
         messages=[{"role": "user", "content": content}],
         response_format={"type": "json_schema", "json_schema": RESPONSE_SCHEMA},
         max_completion_tokens=5000,
-    )
+    ))
     return json.loads(response.choices[0].message.content.strip())["initial_reading"]
 
 

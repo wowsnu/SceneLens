@@ -2706,6 +2706,37 @@ const useStore = create((set, get) => ({
     }),
   }))
   },
+  // 씬은 별도 목록이 아니라 screenplay의 scene-heading에서 파생한다.
+  // 컷 플랜에서 씬을 더할 때도 헤딩과 첫 빈 컷을 같이 넣어야 다음 패널
+  // 단계에서 "컷은 있는데 어느 장면인가"가 되는 일을 막는다.
+  addSceneToCutPlan: () => {
+    logEdit({ lens: 'editing', level: 'sequence', target: 'scene', action: 'add', source: 'cut_plan' })
+    return set((state) => {
+      const beat = Math.max(-1, ...state.screenplay.map((element) => element.beat ?? 0)) + 1
+      const sceneNumber = selectScenes(state.screenplay).length + 1
+      const heading = `INT. 새 장소 ${sceneNumber} - 시간`
+      const inserted = createCutPlanItem({
+        beat,
+        content: '',
+        purpose: '',
+        time: '',
+        place: '',
+        characters: '',
+        provenance: 'User',
+      })
+      const screenplay = [
+        ...state.screenplay,
+        { type: 'scene-heading', text: heading, beat },
+        { type: 'action', text: '', beat },
+      ]
+      return {
+        screenplay,
+        cutPlan: reorderCutPlan([...state.cutPlan, inserted]),
+        activeBeat: beat,
+        narrativeCheckStale: true,
+      }
+    })
+  },
   // fields를 주면 그 내용으로 채운다. 빈 컷을 만들어 두면 대개 비어 있는
   // 채로 남으므로, 편집이 제안한 내용을 그대로 받아 넣을 수 있게 한다.
   addCutPlanItem: (afterItemId = null, beat = 0, fields = {}) => {
@@ -5172,6 +5203,47 @@ const useStore = create((set, get) => ({
   // 같은 컷을 다시 생성해도 이미지가 도착했다는 사실을 구분한다. 이미지
   // 문자열만 보면 이전 초안이 남아 있을 때 완료 상태를 잘못 띄울 수 있다.
   panelDraftVersions: {},
+  // AI가 만든 패널은 새 그림으로 덮어쓰지 않고 최근 버전을 남긴다.
+  // base64 이미지는 커서 컷마다 최근 여섯 장까지만 보관한다.
+  panelImageHistory: {},
+  recordPanelImageVersion: (shotId, image, meta = {}) => set((state) => {
+    if (!shotId || !image) return {}
+    const entries = state.panelImageHistory[shotId] || []
+    const currentIndex = entries.findIndex((entry) => entry.image === image)
+    const branch = currentIndex >= 0 ? entries.slice(0, currentIndex + 1) : entries
+    if (branch.at(-1)?.image === image) {
+      return branch.length === entries.length ? {} : {
+        panelImageHistory: { ...state.panelImageHistory, [shotId]: branch },
+      }
+    }
+    return {
+      panelImageHistory: {
+        ...state.panelImageHistory,
+        [shotId]: [...branch, {
+          id: `panel-version-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+          image,
+          createdAt: Date.now(),
+          label: meta.label || 'AI 생성',
+        }].slice(-6),
+      },
+    }
+  }),
+  restorePanelImageVersion: (shotId, versionId) => set((state) => {
+    const versions = state.panelImageHistory[shotId] || []
+    const versionIndex = versions.findIndex((entry) => entry.id === versionId)
+    if (versionIndex < 0) return {}
+    const version = versions[versionIndex]
+    const panelDraftImages = { ...state.panelDraftImages }
+    delete panelDraftImages[shotId]
+    return {
+      ...updateActiveBranchShots(state, (shots) => ({
+        shots: shots.map((shot) => shot.id === shotId
+          ? { ...shot, image: version.image, source: 'ai', isAIGenerated: true }
+          : shot),
+      })),
+      panelDraftImages,
+    }
+  }),
   setPanelDraftImage: (shotId, image) => set((state) => ({
     panelDraftImages: { ...state.panelDraftImages, [shotId]: image },
     panelDraftVersions: {

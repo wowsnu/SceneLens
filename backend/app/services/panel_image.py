@@ -18,6 +18,7 @@ import httpx
 from openai import AsyncOpenAI
 
 from app.models.schemas import PanelImageRequest, PanelImageResponse
+from app.services.image_ai_gate import run_image_ai
 from app.services.panel_style import style_prelude
 
 
@@ -350,16 +351,16 @@ async def generate_panel(request: PanelImageRequest) -> PanelImageResponse:
                 # 레퍼런스 하나가 깨졌다고 패널을 못 그리면 안 된다.
                 # 그림은 나오되 그 인물만 기준 없이 그려진다.
                 print(f"[panel-image] skipping unreadable reference: {ref.name}")
-        result = await client.images.edit(
+        result = await run_image_ai(lambda: client.images.edit(
             model=request.model,
             image=files,
             prompt="\n\n".join(parts),
             size="1536x1024",
             quality="low",
             n=1,
-        )
+        ))
     else:
-        result = await client.images.generate(
+        result = await run_image_ai(lambda: client.images.generate(
             model=request.model,
             prompt="\n\n".join(parts),
             # 스토리보드는 가로 프레임이다.
@@ -367,7 +368,7 @@ async def generate_panel(request: PanelImageRequest) -> PanelImageResponse:
             # 러프해야 고칠 것이 보인다. 완성도가 높으면 정해진 것처럼 읽힌다.
             quality="low",
             n=1,
-        )
+        ))
 
     data = result.data[0]
     # 응답 형식이 모델·설정에 따라 갈린다. 둘 다 받는다.

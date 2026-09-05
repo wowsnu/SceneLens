@@ -1384,6 +1384,9 @@ export default function StoryboardView({ onEnterReview = null }) {
   const autoDraftDisabled = useStore((s) => s.autoDraftDisabled)
   const setSelectedShotIds = useStore((s) => s.setSelectedStoryboardShotIds)
   const setPanelDraftImage = useStore((s) => s.setPanelDraftImage)
+  const recordPanelImageVersion = useStore((s) => s.recordPanelImageVersion)
+  const panelImageHistory = useStore((s) => s.panelImageHistory)
+  const restorePanelImageVersion = useStore((s) => s.restorePanelImageVersion)
   const clearPanelDraftImage = useStore((s) => s.clearPanelDraftImage)
   const panelGenPending = useStore((s) => s.panelGenerationPending)
   const setPanelGenPending = useStore((s) => s.setPanelGenerationPending)
@@ -1653,6 +1656,7 @@ export default function StoryboardView({ onEnterReview = null }) {
   const miseCheckError = useStore((s) => s.miseCheckError)
   const updateCutPlanItem = useStore((s) => s.updateCutPlanItem)
   const addCutPlanItem = useStore((s) => s.addCutPlanItem)
+  const addSceneToCutPlan = useStore((s) => s.addSceneToCutPlan)
   const duplicateCutPlanItem = useStore((s) => s.duplicateCutPlanItem)
   const removeCutPlanItem = useStore((s) => s.removeCutPlanItem)
   const moveCutPlanItem = useStore((s) => s.moveCutPlanItem)
@@ -2810,6 +2814,10 @@ export default function StoryboardView({ onEnterReview = null }) {
       try {
         // 프롬프트가 없는 패널은 만들 수 없다. 컷과 이어지지 않은 패널이다.
         if (!prompt?.effective) throw new Error('이 패널에 연결된 컷이 없습니다')
+        // 재생성이라면 새 그림을 받기 전에 지금 보던 버전부터 남긴다.
+        // 그래야 첫 번째 재생성 직후에도 바로 직전 패널로 돌아갈 수 있다.
+        const currentVisual = getShotVisual(shot)
+        if (currentVisual) recordPanelImageVersion(shot.id, currentVisual, { label: '이전 패널' })
         // shared(씬 기준)를 함께 보낸다. 이것을 빼면 컷마다 인물과 공간이
         // 따로 해석돼, 미장센이 기준을 세운 의미가 없어진다.
         // 이 패널을 **참가자가 이미 만들어 본 적이 있으면** 다시 그리는
@@ -2911,6 +2919,9 @@ export default function StoryboardView({ onEnterReview = null }) {
           }))
           setPanelDraftImage(shot.id, image)
         }
+        recordPanelImageVersion(shot.id, image, {
+          label: autoAccept ? 'AI 생성' : '수정안 생성',
+        })
       } catch (error) {
         failures.push(error.message)
       } finally {
@@ -3996,13 +4007,23 @@ export default function StoryboardView({ onEnterReview = null }) {
                 </div>
 
                 <footer className="cut-plan-footer">
-                  <button
-                    type="button"
-                    className="cut-plan-add-cut"
-                    onClick={() => addCutPlanItem(null, activeBeat)}
-                  >
-                    + 컷 추가
-                  </button>
+                  <div className="cut-plan-footer-actions">
+                    <button
+                      type="button"
+                      className="cut-plan-add-scene"
+                      onClick={addSceneToCutPlan}
+                      disabled={cutPlanRunPending}
+                    >
+                      + 씬 추가
+                    </button>
+                    <button
+                      type="button"
+                      className="cut-plan-add-cut"
+                      onClick={() => addCutPlanItem(null, activeBeat)}
+                    >
+                      + 컷 추가
+                    </button>
+                  </div>
                   {/* AI 출처 전체를 미확인으로 세면 사용자가 표 18행을 전부
                     검사해야 한다고 느낀다. 실제 예외만 센다. */}
                   <span>
@@ -4325,6 +4346,19 @@ export default function StoryboardView({ onEnterReview = null }) {
                         ) : displayImage
                           ? <img src={displayImage} alt={`패널 ${shotIdx + 1}`} />
                           : <span className="sb-panel-grid-blank">비어 있음</span>}
+                        {!candidate && displayImage && (() => {
+                          const versions = panelImageHistory[shot.id] || []
+                          const currentIndex = versions.findIndex((version) => version.image === displayImage)
+                          const previousVersion = currentIndex > 0 ? versions[currentIndex - 1] : null
+                          const nextVersion = currentIndex >= 0 && currentIndex < versions.length - 1
+                            ? versions[currentIndex + 1] : null
+                          return (previousVersion || nextVersion) && (
+                            <div className="sb-panel-grid-history-nav">
+                              {previousVersion && <button type="button" title="직전 AI 생성본으로 되돌리기" onClick={(event) => { event.stopPropagation(); restorePanelImageVersion(shot.id, previousVersion.id); logEvent('panel_restore', { target: shot.cutPlanItemId || shot.id }) }}>↶ 이전</button>}
+                              {nextVersion && <button type="button" title="다음 AI 생성본으로 돌아가기" onClick={(event) => { event.stopPropagation(); restorePanelImageVersion(shot.id, nextVersion.id); logEvent('panel_restore', { target: shot.cutPlanItemId || shot.id }) }}>다음 ↷</button>}
+                            </div>
+                          )
+                        })()}
                         {candidate && <span className="sb-panel-grid-candidate">AI 초안</span>}
                         {/* 복제한 패널. 그림은 원본 그대로 들고 있고, 감독이
                             "무엇만 다른지"를 적으면 그 그림을 기준(current)으로
@@ -4797,6 +4831,19 @@ export default function StoryboardView({ onEnterReview = null }) {
                           ) : committedImage ? (
                             <div className="sb-img-wrapper">
                               <img src={displayImage} alt={cutLabel} />
+                              {(() => {
+                                const versions = panelImageHistory[shot.id] || []
+                                const currentIndex = versions.findIndex((version) => version.image === committedImage)
+                                const previousVersion = currentIndex > 0 ? versions[currentIndex - 1] : null
+                                const nextVersion = currentIndex >= 0 && currentIndex < versions.length - 1
+                                  ? versions[currentIndex + 1] : null
+                                return (previousVersion || nextVersion) && (
+                                  <div className="sb-conte-history-nav">
+                                    {previousVersion && <button type="button" title="직전 AI 생성본으로 되돌리기" onClick={(event) => { event.stopPropagation(); restorePanelImageVersion(shot.id, previousVersion.id); logEvent('panel_restore', { target: shot.cutPlanItemId || shot.id }) }}>↶ 이전</button>}
+                                    {nextVersion && <button type="button" title="다음 AI 생성본으로 돌아가기" onClick={(event) => { event.stopPropagation(); restorePanelImageVersion(shot.id, nextVersion.id); logEvent('panel_restore', { target: shot.cutPlanItemId || shot.id }) }}>다음 ↷</button>}
+                                  </div>
+                                )
+                              })()}
                               {/* 화살표·메모를 만지는 중이 아니면 그림을 눌러
                                 크게 본다. 그때는 오버레이가 클릭을 받아야 한다. */}
                               {arrowDrawingShotId !== shot.id && noteEditingShotId !== shot.id && (
@@ -5536,6 +5583,19 @@ export default function StoryboardView({ onEnterReview = null }) {
                                 ) : committedImage ? (
                                   <div className="sb-img-wrapper">
                                     <img src={displayImage} alt={cutLabel} />
+                                    {(() => {
+                                      const versions = panelImageHistory[shot.id] || []
+                                      const currentIndex = versions.findIndex((version) => version.image === committedImage)
+                                      const previousVersion = currentIndex > 0 ? versions[currentIndex - 1] : null
+                                      const nextVersion = currentIndex >= 0 && currentIndex < versions.length - 1
+                                        ? versions[currentIndex + 1] : null
+                                      return (previousVersion || nextVersion) && (
+                                        <div className="sb-panel-history-nav">
+                                          {previousVersion && <button type="button" title="직전 AI 생성본으로 되돌리기" onClick={(event) => { event.stopPropagation(); restorePanelImageVersion(shot.id, previousVersion.id); logEvent('panel_restore', { target: shot.cutPlanItemId || shot.id }) }}>↶ 이전</button>}
+                                          {nextVersion && <button type="button" title="다음 AI 생성본으로 돌아가기" onClick={(event) => { event.stopPropagation(); restorePanelImageVersion(shot.id, nextVersion.id); logEvent('panel_restore', { target: shot.cutPlanItemId || shot.id }) }}>다음 ↷</button>}
+                                        </div>
+                                      )
+                                    })()}
                                     <PanelOverlay
                                       marks={panelMarks}
                                       arrows={shot.arrows || []}

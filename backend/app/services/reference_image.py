@@ -17,6 +17,7 @@ import os
 from openai import AsyncOpenAI
 
 from app.models.schemas import ReferenceImageRequest, ReferenceImageResponse
+from app.services.image_ai_gate import run_image_ai
 
 
 # 어떤 밀도에서도 지켜야 할 것. 글자와 테두리는 레퍼런스를 망치고, 배경이
@@ -138,7 +139,7 @@ async def generate_reference(request: ReferenceImageRequest) -> ReferenceImageRe
     size = "1024x1536" if request.kind == "character" else "1536x1024"
 
     client = AsyncOpenAI(api_key=api_key)
-    result = await client.images.generate(
+    result = await run_image_ai(lambda: client.images.generate(
         # 패널 생성에서 고른 모델을 그대로 쓴다. 기준 그림만 다른 모델로
         # 그리면 지시를 받아들이는 정도가 달라 화풍이 그 지점에서 갈린다.
         model=request.model,
@@ -148,7 +149,7 @@ async def generate_reference(request: ReferenceImageRequest) -> ReferenceImageRe
         # 그린다. 화질보다 기다리는 시간이 작업을 막는다.
         quality="low",
         n=1,
-    )
+    ))
 
     data = result.data[0]
     if getattr(data, "b64_json", None):

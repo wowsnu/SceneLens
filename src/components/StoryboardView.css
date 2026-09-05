@@ -1885,6 +1885,9 @@
   color: #fff;
 }
 
+.cut-plan-footer-actions { display: flex; gap: 7px; }
+.cut-plan-add-scene { border-color: rgba(139, 199, 223, 0.38) !important; color: #b9e6f7 !important; }
+
 .cut-plan-footer span {
   color: rgba(255, 255, 255, 0.4);
   font-size: 11px;
@@ -5370,6 +5373,40 @@
   object-fit: cover;
   background: #0c0c0f;
 }
+
+.sb-panel-history-nav,
+.sb-panel-grid-history-nav,
+.sb-conte-history-nav {
+  position: absolute;
+  z-index: 5;
+  display: flex;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.42);
+  border-radius: 6px;
+  box-shadow: 0 1px 5px rgba(0, 0, 0, 0.42);
+}
+.sb-panel-history-nav { top: 9px; right: 9px; }
+.sb-panel-grid-history-nav { top: 16px; right: 16px; }
+.sb-conte-history-nav { top: 9px; right: 9px; }
+.sb-panel-history-nav button,
+.sb-panel-grid-history-nav button,
+.sb-conte-history-nav button {
+  min-height: 30px;
+  padding: 5px 9px;
+  border: 0;
+  border-right: 1px solid rgba(255, 255, 255, 0.22);
+  background: rgba(9, 12, 18, 0.8);
+  color: #f5fbff;
+  font-size: 11px;
+  font-weight: 800;
+  cursor: pointer;
+}
+.sb-panel-history-nav button:last-child,
+.sb-panel-grid-history-nav button:last-child,
+.sb-conte-history-nav button:last-child { border-right: 0; }
+.sb-panel-history-nav button:hover,
+.sb-panel-grid-history-nav button:hover,
+.sb-conte-history-nav button:hover { background: #111c28; color: #fff; }
 
 /* 아직 안 그린 컷도 자리를 지킨다 — 빠진 것이 보여야 무엇이 남았는지 안다. */
 .sb-panel-grid-blank {

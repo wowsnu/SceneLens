@@ -34,6 +34,7 @@ from app.services.directing_rules import (
     validate_rule_choice,
     validate_rule_theory_choice,
 )
+from app.services.image_ai_gate import run_image_ai
 
 
 MODEL_OVERRIDE = os.getenv("DIRECTING_REVIEW_MODEL")
@@ -786,6 +787,15 @@ def _panel_image_url(image: str) -> str:
     return image if image.startswith("data:") else f"data:image/png;base64,{image}"
 
 
+def _panel_image_urls(request: DirectingReviewRequest) -> dict[str, str]:
+    """Build large panel data URLs once for the whole directing-review run."""
+    return {
+        panel.id: _panel_image_url(panel.image)
+        for panel in request.panels
+        if panel.image
+    }
+
+
 def _model_for_lens(lens: DirectingLens) -> str:
     if MODEL_OVERRIDE:
         return MODEL_OVERRIDE
@@ -1157,6 +1167,7 @@ async def analyze_lens(
     request: DirectingReviewRequest,
     lens: DirectingLens,
     client: Optional[AsyncOpenAI] = None,
+    panel_image_urls: Optional[dict[str, str]] = None,
 ) -> tuple[DirectingLensResult, list[DirectingQuestion]]:
     if lens not in LENS_PROMPTS:
         raise UnsupportedReviewModeError(f"The {lens} lens is not connected yet.")
@@ -1302,6 +1313,9 @@ async def analyze_lens(
             f"[ID 규칙]\n모든 diagnosis와 question의 id는 반드시 `{lens}-`로 시작하세요.",
         ] if block
     )
+    # 다관점 검토에서는 바깥에서 만든 같은 dict를 세 렌즈가 공유한다.
+    # 단일 렌즈 호출도 가능하므로 그 경우에만 여기서 만든다.
+    panel_image_urls = panel_image_urls or _panel_image_urls(request)
     content = [{"type": "text", "text": prompt}]
     for order, panel in enumerate(request.panels, start=1):
         content.extend(
@@ -1322,7 +1336,7 @@ async def analyze_lens(
                     [{
                         "type": "image_url",
                         "image_url": {
-                            "url": _panel_image_url(panel.image),
+                            "url": panel_image_urls[panel.id],
                             "detail": "high",
                         },
                     }]
@@ -1371,12 +1385,12 @@ async def analyze_lens(
                     ),
                 },
             ]
-        response = await client.chat.completions.create(
+        response = await run_image_ai(lambda: client.chat.completions.create(
             model=_model_for_lens(lens),
             messages=[{"role": "user", "content": request_content}],
             response_format={"type": "json_schema", "json_schema": LENS_RESPONSE_SCHEMA},
             max_completion_tokens=3000,
-        )
+        ))
         previous_output = response.choices[0].message.content.strip()
         data = _normalize_output_targets(request, json.loads(previous_output), lens)
         try:
@@ -2164,7 +2178,9 @@ async def review_directing(request: DirectingReviewRequest) -> DirectingReviewRe
             f"The {request.mode} review mode is not connected yet. Use camera, mise, or editing mode."
         )
     lens: DirectingLens = request.mode
-    result, questions = await analyze_lens(request, lens)
+    result, questions = await analyze_lens(
+        request, lens, panel_image_urls=_panel_image_urls(request),
+    )
     return DirectingReviewResponse(
         lens_results={lens: result},
         issues=_build_issues([], {lens: result}),
@@ -2200,8 +2216,10 @@ async def _review_all_lenses(request: DirectingReviewRequest) -> DirectingReview
     # 서사는 이 세 렌즈보다 앞에서 이야기의 단계와 정보 순서를 잡는 별도
     # 상위 에이전트다. 다관점 패널 검토에는 화면을 직접 다루는 세 관점만 둔다.
     lenses: list[DirectingLens] = ["mise", "camera", "editing"]
+    # 수 MB인 base64 문자열을 렌즈마다 새로 이어 붙이지 않는다.
+    panel_image_urls = _panel_image_urls(request)
     outcomes = await asyncio.gather(
-        *(analyze_lens(request, lens) for lens in lenses),
+        *(analyze_lens(request, lens, panel_image_urls=panel_image_urls) for lens in lenses),
         return_exceptions=True,
     )
 
