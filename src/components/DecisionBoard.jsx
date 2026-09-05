@@ -6892,22 +6892,26 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
                 <IssueInspector
                   /* 관객 쪽 자리를 고르면 그것이 Inspector의 대상이다.
                      렌즈 진단이 아니므로 세 렌즈가 모두 "아직 안 봄"으로
-                     뜨고, 감독이 눌러 부르면 그 렌즈가 이 자리를 본다. */
+                     뜨고, 감독이 눌러 부르면 그 렌즈가 이 자리를 본다.
+                     아래 relations/relating/onCompare도 같은 대상이어야
+                     한다 — readingIssue를 빠뜨리면 관객 검토에서 넘어온
+                     자리는 "관계 보기"를 눌러도 scopeKey가 없어 조용히
+                     아무 일도 안 일어난다. */
                   issue={revisionWorkspace?.issue || readingIssue || selectedTrackIssue}
                   issues={trackIssues}
                   diagnosesById={diagnosesById}
-                  relations={multiReviewRuns[(revisionWorkspace?.issue || selectedTrackIssue)?.sourceScopeKey]?.commonFindings || []}
+                  relations={multiReviewRuns[(revisionWorkspace?.issue || readingIssue || selectedTrackIssue)?.sourceScopeKey]?.commonFindings || []}
                   lensChecks={selectedIssueLensChecks}
                   shots={shots}
                   /* 범위를 정해 검토 중이면 앞뒤 컷도 그 안에서만
                      가져온다. 한 컷만 보는 중이면 범위가 곧 그 컷이라
                      좁히면 앞뒤가 아예 사라지므로 전체에서 가져온다. */
                   range={scopeMode === 'range' ? { from: scopeFrom, to: scopeTo } : null}
-                  relating={Boolean(multiReviewRuns[(revisionWorkspace?.issue || selectedTrackIssue)?.sourceScopeKey]?.relating)}
+                  relating={Boolean(multiReviewRuns[(revisionWorkspace?.issue || readingIssue || selectedTrackIssue)?.sourceScopeKey]?.relating)}
                   onCheckLens={checkSelectedIssueLens}
                   onRevise={_reviseTrackIssue}
                   onDismiss={selectedTrackIssue ? dismissTrackIssue : null}
-                  onCompare={() => runRelateReview((revisionWorkspace?.issue || selectedTrackIssue)?.sourceScopeKey)}
+                  onCompare={() => runRelateReview((revisionWorkspace?.issue || readingIssue || selectedTrackIssue)?.sourceScopeKey)}
                   mainLensQuestion={selectedIssueMainLensQuestion}
                   /* 답은 이 렌즈만의 것이 아니다. 감독이 확정한 창작 결정이므로
                      세 렌즈가 함께 그 전제 위에서 다시 본다. 앞서 답한 것도
