@@ -5241,6 +5241,19 @@
   padding: 18px 24px 36px;
 }
 
+/* 마지막에도 새 빈 Cut·Panel을 만들 수 있다. 카드와 같은 폭을 차지해
+   끝을 자연스럽게 이어 주되, 생성 전 빈 칸과는 분명히 구분한다. */
+.sb-panel-grid-add-shot {
+  min-height: 120px;
+  border: 1px dashed rgba(184, 198, 210, 0.52);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.025);
+  color: rgba(223, 234, 244, 0.88);
+  font: inherit;
+  font-weight: 700;
+}
+.sb-panel-grid-add-shot:hover { background: rgba(150, 190, 210, 0.11); border-color: rgba(184, 198, 210, 0.82); }
+
 /* 구조 편집은 즉시 반영하되, 바로 전 한 번은 되돌릴 수 있어야 한다. */
 .sb-panel-undo {
   grid-column: 1 / -1;
@@ -6119,6 +6132,19 @@
   background: rgba(255, 255, 255, 0.015);
   cursor: pointer;
 }
+
+.sb-conte-add-shot {
+  display: block;
+  width: 100%;
+  padding: 12px;
+  border: 1px dashed rgba(184, 198, 210, 0.48);
+  border-radius: 0 0 8px 8px;
+  background: transparent;
+  color: rgba(223, 234, 244, 0.88);
+  font: inherit;
+  font-weight: 700;
+}
+.sb-conte-add-shot:hover { background: rgba(150, 190, 210, 0.1); border-color: rgba(184, 198, 210, 0.8); }
 
 .sb-conte-row:hover {
   background: rgba(255, 255, 255, 0.035);

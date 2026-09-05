@@ -1798,6 +1798,15 @@ export default function StoryboardView({ onEnterReview = null }) {
   const activeShot = scene?.activeShot ?? 0
   const branch = scene?.branches?.[activeBranch]
   const flowShots = branch?.shots || EMPTY_SHOTS
+  // Panels에서 끝에 바로 컷을 보탠다. 컷 없는 샷은 프롬프트·생성 경로가
+  // 없으므로, 새 Cut과 빈 Panel을 함께 만들어야 한다.
+  const appendPanelShot = () => {
+    const lastShot = flowShots[flowShots.length - 1]
+    const lastCut = cutPlan.find((item) => item.id === lastShot?.cutPlanItemId)
+    addCutPlanItem(lastCut?.id || null, lastCut?.beat ?? lastShot?.scriptBeat ?? activeBeat)
+    setFlowActiveShot(flowShots.length)
+    setInspectedShotId(null)
+  }
   // 컷 사이의 문제. 컷 하나만 보면 드러나지 않는다.
   // flowShots가 필요하므로 그 뒤에 둔다 — 이음새는 패널 사이에 붙는다.
 
@@ -4662,6 +4671,13 @@ export default function StoryboardView({ onEnterReview = null }) {
                     </div>,
                   ]
                 })}
+                <button
+                  type="button"
+                  className="sb-panel-grid-add-shot"
+                  onClick={appendPanelShot}
+                >
+                  ＋ 샷 추가
+                </button>
               </section>
             )}
 
@@ -5191,6 +5207,13 @@ export default function StoryboardView({ onEnterReview = null }) {
                     </Fragment>
                   )
                 })}
+                <button
+                  type="button"
+                  className="sb-conte-add-shot"
+                  onClick={appendPanelShot}
+                >
+                  ＋ 샷 추가
+                </button>
               </section>
             )}
 
