@@ -129,6 +129,14 @@ PROMPT = """{intro}
 **규칙 하나당 최대 하나씩, 전체 4개를 넘기지 마세요.** 실제로 걸리는 것만
 쓰고, 없으면 findings를 비우세요. 문제를 만들어 내지 마세요.
 
+아래에 [이전 점검 이력]이 있으면, 현재 자료와 반드시 비교해 재점검하세요.
+그 이력은 이미 감독이 보고 수정한 지적입니다. **같은 규칙·같은 대상을 단지
+다시 발견했다는 이유로 반복하지 마세요.** 현재 내용이 이전 대상과 달라졌다면
+그 수정으로 문제가 해결됐는지 먼저 판단하고, 해결됐다면 findings에 넣지 마세요.
+수정 뒤에도 실제 문제가 남아 있을 때만 다시 지적할 수 있으며, 그때는 현재
+내용에서 무엇이 아직 부족한지 구체적으로 써야 합니다. 이전 문장을 그대로
+되풀이하지 마세요.
+
 인과나 정보 순서 문제는 둘 이상에 걸릴 수 있습니다.
 
 **이야기를 만들지 마세요.** 새 인물·새 장소·새 사건·반전을 제안하지
@@ -194,6 +202,17 @@ async def check_narrative(request: NarrativeCheckRequest) -> NarrativeCheckRespo
         body.append("[대본]")
         for index, line in enumerate(request.lines):
             body.append(f"  [{index}] {line}")
+
+    if request.prior_feedback:
+        body.append("\n[이전 점검 이력 — 현재 자료와 비교해 해결된 것은 반복하지 말 것]")
+        for feedback in request.prior_feedback[-12:]:
+            targets = ", ".join(feedback.targets) or "대상 없음"
+            body.append(
+                f"- {feedback.stage} | 규칙: {feedback.rule_id} | 대상: {targets}\n"
+                f"  이전 지적: {feedback.finding}\n"
+                f"  이전 제안: {feedback.suggested_action}\n"
+                f"  당시 대상 내용: {feedback.material or '(기록 없음)'}"
+            )
 
     # 컷 플랜에서는 그림 없이 판단할 수 있는 규칙만 쓴다. 시선·리듬
     # (cut-continuity, visual-rhythm)과 카메라 위치·축은 화면이 있어야

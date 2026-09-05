@@ -1032,6 +1032,16 @@ class NarrativeCheckCut(BaseModel):
     shot_size: Optional[str] = ""
 
 
+class NarrativeCheckPriorFeedback(BaseModel):
+    """A previous finding plus the material as it was when it was raised."""
+    stage: Literal["script", "cutplan"]
+    rule_id: str
+    targets: List[str] = []
+    finding: str
+    suggested_action: str
+    material: str = ""
+
+
 class NarrativeCheckRequest(BaseModel):
     # 컷 플랜 점검이면 cuts, 대본 점검이면 lines. 둘 중 하나는 있어야 한다.
     cuts: List[NarrativeCheckCut] = []
@@ -1039,6 +1049,7 @@ class NarrativeCheckRequest(BaseModel):
     scene_intention: Optional[str] = ""
     script: Optional[str] = ""
     lens: Optional[Literal["editing", "camera", "mise"]] = None
+    prior_feedback: List[NarrativeCheckPriorFeedback] = []
 
     @model_validator(mode="after")
     def require_material(self):

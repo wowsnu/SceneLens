@@ -302,7 +302,7 @@ export async function suggestNarrative({
 // cuts를 주면 컷 플랜 점검, lines를 주면 대본 점검. 규칙은 같고 보는
 // 것이 다르다 — 대본 단계에는 아직 컷이 없다.
 export async function checkNarrative({
-  cuts = [], lines = [], sceneIntention = '', script = '', lens = null,
+  cuts = [], lines = [], sceneIntention = '', script = '', lens = null, priorFeedback = [],
 }) {
   const data = await fetchWithTimeout(`${API_BASE}/narrative/check`, {
     method: 'POST',
@@ -323,6 +323,14 @@ export async function checkNarrative({
       scene_intention: sceneIntention,
       script,
       lens,
+      prior_feedback: priorFeedback.map((entry) => ({
+        stage: entry.stage,
+        rule_id: entry.ruleId,
+        targets: entry.targets,
+        finding: entry.finding,
+        suggested_action: entry.suggestedAction,
+        material: entry.material,
+      })),
     }),
   }, 90000)
   return {

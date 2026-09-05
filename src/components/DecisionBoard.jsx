@@ -3581,7 +3581,7 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
   // 트랙에서 관객 쪽 마커를 눌렀을 때. **검토를 돌리지 않는다** —
   // 고르기만 하고, 어느 렌즈로 볼지는 감독이 Inspector에서 정한다.
   // 연출 쪽의 `+ 렌즈 더하기`와 같은 방식이다 (문서 4장).
-  const selectReadingFinding = (findingId, { force = false } = {}) => {
+  const selectReadingFinding = (findingId, { force = false, preferredOrder = null } = {}) => {
     const finding = readingFindings.find((entry) => entry.id === findingId)
     if (!finding) return
     const orders = finding.panelOrders || []
@@ -3599,16 +3599,23 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
     const clamp = (index) => Math.min(Math.max(index, 0), shots.length - 1)
     const from = clamp(orders[0] - 1)
     const to = clamp(orders[orders.length - 1] - 1)
+    // 관객 검토에서 S3을 보고 "다시 보기"를 눌렀다면, 이슈 범위(S2–S3)는
+    // 유지하되 연출 검토의 중심은 S3으로 돌아가야 한다. 범위의 첫 컷으로
+    // 고정하면 사용자가 보던 맥락을 잃고 S2가 뜬다.
+    const preferredIndex = Number.isInteger(preferredOrder) && orders.includes(preferredOrder)
+      ? clamp(preferredOrder - 1)
+      : from
     if (from === to) {
       setScopeMode('single')
-      setSingleScopeShotId(shots[from]?.id || null)
+      setSingleScopeShotId(shots[preferredIndex]?.id || null)
     } else {
       setScopeMode('range')
       setRangeStart(from)
       setRangeEnd(to)
+      setSingleScopeShotId(shots[preferredIndex]?.id || null)
     }
-    setBrowsingShotIndex(from)
-    setFlowActiveShot(from)
+    setBrowsingShotIndex(preferredIndex)
+    setFlowActiveShot(preferredIndex)
     // 이걸 보는 중에는 렌즈 Issue 선택을 놓는다 — 아래 Inspector가
     // 무엇을 가리키는지 하나여야 한다.
     setSelectedIssueId(null)
@@ -3626,7 +3633,10 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
     if (!finding) return
     // 관객 화면에서 다시 읽는 버튼이 아니다. 같은 issue를 연출 검토의
     // 관객 마커로 넘겨, 이 자리를 세 렌즈가 보게 하는 진입이다.
-    selectReadingFinding(findingId, { force: true })
+    selectReadingFinding(findingId, {
+      force: true,
+      preferredOrder: selectedReadingStep?.order,
+    })
     setReviewOpen(false)
     setReviewMode('multi')
     logScaffold({ feature: 'viewer', action: 'route-intent-reading-to-directing', finding: findingId })

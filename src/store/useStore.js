@@ -1089,6 +1089,41 @@ export const cutFindingFingerprint = (cutPlan = [], cutIds = []) => cutIds
   })
   .join('|')
 
+// 재점검은 새로 시작하는 평가가 아니다. 직전 회차가 무엇을 짚었고 그때
+// 대상이 어떤 내용이었는지를 함께 넘겨야, 사용자가 고친 뒤 같은 말을
+// 기계적으로 반복하지 않는다.
+const narrativeFeedbackEntries = (check, state, lens = 'narrative') => (check?.findings || []).map((finding) => {
+  const stage = check.stage || 'cutplan'
+  const targets = stage === 'script'
+    ? (finding.lineIndexes || []).map((index) => `line:${index}`)
+    : (finding.cutIds || []).map((id) => `cut:${id}`)
+  const material = stage === 'script'
+    ? (finding.lineIndexes || [])
+      .map((index) => state.screenplay.filter((line) => line.type !== 'scene-heading')[index]?.text || '')
+      .join(' | ')
+    : cutFindingFingerprint(state.cutPlan, finding.cutIds || [])
+  return {
+    stage,
+    lens,
+    ruleId: finding.ruleId || '',
+    targets,
+    finding: finding.finding || '',
+    suggestedAction: finding.suggestedAction || '',
+    material,
+  }
+})
+
+const mergeNarrativeFeedback = (history = [], entries = []) => {
+  const merged = [...history, ...entries]
+  const seen = new Set()
+  return merged.filter((entry) => {
+    const key = `${entry.stage}:${entry.ruleId}:${entry.targets.join(',')}:${entry.material}`
+    if (seen.has(key)) return false
+    seen.add(key)
+    return true
+  }).slice(-12)
+}
+
 // 씬이 달라도 이름이 같으면 같은 사람이다. 레퍼런스 그림을 공유할 때
 // 쓰는 것과 같은 규칙을 쓴다(StoryboardView의 referenceIdentity).
 export const characterIdentity = (name = '') => (
@@ -3879,6 +3914,7 @@ const useStore = create((set, get) => ({
       narrativeSuggestions: [],
       narrativeCheck: EXAMPLE_NARRATIVE_CHECK,
       narrativeCheckStale: false,
+      narrativeCheckHistory: [],
       activeBeat: 0,
       cast: structuredClone(EXAMPLE_CAST),
       sceneStates,
@@ -3928,6 +3964,7 @@ const useStore = create((set, get) => ({
       narrativeSuggestions: [],
       narrativeCheck: null,
       narrativeCheckStale: false,
+      narrativeCheckHistory: [],
       autoDraftDisabled: false,
     }
   }),
@@ -4032,6 +4069,9 @@ const useStore = create((set, get) => ({
   narrativeCheckPending: false,
   narrativeCheckError: null,
   narrativeCheckStale: false,
+  // 재점검할 때 모델에 주는 직전 회차 이력. 결과를 숨기는 용도가 아니라,
+  // 수정된 대상을 다시 같은 말로 지적하지 않도록 비교 기준을 남기는 것이다.
+  narrativeCheckHistory: [],
   clearNarrativeCheck: () => set({
     narrativeCheck: null,
     narrativeCheckError: null,
@@ -4048,11 +4088,19 @@ const useStore = create((set, get) => ({
     const usingCuts = stage !== 'script'
     if (usingCuts ? state.cutPlan.length === 0 : lines.length === 0) return
     const checkedScriptKey = usingCuts ? null : screenplayFingerprint(state.screenplay)
+    const previousEntries = state.narrativeCheck?.stage === stage
+      ? narrativeFeedbackEntries(state.narrativeCheck, state)
+      : []
+    const priorFeedback = mergeNarrativeFeedback(
+      state.narrativeCheckHistory.filter((entry) => entry.stage === stage && entry.lens === 'narrative'),
+      previousEntries,
+    )
     set({
       narrativeCheckPending: true,
       narrativeCheckError: null,
       narrativeCheck: null,
       narrativeCheckStale: false,
+      narrativeCheckHistory: mergeNarrativeFeedback(state.narrativeCheckHistory, previousEntries),
       // 새 점검은 새 지적 목록이다. 지난 회차에서 해결로 표시한 것은
       // 여기서 놓는다 (S4).
       resolvedNarrativeFindingIds: [],
@@ -4072,6 +4120,7 @@ const useStore = create((set, get) => ({
         lines: usingCuts ? [] : lines,
         sceneIntention: state.sceneIntention || '',
         script: usingCuts ? state.screenplay.map((element) => element.text).join('\n') : '',
+        priorFeedback,
       })
       const checkedResult = usingCuts
         ? {
@@ -4100,7 +4149,21 @@ const useStore = create((set, get) => ({
   requestCameraCheck: async () => {
     const state = get()
     if (state.cameraCheckPending || state.cutPlan.length === 0) return
-    set({ cameraCheckPending: true, cameraCheckError: null, cameraCheck: null })
+    const previousEntries = narrativeFeedbackEntries(
+      state.cameraCheck ? { ...state.cameraCheck, stage: 'cutplan' } : null,
+      state,
+      'camera',
+    )
+    const priorFeedback = mergeNarrativeFeedback(
+      state.narrativeCheckHistory.filter((entry) => entry.stage === 'cutplan' && entry.lens === 'camera'),
+      previousEntries,
+    )
+    set({
+      cameraCheckPending: true,
+      cameraCheckError: null,
+      cameraCheck: null,
+      narrativeCheckHistory: mergeNarrativeFeedback(state.narrativeCheckHistory, previousEntries),
+    })
     try {
       const { checkNarrative } = await import('../services/api.js')
       logScaffold({ feature: 'lens', action: 'open', lens: 'camera', stage: 'cutplan' })
@@ -4109,6 +4172,7 @@ const useStore = create((set, get) => ({
         sceneIntention: state.sceneIntention || '',
         script: state.screenplay.map((element) => element.text).join('\n'),
         lens: 'camera',
+        priorFeedback,
       })
       set({
         cameraCheck: {
@@ -4130,7 +4194,21 @@ const useStore = create((set, get) => ({
   requestMiseCheck: async () => {
     const state = get()
     if (state.miseCheckPending || state.cutPlan.length === 0) return
-    set({ miseCheckPending: true, miseCheckError: null, miseCheck: null })
+    const previousEntries = narrativeFeedbackEntries(
+      state.miseCheck ? { ...state.miseCheck, stage: 'cutplan' } : null,
+      state,
+      'mise',
+    )
+    const priorFeedback = mergeNarrativeFeedback(
+      state.narrativeCheckHistory.filter((entry) => entry.stage === 'cutplan' && entry.lens === 'mise'),
+      previousEntries,
+    )
+    set({
+      miseCheckPending: true,
+      miseCheckError: null,
+      miseCheck: null,
+      narrativeCheckHistory: mergeNarrativeFeedback(state.narrativeCheckHistory, previousEntries),
+    })
     try {
       const { checkNarrative } = await import('../services/api.js')
       logScaffold({ feature: 'lens', action: 'open', lens: 'mise', stage: 'cutplan' })
@@ -4139,6 +4217,7 @@ const useStore = create((set, get) => ({
         sceneIntention: state.sceneIntention || '',
         script: state.screenplay.map((element) => element.text).join('\n'),
         lens: 'mise',
+        priorFeedback,
       })
       set({
         miseCheck: {
@@ -4321,6 +4400,7 @@ const useStore = create((set, get) => ({
       narrativeSuggestions: [],
       narrativeCheck: null,
       narrativeCheckStale: false,
+      narrativeCheckHistory: [],
       activeBeat: 0,
       // 대본이 새로 나뉘었으면 옛 컷 플랜은 무효다 — 컷은 대본에서
       // 파생된다. 비우고 대본 단계로 되돌린다. 이걸 두면 새 대본 위에
