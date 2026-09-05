@@ -1409,7 +1409,15 @@
 .cut-plan-table .col-purpose { width: 132px; }
 .cut-plan-table .col-cast { width: 88px; }
 .cut-plan-table .col-shot { width: 92px; }
+.cut-plan-table .col-angle { width: 118px; }
 .cut-plan-table .col-tools { width: 122px; }
+
+/* Cut Plan과 Panels는 같은 FramingPicker를 쓴다. 표에서는 행 밀도만
+   조금 낮춰, 고르는 경험과 선택지는 같고 읽기 폭만 다르게 둔다. */
+.cut-plan-framing { min-width: 0; }
+.cut-plan-framing .conte-framing-current { padding: 3px; gap: 2px; }
+.cut-plan-framing .conte-framing-current > em { font-size: 9px; }
+.cut-plan-framing .conte-framing-menu { right: auto; left: 0; }
 
 /* 입력은 평소 표의 글자처럼 보이고, 다가가야 편집 가능함이 드러난다. */
 .cut-plan-table input,

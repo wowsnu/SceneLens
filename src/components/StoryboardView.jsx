@@ -3781,6 +3781,7 @@ export default function StoryboardView({ onEnterReview = null }) {
                         <th className="col-purpose">중요한 것</th>
                         <th className="col-cast">인물</th>
                         <th className="col-shot">샷</th>
+                        <th className="col-angle">앵글</th>
                         <th className="col-tools" aria-label="Actions" />
                       </tr>
                     </thead>
@@ -3796,7 +3797,7 @@ export default function StoryboardView({ onEnterReview = null }) {
                             어느 씬의 컷인지 보여야 한다. */}
                           {sceneNo > 0 && (
                             <tr className="cut-plan-scene-row">
-                              <th colSpan={8}>
+                              <th colSpan={9}>
                                 <button
                                   type="button"
                                   onClick={() => toggleScene(group.beat)}
@@ -3819,7 +3820,7 @@ export default function StoryboardView({ onEnterReview = null }) {
                           {!sceneCollapsed && (
                             <>
                               <tr className="cut-plan-beat-row">
-                                <th colSpan={8}>
+                                <th colSpan={9}>
                                   <button
                                     type="button"
                                     onClick={() => toggleCutBeat(group.beat)}
@@ -3939,19 +3940,27 @@ export default function StoryboardView({ onEnterReview = null }) {
                                         </div>
                                       </td>
                                       <td className="col-shot">
-                                        <div className="cut-plan-edit-control" onClick={(event) => event.stopPropagation()}>
-                                          <select
-                                            value={item.shotSize}
-                                            onChange={(event) => updateCutPlanItem(item.id, { shotSize: event.target.value })}
-                                            aria-label={`Cut ${item.order} shot size`}
-                                          >
-                                            {/* 샷은 촬영이 정한다. 빈 값이면 첫 항목이
-                                  선택돼 보여 정해진 것처럼 읽힌다. */}
-                                            <option value="">미정</option>
-                                            {cutPlanShotSizes.map((size) => (
-                                              <option key={size} value={size}>{size}</option>
-                                            ))}
-                                          </select>
+                                        <div className="cut-plan-framing" onClick={(event) => event.stopPropagation()}>
+                                          <FramingPicker
+                                            label="샷 크기"
+                                            placeholder="미정"
+                                            value={item.shotSize || ''}
+                                            options={cutPlanShotSizes}
+                                            kind="shot"
+                                            onChange={(next) => updateCutPlanItem(item.id, { shotSize: next })}
+                                          />
+                                        </div>
+                                      </td>
+                                      <td className="col-angle">
+                                        <div className="cut-plan-framing" onClick={(event) => event.stopPropagation()}>
+                                          <FramingPicker
+                                            label="앵글"
+                                            placeholder="미정"
+                                            value={item.angle || ''}
+                                            options={cutPlanAngles}
+                                            kind="angle"
+                                            onChange={(next) => updateCutPlanItem(item.id, { angle: next })}
+                                          />
                                         </div>
                                       </td>
                                       <td className="col-tools">
