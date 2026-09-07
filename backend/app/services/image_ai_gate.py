@@ -2,8 +2,8 @@
 
 The free Render instance has one small memory pool for every API route. A panel
 generation, reference generation, and viewer reading must therefore not all
-hold large image payloads in flight at once. One slot keeps the worker below
-its memory ceiling; a restart is worse than making the next image request wait.
+hold large image payloads in flight at once. Two slots retain responsive work
+without letting a third image-heavy request start until one has finished.
 """
 
 import asyncio
@@ -12,7 +12,7 @@ from typing import Awaitable, Callable, TypeVar
 
 
 T = TypeVar("T")
-IMAGE_AI_CONCURRENCY = max(1, int(os.getenv("IMAGE_AI_CONCURRENCY", "1")))
+IMAGE_AI_CONCURRENCY = max(1, int(os.getenv("IMAGE_AI_CONCURRENCY", "2")))
 _image_ai_slots = asyncio.Semaphore(IMAGE_AI_CONCURRENCY)
 
 

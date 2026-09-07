@@ -2825,9 +2825,19 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
         requestId,
         lenses: requestedLenses,
       })
-      const outcomes = await Promise.all(MULTI_LENS_ORDER
+      // 세 렌즈를 모두 시작하면 큰 패널 base64 요청 세 개가 Render에 한꺼번에
+      // 도착한다. 두 개까지만 동시에 시작하고, 남은 하나는 먼저 끝난 요청이
+      // 생길 때 보낸다. 결과는 여전히 도착하는 즉시 트랙에 반영된다.
+      const lensJobs = MULTI_LENS_ORDER
         .filter(({ backendId }) => requestedLenses.includes(backendId))
-        .map(async ({ backendId, lensId }) => {
+      const outcomes = []
+      let nextLensJob = 0
+      await Promise.all(Array.from({ length: Math.min(2, lensJobs.length) }, async () => {
+        while (nextLensJob < lensJobs.length) {
+          const jobIndex = nextLensJob
+          nextLensJob += 1
+          const { backendId, lensId } = lensJobs[jobIndex]
+          const outcome = await (async () => {
         try {
           const response = await requestDirectingReview({
             mode: backendId,
@@ -2898,7 +2908,10 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
         } catch (error) {
           return { backendId, ok: false, error: error.message || '분석하지 못했습니다.' }
         }
-        }))
+          })()
+          outcomes[jobIndex] = outcome
+        }
+      }))
 
       setMultiReviewRuns((current) => {
         const previous = current[scopeKey]
