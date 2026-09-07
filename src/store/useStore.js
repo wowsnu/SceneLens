@@ -3887,9 +3887,22 @@ const useStore = create((set, get) => ({
       requirements: createCutRequirements(cut.id, cut.requirements || {}, cut.provenance || 'AI'),
     }))
 
+    // 예시는 늘 첫 Scene의 Main 브랜치에서 시작한다. 이전 작업에서 Scene 2를
+    // 보고 있던 상태로 mock을 불러오면, 그 자리에 예시 패널을 채운 뒤 Scene 2를
+    // 계속 보여 주는 문제가 있었다.
+    const exampleTargetState = {
+      ...state,
+      activeScene: 0,
+      activeShot: 0,
+      activeBeat: 0,
+      scenes: state.scenes.map((scene, index) => (
+        index === 0 ? { ...scene, activeBranch: 0, activeShot: 0 } : scene
+      )),
+    }
+
     // 컷마다 패널을 만들고, order 순서로 예시 그림을 붙인다 — 8컷 전부.
     const cutById = new Map(cutPlan.map((cut) => [cut.id, cut]))
-    const next = updateActiveBranchShots(state, () => (
+    const next = updateActiveBranchShots(exampleTargetState, () => (
       applyCutPlanToShots(cutPlan, []).shots.map((shot) => {
         const cut = cutById.get(shot.cutPlanItemId)
         return {
@@ -3910,6 +3923,9 @@ const useStore = create((set, get) => ({
 
     return {
       ...next,
+      activeScene: 0,
+      activeShot: 0,
+      activeBeat: 0,
       screenplay: script,
       narrativeSuggestions: [],
       narrativeCheck: EXAMPLE_NARRATIVE_CHECK,
