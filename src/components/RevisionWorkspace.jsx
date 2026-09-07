@@ -219,7 +219,11 @@ export default function RevisionWorkspace({
                       <button type="button" onClick={onReject}>버리고 되돌리기</button>
                     </div>
                   </>
-                ) : <small>변화된 사진을 만드는 중…</small>}
+                ) : (
+                  <small className="revision-generation-wait">
+                    <i aria-hidden="true" />변화된 사진을 만드는 중…
+                  </small>
+                )}
               </div>
             )}
             {!revisionPending && generationError && (

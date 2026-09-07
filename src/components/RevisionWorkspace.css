@@ -79,6 +79,16 @@
 .revision-camera-result-actions { display: grid; gap: 6px; margin-top: 8px; text-align: left; }
 .revision-camera-result-actions > strong { color: #dbeafe; font-size: 10.5px; }
 .revision-camera-result-actions > small { color: var(--text-muted); font-size: 10px; }
+.revision-generation-wait { display: inline-flex; align-items: center; gap: 6px; }
+.revision-generation-wait > i {
+  width: 10px;
+  height: 10px;
+  border: 1.5px solid rgba(216, 170, 98, .25);
+  border-top-color: #e9c58d;
+  border-radius: 50%;
+  animation: revision-generation-spin .8s linear infinite;
+}
+@keyframes revision-generation-spin { to { transform: rotate(360deg); } }
 .revision-camera-result-actions > div { display: flex; flex-wrap: wrap; gap: 5px; }
 .revision-camera-result-actions button { padding: 5px 7px; border: 1px solid var(--border-light); border-radius: 5px; background: transparent; color: var(--text-secondary); font: inherit; font-size: 10px; cursor: pointer; }
 .revision-camera-result-actions .primary { border-color: rgba(96,165,250,.55); background: rgba(59,130,246,.16); color: #dbeafe; font-weight: 800; }
