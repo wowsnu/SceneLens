@@ -150,23 +150,60 @@ const VIEWER_FOCUS_PRESETS = [
   },
 ]
 
-// 스토어에는 드로잉 data URL뿐 아니라 public 경로의 테스트 이미지도 들어갈 수
-// 있다. 관객 읽기 API에는 화면 픽셀만 보낼 수 있으므로, 경로는 호출 직전에
-// data URL로 읽어 바꾼다. 이 과정에서 컷 라벨·CIR·의도는 전혀 보내지 않는다.
-async function loadViewerPanelImage(image) {
-  if (!image || image.startsWith('data:')) return image
-  if (!image.startsWith('/')) return image
+// 연출·관객 검토는 패널의 픽셀만 쓰므로, 원본 생성 이미지(흔히 1024px 이상)를
+// 그대로 여러 번 서버에 올릴 이유가 없다. 11컷에서 연출 렌즈 3개와 관객
+// 읽기가 원본 base64를 연달아 올리면 Render 워커가 502로 재시작할 수 있었다.
+// 검토용 사본만 640px JPEG로 줄인다. 원본 그림과 저장된 스토리보드는 절대
+// 바꾸지 않으며, 같은 그림은 한 번만 변환해 세 렌즈가 공유한다.
+const REVIEW_IMAGE_MAX_EDGE = 640
+const REVIEW_IMAGE_QUALITY = 0.72
+const reviewImageCache = new Map()
 
+async function reviewImageBlob(image) {
+  if (image.startsWith('data:')) {
+    const response = await fetch(image)
+    if (!response.ok) throw new Error('패널 이미지를 읽지 못했습니다.')
+    return response.blob()
+  }
+  if (!image.startsWith('/')) return null
   const response = await fetch(image)
   if (!response.ok) throw new Error('테스트 패널 이미지를 불러오지 못했습니다.')
-  const blob = await response.blob()
+  return response.blob()
+}
 
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader()
-    reader.onload = () => resolve(reader.result)
-    reader.onerror = () => reject(new Error('테스트 패널 이미지를 읽지 못했습니다.'))
-    reader.readAsDataURL(blob)
-  })
+async function shrinkReviewImage(image) {
+  const blob = await reviewImageBlob(image)
+  if (!blob) return image
+  const objectUrl = URL.createObjectURL(blob)
+  try {
+    const source = await new Promise((resolve, reject) => {
+      const element = new Image()
+      element.onload = () => resolve(element)
+      element.onerror = () => reject(new Error('패널 이미지를 읽지 못했습니다.'))
+      element.src = objectUrl
+    })
+    const longest = Math.max(source.naturalWidth, source.naturalHeight)
+    const scale = Math.min(1, REVIEW_IMAGE_MAX_EDGE / longest)
+    const canvas = document.createElement('canvas')
+    canvas.width = Math.max(1, Math.round(source.naturalWidth * scale))
+    canvas.height = Math.max(1, Math.round(source.naturalHeight * scale))
+    const context = canvas.getContext('2d')
+    context.drawImage(source, 0, 0, canvas.width, canvas.height)
+    return canvas.toDataURL('image/jpeg', REVIEW_IMAGE_QUALITY)
+  } finally {
+    URL.revokeObjectURL(objectUrl)
+  }
+}
+
+// 스토어에는 드로잉 data URL뿐 아니라 public 경로의 테스트 이미지도 들어갈 수
+// 있다. 검토 API에는 이 축소한 화면 사본만 보내고, 컷 라벨·CIR·의도는
+// 관객 요청에는 전혀 보내지 않는다.
+async function loadViewerPanelImage(image) {
+  if (!image) return image
+  if (!reviewImageCache.has(image)) {
+    reviewImageCache.set(image, shrinkReviewImage(image))
+  }
+  return reviewImageCache.get(image)
 }
 
 // 한 패널에 세 연출 관점이 함께 놓였을 때의

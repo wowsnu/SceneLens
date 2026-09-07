@@ -237,7 +237,13 @@ LENGTH IS A HARD REQUIREMENT, NOT A PREFERENCE. The step fields are rendered sid
         image_url = panel.image if panel.image.startswith("data:") else f"data:image/png;base64,{panel.image}"
         content.extend([
             {"type": "text", "text": f"[Panel {order}]"},
-            {"type": "image_url", "image_url": {"url": image_url, "detail": "high"}},
+            # 전체 시퀀스는 여러 장을 한 요청으로 본다. 긴 시퀀스를
+            # high-detail로 처리하면 연출 검토 직후 Render 워커가 밀려 502가
+            # 날 수 있으므로, 7컷부터는 축소된 검토 사본을 low로 읽는다.
+            {"type": "image_url", "image_url": {
+                "url": image_url,
+                "detail": "low" if len(request.panels) > 6 else "high",
+            }},
         ])
 
     response = await run_image_ai(lambda: client.chat.completions.create(

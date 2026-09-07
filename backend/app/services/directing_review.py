@@ -1344,7 +1344,11 @@ async def analyze_lens(
                         "type": "image_url",
                         "image_url": {
                             "url": panel_image_urls[panel.id],
-                            "detail": "high",
+                            # 긴 범위는 6컷씩 처리한다. 러프 스토리보드에서
+                            # 이 크기면 인물·배치·방향은 읽히며, 세 렌즈가
+                            # 동시에 high-detail 이미지를 처리해 워커가 밀리는
+                            # 일을 피할 수 있다.
+                            "detail": "low" if len(request.panels) > 4 else "high",
                         },
                     }]
                     if panel.image
