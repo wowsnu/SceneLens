@@ -768,7 +768,9 @@ class DirectingLensResult(BaseModel):
     stance: Literal["change", "keep", "different"] = "change"
     summary: str
     level_assessments: List[DirectingLevelAssessment] = Field(min_length=4, max_length=4)
-    diagnoses: List[DirectingDiagnosis] = Field(default_factory=list, max_length=4)
+    # 긴 시퀀스는 겹치는 여러 구간으로 나눠 검토한 뒤 합친다. 따라서 같은
+    # 층위라도 서로 다른 컷에서 나온 진단이 여럿 있을 수 있다.
+    diagnoses: List[DirectingDiagnosis] = Field(default_factory=list)
 
     @model_validator(mode="after")
     def validate_unique_diagnosis_ids(self):
@@ -781,19 +783,9 @@ class DirectingLensResult(BaseModel):
         }
         if set(assessment_levels) != expected_levels or len(assessment_levels) != len(expected_levels):
             raise ValueError("level_assessments must contain each diagnostic level exactly once")
-        diagnosis_levels = [diagnosis.level for diagnosis in self.diagnoses]
-        if len(diagnosis_levels) != len(set(diagnosis_levels)):
-            raise ValueError("only one diagnosis is allowed per diagnostic level")
         status_by_level = {assessment.level: assessment.status for assessment in self.level_assessments}
         if any(status_by_level[diagnosis.level] != "change" for diagnosis in self.diagnoses):
             raise ValueError("a diagnosis must belong to a change-level assessment")
-        changed_levels = {
-            assessment.level
-            for assessment in self.level_assessments
-            if assessment.status == "change"
-        }
-        if changed_levels != set(diagnosis_levels):
-            raise ValueError("every change-level assessment must include one diagnosis")
         return self
 
 

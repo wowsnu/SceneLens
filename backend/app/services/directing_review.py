@@ -55,6 +55,13 @@ DIAGNOSTIC_LEVELS = [
     "scene_structure",
 ]
 
+# 한 장면 전체를 고해상도 그림으로 한 번에 보내면, 세 렌즈 요청이 동시에
+# 수십 MB가 된다. 7컷부터는 6컷씩, 두 컷을 겹쳐 순차 검토한다. 겹침은
+# 창의 경계에 놓인 이음새와 흐름 문제를 잃지 않기 위한 것이다.
+LONG_REVIEW_THRESHOLD = 7
+LONG_REVIEW_WINDOW_SIZE = 6
+LONG_REVIEW_OVERLAP = 2
+
 COMMON_LENS_PROMPT = """목표는 멋진 대안을 많이 내는 것이 아니라, 현재 패널이 감독의
 의도를 어떻게 지지하거나 방해하는지 화면 근거로 진단하는 것입니다. 보이지 않는 사실을
 만들지 마세요.
@@ -2178,14 +2185,139 @@ async def review_directing(request: DirectingReviewRequest) -> DirectingReviewRe
             f"The {request.mode} review mode is not connected yet. Use camera, mise, or editing mode."
         )
     lens: DirectingLens = request.mode
-    result, questions = await analyze_lens(
-        request, lens, panel_image_urls=_panel_image_urls(request),
-    )
+    result, questions = await _analyze_lens_in_windows(request, lens)
     return DirectingReviewResponse(
         lens_results={lens: result},
         issues=_build_issues([], {lens: result}),
         questions=questions,
     )
+
+
+def _review_windows(request: DirectingReviewRequest) -> list[list]:
+    """Return one safe review range, or overlapping ranges for a long sequence."""
+    panels = request.panels
+    if len(panels) < LONG_REVIEW_THRESHOLD:
+        return [panels]
+
+    step = LONG_REVIEW_WINDOW_SIZE - LONG_REVIEW_OVERLAP
+    windows = []
+    for start in range(0, len(panels), step):
+        window = panels[start:start + LONG_REVIEW_WINDOW_SIZE]
+        if not window:
+            break
+        windows.append(window)
+        if start + LONG_REVIEW_WINDOW_SIZE >= len(panels):
+            break
+    return windows
+
+
+def _window_label(panels: list) -> str:
+    if not panels:
+        return ""
+    first, last = panels[0].id, panels[-1].id
+    return first if first == last else f"{first}–{last}"
+
+
+def _merged_window_result(
+    results: list[DirectingLensResult],
+    labels: list[str],
+) -> DirectingLensResult:
+    """Merge window results without losing distinct issues at the same level."""
+    status_rank = {"keep": 0, "check": 1, "change": 2}
+    assessments = []
+    for level in DIAGNOSTIC_LEVELS:
+        candidates = [
+            assessment
+            for result in results
+            for assessment in result.level_assessments
+            if assessment.level == level
+        ]
+        chosen = max(candidates, key=lambda assessment: status_rank[assessment.status])
+        assessments.append(chosen.model_copy())
+
+    diagnoses = []
+    seen = set()
+    used_ids = set()
+    for window_index, result in enumerate(results, start=1):
+        for diagnosis in result.diagnoses:
+            # The same diagnosis can appear in both overlapping windows. Only
+            # collapse an exact scope/rule match; similar-looking concerns in
+            # different shots must remain separately actionable.
+            signature = (
+                diagnosis.rule_id,
+                diagnosis.level,
+                tuple(sorted(diagnosis.targets)),
+            )
+            if signature in seen:
+                continue
+            seen.add(signature)
+            diagnosis_id = diagnosis.id
+            if diagnosis_id in used_ids:
+                diagnosis_id = f"{diagnosis_id}-w{window_index}"
+            used_ids.add(diagnosis_id)
+            diagnoses.append(diagnosis.model_copy(update={"id": diagnosis_id}))
+
+    stance = (
+        "change" if diagnoses else
+        "different" if any(result.stance == "different" for result in results) else
+        "keep"
+    )
+    summaries = [
+        f"{label}: {result.summary.strip()}"
+        for label, result in zip(labels, results)
+        if result.summary.strip()
+    ]
+    return DirectingLensResult(
+        stance=stance,
+        summary="\n\n".join(summaries),
+        level_assessments=assessments,
+        diagnoses=diagnoses,
+    )
+
+
+async def _analyze_lens_in_windows(
+    request: DirectingReviewRequest,
+    lens: DirectingLens,
+) -> tuple[DirectingLensResult, list[DirectingQuestion]]:
+    """Analyze long sequences in safe, overlapping windows, one at a time."""
+    windows = _review_windows(request)
+    if len(windows) == 1:
+        return await analyze_lens(
+            request, lens, panel_image_urls=_panel_image_urls(request),
+        )
+
+    results = []
+    labels = []
+    questions = []
+    question_keys = set()
+    for window_index, panels in enumerate(windows, start=1):
+        window_request = request.model_copy(update={"panels": panels})
+        try:
+            result, window_questions = await analyze_lens(
+                window_request,
+                lens,
+                panel_image_urls=_panel_image_urls(window_request),
+            )
+        except Exception as error:
+            # A single failed chunk should not erase usable findings from the
+            # rest of a long sequence. If every chunk fails, retain the normal
+            # error path below so the UI does not mistake it for "no issues".
+            print(
+                f"[directing-review] {lens} window {window_index}/"
+                f"{len(windows)} failed: {error}"
+            )
+            continue
+        results.append(result)
+        labels.append(_window_label(panels))
+        for question in window_questions:
+            key = (question.prompt, question.level, tuple(question.targets))
+            if key not in question_keys:
+                question_keys.add(key)
+                questions.append(question)
+
+    if not results:
+        raise ValueError(f"all {lens} review windows failed")
+    return _merged_window_result(results, labels), questions
 
 
 async def _relate_only(request: DirectingReviewRequest) -> DirectingReviewResponse:
@@ -2216,10 +2348,8 @@ async def _review_all_lenses(request: DirectingReviewRequest) -> DirectingReview
     # 서사는 이 세 렌즈보다 앞에서 이야기의 단계와 정보 순서를 잡는 별도
     # 상위 에이전트다. 다관점 패널 검토에는 화면을 직접 다루는 세 관점만 둔다.
     lenses: list[DirectingLens] = ["mise", "camera", "editing"]
-    # 수 MB인 base64 문자열을 렌즈마다 새로 이어 붙이지 않는다.
-    panel_image_urls = _panel_image_urls(request)
     outcomes = await asyncio.gather(
-        *(analyze_lens(request, lens, panel_image_urls=panel_image_urls) for lens in lenses),
+        *(_analyze_lens_in_windows(request, lens) for lens in lenses),
         return_exceptions=True,
     )
 
