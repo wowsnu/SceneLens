@@ -364,6 +364,10 @@
   color: var(--text-muted);
 }
 
+.lens-tracks-status.is-error {
+  color: #f3a4a4;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .lens-toggle,
   .lens-track,

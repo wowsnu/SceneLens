@@ -6841,6 +6841,7 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
                     selectedIssueId={selectedIssueId}
                     loading={multiReviewLoading}
                     relating={Boolean(multiReviewRun.relating)}
+                    error={multiReviewRun.error}
                     scrollRef={reviewSequenceScrollRef}
                     /* 의도가 안 닿은 자리다. 렌즈가 짚은 진단이 아니므로
                        렌즈 줄과 떨어진 자리에 놓인다 (문서 7장). */

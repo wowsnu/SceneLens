@@ -69,6 +69,7 @@ export default function LensTracks({
   embedded = false,
   loading = false,
   relating = false,
+  error = '',
 }) {
   const trackScrollRef = useRef(null)
   const scroller = scrollRef || trackScrollRef
@@ -246,6 +247,14 @@ export default function LensTracks({
       )}
 
       {loading && <p className="lens-tracks-status">렌즈가 보는 중입니다…</p>}
+      {/* 실패를 빈 결과처럼 보이면 감독은 분석을 다시 눌러도 왜 아무것도
+          안 나오는지 알 수 없다. 실제 오류를 바로 보이고 재시도할 수 있게
+          둔다. */}
+      {!loading && error && (
+        <p className="lens-tracks-status is-error" role="alert">
+          분석을 완료하지 못했습니다. {error}
+        </p>
+      )}
       {/* 관계를 아직 찾는 중이면 그렇다고 말한다. 이 사이에는 같은
           현상을 두 렌즈가 짚었어도 마커가 따로 찍혀 있어, 감독이
           "다른 문제"로 읽고 각각 열어 보게 된다. 곧 합쳐질 수 있다는
@@ -258,7 +267,7 @@ export default function LensTracks({
       {/* 이 문구는 **렌즈 진단**이 없다는 뜻이다. 관객 마커가 떠 있는데
           "아직 볼 것이 없습니다"라고만 하면 화면과 어긋난다 — 그때는
           무엇이 없는 것인지 밝힌다. */}
-      {!loading && issues.length === 0 && (
+      {!loading && !error && issues.length === 0 && (
         <p className="lens-tracks-status">
           {readingMarkers.length > 0
             ? '렌즈가 짚은 것은 아직 없습니다. 아래는 의도가 안 닿은 자리입니다.'
