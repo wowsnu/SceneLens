@@ -55,7 +55,7 @@ export default function RevisionWorkspace({
   issue, issues = [], shotCount = 0, diagnosis, cut = null,
   onBack, onChoose, onPrepare, onKeep, onClose,
   promptDraft, promptNote, promptBefore = '', rewriting, generating, onPromptChange, onClosePrompt, onSavePrompt, onRevertPrompt,
-  revisionPending, revisionImage, onAccept, onReject,
+  revisionPending, revisionImage, generationError = '', onAccept, onReject,
   // 생성이 시작되면 컷 표는 먼저 제안 값으로 바뀐다. 하지만 감독이
   // 수용/되돌리기를 고르기 전까지 카드의 비교는 적용 전 값을 보여야 한다.
   revisionBefore = null,
@@ -220,6 +220,11 @@ export default function RevisionWorkspace({
                     </div>
                   </>
                 ) : <small>변화된 사진을 만드는 중…</small>}
+              </div>
+            )}
+            {!revisionPending && generationError && (
+              <div className="revision-camera-result-actions is-error" role="alert">
+                <small>{generationError}</small>
               </div>
             )}
           </figure>

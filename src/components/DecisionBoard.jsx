@@ -1798,6 +1798,8 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
   // 어느 컷의 몇 번째 초안을 기다리는지 기록한다. 다른 컷의 초안 도착을
   // 지금 적용한 선택지의 완료로 오해하면 사진과 상태가 어긋난다.
   const [pendingPanelGeneration, setPendingPanelGeneration] = useState(null)
+  // 실패를 완료 신호가 오지 않은 상태로 두면 '만드는 중'이 끝나지 않는다.
+  const [revisionGenerationError, setRevisionGenerationError] = useState(null)
   // 무엇을 바꿨는지 한 줄. 감독이 두 문장을 나란히 비교하지 않아도 알게 한다.
   const [promptRewriteNotes, setPromptRewriteNotes] = useState({})
   // 수정본을 받기 직전의 문장. 이것이 없으면 고쳐진 문장만 남아, 감독은
@@ -2000,6 +2002,7 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
   const saveViewerDecision = useStore((s) => s.saveViewerDecision)
   const panelDraftImages = useStore((s) => s.panelDraftImages)
   const panelDraftVersions = useStore((s) => s.panelDraftVersions)
+  const panelGenerationPending = useStore((s) => s.panelGenerationPending)
   const panelStylePreset = useStore((s) => s.panelStylePreset)
   // 컷 목적이 비어 있어도 장면 의도와는 견줄 수 있다.
   const sceneIntention = useStore((s) => s.sceneIntention)
@@ -2024,14 +2027,44 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
   useEffect(() => {
     if (!applyingAlternative || !pendingPanelGeneration) return
     const arrivedVersion = panelDraftVersions[pendingPanelGeneration.shotId] || 0
-    if (arrivedVersion <= pendingPanelGeneration.versionBefore) return
+    if (arrivedVersion > pendingPanelGeneration.versionBefore) {
+      if (applyingAlternative.startsWith('prompt:')) {
+        const diagnosisId = applyingAlternative.slice('prompt:'.length)
+        setPromptGenerationStatus((current) => ({ ...current, [diagnosisId]: 'complete' }))
+      }
+      setApplyingAlternative(null)
+      setPendingPanelGeneration(null)
+      return
+    }
+
+    const generating = Boolean(panelGenerationPending[pendingPanelGeneration.shotId])
+    // routeDiagnosisTool가 StoryboardView의 생성 루프에 닿았는지 먼저 본다.
+    // 이 표시를 보기 전에는 다음 렌더 차례일 수 있어 실패로 보면 안 된다.
+    if (generating && !pendingPanelGeneration.observedPending) {
+      setPendingPanelGeneration((current) => (
+        current ? { ...current, observedPending: true } : current
+      ))
+      return
+    }
+    if (!pendingPanelGeneration.observedPending || generating) return
+
+    // 생성 루프가 끝났는데 새 초안이 없으면 API 실패다. 컷 값도 함께
+    // 되돌려 그림과 표가 어긋나지 않게 하고, 같은 자리에서 재시도하게 한다.
     if (applyingAlternative.startsWith('prompt:')) {
       const diagnosisId = applyingAlternative.slice('prompt:'.length)
-      setPromptGenerationStatus((current) => ({ ...current, [diagnosisId]: 'complete' }))
+      setPromptGenerationStatus((current) => ({ ...current, [diagnosisId]: 'failed' }))
     }
+    setRevisionGenerationError({
+      shotId: pendingPanelGeneration.shotId,
+      message: '사진 생성에 실패했습니다. 기존 설정으로 되돌렸습니다. 다시 시도해 주세요.',
+    })
+    rejectPanelRevision()
     setApplyingAlternative(null)
     setPendingPanelGeneration(null)
-  }, [applyingAlternative, panelDraftVersions, pendingPanelGeneration])
+  }, [
+    applyingAlternative, panelDraftVersions, panelGenerationPending,
+    pendingPanelGeneration, rejectPanelRevision,
+  ])
   const scene = scenes[activeScene]
   const activeShot = scene?.activeShot ?? 0
   const activeBranch = scene?.activeBranch ?? 0
@@ -4323,7 +4356,9 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
     setPendingPanelGeneration({
       shotId: shot.id,
       versionBefore: panelDraftVersions[shot.id] || 0,
+      observedPending: false,
     })
+    setRevisionGenerationError(null)
     setApplyingAlternative(statusKey)
     return true
   }
@@ -7032,6 +7067,8 @@ export default function DecisionBoard({ boardView = 'split', onBackToStoryboard 
                   onRevertPrompt={(text) => openPromptEditor(revisionWorkspace.diagnosis, text)}
                   rewriting={promptRewriting === revisionWorkspace.diagnosis.id}
                   generating={promptGenerationStatus[revisionWorkspace.diagnosis.id] === 'generating'}
+                  generationError={revisionGenerationError?.shotId === revisionTargetShot?.id
+                    ? revisionGenerationError.message : ''}
                   revisionPending={revisionIsPending}
                   revisionImage={revisionDraftImage}
                   revisionBefore={revisionIsPending ? panelRevisionPending?.before : null}
