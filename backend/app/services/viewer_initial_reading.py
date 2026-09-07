@@ -237,12 +237,12 @@ LENGTH IS A HARD REQUIREMENT, NOT A PREFERENCE. The step fields are rendered sid
         image_url = panel.image if panel.image.startswith("data:") else f"data:image/png;base64,{panel.image}"
         content.extend([
             {"type": "text", "text": f"[Panel {order}]"},
-            # 전체 시퀀스는 여러 장을 한 요청으로 본다. 긴 시퀀스를
-            # high-detail로 처리하면 연출 검토 직후 Render 워커가 밀려 502가
-            # 날 수 있으므로, 7컷부터는 축소된 검토 사본을 low로 읽는다.
+            # 요청 본문은 브라우저에서 축소한다. detail은 OpenAI의 읽기 품질
+            # 옵션일 뿐 Render 워커의 메모리 절감책이 아니므로, 긴 시퀀스도
+            # 실제 패널의 작은 단서를 읽을 수 있게 high로 유지한다.
             {"type": "image_url", "image_url": {
                 "url": image_url,
-                "detail": "low" if len(request.panels) > 6 else "high",
+                "detail": "high",
             }},
         ])
 
