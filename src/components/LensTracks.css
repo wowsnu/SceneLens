@@ -241,7 +241,7 @@
   right: 0;
   top: 50%;
   height: 1px;
-  background: color-mix(in srgb, var(--lens), transparent 84%);
+  background: color-mix(in srgb, var(--lens), transparent 88%);
 }
 
 /* --- 마커 ------------------------------------------------------------ */
