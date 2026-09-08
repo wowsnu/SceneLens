@@ -2017,6 +2017,13 @@ export default function StoryboardView({ onEnterReview = null }) {
         {
           includeExisting: true,
           keepView: true,
+          // 이음새 편집기의 실행 버튼은 이미 구조 변경을 받아들이겠다는
+          // 최종 확인이다. 그런데 여기서 그림을 다시 '후보'로만 남기면
+          // 검토 화면에는 그 후보를 Accept할 자리가 없어, 삽입·병합한
+          // 패널이 위 시퀀스에 끝내 반영되지 않는다. 구조 편집의 그림은
+          // 이 실행을 곧 Accept로 보고 바로 확정한다.
+          autoAccept: panelToolRequest.reason === 'insert'
+            || panelToolRequest.reason === 'merge',
           statusLabel: panelToolRequest.reason === 'merge'
             ? '합친 내용으로 생성 중…'
             : panelToolRequest.reason === 'insert'
