@@ -11,10 +11,9 @@
 export const editingActionFor = (alternative) => {
   const text = `${alternative?.label || ''} ${alternative?.effect || ''}`.toLowerCase()
   if (/(삭제|제거|빼기|delete|remove|omit|drop)/.test(text)) return { id: 'delete', label: '이 패널 삭제' }
-  if (/(분할|나누기|쪼개|split|divide|break)/.test(text)) return { id: 'split', label: '이음새에서 분할' }
   if (/(삽입|추가|넣기|insert|add|reaction shot|bridge shot|insert shot)/.test(text)) return { id: 'insert', label: '이음새에 삽입' }
   if (/(병합|합치|merge|combine|condense)/.test(text)) return { id: 'merge', label: '앞 컷과 병합' }
   // 구체적인 구조 조작이 문장에 없으면 실행하지 않는다. 대신 작업자가
-  // 삽입·분할·병합·삭제 중 맞는 방식을 고를 수 있도록 연다.
+  // 삽입·병합·삭제 중 맞는 방식을 고를 수 있도록 연다.
   return { id: 'seam', label: '이음새 수정 방식 고르기' }
 }

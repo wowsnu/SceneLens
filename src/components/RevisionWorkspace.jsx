@@ -250,7 +250,6 @@ export default function RevisionWorkspace({
           <p>이 3장 흐름에서 구조를 바로 고릅니다.</p>
           <div>
             <button type="button" onClick={() => onDirectSeamEdit?.('insert')}>삽입</button>
-            <button type="button" onClick={() => onDirectSeamEdit?.('split')}>분할</button>
             <button type="button" onClick={() => onDirectSeamEdit?.('merge')}>합치기</button>
             <button type="button" onClick={() => onDirectSeamEdit?.('delete')}>삭제</button>
           </div>
