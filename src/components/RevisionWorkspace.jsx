@@ -252,6 +252,7 @@ export default function RevisionWorkspace({
             <button type="button" onClick={() => onDirectSeamEdit?.('insert')}>삽입</button>
             <button type="button" onClick={() => onDirectSeamEdit?.('split')}>분할</button>
             <button type="button" onClick={() => onDirectSeamEdit?.('merge')}>합치기</button>
+            <button type="button" onClick={() => onDirectSeamEdit?.('delete')}>삭제</button>
           </div>
         </section>
       )}
@@ -374,6 +375,14 @@ export default function RevisionWorkspace({
                   const next = selected === alternative ? null : alternative
                   setSelected(next)
                   setDraftPatch(next?.patch || {})
+                  // 문장에 삽입·병합처럼 구체적인 도구가 없을 때도
+                  // '이음새 조정'으로 끝내지 않는다. 이 선택지를 고르면
+                  // 바로 아래에서 감독이 구조 조작을 명시적으로 고른다.
+                  if (isEditingLens && editingActionFor(next).id === 'seam') {
+                    setEditingDirectEditing(Boolean(next))
+                  } else {
+                    setEditingDirectEditing(false)
+                  }
                   if (next && opensPrompt(next)) onPrepare?.(next)
                   // 구조를 바꾸는 선택지는 두 컷 사이에서 펼친다. 다른
                   // 화면으로 넘기면 고칠 자리가 눈앞에서 사라진다.
@@ -391,7 +400,7 @@ export default function RevisionWorkspace({
                   : opensPrompt(alternative)
                     ? '프롬프트에 반영'
                     : onSeamEdit
-                      ? `${SEAM_OP_VERBS[editingActionFor(alternative).id] || '이음새에서 열기'}`
+                      ? `${SEAM_OP_VERBS[editingActionFor(alternative).id] || '수정 방식 고르기'}`
                       : '이 수정안 보기'}
               </button>
             )}
